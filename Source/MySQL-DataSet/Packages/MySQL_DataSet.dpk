@@ -1,0 +1,45 @@
+package MySQL_DataSet;
+
+{$R *.res}
+{$ALIGN 8}
+{$ASSERTIONS OFF}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS OFF}
+{$LOCALSYMBOLS OFF}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION ON}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO OFF}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES OFF}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST ON}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DESCRIPTION 'MySQL-DataSet'}
+{$IMPLICITBUILD ON}
+
+requires
+  dcldb,
+  bdertl,
+  VCL_Extensions;
+
+contains
+  MySQLConsts in '..\Source\MySQLConsts.pas',
+  MySQLClient in '..\Source\MySQLClient.pas',
+  SQLUtils in '..\Source\SQLUtils.pas',
+  HTTPTunnel in '..\Source\HTTPTunnel.pas',
+  MySQLDB in '..\Source\MySQLDB.pas',
+  MySQLDBGrid in '..\Source\MySQLDBGrid.pas',
+  MySQL_DataSetReg in '..\Source\MySQL_DataSetReg.pas',
+  UInt64Lib in '..\Source\UInt64Lib.pas',
+  CSVUtils in '..\Source\CSVUtils.pas';
+
+end.
+

@@ -1,0 +1,120 @@
+package acQueryBuilder_D2010;
+{$R *.res}
+{$ALIGN 8}
+{$ASSERTIONS OFF}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS OFF}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION ON}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS ON}
+{$REFERENCEINFO OFF}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES OFF}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DESCRIPTION 'Active Query Builder Core'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  dbrtl,
+  vcl,
+  vclx;
+
+contains
+  acACCESSSynProvider in '..\Source\acACCESSSynProvider.pas',
+  acAddObject in '..\Source\acAddObject.pas' {acAddObjectForm},
+  acAST in '..\Source\acAST.pas',
+  acAutoSynProvider in '..\Source\acAutoSynProvider.pas',
+  ACCESSpars in '..\Source\ACCESSpars.pas',
+  ACCESSscan in '..\Source\ACCESSscan.pas',
+  acDatasourceProps in '..\Source\acDatasourceProps.pas' {acDatasourcePropsForm},
+  acDB2SynProvider in '..\Source\acDB2SynProvider.pas',
+  acFbSynProvider in '..\Source\acFbSynProvider.pas',
+  acIBSynProvider in '..\Source\acIBSynProvider.pas',
+  acInformixSynProvider in '..\Source\acInformixSynProvider.pas',
+  acLinkProps in '..\Source\acLinkProps.pas' {acLinkPropsForm},
+  acLoadMetadataHelpers in '..\Source\acLoadMetadataHelpers.pas',
+  acMimerSQLSynProvider in '..\Source\acMimerSQLSynProvider.pas',
+  acMSSQLSynProvider in '..\Source\acMSSQLSynProvider.pas',
+  acMYSQLSynProvider in '..\Source\acMYSQLSynProvider.pas',
+  acOracleSynProvider in '..\Source\acOracleSynProvider.pas',
+  acPGSQLSynProvider in '..\Source\acPGSQLSynProvider.pas',
+  acProcParams in '..\Source\acProcParams.pas' {acProcedureParams},
+  acProperties in '..\Source\acProperties.pas',
+  acQBAbout in '..\Source\acQBAbout.pas' {fAcQBAboutForm},
+  acQBBase in '..\Source\acQBBase.pas',
+  acQBControls in '..\Source\acQBControls.pas',
+  acQBEventMetaProvider in '..\Source\acQBEventMetaProvider.pas',
+  acQBHelper in '..\Source\acQBHelper.pas',
+  acQBLocalizer in '..\Source\acQBLocalizer.pas',
+  acQBMasks in '..\Source\acQBMasks.pas',
+  acQBMetadataContainerEditor in '..\Source\acQBMetadataContainerEditor.pas' {fMetadataContainerEditor},
+  acQBMetadataContainerLoad in '..\Source\acQBMetadataContainerLoad.pas' {facQBMetadataContainerLoad},
+  acQBMSXML3 in '..\Source\acQBMSXML3.pas',
+  acQBPaint in '..\Source\acQBPaint.pas',
+  acQBStrings in '..\Source\acQBStrings.pas',
+  acQBXMLHelpers in '..\Source\acQBXMLHelpers.pas',
+  acQueryFixup in '..\Source\acQueryFixup.pas',
+  acQueryProps in '..\Source\acQueryProps.pas' {acQueryPropsForm},
+  acQueryPropsAc in '..\Source\acQueryPropsAc.pas' {acQueryPropsAccessForm},
+  acQueryPropsDb2 in '..\Source\acQueryPropsDb2.pas' {acQueryPropsDb2Form},
+  acQueryPropsFb in '..\Source\acQueryPropsFb.pas' {acQueryPropsFbForm},
+  acQueryPropsIb in '..\Source\acQueryPropsIb.pas' {acQueryPropsIbForm},
+  acQueryPropsMS in '..\Source\acQueryPropsMS.pas' {acQueryPropsMSForm},
+  acQueryPropsMY in '..\Source\acQueryPropsMY.pas' {acQueryPropsMYForm},
+  acQueryPropsOracle in '..\Source\acQueryPropsOracle.pas' {acQueryPropsOracleForm},
+  acQueryPropsPg in '..\Source\acQueryPropsPg.pas' {acQueryPropsPgForm},
+  acQueryPropsSb in '..\Source\acQueryPropsSb.pas' {acQueryPropsSbForm},
+  acQueryPropsSQLite in '..\Source\acQueryPropsSQLite.pas' {acQueryPropsSQLiteForm},
+  acQueryXML in '..\Source\acQueryXML.pas',
+  acSQL2003SynProvider in '..\Source\acSQL2003SynProvider.pas',
+  acSQL89SynProvider in '..\Source\acSQL89SynProvider.pas',
+  acSQL92SynProvider in '..\Source\acSQL92SynProvider.pas',
+  acSQLBuilderPlainText in '..\Source\acSQLBuilderPlainText.pas',
+  acSQLiteSynProvider in '..\Source\acSQLiteSynProvider.pas',
+  acSybaseSynProvider in '..\Source\acSybaseSynProvider.pas',
+  acUniversalSynProvider in '..\Source\acUniversalSynProvider.pas',
+  DB2pars in '..\Source\DB2pars.pas',
+  DB2scan in '..\Source\DB2scan.pas',
+  FBpars in '..\Source\FBpars.pas',
+  FBscan in '..\Source\FBscan.pas',
+  IBpars in '..\Source\IBpars.pas',
+  IBscan in '..\Source\IBscan.pas',
+  INFORMIXpars in '..\Source\INFORMIXpars.pas',
+  INFORMIXscan in '..\Source\INFORMIXscan.pas',
+  MimerSQLpars in '..\Source\MimerSQLpars.pas',
+  MimerSQLscan in '..\Source\MimerSQLscan.pas',
+  MSSQLpars in '..\Source\MSSQLpars.pas',
+  MSSQLscan in '..\Source\MSSQLscan.pas',
+  MYSQLANSIscan in '..\Source\MYSQLANSIscan.pas',
+  MYSQLpars in '..\Source\MYSQLpars.pas',
+  MYSQLscan in '..\Source\MYSQLscan.pas',
+  ORACLEpars in '..\Source\ORACLEpars.pas',
+  ORACLEscan in '..\Source\ORACLEscan.pas',
+  PGSQLpars in '..\Source\PGSQLpars.pas',
+  PGSQLscan in '..\Source\PGSQLscan.pas',
+  SQL2003pars in '..\Source\SQL2003pars.pas',
+  SQL2003scan in '..\Source\SQL2003scan.pas',
+  SQL89pars in '..\Source\SQL89pars.pas',
+  SQL89scan in '..\Source\SQL89scan.pas',
+  SQL92pars in '..\Source\SQL92pars.pas',
+  SQL92scan in '..\Source\SQL92scan.pas',
+  SQLitepars in '..\Source\SQLitepars.pas',
+  SQLitescan in '..\Source\SQLitescan.pas',
+  Sybasepars in '..\Source\Sybasepars.pas',
+  Sybasescan in '..\Source\Sybasescan.pas',
+  UNIVERSALpars in '..\Source\UNIVERSALpars.pas',
+  UNIVERSALscan in '..\Source\UNIVERSALscan.pas';
+
+end.

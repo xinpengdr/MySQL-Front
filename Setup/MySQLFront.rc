@@ -1,0 +1,42 @@
+1 VERSIONINFO
+  FILEVERSION {BuildVerMajor},{BuildVerMinor},{BuildVerPatch},{BuildVerBuild}
+  PRODUCTVERSION {BuildVerMajor},{BuildVerMinor},{BuildVerPatch},{BuildVerBuild}
+  FILEOS 0x00040004L
+  FILEFLAGSMASK 0x0000003FL
+  {BuildVerFileFlag}
+  FILETYPE 0x00000001L
+  BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+      BLOCK "040904E4"
+      BEGIN
+        VALUE "FileVersion", "{BuildVerStrFull}\0"
+        VALUE "FileDescription", "{BuildName}\0"
+        VALUE "ProductName", "{BuildName}\0"
+        VALUE "ProductVersion", "{BuildVerStr}\0"
+      END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+      VALUE "Translation", 0x0409, 1252
+    END
+  END
+
+#define RT_MANIFEST 24
+
+1 RT_MANIFEST "{BuildTempPath}\\MySQLFront.manifest"  
+
+MAINICON ICON "{BuildImagesPath}\\MySQLFront.ico"
+10000 ICON "{BuildImagesPath}\\Blank.ico"
+
+1 RCDATA "{BuildImagesPath}\\Info.jpg"
+
+STRINGTABLE
+BEGIN
+  1000 "{BuildName}"
+  1001 "{BuildProgramFiles}"
+  1002 "{BuildAppData}"
+  1003 "{BuildRegistry}"
+  1004 "{BuildInternetHomepage}"
+  1005 "{BuildInternetPadFile}"
+END

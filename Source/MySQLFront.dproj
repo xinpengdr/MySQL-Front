@@ -1,0 +1,259 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{95537A40-EAE8-4F67-9722-8DA6FE98A349}</ProjectGuid>
+			<MainSource>MySQLFront.dpr</MainSource>
+			<Config Condition="'$(Config)'==''">Debug</Config>
+			<DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
+			<ProjectVersion>12.0</ProjectVersion>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_1)'!=''">
+			<Cfg_1>true</Cfg_1>
+			<CfgParent>Base</CfgParent>
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_2)'!=''">
+			<Cfg_2>true</Cfg_2>
+			<CfgParent>Base</CfgParent>
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Base)'!=''">
+			<DCC_RangeChecking>true</DCC_RangeChecking>
+			<DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
+			<DCC_Optimize>false</DCC_Optimize>
+			<DCC_UsePackage>vcl;rtl;vclx;vclimg;vclactnband;dbrtl;vcldb;vcltouch;xmlrtl;dsnap;dsnapcon;bdertl;TeeUI;TeeDB;Tee;vclib;ibxpress;inet;intrawebdb_100_140;Intraweb_100_140;VclSmp;vclie;websnap;webdsnap;inetdb;inetdbbde;inetdbxpress;soaprtl;vclribbon;DbxCommonDriver;DbxClientDriver;DBXInterBaseDriver;DBXMySQLDriver;DBXFirebirdDriver;DBXSybaseASEDriver;DBXSybaseASADriver;DBXOracleDriver;DBXMSSQLDriver;DBXInformixDriver;DBXDb2Driver;DISQLite3_D2010;MySQL_DataSet;Win32_Extensions;TPerlRegEx_D2010;dbexpress;dbxcds;vcldbx;adortl;DataSnapIndy10ServerTransport;DataSnapProviderClient;IndySystem;IndyCore;IndyProtocols;DataSnapServer</DCC_UsePackage>
+			<DCC_ExeOutput>..\Temp</DCC_ExeOutput>
+			<DCC_BplOutput>..\Temp</DCC_BplOutput>
+			<DCC_DcuOutput>..\Temp</DCC_DcuOutput>
+			<DCC_DcpOutput>..\Temp</DCC_DcpOutput>
+			<DCC_SYMBOL_PLATFORM>false</DCC_SYMBOL_PLATFORM>
+			<DCC_UNIT_PLATFORM>false</DCC_UNIT_PLATFORM>
+			<DCC_UnitSearchPath>FastMM\Bin;TPerlRegEx\Bin;DISQLite3\API;DISQLite3\Bin;SynEdit\Resource;SynEdit\Bin;MPHexEditor\Resource;MPHexEditor\Bin;QueryBuilder\Resource;QueryBuilder\Bin;Win32\Bin;MySQL-DataSet\Bin;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+			<DCC_DependencyCheckOutputName>..\Temp\MySQLFront.exe</DCC_DependencyCheckOutputName>
+			<DCC_Platform>x86</DCC_Platform>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Cfg_1)'!=''">
+			<DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
+			<DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
+			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
+			<DCC_DebugInformation>false</DCC_DebugInformation>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Cfg_2)'!=''">
+			<DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
+			<DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+			<DCC_MapFile>3</DCC_MapFile>
+		</PropertyGroup>
+		<ItemGroup>
+			<DelphiCompile Include="MySQLFront.dpr">
+				<MainSource>MainSource</MainSource>
+			</DelphiCompile>
+			<DCCReference Include="MySQL-DataSet\Source\MySQLClient.pas"/>
+			<DCCReference Include="MySQL-DataSet\Source\MySQLConsts.pas"/>
+			<DCCReference Include="MySQL-DataSet\Source\MySQLDB.pas"/>
+			<DCCReference Include="MySQL-DataSet\Source\HTTPTunnel.pas"/>
+			<DCCReference Include="MySQL-DataSet\Source\SQLUtils.pas"/>
+			<DCCReference Include="MySQL-DataSet\Source\CSVUtils.pas"/>
+			<DCCReference Include="MySQL-DataSet\Source\MySQLDBGrid.pas"/>
+			<DCCReference Include="VCL\Source\ExtCtrls_Ext.pas"/>
+			<DCCReference Include="VCL\Source\StdCtrls_Ext.pas"/>
+			<DCCReference Include="VCL\Source\StdActns_Ext.pas"/>
+			<DCCReference Include="VCL\Source\Dialogs_Ext.pas"/>
+			<DCCReference Include="VCL\Source\ComCtrls_Ext.pas"/>
+			<DCCReference Include="VCL\Source\CommCtrl_Ext.pas"/>
+			<DCCReference Include="VCL\Source\Forms_Ext.pas"/>
+			<DCCReference Include="fClient.pas"/>
+			<DCCReference Include="fPreferences.pas"/>
+			<DCCReference Include="fSession.pas"/>
+			<DCCReference Include="fTools.pas"/>
+			<DCCReference Include="fURI.pas"/>
+			<DCCReference Include="fBase.pas"/>
+			<DCCReference Include="fDBookmark.pas">
+				<Form>DBookmark</Form>
+			</DCCReference>
+			<DCCReference Include="fDColumns.pas">
+				<Form>DColumns</Form>
+			</DCCReference>
+			<DCCReference Include="fDConnecting.pas">
+				<Form>DConnecting</Form>
+			</DCCReference>
+			<DCCReference Include="fDDatabase.pas">
+				<Form>DDatabase</Form>
+			</DCCReference>
+			<DCCReference Include="fDDatabases.pas">
+				<Form>DDatabases</Form>
+			</DCCReference>
+			<DCCReference Include="fDEvent.pas">
+				<Form>DEvent</Form>
+			</DCCReference>
+			<DCCReference Include="fDExport.pas">
+				<Form>DExport</Form>
+			</DCCReference>
+			<DCCReference Include="fDField.pas">
+				<Form>DField</Form>
+			</DCCReference>
+			<DCCReference Include="fDForeignKey.pas">
+				<Form>DForeignKey</Form>
+			</DCCReference>
+			<DCCReference Include="fDGoto.pas">
+				<Form>DGoto</Form>
+			</DCCReference>
+			<DCCReference Include="fDHost.pas">
+				<Form>DHost</Form>
+			</DCCReference>
+			<DCCReference Include="fDHostDatabase.pas">
+				<Form>DHostDatabase</Form>
+			</DCCReference>
+			<DCCReference Include="fDImport.pas">
+				<Form>DImport</Form>
+			</DCCReference>
+			<DCCReference Include="fDIndex.pas">
+				<Form>DIndex</Form>
+			</DCCReference>
+			<DCCReference Include="fDInfo.pas">
+				<Form>DInfo</Form>
+			</DCCReference>
+			<DCCReference Include="fDInstallUpdate.pas">
+				<Form>DInstallUpdate</Form>
+			</DCCReference>
+			<DCCReference Include="fDLogin.pas">
+				<Form>DDBLogin</Form>
+			</DCCReference>
+			<DCCReference Include="fDOptions.pas">
+				<Form>DOptions</Form>
+			</DCCReference>
+			<DCCReference Include="fDPartition.pas">
+				<Form>DPartition</Form>
+			</DCCReference>
+			<DCCReference Include="fDPaste.pas">
+				<Form>DPaste</Form>
+			</DCCReference>
+			<DCCReference Include="fDQuickFilter.pas">
+				<Form>DQuickFilter</Form>
+			</DCCReference>
+			<DCCReference Include="fDRoutine.pas">
+				<Form>DRoutine</Form>
+			</DCCReference>
+			<DCCReference Include="fDSearch.pas">
+				<Form>DSearch</Form>
+			</DCCReference>
+			<DCCReference Include="fDSegment.pas">
+				<Form>DSegment</Form>
+			</DCCReference>
+			<DCCReference Include="fDSelection.pas">
+				<Form>DSelection</Form>
+			</DCCReference>
+			<DCCReference Include="fDServer.pas">
+				<Form>DServer</Form>
+			</DCCReference>
+			<DCCReference Include="fDSession.pas">
+				<Form>DSession</Form>
+			</DCCReference>
+			<DCCReference Include="fDSessions.pas">
+				<Form>DSessions</Form>
+			</DCCReference>
+			<DCCReference Include="fDSQLHelp.pas">
+				<Form>DSQLHelp</Form>
+			</DCCReference>
+			<DCCReference Include="fDStatement.pas">
+				<Form>DStatement</Form>
+			</DCCReference>
+			<DCCReference Include="fDTable.pas">
+				<Form>DTable</Form>
+			</DCCReference>
+			<DCCReference Include="fDTableService.pas">
+				<Form>DTableService</Form>
+			</DCCReference>
+			<DCCReference Include="fDTransfer.pas">
+				<Form>DTransfer</Form>
+			</DCCReference>
+			<DCCReference Include="fDTrigger.pas">
+				<Form>DTrigger</Form>
+			</DCCReference>
+			<DCCReference Include="fDUser.pas">
+				<Form>DUser</Form>
+			</DCCReference>
+			<DCCReference Include="fDUserRight.pas">
+				<Form>DUserRight</Form>
+			</DCCReference>
+			<DCCReference Include="fDVariable.pas">
+				<Form>DVariable</Form>
+			</DCCReference>
+			<DCCReference Include="fDView.pas">
+				<Form>DView</Form>
+			</DCCReference>
+			<DCCReference Include="fCWorkbench.pas"/>
+			<DCCReference Include="fFClient.pas">
+				<Form>FClient</Form>
+			</DCCReference>
+			<DCCReference Include="fWWindow.pas">
+				<Form>WWindow</Form>
+			</DCCReference>
+			<DCCReference Include="fWForeignKeySelect.pas">
+				<Form>WForeignKeySelect</Form>
+			</DCCReference>
+			<BuildConfiguration Include="Base">
+				<Key>Base</Key>
+			</BuildConfiguration>
+			<BuildConfiguration Include="Debug">
+				<Key>Cfg_2</Key>
+				<CfgParent>Base</CfgParent>
+			</BuildConfiguration>
+			<BuildConfiguration Include="Release">
+				<Key>Cfg_1</Key>
+				<CfgParent>Base</CfgParent>
+			</BuildConfiguration>
+		</ItemGroup>
+		<Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
+		<ProjectExtensions>
+			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
+			<Borland.ProjectType>VCLApplication</Borland.ProjectType>
+			<BorlandProject>
+				<Delphi.Personality>
+					<Source>
+						<Source Name="MainSource">MySQLFront.dpr</Source>
+					</Source>
+					<Parameters>
+						<Parameters Name="UseLauncher">False</Parameters>
+						<Parameters Name="LoadAllSymbols">True</Parameters>
+						<Parameters Name="LoadUnspecifiedSymbols">False</Parameters>
+						<Parameters Name="DebugSourceDirs">C:\Documents\MySQL-Front\Source\SynEdit\Source\</Parameters>
+					</Parameters>
+					<VersionInfo>
+						<VersionInfo Name="IncludeVerInfo">True</VersionInfo>
+						<VersionInfo Name="AutoIncBuild">False</VersionInfo>
+						<VersionInfo Name="MajorVer">5</VersionInfo>
+						<VersionInfo Name="MinorVer">2</VersionInfo>
+						<VersionInfo Name="Release">0</VersionInfo>
+						<VersionInfo Name="Build">0</VersionInfo>
+						<VersionInfo Name="Debug">False</VersionInfo>
+						<VersionInfo Name="PreRelease">True</VersionInfo>
+						<VersionInfo Name="Special">False</VersionInfo>
+						<VersionInfo Name="Private">False</VersionInfo>
+						<VersionInfo Name="DLL">False</VersionInfo>
+						<VersionInfo Name="Locale">1033</VersionInfo>
+						<VersionInfo Name="CodePage">1252</VersionInfo>
+					</VersionInfo>
+					<VersionInfoKeys>
+						<VersionInfoKeys Name="CompanyName"/>
+						<VersionInfoKeys Name="FileDescription">MySQL-Front</VersionInfoKeys>
+						<VersionInfoKeys Name="FileVersion">5.2.0.0</VersionInfoKeys>
+						<VersionInfoKeys Name="InternalName"/>
+						<VersionInfoKeys Name="LegalCopyright"/>
+						<VersionInfoKeys Name="LegalTrademarks"/>
+						<VersionInfoKeys Name="OriginalFilename"/>
+						<VersionInfoKeys Name="ProductName">MySQL-Front</VersionInfoKeys>
+						<VersionInfoKeys Name="ProductVersion">5.2</VersionInfoKeys>
+						<VersionInfoKeys Name="Comments"/>
+						<VersionInfoKeys Name="Build Date">01/07/2010</VersionInfoKeys>
+					</VersionInfoKeys>
+					<Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dcloffice2k140.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dclofficexp140.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
+					</Excluded_Packages>
+				</Delphi.Personality>
+			</BorlandProject>
+			<ProjectFileVersion>12</ProjectFileVersion>
+		</ProjectExtensions>
+	</Project>

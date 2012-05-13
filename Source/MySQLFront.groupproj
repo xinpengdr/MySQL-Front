@@ -1,0 +1,156 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{F5A13737-C124-4653-9ED3-E17B87987AF8}</ProjectGuid>
+		</PropertyGroup>
+		<ItemGroup>
+			<Projects Include="FastMM\Package\FastMM_D2010.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="TPerlRegEx\Packages\TPerlRegEx_D2010.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="DISQLite3\Packages\DISQLite3_D2010.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="MPHexEditor\Packages\MPHexEditor_D2010.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="SynEdit\Packages\SynEdit_D2010.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="QueryBuilder\Packages\acQueryBuilder_D2010.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="QueryBuilder\Packages\acQueryBuilderDsgn_D2010.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="Win32\Packages\Win32_Extensions.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="VCL\Packages\VCL_Extensions.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="MySQL-DataSet\Packages\MySQL_DataSet.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="MySQLFront.dproj">
+				<Dependencies/>
+			</Projects>
+		</ItemGroup>
+		<ProjectExtensions>
+			<Borland.Personality>Default.Personality.12</Borland.Personality>
+			<Borland.ProjectType/>
+			<BorlandProject>
+				<Default.Personality/>
+			</BorlandProject>
+		</ProjectExtensions>
+		<Target Name="FastMM_D2010">
+			<MSBuild Projects="FastMM\Package\FastMM_D2010.dproj"/>
+		</Target>
+		<Target Name="FastMM_D2010:Clean">
+			<MSBuild Targets="Clean" Projects="FastMM\Package\FastMM_D2010.dproj"/>
+		</Target>
+		<Target Name="FastMM_D2010:Make">
+			<MSBuild Targets="Make" Projects="FastMM\Package\FastMM_D2010.dproj"/>
+		</Target>
+		<Target Name="TPerlRegEx_D2010">
+			<MSBuild Projects="TPerlRegEx\Packages\TPerlRegEx_D2010.dproj"/>
+		</Target>
+		<Target Name="TPerlRegEx_D2010:Clean">
+			<MSBuild Targets="Clean" Projects="TPerlRegEx\Packages\TPerlRegEx_D2010.dproj"/>
+		</Target>
+		<Target Name="TPerlRegEx_D2010:Make">
+			<MSBuild Targets="Make" Projects="TPerlRegEx\Packages\TPerlRegEx_D2010.dproj"/>
+		</Target>
+		<Target Name="DISQLite3_D2010">
+			<MSBuild Projects="DISQLite3\Packages\DISQLite3_D2010.dproj"/>
+		</Target>
+		<Target Name="DISQLite3_D2010:Clean">
+			<MSBuild Targets="Clean" Projects="DISQLite3\Packages\DISQLite3_D2010.dproj"/>
+		</Target>
+		<Target Name="DISQLite3_D2010:Make">
+			<MSBuild Targets="Make" Projects="DISQLite3\Packages\DISQLite3_D2010.dproj"/>
+		</Target>
+		<Target Name="MPHexEditor_D2010">
+			<MSBuild Projects="MPHexEditor\Packages\MPHexEditor_D2010.dproj"/>
+		</Target>
+		<Target Name="MPHexEditor_D2010:Clean">
+			<MSBuild Targets="Clean" Projects="MPHexEditor\Packages\MPHexEditor_D2010.dproj"/>
+		</Target>
+		<Target Name="MPHexEditor_D2010:Make">
+			<MSBuild Targets="Make" Projects="MPHexEditor\Packages\MPHexEditor_D2010.dproj"/>
+		</Target>
+		<Target Name="SynEdit_D2010">
+			<MSBuild Projects="SynEdit\Packages\SynEdit_D2010.dproj"/>
+		</Target>
+		<Target Name="SynEdit_D2010:Clean">
+			<MSBuild Targets="Clean" Projects="SynEdit\Packages\SynEdit_D2010.dproj"/>
+		</Target>
+		<Target Name="SynEdit_D2010:Make">
+			<MSBuild Targets="Make" Projects="SynEdit\Packages\SynEdit_D2010.dproj"/>
+		</Target>
+		<Target Name="acQueryBuilder_D2010">
+			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilder_D2010.dproj"/>
+		</Target>
+		<Target Name="acQueryBuilder_D2010:Clean">
+			<MSBuild Targets="Clean" Projects="QueryBuilder\Packages\acQueryBuilder_D2010.dproj"/>
+		</Target>
+		<Target Name="acQueryBuilder_D2010:Make">
+			<MSBuild Targets="Make" Projects="QueryBuilder\Packages\acQueryBuilder_D2010.dproj"/>
+		</Target>
+		<Target Name="acQueryBuilderDsgn_D2010">
+			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilderDsgn_D2010.dproj"/>
+		</Target>
+		<Target Name="acQueryBuilderDsgn_D2010:Clean">
+			<MSBuild Targets="Clean" Projects="QueryBuilder\Packages\acQueryBuilderDsgn_D2010.dproj"/>
+		</Target>
+		<Target Name="acQueryBuilderDsgn_D2010:Make">
+			<MSBuild Targets="Make" Projects="QueryBuilder\Packages\acQueryBuilderDsgn_D2010.dproj"/>
+		</Target>
+		<Target Name="Win32_Extensions">
+			<MSBuild Projects="Win32\Packages\Win32_Extensions.dproj"/>
+		</Target>
+		<Target Name="Win32_Extensions:Clean">
+			<MSBuild Targets="Clean" Projects="Win32\Packages\Win32_Extensions.dproj"/>
+		</Target>
+		<Target Name="Win32_Extensions:Make">
+			<MSBuild Targets="Make" Projects="Win32\Packages\Win32_Extensions.dproj"/>
+		</Target>
+		<Target Name="VCL_Extensions">
+			<MSBuild Projects="VCL\Packages\VCL_Extensions.dproj"/>
+		</Target>
+		<Target Name="VCL_Extensions:Clean">
+			<MSBuild Targets="Clean" Projects="VCL\Packages\VCL_Extensions.dproj"/>
+		</Target>
+		<Target Name="VCL_Extensions:Make">
+			<MSBuild Targets="Make" Projects="VCL\Packages\VCL_Extensions.dproj"/>
+		</Target>
+		<Target Name="MySQL_DataSet">
+			<MSBuild Projects="MySQL-DataSet\Packages\MySQL_DataSet.dproj"/>
+		</Target>
+		<Target Name="MySQL_DataSet:Clean">
+			<MSBuild Targets="Clean" Projects="MySQL-DataSet\Packages\MySQL_DataSet.dproj"/>
+		</Target>
+		<Target Name="MySQL_DataSet:Make">
+			<MSBuild Targets="Make" Projects="MySQL-DataSet\Packages\MySQL_DataSet.dproj"/>
+		</Target>
+		<Target Name="MySQLFront">
+			<MSBuild Projects="MySQLFront.dproj"/>
+		</Target>
+		<Target Name="MySQLFront:Clean">
+			<MSBuild Targets="Clean" Projects="MySQLFront.dproj"/>
+		</Target>
+		<Target Name="MySQLFront:Make">
+			<MSBuild Targets="Make" Projects="MySQLFront.dproj"/>
+		</Target>
+		<Target Name="Build">
+			<CallTarget Targets="FastMM_D2010;TPerlRegEx_D2010;DISQLite3_D2010;MPHexEditor_D2010;SynEdit_D2010;acQueryBuilder_D2010;acQueryBuilderDsgn_D2010;Win32_Extensions;VCL_Extensions;MySQL_DataSet;MySQLFront"/>
+		</Target>
+		<Target Name="Clean">
+			<CallTarget Targets="FastMM_D2010:Clean;TPerlRegEx_D2010:Clean;DISQLite3_D2010:Clean;MPHexEditor_D2010:Clean;SynEdit_D2010:Clean;acQueryBuilder_D2010:Clean;acQueryBuilderDsgn_D2010:Clean;Win32_Extensions:Clean;VCL_Extensions:Clean;MySQL_DataSet:Clean;MySQLFront:Clean"/>
+		</Target>
+		<Target Name="Make">
+			<CallTarget Targets="FastMM_D2010:Make;TPerlRegEx_D2010:Make;DISQLite3_D2010:Make;MPHexEditor_D2010:Make;SynEdit_D2010:Make;acQueryBuilder_D2010:Make;acQueryBuilderDsgn_D2010:Make;Win32_Extensions:Make;VCL_Extensions:Make;MySQL_DataSet:Make;MySQLFront:Make"/>
+		</Target>
+		<Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+	</Project>
