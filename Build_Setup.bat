@@ -76,7 +76,7 @@ if Errorlevel 1 goto Error
 "%BuildAWK%" -f "%BuildTempPath%\Build_Setup.awk" "%BuildManualPath%\MySQLFront.hmv" > "%BuildTempPath%\MySQLFront.hmv"
 if Errorlevel 1 goto Error
 
-"%BuildHelpMan%" "%BuildManualPath%\MySQLFront.hm3" /chm="%BuildTempPath%\%BuildName%.chm" /V="%BuildTempPath%\MySQLFront.hmv"
+"%BuildHelpMan%" "%BuildManualPath%\MySQLFront.hm3" /chm="%BuildTempPath%\%BuildName%.chm" /V="%BuildTempPath%\MySQLFront.hmv" /L="%BuildTempPath%\MySQLFront.log"
 if Errorlevel 1 goto Error
 
 "%BuildAWK%" -f "%BuildTempPath%\Build_Setup.awk" "%BuildSetupPath%\pad_file.xml" > "%BuildTempPath%\pad_file.xml"
@@ -97,6 +97,9 @@ if Errorlevel 1 goto Error
 "%BuildInnoSetup%" /O"%BuildTempPath%" /F"%BuildName%_Setup" "%BuildTempPath%\MySQLFront.iss"
 if Errorlevel 1 goto Error
 
+if exist "%BuildSetupPath%\Publish.bat" "%BuildAWK%" -f "%BuildTempPath%\Build_Setup.awk" "%BuildSetupPath%\Publish.bat" > "%BuildPublishPath%\Publish.bat"
+if Errorlevel 1 goto Error
+
 
 if not exist "%BuildPublishPath%" MKDIR "%BuildPublishPath%"
 MOVE "%BuildTempPath%\%BuildName%_Setup.exe" "%BuildPublishPath%"
@@ -107,7 +110,7 @@ DEL "%BuildTempPath%\MySQLFront.*"
 DEL "%BuildTempPath%\%BuildName%.*"
 DEL "%BuildTempPath%\*.awk"
 DEL "%BuildTempPath%\libMySQL.php"
-DEL "%BuildManualPath%\MySQLFront.log"
+DEL "%BuildTempPath%\MySQLFront.log"
 
 
 goto End

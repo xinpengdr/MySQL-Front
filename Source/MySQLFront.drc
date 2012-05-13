@@ -8,272 +8,273 @@
   resources were bound to the produced executable.
 */
 
-#define pnglang_EPNGUnexpectedEndText 64768
-#define pnglang_EPNGNoImageDataText 64769
-#define pnglang_EPNGCannotAddChunkText 64770
-#define pnglang_EPNGCannotAddInvalidImageText 64771
-#define pnglang_EPNGCouldNotLoadResourceText 64772
-#define pnglang_EPNGOutMemoryText 64773
-#define pnglang_EPNGCannotChangeTransparentText 64774
-#define pnglang_EPNGHeaderNotPresentText 64775
-#define pnglang_EInvalidNewSize 64776
-#define pnglang_EInvalidSpec 64777
-#define GIFConsts_sProgressRendering 64784
-#define GIFConsts_sProgressCopying 64785
-#define GIFConsts_sProgressOptimizing 64786
-#define pnglang_EPngInvalidCRCText 64787
-#define pnglang_EPNGInvalidIHDRText 64788
-#define pnglang_EPNGMissingMultipleIDATText 64789
-#define pnglang_EPNGZLIBErrorText 64790
-#define pnglang_EPNGInvalidPaletteText 64791
-#define pnglang_EPNGInvalidFileHeaderText 64792
-#define pnglang_EPNGIHDRNotFirstText 64793
-#define pnglang_EPNGSizeExceedsText 64794
-#define pnglang_EPNGUnknownPalEntryText 64795
-#define pnglang_EPNGUnknownCriticalChunkText 64796
-#define pnglang_EPNGUnknownCompressionText 64797
-#define pnglang_EPNGUnknownInterlaceText 64798
-#define pnglang_EPNGCannotAssignChunkText 64799
-#define GIFConsts_sNoColorTable 64800
-#define GIFConsts_sBadPixelCoordinates 64801
-#define GIFConsts_sInvalidPixelFormat 64802
-#define GIFConsts_sBadDimension 64803
-#define GIFConsts_sNoDIB 64804
-#define GIFConsts_sInvalidStream 64805
-#define GIFConsts_sInvalidColor 64806
-#define GIFConsts_sInvalidBitSize 64807
-#define GIFConsts_sEmptyColorMap 64808
-#define GIFConsts_sEmptyImage 64809
-#define GIFConsts_sMultipleGCE 64810
-#define GIFConsts_sNoPalette 64811
-#define GIFConsts_sGIFImageFile 64812
-#define GIFConsts_sProgressLoading 64813
-#define GIFConsts_sProgressSaving 64814
-#define GIFConsts_sProgressConverting 64815
-#define GIFConsts_sBadSignature 64816
-#define GIFConsts_sScreenBadColorSize 64817
-#define GIFConsts_sImageBadColorSize 64818
-#define GIFConsts_sUnknownExtension 64819
-#define GIFConsts_sBadExtensionLabel 64820
-#define GIFConsts_sOutOfMemDIB 64821
-#define GIFConsts_sDecodeTooFewBits 64822
-#define GIFConsts_sDecodeCircular 64823
-#define GIFConsts_sBadTrailer 64824
-#define GIFConsts_sBadExtensionInstance 64825
-#define GIFConsts_sBadBlockSize 64826
-#define GIFConsts_sBadBlock 64827
-#define GIFConsts_sUnsupportedClass 64828
-#define GIFConsts_sInvalidData 64829
-#define GIFConsts_sBadSize 64830
-#define GIFConsts_sScreenSizeExceeded 64831
-#define MPHexEditorEx_STR_CF_TIFF 64832
-#define MPHexEditorEx_STR_CF_OEMTEXT 64833
-#define MPHexEditorEx_STR_CF_DIB 64834
-#define MPHexEditorEx_STR_CF_PALETTE 64835
-#define MPHexEditorEx_STR_CF_PENDATA 64836
-#define MPHexEditorEx_STR_CF_RIFF 64837
-#define MPHexEditorEx_STR_CF_WAVE 64838
-#define MPHexEditorEx_STR_CF_UNICODETEXT 64839
-#define MPHexEditorEx_STR_CF_ENHMETAFILE 64840
-#define MPHexEditorEx_STR_CF_HDROP 64841
-#define MPHexEditorEx_STR_CF_LOCALE 64842
-#define GIFConsts_sOutOfData 64843
-#define GIFConsts_sTooManyColors 64844
-#define GIFConsts_sBadColorIndex 64845
-#define GIFConsts_sBadColorIndexFixed 64846
-#define GIFConsts_sGIFErrorSaveEmpty 64847
-#define MPHexEditorEx_ERR_BACKUP_DELETE 64848
-#define MPHexEditorEx_ERR_BACKUP_CREATE 64849
-#define MPHexEditorEx_ERR_INVALID_BOOKFMT 64850
-#define MPHexEditorEx_UNDO_PASTECB 64851
-#define MPHexEditorEx_UNDO_CUTCB 64852
-#define MPHexEditorEx_UNDO_DROPPED 64853
-#define MPHexEditorEx_UNDO_MOVED 64854
-#define MPHexEditorEx_SELECT_FORMAT_CAPTION 64855
-#define MPHexEditorEx_SELECT_FORMAT_ASHEX 64856
-#define MPHexEditorEx_STR_SCRAPFILE 64857
-#define MPHexEditorEx_MPTH_CF 64858
-#define MPHexEditorEx_STR_CF_TEXT 64859
-#define MPHexEditorEx_STR_CF_BITMAP 64860
-#define MPHexEditorEx_STR_CF_METAFILEPICT 64861
-#define MPHexEditorEx_STR_CF_SYLK 64862
-#define MPHexEditorEx_STR_CF_DIF 64863
-#define MPHexEditor_ERR_CANCELLED 64864
-#define MPHexEditor_ERR_MISSING_FORMATCHAR 64865
-#define MPHexEditor_ERR_INVALID_FORMATRADIX 64866
-#define MPHexEditor_ERR_INVALID_RADIXCHAR 64867
-#define MPHexEditor_ERR_INVALID_BPU 64868
-#define MPHexEditor_ERR_INVALID_BPU_U 64869
-#define MPHexEditor_ERR_INVALID_RBPU 64870
-#define MPHexEditor_ERR_DATA_BOUNDS 64871
-#define MPHexEditor_ERR_NO_TRANSLATION_IN_UNICODE_MODE 64872
-#define MPHexEditor_ERR_ODD_FILESIZE_UNICODE 64873
-#define MPHexEditor_ERR_FIXED_FILESIZE 64874
-#define MPHexEditor_ERR_NOUNDO 64875
-#define MPHexEditor_UNNAMED_FILE 64876
-#define MPHexEditorEx_ERR_NOFILE 64877
-#define MPHexEditorEx_ERR_INVALID_PAGE 64878
-#define MPHexEditorEx_ERR_PRINTING_FAILED 64879
-#define MPHexEditor_UNDO_INSNIBBLE 64880
-#define MPHexEditor_UNDO_DELNIBBLE 64881
-#define MPHexEditor_UNDO_CONVERT 64882
-#define MPHexEditor_UNDO_SELECTION 64883
-#define MPHexEditor_UNDO_COMBINED 64884
-#define MPHexEditor_UNDO_ALLDATA 64885
-#define MPHexEditor_UNDO_NOUNDO 64886
-#define MPHexEditor_ERR_FILE_OPEN_FAILED 64887
-#define MPHexEditor_ERR_FILE_READONLY 64888
-#define MPHexEditor_ERR_INVALID_BOOKMARK 64889
-#define MPHexEditor_ERR_INVALID_SELSTART 64890
-#define MPHexEditor_ERR_INVALID_SELEND 64891
-#define MPHexEditor_ERR_INVALID_BYTESPERLINE 64892
-#define MPHexEditor_ERR_INVALID_BUFFERFROMFILE 64893
-#define MPHexEditor_ERR_INVALID_BYTESPERCOL 64894
-#define MPHexEditor_ERR_INVALID_BOOKMARKBMP 64895
-#define MPHexEditor_MPH_UC 64896
-#define MPHexEditor_MPH_UC_BE 64897
-#define MPHexEditor_MPH_TK_ASIS_S 64898
-#define MPHexEditor_MPH_TK_DOS8_S 64899
-#define MPHexEditor_MPH_TK_ASCII7_S 64900
-#define MPHexEditor_MPH_TK_MAC_S 64901
-#define MPHexEditor_MPH_TK_BCD38_S 64902
-#define MPHexEditor_MPH_TK_CUSTOM_S 64903
-#define MPHexEditor_MPH_TK_CUSTOM 64904
-#define MPHexEditor_MPH_UC_S 64905
-#define MPHexEditor_MPH_UC_BE_S 64906
-#define MPHexEditor_UNDO_BYTESCHANGED 64907
-#define MPHexEditor_UNDO_REMOVED 64908
-#define MPHexEditor_UNDO_INSERT 64909
-#define MPHexEditor_UNDO_REPLACE 64910
-#define MPHexEditor_UNDO_APPEND 64911
-#define acQBStrings_acQBEditSubMenu 64912
-#define acQBStrings_acQBCut 64913
-#define acQBStrings_acQBCopy 64914
-#define acQBStrings_acQBPaste 64915
-#define acQBStrings_acQBSelectAll 64916
-#define acQBStrings_acQBAllObjects 64917
-#define acQBStrings_acQBName 64918
-#define acQBStrings_acQBDescription 64919
-#define acQBStrings_acQBColumnNameAlreadyUsed 64920
-#define acQBStrings_acQBDeletingAliasCauseConflict 64921
-#define acQBStrings_acQBSelectingExpressionCauseConflict 64922
-#define MPHexEditor_MPH_TK_ASIS 64923
-#define MPHexEditor_MPH_TK_DOS8 64924
-#define MPHexEditor_MPH_TK_ASCII7 64925
-#define MPHexEditor_MPH_TK_MAC 64926
-#define MPHexEditor_MPH_TK_BCD38 64927
-#define acQBStrings_acQBGCAlias 64928
-#define acQBStrings_acQBGCSortType 64929
-#define acQBStrings_acQBGCSortOrder 64930
-#define acQBStrings_acQBGCGrouping 64931
-#define acQBStrings_acQBGCGroupBy 64932
-#define acQBStrings_acQBGCCriteriaType 64933
-#define acQBStrings_acQBGCCriteria 64934
-#define acQBStrings_acQBGCOr 64935
-#define acQBStrings_acQBSortTypeAscending 64936
-#define acQBStrings_acQBSortTypeDescending 64937
-#define acQBStrings_acQBConditionsTypeWhere 64938
-#define acQBStrings_acQBConditionsTypeHaving 64939
-#define acQBStrings_acQBMoveUp 64940
-#define acQBStrings_acQBMoveDown 64941
-#define acQBStrings_acQBRemoveItem 64942
-#define acQBStrings_acQBInsertEmtyItem 64943
-#define acQBStrings_acQBRenameCTE 64944
-#define acQBStrings_acMoveLeft 64945
-#define acQBStrings_acMoveRight 64946
-#define acQBStrings_acAddObject 64947
-#define acQBStrings_acAddSubQuery 64948
-#define acQBStrings_acAddCTE 64949
-#define acQBStrings_acAddNewCTE 64950
-#define acQBStrings_acUnionSubMenu 64951
-#define acQBStrings_acQBNewUnionSubQuery 64952
-#define acQBStrings_acQBCopyToNewUnionSubQuery 64953
-#define acQBStrings_acQBEncloseInBrackets 64954
-#define acQBStrings_acQBRemoveBrackets 64955
-#define acQBStrings_acQBSelectAllRowsFrom 64956
-#define acQBStrings_acQBGCSelect 64957
-#define acQBStrings_acQBGCExpression 64958
-#define acQBStrings_acQBGCAggregate 64959
-#define acQBStrings_acQBBadExpression 64960
-#define acQBStrings_acQBCteRemoveConfirm 64961
-#define acQBStrings_acQBCteRenameCaption 64962
-#define acQBStrings_acQBCteRenameEnterNewName 64963
-#define acQBStrings_acQBCteRenameNewNameCannotBeEmpty 64964
-#define acQBStrings_acQBCteRenameNewNameConflict 64965
-#define acQBStrings_acQBCheckAll 64966
-#define acQBStrings_acQBUncheckAll 64967
-#define acQBStrings_acQBRemove 64968
-#define acQBStrings_acQBDeleteCTE 64969
-#define acQBStrings_acQBEdit 64970
-#define acQBStrings_acQBSwitchToDerivedTable 64971
-#define acQBStrings_acQBAftofitHeight 64972
-#define acQBStrings_acQBMainQuery 64973
-#define acQBStrings_acQBInsertSubQuery 64974
-#define acQBStrings_acQBExpressionBuilder 64975
-#define acQBStrings_acQBErrorExecQuery 64976
-#define acQBStrings_acQBErrorBadXML 64977
-#define acQBStrings_acQBErrorBadXMLTagNotFound 64978
-#define acQBStrings_acQBUnknownObjectName 64979
-#define acQBStrings_acQBCantSelectExpression 64980
-#define acQBStrings_acQBNoSyntaxProvider 64981
-#define acQBStrings_acQBNoMetadataProvider 64982
-#define acQBStrings_acQBDialectDontSupportUnions 64983
-#define acQBStrings_acQBDialectDontSupportUnionsInSubQueries 64984
-#define acQBStrings_acQBDialectDontSupportUnionsBrackets 64985
-#define acQBStrings_acQBDialectDontSupportUnionsBracketsInSubQuery 64986
-#define acQBStrings_acQBMetadataProviderCantExecSQL 64987
-#define acQBStrings_acQBMetaProviderCantLoadMetadata 64988
-#define acQBStrings_acQBMetaProviderCantLoadMetadataForDatabase 64989
-#define acQBStrings_acQBDialectDontSupportDatabases 64990
-#define acQBStrings_acQBDialectDontSupportSchemas 64991
-#define OleConst_SBadPropValue 64992
-#define OleConst_SCannotActivate 64993
-#define OleConst_SNoWindowHandle 64994
-#define OleConst_SInvalidLicense 64995
-#define OleConst_SNotLicensed 64996
-#define OleConst_sNoRunningObject 64997
-#define JConsts_sChangeJPGSize 64998
-#define JConsts_sJPEGError 64999
-#define JConsts_sJPEGImageFile 65000
-#define acQBStrings_acQBBadObjectName 65001
-#define acQBStrings_acQBBadFieldName 65002
-#define acQBStrings_acQBBadSelectStatement 65003
-#define acQBStrings_acQBBadFromObjectExpression 65004
-#define acQBStrings_acQBUnexpectedToken 65005
-#define acQBStrings_acQBUnexpectedTokenAt 65006
-#define acQBStrings_acQBErrorUnknownError 65007
-#define SynEditStrConst_SYNS_FriendlyAttrPLSQL 65008
-#define SynEditStrConst_SYNS_FriendlyAttrReservedWord 65009
-#define SynEditStrConst_SYNS_FriendlyAttrSpace 65010
-#define SynEditStrConst_SYNS_FriendlyAttrSQLPlus 65011
-#define SynEditStrConst_SYNS_FriendlyAttrString 65012
-#define SynEditStrConst_SYNS_FriendlyAttrSymbol 65013
-#define SynEditStrConst_SYNS_FriendlyAttrTableName 65014
-#define SynEditStrConst_SYNS_FriendlyAttrVariable 65015
-#define SynEditStrConst_SYNS_ScrollInfoFmt 65016
-#define SynEditStrConst_SYNS_ScrollInfoFmtTop 65017
-#define SynEditStrConst_SYNS_EDuplicateShortcut 65018
-#define SynEditStrConst_SYNS_FilterSQL 65019
-#define SynEditStrConst_SYNS_FriendlyLangSQL 65020
-#define SynEditStrConst_SYNS_FriendlyLangUnknown 65021
-#define SynEditTextBuffer_SListIndexOutOfBounds 65022
-#define SynEditTextBuffer_SInvalidCapacity 65023
+#define acQBStrings_acQBEditSubMenu 64768
+#define acQBStrings_acQBCut 64769
+#define acQBStrings_acQBCopy 64770
+#define acQBStrings_acQBPaste 64771
+#define acQBStrings_acQBSelectAll 64772
+#define acQBStrings_acQBAllObjects 64773
+#define acQBStrings_acQBName 64774
+#define acQBStrings_acQBDescription 64775
+#define acQBStrings_acQBColumnNameAlreadyUsed 64776
+#define acQBStrings_acQBDeletingAliasCauseConflict 64777
+#define acQBStrings_acQBSelectingExpressionCauseConflict 64778
+#define acQBStrings_acQBGCAlias 64784
+#define acQBStrings_acQBGCSortType 64785
+#define acQBStrings_acQBGCSortOrder 64786
+#define acQBStrings_acQBGCGrouping 64787
+#define acQBStrings_acQBGCGroupBy 64788
+#define acQBStrings_acQBGCCriteriaType 64789
+#define acQBStrings_acQBGCCriteria 64790
+#define acQBStrings_acQBGCOr 64791
+#define acQBStrings_acQBSortTypeAscending 64792
+#define acQBStrings_acQBSortTypeDescending 64793
+#define acQBStrings_acQBConditionsTypeWhere 64794
+#define acQBStrings_acQBConditionsTypeHaving 64795
+#define acQBStrings_acQBMoveUp 64796
+#define acQBStrings_acQBMoveDown 64797
+#define acQBStrings_acQBRemoveItem 64798
+#define acQBStrings_acQBInsertEmtyItem 64799
+#define acQBStrings_acQBRenameCTE 64800
+#define acQBStrings_acMoveLeft 64801
+#define acQBStrings_acMoveRight 64802
+#define acQBStrings_acAddObject 64803
+#define acQBStrings_acAddSubQuery 64804
+#define acQBStrings_acAddCTE 64805
+#define acQBStrings_acAddNewCTE 64806
+#define acQBStrings_acUnionSubMenu 64807
+#define acQBStrings_acQBNewUnionSubQuery 64808
+#define acQBStrings_acQBCopyToNewUnionSubQuery 64809
+#define acQBStrings_acQBEncloseInBrackets 64810
+#define acQBStrings_acQBRemoveBrackets 64811
+#define acQBStrings_acQBSelectAllRowsFrom 64812
+#define acQBStrings_acQBGCSelect 64813
+#define acQBStrings_acQBGCExpression 64814
+#define acQBStrings_acQBGCAggregate 64815
+#define acQBStrings_acQBDuplicatedName 64816
+#define acQBStrings_acQBCteRemoveConfirm 64817
+#define acQBStrings_acQBCteRenameCaption 64818
+#define acQBStrings_acQBCteRenameEnterNewName 64819
+#define acQBStrings_acQBCteRenameNewNameCannotBeEmpty 64820
+#define acQBStrings_acQBCteRenameNewNameConflict 64821
+#define acQBStrings_acQBCheckAll 64822
+#define acQBStrings_acQBUncheckAll 64823
+#define acQBStrings_acQBRemove 64824
+#define acQBStrings_acQBDeleteCTE 64825
+#define acQBStrings_acQBEdit 64826
+#define acQBStrings_acQBSwitchToDerivedTable 64827
+#define acQBStrings_acQBAftofitHeight 64828
+#define acQBStrings_acQBMainQuery 64829
+#define acQBStrings_acQBInsertSubQuery 64830
+#define acQBStrings_acQBExpressionBuilder 64831
+#define acQBStrings_acQBErrorBadXMLTagNotFound 64832
+#define acQBStrings_acQBUnknownObjectName 64833
+#define acQBStrings_acQBCantSelectExpression 64834
+#define acQBStrings_acQBNoSyntaxProvider 64835
+#define acQBStrings_acQBNoMetadataProvider 64836
+#define acQBStrings_acQBDialectDontSupportUnions 64837
+#define acQBStrings_acQBDialectDontSupportUnionsInSubQueries 64838
+#define acQBStrings_acQBDialectDontSupportUnionsBrackets 64839
+#define acQBStrings_acQBDialectDontSupportUnionsBracketsInSubQuery 64840
+#define acQBStrings_acQBMetadataProviderCantExecSQL 64841
+#define acQBStrings_acQBMetaProviderCantLoadMetadata 64842
+#define acQBStrings_acQBMetaProviderCantLoadMetadataForDatabase 64843
+#define acQBStrings_acQBDialectDontSupportDatabases 64844
+#define acQBStrings_acQBDialectDontSupportSchemas 64845
+#define acQBStrings_acQBBadExpression 64846
+#define acQBStrings_acQBDuplicatedAlias 64847
+#define MPHexEditorEx_STR_CF_PENDATA 64848
+#define MPHexEditorEx_STR_CF_RIFF 64849
+#define MPHexEditorEx_STR_CF_WAVE 64850
+#define MPHexEditorEx_STR_CF_UNICODETEXT 64851
+#define MPHexEditorEx_STR_CF_ENHMETAFILE 64852
+#define MPHexEditorEx_STR_CF_HDROP 64853
+#define MPHexEditorEx_STR_CF_LOCALE 64854
+#define acQBStrings_acQBBadObjectName 64855
+#define acQBStrings_acQBBadFieldName 64856
+#define acQBStrings_acQBBadSelectStatement 64857
+#define acQBStrings_acQBBadFromObjectExpression 64858
+#define acQBStrings_acQBUnexpectedToken 64859
+#define acQBStrings_acQBUnexpectedTokenAt 64860
+#define acQBStrings_acQBErrorUnknownError 64861
+#define acQBStrings_acQBErrorExecQuery 64862
+#define acQBStrings_acQBErrorBadXML 64863
+#define MPHexEditorEx_UNDO_CUTCB 64864
+#define MPHexEditorEx_UNDO_DROPPED 64865
+#define MPHexEditorEx_UNDO_MOVED 64866
+#define MPHexEditorEx_SELECT_FORMAT_CAPTION 64867
+#define MPHexEditorEx_SELECT_FORMAT_ASHEX 64868
+#define MPHexEditorEx_STR_SCRAPFILE 64869
+#define MPHexEditorEx_MPTH_CF 64870
+#define MPHexEditorEx_STR_CF_TEXT 64871
+#define MPHexEditorEx_STR_CF_BITMAP 64872
+#define MPHexEditorEx_STR_CF_METAFILEPICT 64873
+#define MPHexEditorEx_STR_CF_SYLK 64874
+#define MPHexEditorEx_STR_CF_DIF 64875
+#define MPHexEditorEx_STR_CF_TIFF 64876
+#define MPHexEditorEx_STR_CF_OEMTEXT 64877
+#define MPHexEditorEx_STR_CF_DIB 64878
+#define MPHexEditorEx_STR_CF_PALETTE 64879
+#define MPHexEditor_ERR_INVALID_BPU 64880
+#define MPHexEditor_ERR_INVALID_BPU_U 64881
+#define MPHexEditor_ERR_INVALID_RBPU 64882
+#define MPHexEditor_ERR_DATA_BOUNDS 64883
+#define MPHexEditor_ERR_NO_TRANSLATION_IN_UNICODE_MODE 64884
+#define MPHexEditor_ERR_ODD_FILESIZE_UNICODE 64885
+#define MPHexEditor_ERR_FIXED_FILESIZE 64886
+#define MPHexEditor_ERR_NOUNDO 64887
+#define MPHexEditor_UNNAMED_FILE 64888
+#define MPHexEditorEx_ERR_NOFILE 64889
+#define MPHexEditorEx_ERR_INVALID_PAGE 64890
+#define MPHexEditorEx_ERR_PRINTING_FAILED 64891
+#define MPHexEditorEx_ERR_BACKUP_DELETE 64892
+#define MPHexEditorEx_ERR_BACKUP_CREATE 64893
+#define MPHexEditorEx_ERR_INVALID_BOOKFMT 64894
+#define MPHexEditorEx_UNDO_PASTECB 64895
+#define MPHexEditor_UNDO_COMBINED 64896
+#define MPHexEditor_UNDO_ALLDATA 64897
+#define MPHexEditor_UNDO_NOUNDO 64898
+#define MPHexEditor_ERR_FILE_OPEN_FAILED 64899
+#define MPHexEditor_ERR_FILE_READONLY 64900
+#define MPHexEditor_ERR_INVALID_BOOKMARK 64901
+#define MPHexEditor_ERR_INVALID_SELSTART 64902
+#define MPHexEditor_ERR_INVALID_SELEND 64903
+#define MPHexEditor_ERR_INVALID_BYTESPERLINE 64904
+#define MPHexEditor_ERR_INVALID_BUFFERFROMFILE 64905
+#define MPHexEditor_ERR_INVALID_BYTESPERCOL 64906
+#define MPHexEditor_ERR_INVALID_BOOKMARKBMP 64907
+#define MPHexEditor_ERR_CANCELLED 64908
+#define MPHexEditor_ERR_MISSING_FORMATCHAR 64909
+#define MPHexEditor_ERR_INVALID_FORMATRADIX 64910
+#define MPHexEditor_ERR_INVALID_RADIXCHAR 64911
+#define MPHexEditor_MPH_TK_ASCII7_S 64912
+#define MPHexEditor_MPH_TK_MAC_S 64913
+#define MPHexEditor_MPH_TK_BCD38_S 64914
+#define MPHexEditor_MPH_TK_CUSTOM_S 64915
+#define MPHexEditor_MPH_TK_CUSTOM 64916
+#define MPHexEditor_MPH_UC_S 64917
+#define MPHexEditor_MPH_UC_BE_S 64918
+#define MPHexEditor_UNDO_BYTESCHANGED 64919
+#define MPHexEditor_UNDO_REMOVED 64920
+#define MPHexEditor_UNDO_INSERT 64921
+#define MPHexEditor_UNDO_REPLACE 64922
+#define MPHexEditor_UNDO_APPEND 64923
+#define MPHexEditor_UNDO_INSNIBBLE 64924
+#define MPHexEditor_UNDO_DELNIBBLE 64925
+#define MPHexEditor_UNDO_CONVERT 64926
+#define MPHexEditor_UNDO_SELECTION 64927
+#define GIFConsts_sGIFImageFile 64928
+#define GIFConsts_sProgressLoading 64929
+#define GIFConsts_sProgressSaving 64930
+#define GIFConsts_sProgressConverting 64931
+#define GIFConsts_sProgressRendering 64932
+#define GIFConsts_sProgressCopying 64933
+#define GIFConsts_sProgressOptimizing 64934
+#define MPHexEditor_MPH_TK_ASIS 64935
+#define MPHexEditor_MPH_TK_DOS8 64936
+#define MPHexEditor_MPH_TK_ASCII7 64937
+#define MPHexEditor_MPH_TK_MAC 64938
+#define MPHexEditor_MPH_TK_BCD38 64939
+#define MPHexEditor_MPH_UC 64940
+#define MPHexEditor_MPH_UC_BE 64941
+#define MPHexEditor_MPH_TK_ASIS_S 64942
+#define MPHexEditor_MPH_TK_DOS8_S 64943
+#define GIFConsts_sUnsupportedClass 64944
+#define GIFConsts_sInvalidData 64945
+#define GIFConsts_sBadSize 64946
+#define GIFConsts_sScreenSizeExceeded 64947
+#define GIFConsts_sNoColorTable 64948
+#define GIFConsts_sBadPixelCoordinates 64949
+#define GIFConsts_sInvalidPixelFormat 64950
+#define GIFConsts_sBadDimension 64951
+#define GIFConsts_sNoDIB 64952
+#define GIFConsts_sInvalidStream 64953
+#define GIFConsts_sInvalidColor 64954
+#define GIFConsts_sInvalidBitSize 64955
+#define GIFConsts_sEmptyColorMap 64956
+#define GIFConsts_sEmptyImage 64957
+#define GIFConsts_sMultipleGCE 64958
+#define GIFConsts_sNoPalette 64959
+#define GIFConsts_sTooManyColors 64960
+#define GIFConsts_sBadColorIndex 64961
+#define GIFConsts_sBadColorIndexFixed 64962
+#define GIFConsts_sGIFErrorSaveEmpty 64963
+#define GIFConsts_sBadSignature 64964
+#define GIFConsts_sScreenBadColorSize 64965
+#define GIFConsts_sImageBadColorSize 64966
+#define GIFConsts_sUnknownExtension 64967
+#define GIFConsts_sBadExtensionLabel 64968
+#define GIFConsts_sOutOfMemDIB 64969
+#define GIFConsts_sDecodeTooFewBits 64970
+#define GIFConsts_sDecodeCircular 64971
+#define GIFConsts_sBadTrailer 64972
+#define GIFConsts_sBadExtensionInstance 64973
+#define GIFConsts_sBadBlockSize 64974
+#define GIFConsts_sBadBlock 64975
+#define pnglang_EPNGUnknownPalEntryText 64976
+#define pnglang_EPNGUnknownCriticalChunkText 64977
+#define pnglang_EPNGUnknownCompressionText 64978
+#define pnglang_EPNGUnknownInterlaceText 64979
+#define pnglang_EPNGCannotAssignChunkText 64980
+#define pnglang_EPNGUnexpectedEndText 64981
+#define pnglang_EPNGNoImageDataText 64982
+#define pnglang_EPNGCannotAddChunkText 64983
+#define pnglang_EPNGCannotAddInvalidImageText 64984
+#define pnglang_EPNGCouldNotLoadResourceText 64985
+#define pnglang_EPNGOutMemoryText 64986
+#define pnglang_EPNGCannotChangeTransparentText 64987
+#define pnglang_EPNGHeaderNotPresentText 64988
+#define pnglang_EInvalidNewSize 64989
+#define pnglang_EInvalidSpec 64990
+#define GIFConsts_sOutOfData 64991
+#define OleConst_SCannotActivate 64992
+#define OleConst_SNoWindowHandle 64993
+#define OleConst_SInvalidLicense 64994
+#define OleConst_SNotLicensed 64995
+#define OleConst_sNoRunningObject 64996
+#define JConsts_sChangeJPGSize 64997
+#define JConsts_sJPEGError 64998
+#define JConsts_sJPEGImageFile 64999
+#define pnglang_EPngInvalidCRCText 65000
+#define pnglang_EPNGInvalidIHDRText 65001
+#define pnglang_EPNGMissingMultipleIDATText 65002
+#define pnglang_EPNGZLIBErrorText 65003
+#define pnglang_EPNGInvalidPaletteText 65004
+#define pnglang_EPNGInvalidFileHeaderText 65005
+#define pnglang_EPNGIHDRNotFirstText 65006
+#define pnglang_EPNGSizeExceedsText 65007
+#define SynEditStrConst_SYNS_FriendlyAttrReservedWord 65008
+#define SynEditStrConst_SYNS_FriendlyAttrSpace 65009
+#define SynEditStrConst_SYNS_FriendlyAttrSQLPlus 65010
+#define SynEditStrConst_SYNS_FriendlyAttrString 65011
+#define SynEditStrConst_SYNS_FriendlyAttrSymbol 65012
+#define SynEditStrConst_SYNS_FriendlyAttrTableName 65013
+#define SynEditStrConst_SYNS_FriendlyAttrVariable 65014
+#define SynEditStrConst_SYNS_ScrollInfoFmt 65015
+#define SynEditStrConst_SYNS_ScrollInfoFmtTop 65016
+#define SynEditStrConst_SYNS_EDuplicateShortcut 65017
+#define SynEditStrConst_SYNS_FilterSQL 65018
+#define SynEditStrConst_SYNS_FriendlyLangSQL 65019
+#define SynEditStrConst_SYNS_FriendlyLangUnknown 65020
+#define SynEditTextBuffer_SListIndexOutOfBounds 65021
+#define SynEditTextBuffer_SInvalidCapacity 65022
+#define OleConst_SBadPropValue 65023
 #define XMLConst_SMissingFileName 65024
 #define XMLConst_SLine 65025
-#define fClient_SDesktopAlreadyRegistered 65026
-#define fClient_SUnknownRoutineType 65027
-#define fClient_SUnknownSQLStmt 65028
-#define fClient_SSourceParseError 65029
-#define fTools_SSourceParseError 65030
-#define SynEditStrConst_SYNS_FriendlyAttrComment 65031
-#define SynEditStrConst_SYNS_FriendlyAttrConditionalComment 65032
-#define SynEditStrConst_SYNS_FriendlyAttrDataType 65033
-#define SynEditStrConst_SYNS_FriendlyAttrDefaultPackage 65034
-#define SynEditStrConst_SYNS_FriendlyAttrDelimitedIdentifier 65035
-#define SynEditStrConst_SYNS_FriendlyAttrException 65036
-#define SynEditStrConst_SYNS_FriendlyAttrFunction 65037
-#define SynEditStrConst_SYNS_FriendlyAttrIdentifier 65038
-#define SynEditStrConst_SYNS_FriendlyAttrNumber 65039
+#define fClient_SUnknownRoutineType 65026
+#define fClient_SUnknownSQLStmt 65027
+#define fClient_SSourceParseError 65028
+#define fTools_SSourceParseError 65029
+#define SynEditStrConst_SYNS_FriendlyAttrComment 65030
+#define SynEditStrConst_SYNS_FriendlyAttrConditionalComment 65031
+#define SynEditStrConst_SYNS_FriendlyAttrDataType 65032
+#define SynEditStrConst_SYNS_FriendlyAttrDefaultPackage 65033
+#define SynEditStrConst_SYNS_FriendlyAttrDelimitedIdentifier 65034
+#define SynEditStrConst_SYNS_FriendlyAttrException 65035
+#define SynEditStrConst_SYNS_FriendlyAttrFunction 65036
+#define SynEditStrConst_SYNS_FriendlyAttrIdentifier 65037
+#define SynEditStrConst_SYNS_FriendlyAttrNumber 65038
+#define SynEditStrConst_SYNS_FriendlyAttrPLSQL 65039
 #define XMLConst_SNoMatchingDOMVendor 65040
 #define XMLConst_SNoDOMNodeEx 65041
 #define XMLConst_SDOMNotSupported 65042
@@ -772,144 +773,6 @@
 #define SysConst_SInvalidOp 65535
 STRINGTABLE
 BEGIN
-	pnglang_EPNGUnexpectedEndText,	"This \"Portable Network Graphics\" image is invalid because the decoder found an unexpected end of the file."
-	pnglang_EPNGNoImageDataText,	"This \"Portable Network Graphics\" image contains no data."
-	pnglang_EPNGCannotAddChunkText,	"The program tried to add a existent critical chunk to the current image which is not allowed."
-	pnglang_EPNGCannotAddInvalidImageText,	"It's not allowed to add a new chunk because the current image is invalid."
-	pnglang_EPNGCouldNotLoadResourceText,	"The png image could not be loaded from the resource ID."
-	pnglang_EPNGOutMemoryText,	"Some operation could not be performed because the system is out of resources. Close some windows and try again."
-	pnglang_EPNGCannotChangeTransparentText,	"Setting bit transparency color is not allowed for png images containing alpha value for each pixel (COLOR_RGBALPHA and COLOR_GRAYSCALEALPHA)"
-	pnglang_EPNGHeaderNotPresentText,	"This operation is not valid because the current image contains no valid header."
-	pnglang_EInvalidNewSize,	"The new size provided for image resizing is invalid."
-	pnglang_EInvalidSpec,	"The \"Portable Network Graphics\" could not be created because invalid image type parameters have being provided."
-	GIFConsts_sProgressRendering,	"Rendering"
-	GIFConsts_sProgressCopying,	"Copying"
-	GIFConsts_sProgressOptimizing,	"Optimizing"
-	pnglang_EPngInvalidCRCText,	"This \"Portable Network Graphics\" image is not valid because it contains invalid pieces of data (crc error)"
-	pnglang_EPNGInvalidIHDRText,	"The \"Portable Network Graphics\" image could not be loaded because one of its main piece of data (ihdr) might be corrupted"
-	pnglang_EPNGMissingMultipleIDATText,	"This \"Portable Network Graphics\" image is invalid because it has missing image parts."
-	pnglang_EPNGZLIBErrorText,	"Could not decompress the image because it contains invalid compressed data.\r\n Description: "
-	pnglang_EPNGInvalidPaletteText,	"The \"Portable Network Graphics\" image contains an invalid palette."
-	pnglang_EPNGInvalidFileHeaderText,	"The file being read is not a valid \"Portable Network Graphics\" image because it contains an invalid header. This file may be corrupted, try obtaining it again"
-	pnglang_EPNGIHDRNotFirstText,	"This \"Portable Network Graphics\" image is not supported or it might be invalid.\r\n(IHDR chunk is not the first)"
-	pnglang_EPNGSizeExceedsText,	"This \"Portable Network Graphics\" image is not supported because either it's width or height exceeds the maximum size, which is 65535 pixels length."
-	pnglang_EPNGUnknownPalEntryText,	"There is no such palette entry."
-	pnglang_EPNGUnknownCriticalChunkText,	"This \"Portable Network Graphics\" image contains an unknown critical part which could not be decoded."
-	pnglang_EPNGUnknownCompressionText,	"This \"Portable Network Graphics\" image is encoded with an unknown compression scheme which could not be decoded."
-	pnglang_EPNGUnknownInterlaceText,	"This \"Portable Network Graphics\" image uses an unknown interlace scheme which could not be decoded."
-	pnglang_EPNGCannotAssignChunkText,	"The chunks must be compatible to be assigned."
-	GIFConsts_sNoColorTable,	"No global or local color table defined"
-	GIFConsts_sBadPixelCoordinates,	"Invalid pixel coordinates"
-	GIFConsts_sInvalidPixelFormat,	"Unsupported PixelFormat"
-	GIFConsts_sBadDimension,	"Invalid image dimensions"
-	GIFConsts_sNoDIB,	"Image has no DIB"
-	GIFConsts_sInvalidStream,	"Invalid stream operation"
-	GIFConsts_sInvalidColor,	"Color not in color table"
-	GIFConsts_sInvalidBitSize,	"Invalid Bits Per Pixel value"
-	GIFConsts_sEmptyColorMap,	"Color table is empty"
-	GIFConsts_sEmptyImage,	"Image is empty"
-	GIFConsts_sMultipleGCE,	"Frame contains multiple Graphic Control Extension blocks"
-	GIFConsts_sNoPalette,	"Missing, invalid or empty palette"
-	GIFConsts_sGIFImageFile,	"GIF Image"
-	GIFConsts_sProgressLoading,	"Loading"
-	GIFConsts_sProgressSaving,	"Saving"
-	GIFConsts_sProgressConverting,	"Converting"
-	GIFConsts_sBadSignature,	"Invalid GIF signature"
-	GIFConsts_sScreenBadColorSize,	"Invalid number of colors specified in Screen Descriptor"
-	GIFConsts_sImageBadColorSize,	"Invalid number of colors specified in Image Descriptor"
-	GIFConsts_sUnknownExtension,	"Unknown extension type"
-	GIFConsts_sBadExtensionLabel,	"Invalid extension introducer"
-	GIFConsts_sOutOfMemDIB,	"Failed to allocate memory for GIF DIB"
-	GIFConsts_sDecodeTooFewBits,	"Decoder bit buffer under-run"
-	GIFConsts_sDecodeCircular,	"Circular decoder table entry"
-	GIFConsts_sBadTrailer,	"Invalid Image trailer"
-	GIFConsts_sBadExtensionInstance,	"Internal error: Extension Instance does not match Extension Label"
-	GIFConsts_sBadBlockSize,	"Unsupported Application Extension block size"
-	GIFConsts_sBadBlock,	"Unknown GIF block type"
-	GIFConsts_sUnsupportedClass,	"Object type not supported for operation"
-	GIFConsts_sInvalidData,	"Invalid GIF data"
-	GIFConsts_sBadSize,	"Invalid image size"
-	GIFConsts_sScreenSizeExceeded,	"Image exceeds Logical Screen size"
-	MPHexEditorEx_STR_CF_TIFF,	"Tagged Image File Format (TIFF) Picture"
-	MPHexEditorEx_STR_CF_OEMTEXT,	"OEM Text"
-	MPHexEditorEx_STR_CF_DIB,	"Device Independent Bitmap Picture"
-	MPHexEditorEx_STR_CF_PALETTE,	"Color Palete"
-	MPHexEditorEx_STR_CF_PENDATA,	"Pen Data"
-	MPHexEditorEx_STR_CF_RIFF,	"RIFF Audio Data"
-	MPHexEditorEx_STR_CF_WAVE,	"Wave Audio"
-	MPHexEditorEx_STR_CF_UNICODETEXT,	"Unicode Text"
-	MPHexEditorEx_STR_CF_ENHMETAFILE,	"Enhanced Metafile Picture"
-	MPHexEditorEx_STR_CF_HDROP,	"File List"
-	MPHexEditorEx_STR_CF_LOCALE,	"Text Locale"
-	GIFConsts_sOutOfData,	"Premature end of data"
-	GIFConsts_sTooManyColors,	"Color table overflow"
-	GIFConsts_sBadColorIndex,	"Invalid color index"
-	GIFConsts_sBadColorIndexFixed,	"Invalid color index - color map expanded"
-	GIFConsts_sGIFErrorSaveEmpty,	"Cannot save empty GIF"
-	MPHexEditorEx_ERR_BACKUP_DELETE,	"Cannot delete previous backup %s. (%s)"
-	MPHexEditorEx_ERR_BACKUP_CREATE,	"Cannot create backup %s. (%s)"
-	MPHexEditorEx_ERR_INVALID_BOOKFMT,	"Invalid bookmark format"
-	MPHexEditorEx_UNDO_PASTECB,	"Paste from clipboard"
-	MPHexEditorEx_UNDO_CUTCB,	"Cut to clipboard"
-	MPHexEditorEx_UNDO_DROPPED,	"Data dropped"
-	MPHexEditorEx_UNDO_MOVED,	"Data moved"
-	MPHexEditorEx_SELECT_FORMAT_CAPTION,	"Select data format"
-	MPHexEditorEx_SELECT_FORMAT_ASHEX,	"Hex text"
-	MPHexEditorEx_STR_SCRAPFILE,	"Dump of %s.bin"
-	MPHexEditorEx_MPTH_CF,	"TMPHexeditorEx Clipboard Format"
-	MPHexEditorEx_STR_CF_TEXT,	"Text"
-	MPHexEditorEx_STR_CF_BITMAP,	"Bitmap Picture"
-	MPHexEditorEx_STR_CF_METAFILEPICT,	"Metafile Picture"
-	MPHexEditorEx_STR_CF_SYLK,	"Microsoft Symbolic Link (SYLK) data"
-	MPHexEditorEx_STR_CF_DIF,	"Software Arts' Data Interchange Format"
-	MPHexEditor_ERR_CANCELLED,	"Operation cancelled"
-	MPHexEditor_ERR_MISSING_FORMATCHAR,	"Missing char in offset format: %s"
-	MPHexEditor_ERR_INVALID_FORMATRADIX,	"Invalid radix in offset format (%xh), allowed: 02h..10h"
-	MPHexEditor_ERR_INVALID_RADIXCHAR,	"Invalid character %s, cannot convert using radix %xh"
-	MPHexEditor_ERR_INVALID_BPU,	"Invalid bytes per unit value %d, allowed: 1,2,4,8"
-	MPHexEditor_ERR_INVALID_BPU_U,	"BytesPerUnit must be set to 2 in unicode mode"
-	MPHexEditor_ERR_INVALID_RBPU,	"Invalid ruler bytes per unit value %d, allowed: -1,1,2,4,8"
-	MPHexEditor_ERR_DATA_BOUNDS,	"Data position/length out of data bounds"
-	MPHexEditor_ERR_NO_TRANSLATION_IN_UNICODE_MODE,	"Translations cannot be used in unicode mode"
-	MPHexEditor_ERR_ODD_FILESIZE_UNICODE,	"Cannot use unicode mode with odd-sized files"
-	MPHexEditor_ERR_FIXED_FILESIZE,	"Cannot change fixed filesize"
-	MPHexEditor_ERR_NOUNDO,	"Cannot update undo storage"
-	MPHexEditor_UNNAMED_FILE,	"Untitled"
-	MPHexEditorEx_ERR_NOFILE,	"No filename specified"
-	MPHexEditorEx_ERR_INVALID_PAGE,	"Invalid page index"
-	MPHexEditorEx_ERR_PRINTING_FAILED,	"Printing failed"
-	MPHexEditor_UNDO_INSNIBBLE,	"Insert nibble"
-	MPHexEditor_UNDO_DELNIBBLE,	"Delete nibble"
-	MPHexEditor_UNDO_CONVERT,	"Convert"
-	MPHexEditor_UNDO_SELECTION,	"Cursor movement"
-	MPHexEditor_UNDO_COMBINED,	"Multiple modification"
-	MPHexEditor_UNDO_ALLDATA,	"All data saved"
-	MPHexEditor_UNDO_NOUNDO,	"No undo"
-	MPHexEditor_ERR_FILE_OPEN_FAILED,	"Cannot open %s.\r\n(%s.)"
-	MPHexEditor_ERR_FILE_READONLY,	"Cannot save readonly file %s."
-	MPHexEditor_ERR_INVALID_BOOKMARK,	"Invalid bookmark index"
-	MPHexEditor_ERR_INVALID_SELSTART,	"Invalid selection start"
-	MPHexEditor_ERR_INVALID_SELEND,	"Invalid selection end"
-	MPHexEditor_ERR_INVALID_BYTESPERLINE,	"Invalid bytes per line argument"
-	MPHexEditor_ERR_INVALID_BUFFERFROMFILE,	"Invalid buffer from file argument"
-	MPHexEditor_ERR_INVALID_BYTESPERCOL,	"Invalid bytes per column argument"
-	MPHexEditor_ERR_INVALID_BOOKMARKBMP,	"Invalid bookmark bitmap (must be 10 x 200 px)"
-	MPHexEditor_MPH_UC,	"Unicode little endian"
-	MPHexEditor_MPH_UC_BE,	"Unicode big endian"
-	MPHexEditor_MPH_TK_ASIS_S,	"WIN"
-	MPHexEditor_MPH_TK_DOS8_S,	"DOS"
-	MPHexEditor_MPH_TK_ASCII7_S,	"ASC"
-	MPHexEditor_MPH_TK_MAC_S,	"MAC"
-	MPHexEditor_MPH_TK_BCD38_S,	"BCD"
-	MPHexEditor_MPH_TK_CUSTOM_S,	"Cust"
-	MPHexEditor_MPH_TK_CUSTOM,	"Custom translation"
-	MPHexEditor_MPH_UC_S,	"UCLE"
-	MPHexEditor_MPH_UC_BE_S,	"UCBE"
-	MPHexEditor_UNDO_BYTESCHANGED,	"Change byte(s)"
-	MPHexEditor_UNDO_REMOVED,	"Remove data"
-	MPHexEditor_UNDO_INSERT,	"Insert buffer"
-	MPHexEditor_UNDO_REPLACE,	"Replace"
-	MPHexEditor_UNDO_APPEND,	"Append buffer"
 	acQBStrings_acQBEditSubMenu,	"Edit"
 	acQBStrings_acQBCut,	"Cut"
 	acQBStrings_acQBCopy,	"Copy"
@@ -921,11 +784,6 @@ BEGIN
 	acQBStrings_acQBColumnNameAlreadyUsed,	"The column with same name already exists in the current sub-query."
 	acQBStrings_acQBDeletingAliasCauseConflict,	"Deleting an alias has led to duplicated column names in the current sub-query."
 	acQBStrings_acQBSelectingExpressionCauseConflict,	"Adding this expression has led to duplicated column names in the current sub-query."
-	MPHexEditor_MPH_TK_ASIS,	"Windows"
-	MPHexEditor_MPH_TK_DOS8,	"Dos 8 bits"
-	MPHexEditor_MPH_TK_ASCII7,	"ASCII 7 bits"
-	MPHexEditor_MPH_TK_MAC,	"Macintosh"
-	MPHexEditor_MPH_TK_BCD38,	"EBCDIC codepage 38"
 	acQBStrings_acQBGCAlias,	"Alias"
 	acQBStrings_acQBGCSortType,	"Sort Type"
 	acQBStrings_acQBGCSortOrder,	"Sort Order"
@@ -958,7 +816,7 @@ BEGIN
 	acQBStrings_acQBGCSelect,	"Output"
 	acQBStrings_acQBGCExpression,	"Expression"
 	acQBStrings_acQBGCAggregate,	"Aggregate"
-	acQBStrings_acQBBadExpression,	"\"%s\" is not valid expression"
+	acQBStrings_acQBDuplicatedName,	"Name \"%s\" already exists"
 	acQBStrings_acQBCteRemoveConfirm,	"Are you sure you want to delete this common table expression?"
 	acQBStrings_acQBCteRenameCaption,	"Rename CTE"
 	acQBStrings_acQBCteRenameEnterNewName,	"Enter new common table expression (CTE) name:"
@@ -974,8 +832,6 @@ BEGIN
 	acQBStrings_acQBMainQuery,	"Main"
 	acQBStrings_acQBInsertSubQuery,	"Insert Sub-Query"
 	acQBStrings_acQBExpressionBuilder,	"Expression Builder"
-	acQBStrings_acQBErrorExecQuery,	"Error executing query:\r%0:s\rMessage:\r%1:s"
-	acQBStrings_acQBErrorBadXML,	"Error parsing XML: %s"
 	acQBStrings_acQBErrorBadXMLTagNotFound,	"Bad XML file: tag \"%s\" not found."
 	acQBStrings_acQBUnknownObjectName,	"Unknown object name: \"%s\""
 	acQBStrings_acQBCantSelectExpression,	"This expression is not selectable"
@@ -990,7 +846,152 @@ BEGIN
 	acQBStrings_acQBMetaProviderCantLoadMetadataForDatabase,	"Automatic loading of metadata is not supported for database %s by this metadata provider"
 	acQBStrings_acQBDialectDontSupportDatabases,	"The server doesn't support queries with objects from different databases."
 	acQBStrings_acQBDialectDontSupportSchemas,	"The server doesn't support schemas."
-	OleConst_SBadPropValue,	"'%s' is not a valid property value"
+	acQBStrings_acQBBadExpression,	"\"%s\" is not valid expression"
+	acQBStrings_acQBDuplicatedAlias,	"Alias \"%s\" already exists"
+	MPHexEditorEx_STR_CF_PENDATA,	"Pen Data"
+	MPHexEditorEx_STR_CF_RIFF,	"RIFF Audio Data"
+	MPHexEditorEx_STR_CF_WAVE,	"Wave Audio"
+	MPHexEditorEx_STR_CF_UNICODETEXT,	"Unicode Text"
+	MPHexEditorEx_STR_CF_ENHMETAFILE,	"Enhanced Metafile Picture"
+	MPHexEditorEx_STR_CF_HDROP,	"File List"
+	MPHexEditorEx_STR_CF_LOCALE,	"Text Locale"
+	acQBStrings_acQBBadObjectName,	"Invalid object name"
+	acQBStrings_acQBBadFieldName,	"Invalid field name: %s"
+	acQBStrings_acQBBadSelectStatement,	"Invalid SELECT statement."
+	acQBStrings_acQBBadFromObjectExpression,	"Invalid FROM object expression"
+	acQBStrings_acQBUnexpectedToken,	" Unexpected token \"%s\""
+	acQBStrings_acQBUnexpectedTokenAt,	" Unexpected token \"%0:s\" at line %1:d, pos %2:d"
+	acQBStrings_acQBErrorUnknownError,	"Unknown error"
+	acQBStrings_acQBErrorExecQuery,	"Error executing query:\r%0:s\rMessage:\r%1:s"
+	acQBStrings_acQBErrorBadXML,	"Error parsing XML: %s"
+	MPHexEditorEx_UNDO_CUTCB,	"Cut to clipboard"
+	MPHexEditorEx_UNDO_DROPPED,	"Data dropped"
+	MPHexEditorEx_UNDO_MOVED,	"Data moved"
+	MPHexEditorEx_SELECT_FORMAT_CAPTION,	"Select data format"
+	MPHexEditorEx_SELECT_FORMAT_ASHEX,	"Hex text"
+	MPHexEditorEx_STR_SCRAPFILE,	"Dump of %s.bin"
+	MPHexEditorEx_MPTH_CF,	"TMPHexeditorEx Clipboard Format"
+	MPHexEditorEx_STR_CF_TEXT,	"Text"
+	MPHexEditorEx_STR_CF_BITMAP,	"Bitmap Picture"
+	MPHexEditorEx_STR_CF_METAFILEPICT,	"Metafile Picture"
+	MPHexEditorEx_STR_CF_SYLK,	"Microsoft Symbolic Link (SYLK) data"
+	MPHexEditorEx_STR_CF_DIF,	"Software Arts' Data Interchange Format"
+	MPHexEditorEx_STR_CF_TIFF,	"Tagged Image File Format (TIFF) Picture"
+	MPHexEditorEx_STR_CF_OEMTEXT,	"OEM Text"
+	MPHexEditorEx_STR_CF_DIB,	"Device Independent Bitmap Picture"
+	MPHexEditorEx_STR_CF_PALETTE,	"Color Palete"
+	MPHexEditor_ERR_INVALID_BPU,	"Invalid bytes per unit value %d, allowed: 1,2,4,8"
+	MPHexEditor_ERR_INVALID_BPU_U,	"BytesPerUnit must be set to 2 in unicode mode"
+	MPHexEditor_ERR_INVALID_RBPU,	"Invalid ruler bytes per unit value %d, allowed: -1,1,2,4,8"
+	MPHexEditor_ERR_DATA_BOUNDS,	"Data position/length out of data bounds"
+	MPHexEditor_ERR_NO_TRANSLATION_IN_UNICODE_MODE,	"Translations cannot be used in unicode mode"
+	MPHexEditor_ERR_ODD_FILESIZE_UNICODE,	"Cannot use unicode mode with odd-sized files"
+	MPHexEditor_ERR_FIXED_FILESIZE,	"Cannot change fixed filesize"
+	MPHexEditor_ERR_NOUNDO,	"Cannot update undo storage"
+	MPHexEditor_UNNAMED_FILE,	"Untitled"
+	MPHexEditorEx_ERR_NOFILE,	"No filename specified"
+	MPHexEditorEx_ERR_INVALID_PAGE,	"Invalid page index"
+	MPHexEditorEx_ERR_PRINTING_FAILED,	"Printing failed"
+	MPHexEditorEx_ERR_BACKUP_DELETE,	"Cannot delete previous backup %s. (%s)"
+	MPHexEditorEx_ERR_BACKUP_CREATE,	"Cannot create backup %s. (%s)"
+	MPHexEditorEx_ERR_INVALID_BOOKFMT,	"Invalid bookmark format"
+	MPHexEditorEx_UNDO_PASTECB,	"Paste from clipboard"
+	MPHexEditor_UNDO_COMBINED,	"Multiple modification"
+	MPHexEditor_UNDO_ALLDATA,	"All data saved"
+	MPHexEditor_UNDO_NOUNDO,	"No undo"
+	MPHexEditor_ERR_FILE_OPEN_FAILED,	"Cannot open %s.\r\n(%s.)"
+	MPHexEditor_ERR_FILE_READONLY,	"Cannot save readonly file %s."
+	MPHexEditor_ERR_INVALID_BOOKMARK,	"Invalid bookmark index"
+	MPHexEditor_ERR_INVALID_SELSTART,	"Invalid selection start"
+	MPHexEditor_ERR_INVALID_SELEND,	"Invalid selection end"
+	MPHexEditor_ERR_INVALID_BYTESPERLINE,	"Invalid bytes per line argument"
+	MPHexEditor_ERR_INVALID_BUFFERFROMFILE,	"Invalid buffer from file argument"
+	MPHexEditor_ERR_INVALID_BYTESPERCOL,	"Invalid bytes per column argument"
+	MPHexEditor_ERR_INVALID_BOOKMARKBMP,	"Invalid bookmark bitmap (must be 10 x 200 px)"
+	MPHexEditor_ERR_CANCELLED,	"Operation cancelled"
+	MPHexEditor_ERR_MISSING_FORMATCHAR,	"Missing char in offset format: %s"
+	MPHexEditor_ERR_INVALID_FORMATRADIX,	"Invalid radix in offset format (%xh), allowed: 02h..10h"
+	MPHexEditor_ERR_INVALID_RADIXCHAR,	"Invalid character %s, cannot convert using radix %xh"
+	MPHexEditor_MPH_TK_ASCII7_S,	"ASC"
+	MPHexEditor_MPH_TK_MAC_S,	"MAC"
+	MPHexEditor_MPH_TK_BCD38_S,	"BCD"
+	MPHexEditor_MPH_TK_CUSTOM_S,	"Cust"
+	MPHexEditor_MPH_TK_CUSTOM,	"Custom translation"
+	MPHexEditor_MPH_UC_S,	"UCLE"
+	MPHexEditor_MPH_UC_BE_S,	"UCBE"
+	MPHexEditor_UNDO_BYTESCHANGED,	"Change byte(s)"
+	MPHexEditor_UNDO_REMOVED,	"Remove data"
+	MPHexEditor_UNDO_INSERT,	"Insert buffer"
+	MPHexEditor_UNDO_REPLACE,	"Replace"
+	MPHexEditor_UNDO_APPEND,	"Append buffer"
+	MPHexEditor_UNDO_INSNIBBLE,	"Insert nibble"
+	MPHexEditor_UNDO_DELNIBBLE,	"Delete nibble"
+	MPHexEditor_UNDO_CONVERT,	"Convert"
+	MPHexEditor_UNDO_SELECTION,	"Cursor movement"
+	GIFConsts_sGIFImageFile,	"GIF Image"
+	GIFConsts_sProgressLoading,	"Loading"
+	GIFConsts_sProgressSaving,	"Saving"
+	GIFConsts_sProgressConverting,	"Converting"
+	GIFConsts_sProgressRendering,	"Rendering"
+	GIFConsts_sProgressCopying,	"Copying"
+	GIFConsts_sProgressOptimizing,	"Optimizing"
+	MPHexEditor_MPH_TK_ASIS,	"Windows"
+	MPHexEditor_MPH_TK_DOS8,	"Dos 8 bits"
+	MPHexEditor_MPH_TK_ASCII7,	"ASCII 7 bits"
+	MPHexEditor_MPH_TK_MAC,	"Macintosh"
+	MPHexEditor_MPH_TK_BCD38,	"EBCDIC codepage 38"
+	MPHexEditor_MPH_UC,	"Unicode little endian"
+	MPHexEditor_MPH_UC_BE,	"Unicode big endian"
+	MPHexEditor_MPH_TK_ASIS_S,	"WIN"
+	MPHexEditor_MPH_TK_DOS8_S,	"DOS"
+	GIFConsts_sUnsupportedClass,	"Object type not supported for operation"
+	GIFConsts_sInvalidData,	"Invalid GIF data"
+	GIFConsts_sBadSize,	"Invalid image size"
+	GIFConsts_sScreenSizeExceeded,	"Image exceeds Logical Screen size"
+	GIFConsts_sNoColorTable,	"No global or local color table defined"
+	GIFConsts_sBadPixelCoordinates,	"Invalid pixel coordinates"
+	GIFConsts_sInvalidPixelFormat,	"Unsupported PixelFormat"
+	GIFConsts_sBadDimension,	"Invalid image dimensions"
+	GIFConsts_sNoDIB,	"Image has no DIB"
+	GIFConsts_sInvalidStream,	"Invalid stream operation"
+	GIFConsts_sInvalidColor,	"Color not in color table"
+	GIFConsts_sInvalidBitSize,	"Invalid Bits Per Pixel value"
+	GIFConsts_sEmptyColorMap,	"Color table is empty"
+	GIFConsts_sEmptyImage,	"Image is empty"
+	GIFConsts_sMultipleGCE,	"Frame contains multiple Graphic Control Extension blocks"
+	GIFConsts_sNoPalette,	"Missing, invalid or empty palette"
+	GIFConsts_sTooManyColors,	"Color table overflow"
+	GIFConsts_sBadColorIndex,	"Invalid color index"
+	GIFConsts_sBadColorIndexFixed,	"Invalid color index - color map expanded"
+	GIFConsts_sGIFErrorSaveEmpty,	"Cannot save empty GIF"
+	GIFConsts_sBadSignature,	"Invalid GIF signature"
+	GIFConsts_sScreenBadColorSize,	"Invalid number of colors specified in Screen Descriptor"
+	GIFConsts_sImageBadColorSize,	"Invalid number of colors specified in Image Descriptor"
+	GIFConsts_sUnknownExtension,	"Unknown extension type"
+	GIFConsts_sBadExtensionLabel,	"Invalid extension introducer"
+	GIFConsts_sOutOfMemDIB,	"Failed to allocate memory for GIF DIB"
+	GIFConsts_sDecodeTooFewBits,	"Decoder bit buffer under-run"
+	GIFConsts_sDecodeCircular,	"Circular decoder table entry"
+	GIFConsts_sBadTrailer,	"Invalid Image trailer"
+	GIFConsts_sBadExtensionInstance,	"Internal error: Extension Instance does not match Extension Label"
+	GIFConsts_sBadBlockSize,	"Unsupported Application Extension block size"
+	GIFConsts_sBadBlock,	"Unknown GIF block type"
+	pnglang_EPNGUnknownPalEntryText,	"There is no such palette entry."
+	pnglang_EPNGUnknownCriticalChunkText,	"This \"Portable Network Graphics\" image contains an unknown critical part which could not be decoded."
+	pnglang_EPNGUnknownCompressionText,	"This \"Portable Network Graphics\" image is encoded with an unknown compression scheme which could not be decoded."
+	pnglang_EPNGUnknownInterlaceText,	"This \"Portable Network Graphics\" image uses an unknown interlace scheme which could not be decoded."
+	pnglang_EPNGCannotAssignChunkText,	"The chunks must be compatible to be assigned."
+	pnglang_EPNGUnexpectedEndText,	"This \"Portable Network Graphics\" image is invalid because the decoder found an unexpected end of the file."
+	pnglang_EPNGNoImageDataText,	"This \"Portable Network Graphics\" image contains no data."
+	pnglang_EPNGCannotAddChunkText,	"The program tried to add a existent critical chunk to the current image which is not allowed."
+	pnglang_EPNGCannotAddInvalidImageText,	"It's not allowed to add a new chunk because the current image is invalid."
+	pnglang_EPNGCouldNotLoadResourceText,	"The png image could not be loaded from the resource ID."
+	pnglang_EPNGOutMemoryText,	"Some operation could not be performed because the system is out of resources. Close some windows and try again."
+	pnglang_EPNGCannotChangeTransparentText,	"Setting bit transparency color is not allowed for png images containing alpha value for each pixel (COLOR_RGBALPHA and COLOR_GRAYSCALEALPHA)"
+	pnglang_EPNGHeaderNotPresentText,	"This operation is not valid because the current image contains no valid header."
+	pnglang_EInvalidNewSize,	"The new size provided for image resizing is invalid."
+	pnglang_EInvalidSpec,	"The \"Portable Network Graphics\" could not be created because invalid image type parameters have being provided."
+	GIFConsts_sOutOfData,	"Premature end of data"
 	OleConst_SCannotActivate,	"OLE control activation failed"
 	OleConst_SNoWindowHandle,	"Could not obtain OLE control window handle"
 	OleConst_SInvalidLicense,	"License information for %s is invalid"
@@ -999,14 +1000,14 @@ BEGIN
 	JConsts_sChangeJPGSize,	"Cannot change the size of a JPEG image"
 	JConsts_sJPEGError,	"JPEG error #%d"
 	JConsts_sJPEGImageFile,	"JPEG Image File"
-	acQBStrings_acQBBadObjectName,	"Invalid object name"
-	acQBStrings_acQBBadFieldName,	"Invalid field name: %s"
-	acQBStrings_acQBBadSelectStatement,	"Invalid SELECT statement."
-	acQBStrings_acQBBadFromObjectExpression,	"Invalid FROM object expression"
-	acQBStrings_acQBUnexpectedToken,	" Unexpected token \"%s\""
-	acQBStrings_acQBUnexpectedTokenAt,	" Unexpected token \"%0:s\" at line %1:d, pos %2:d"
-	acQBStrings_acQBErrorUnknownError,	"Unknown error"
-	SynEditStrConst_SYNS_FriendlyAttrPLSQL,	"PL/SQL Reserved Word"
+	pnglang_EPngInvalidCRCText,	"This \"Portable Network Graphics\" image is not valid because it contains invalid pieces of data (crc error)"
+	pnglang_EPNGInvalidIHDRText,	"The \"Portable Network Graphics\" image could not be loaded because one of its main piece of data (ihdr) might be corrupted"
+	pnglang_EPNGMissingMultipleIDATText,	"This \"Portable Network Graphics\" image is invalid because it has missing image parts."
+	pnglang_EPNGZLIBErrorText,	"Could not decompress the image because it contains invalid compressed data.\r\n Description: "
+	pnglang_EPNGInvalidPaletteText,	"The \"Portable Network Graphics\" image contains an invalid palette."
+	pnglang_EPNGInvalidFileHeaderText,	"The file being read is not a valid \"Portable Network Graphics\" image because it contains an invalid header. This file may be corrupted, try obtaining it again"
+	pnglang_EPNGIHDRNotFirstText,	"This \"Portable Network Graphics\" image is not supported or it might be invalid.\r\n(IHDR chunk is not the first)"
+	pnglang_EPNGSizeExceedsText,	"This \"Portable Network Graphics\" image is not supported because either it's width or height exceeds the maximum size, which is 65535 pixels length."
 	SynEditStrConst_SYNS_FriendlyAttrReservedWord,	"Reserved Word"
 	SynEditStrConst_SYNS_FriendlyAttrSpace,	"Space"
 	SynEditStrConst_SYNS_FriendlyAttrSQLPlus,	"SQL*Plus Command"
@@ -1022,9 +1023,9 @@ BEGIN
 	SynEditStrConst_SYNS_FriendlyLangUnknown,	"<Unknown>"
 	SynEditTextBuffer_SListIndexOutOfBounds,	"Invalid stringlist index %d"
 	SynEditTextBuffer_SInvalidCapacity,	"Stringlist capacity cannot be smaller than count"
+	OleConst_SBadPropValue,	"'%s' is not a valid property value"
 	XMLConst_SMissingFileName,	"FileName cannot be blank"
 	XMLConst_SLine,	"Line"
-	fClient_SDesktopAlreadyRegistered,	"Desktop already registered"
 	fClient_SUnknownRoutineType,	"Unknown Routine Type (%s)"
 	fClient_SUnknownSQLStmt,	"Unknow SQL Statement (%s)"
 	fClient_SSourceParseError,	"Source code of \"%s\" cannot be analyzed (%d):\n\n%s"
@@ -1038,6 +1039,7 @@ BEGIN
 	SynEditStrConst_SYNS_FriendlyAttrFunction,	"Function"
 	SynEditStrConst_SYNS_FriendlyAttrIdentifier,	"Identifier"
 	SynEditStrConst_SYNS_FriendlyAttrNumber,	"Number"
+	SynEditStrConst_SYNS_FriendlyAttrPLSQL,	"PL/SQL Reserved Word"
 	XMLConst_SNoMatchingDOMVendor,	"No matching DOM Vendor: \"%s\""
 	XMLConst_SNoDOMNodeEx,	"Selected DOM Vendor does not support this property or method"
 	XMLConst_SDOMNotSupported,	"Property or Method \"%s\" is not supported by DOM Vendor \"%s\""
@@ -1536,78 +1538,79 @@ BEGIN
 	SysConst_SInvalidOp,	"Invalid floating point operation"
 END
 
-/* c:\program files (x86)\embarcadero\rad studio\7.0\lib\character.res */
-/* c:\program files (x86)\embarcadero\rad studio\7.0\lib\Controls.res */
-/* c:\program files (x86)\embarcadero\rad studio\7.0\lib\Buttons.res */
-/* c:\program files (x86)\embarcadero\rad studio\7.0\lib\DBPWDlg.dfm */
-/* c:\program files (x86)\embarcadero\rad studio\7.0\lib\DBLogDlg.dfm */
-/* c:\program files (x86)\embarcadero\rad studio\7.0\lib\DBCtrls.res */
-/* c:\program files (x86)\embarcadero\rad studio\7.0\lib\DBGrids.res */
-/* c:\program files (x86)\embarcadero\rad studio\7.0\lib\ExtDlgs.res */
-/* fDBookmark.dfm */
-/* fDColumns.dfm */
+/* C:\Program Files (x86)\Embarcadero\RAD Studio\7.0\lib\Character.res */
+/* C:\Program Files (x86)\EurekaLab\EurekaLog 6\Delphi14\Dialog.res */
+/* C:\Program Files (x86)\Embarcadero\RAD Studio\7.0\lib\controls.res */
+/* C:\Program Files (x86)\Embarcadero\RAD Studio\7.0\lib\buttons.res */
+/* C:\Program Files (x86)\Embarcadero\RAD Studio\7.0\lib\DBPWDlg.dfm */
+/* C:\Program Files (x86)\Embarcadero\RAD Studio\7.0\lib\DBLogDlg.dfm */
+/* C:\Program Files (x86)\Embarcadero\RAD Studio\7.0\lib\dbctrls.res */
+/* C:\Program Files (x86)\Embarcadero\RAD Studio\7.0\lib\dbgrids.res */
+/* C:\Program Files (x86)\Embarcadero\RAD Studio\7.0\lib\extdlgs.res */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDBookmark.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDColumns.dfm */
 /* SynEdit\Resource\SynEdit.res */
-/* fDDatabases.dfm */
-/* fDSession.dfm */
-/* fDConnecting.dfm */
-/* fDDatabase.dfm */
-/* fDEvent.dfm */
-/* fDLogin.dfm */
-/* fDExport.dfm */
-/* fDField.dfm */
-/* fDForeignKey.dfm */
-/* fDGoto.dfm */
-/* fDHostDatabase.dfm */
-/* fDHost.dfm */
-/* fDImport.dfm */
-/* fDIndex.dfm */
-/* fDInfo.dfm */
-/* fDInstallUpdate.dfm */
-/* c:\program files (x86)\embarcadero\rad studio\7.0\lib\FileCtrl.res */
-/* fDOptions.dfm */
-/* fDPartition.dfm */
-/* fDPaste.dfm */
-/* fDQuickFilter.dfm */
-/* fDRoutine.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDDatabases.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDSession.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDConnecting.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDDatabase.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDEvent.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDLogin.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDExport.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDField.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDForeignKey.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDGoto.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDHostDatabase.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDHost.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDImport.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDIndex.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDInfo.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDInstallUpdate.dfm */
+/* C:\Program Files (x86)\Embarcadero\RAD Studio\7.0\lib\filectrl.res */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDOptions.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDPartition.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDPaste.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDQuickFilter.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDRoutine.dfm */
+/* MPHexEditor\Resource\MPHexEditor.RES */
 /* QueryBuilder\Resource\acQBLocalizer.res */
 /* QueryBuilder\Resource\acAST.res */
-/* QueryBuilder\Resource\acProcParams.dfm */
-/* QueryBuilder\Resource\acDatasourceProps.dfm */
-/* QueryBuilder\Resource\acLinkProps.dfm */
-/* QueryBuilder\Resource\acQBMetadataContainerLoad.dfm */
-/* QueryBuilder\Resource\acQBMetadataContainerEditor.dfm */
-/* QueryBuilder\Resource\acAddObject.dfm */
-/* QueryBuilder\Resource\acQBAbout.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acProcParams.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQBAbout.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acAddObject.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQBMetadataContainerLoad.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQBMetadataContainerEditor.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acLinkProps.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acDatasourceProps.dfm */
 /* QueryBuilder\Resource\acQBBase.res */
-/* QueryBuilder\Resource\acQueryPropsDb2.dfm */
-/* QueryBuilder\Resource\acQueryPropsSb.dfm */
-/* QueryBuilder\Resource\acQueryPropsAc.dfm */
-/* QueryBuilder\Resource\acQueryPropsFb.dfm */
-/* QueryBuilder\Resource\acQueryPropsOracle.dfm */
-/* QueryBuilder\Resource\acQueryPropsIb.dfm */
-/* QueryBuilder\Resource\acQueryPropsSQLite.dfm */
-/* QueryBuilder\Resource\acQueryPropsPg.dfm */
-/* QueryBuilder\Resource\acQueryPropsMS.dfm */
-/* QueryBuilder\Resource\acQueryProps.dfm */
-/* QueryBuilder\Resource\acQueryPropsMY.dfm */
-/* MPHexEditor\Resource\MPHexEditor.res */
-/* fDSegment.dfm */
-/* fWForeignKeySelect.dfm */
-/* fDSelection.dfm */
-/* fDStatement.dfm */
-/* fDTrigger.dfm */
-/* fDView.dfm */
-/* fDUserRight.dfm */
-/* fDUser.dfm */
-/* fDVariable.dfm */
-/* fDServer.dfm */
-/* fDTransfer.dfm */
-/* fDSQLHelp.dfm */
-/* fDTableService.dfm */
-/* fDTable.dfm */
-/* fFClient.dfm */
-/* fDSearch.dfm */
-/* fDSessions.dfm */
-/* fWWindow.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQueryProps.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQueryPropsMS.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQueryPropsPg.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQueryPropsSQLite.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQueryPropsIb.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQueryPropsOracle.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQueryPropsFb.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQueryPropsAc.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQueryPropsSb.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQueryPropsDb2.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\QueryBuilder\Source\acQueryPropsMy.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDTableService.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDTrigger.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDTable.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDVariable.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDUserRight.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDUser.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDSQLHelp.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDTransfer.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDSearch.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDStatement.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDServer.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDView.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDSelection.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fWForeignKeySelect.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDSegment.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fFClient.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDSessions.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fWWindow.dfm */
 /* C:\Users\Nils\Documents\MySQL-Front\Source\MySQLFront.res */
-/* C:\Users\Nils\Documents\MySQL-Front\Source\MySQLFront.drf */
+/* C:\Users\Nils\AppData\Local\Temp\dtf7D80.tmp */
