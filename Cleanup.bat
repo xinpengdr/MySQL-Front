@@ -33,8 +33,6 @@ if Errorlevel 1 goto CleanAll
 goto End
 
 :CleanAll
-if exist "%CleanRootPath%\Source\MySQLFront.res" DEL "%CleanRootPath%\Source\MySQLFront.res"
-
 for /D /R %%I in (*) do (
   if exist "%%I\Bin\*" DEL /Q "%%I\Bin\*"
 )

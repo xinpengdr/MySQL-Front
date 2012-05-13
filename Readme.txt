@@ -1,3 +1,10 @@
+Development Enviroment:
+=======================
+
+Embarcadero Delphi 2010:
+http://www.embarcadero.com/products/delphi
+
+
 Used packages:
 ==============
 
@@ -23,7 +30,6 @@ Note: MPHexEditor was developed by Markus Stephany, who stopped his work.
 Later on the Delphi Code Revival project worked on it - but seems not
 very long. Inside this project there is a own transformation from Delphi 7
 to Delphi 2010.
-
 
 
 Tools to build a setup program:
