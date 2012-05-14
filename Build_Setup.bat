@@ -100,6 +100,9 @@ if Errorlevel 1 goto Error
 if exist "%BuildSetupPath%\Publish.bat" "%BuildAWK%" -f "%BuildTempPath%\Build_Setup.awk" "%BuildSetupPath%\Publish.bat" > "%BuildPublishPath%\Publish.bat"
 if Errorlevel 1 goto Error
 
+if exist "%BuildSetupPath%\Publish.ftp" "%BuildAWK%" -f "%BuildTempPath%\Build_Setup.awk" "%BuildSetupPath%\Publish.ftp" > "%BuildPublishPath%\Publish.ftp"
+if Errorlevel 1 goto Error
+
 
 if not exist "%BuildPublishPath%" MKDIR "%BuildPublishPath%"
 MOVE "%BuildTempPath%\%BuildName%_Setup.exe" "%BuildPublishPath%"
