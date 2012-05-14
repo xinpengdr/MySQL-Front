@@ -657,6 +657,10 @@ object DExport: TDExport
       TabVisible = False
       OnHide = TSOptionsHide
       OnShow = TSHTMLOptionsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GHTMLWhat: TGroupBox_Ext
         Left = 4
         Top = 0

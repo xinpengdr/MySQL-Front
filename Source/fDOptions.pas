@@ -7,7 +7,7 @@ uses
   Dialogs, ExtCtrls, ComCtrls, StdCtrls,
   SynEdit, SynEditHighlighter, SynHighlighterSQL, SynMemo,
   ExtCtrls_Ext, StdCtrls_Ext, ComCtrls_Ext, Forms_Ext,
-  fPreferences, fSession, fClient, fBase;
+  fPreferences, fAccount, fClient, fBase;
 
 type
   TIniFileRecord = record
@@ -582,7 +582,7 @@ begin
 
     Preferences.SaveToXML();
     Preferences.LoadFromXML();
-    Sessions.AppendIconsToImageList(Preferences.SmallImages);
+    Accounts.AppendIconsToImageList(Preferences.SmallImages);
   end;
 end;
 

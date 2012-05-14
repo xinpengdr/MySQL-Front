@@ -6,11 +6,11 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Menus,
   Dialogs, StdCtrls, ComCtrls, DB, ExtCtrls,
   ComCtrls_Ext, Forms_Ext, StdCtrls_Ext, ExtCtrls_Ext,
-  fBase, fClient, MySQLDB, fSession, fTools, fFClient;
+  fBase, fClient, MySQLDB, fAccount, fTools, fFClient;
 
 type
   TDSTableItem = record
-    Session: TSSession;
+    Account: TSAccount;
     DatabaseName: string;
     TableName: string;
   end;
@@ -275,20 +275,20 @@ begin
   begin
     Found := False;
     for I := 0 to Length(Tables) - 1 do
-      if ((Tables[I].Session = Client.Session) and (Tables[I].DatabaseName = CurrentItem^.DatabaseName) and (Tables[I].TableName = CurrentItem^.TableName)) then
+      if ((Tables[I].Account = Client.Account) and (Tables[I].DatabaseName = CurrentItem^.DatabaseName) and (Tables[I].TableName = CurrentItem^.TableName)) then
         Found := True;
 
     if (not Found) then
     begin
       SetLength(Tables, Length(Tables) + 1);
 
-      Tables[Length(Tables) - 1].Session := Client.Session;
+      Tables[Length(Tables) - 1].Account := Client.Account;
       Tables[Length(Tables) - 1].DatabaseName := CurrentItem^.DatabaseName;
       Tables[Length(Tables) - 1].TableName := CurrentItem^.TableName;
 
       Item := FTables.Items.Add();
       if (not (FSelect.Selected.ImageIndex in [iiDatabase, iiBaseTable, iiField])) then
-        Item.Caption := Item.Caption + Client.Session.Name + '.';
+        Item.Caption := Item.Caption + Client.Account.Name + '.';
       Item.Caption := Item.Caption + CurrentItem^.DatabaseName + '.';
       Item.Caption := Item.Caption + CurrentItem^.TableName + ' (' + IntToStr(CurrentItem^.RecordsFound) + ')';
     end;
@@ -443,7 +443,7 @@ var
   I: Integer;
   Node: TTreeNode;
   SelectedNodes: TList;
-  SessionNode: TTreeNode;
+  AccountNode: TTreeNode;
   TableNames: TStringList;
   TableNode: TTreeNode;
 begin
@@ -501,17 +501,17 @@ begin
   FTables.Visible := SearchOnly;
   FFFindTextChange(Sender);
 
-  SetLength(Connections, Sessions.Count);
+  SetLength(Connections, Accounts.Count);
 
-  for I := 0 to Sessions.Count - 1 do
+  for I := 0 to Accounts.Count - 1 do
   begin
-    if (Assigned(Client) and (Sessions[I] = Client.Session)) then
+    if (Assigned(Client) and (Accounts[I] = Client.Account)) then
       Connections[I] := Client
     else
       Connections[I] := nil;
 
-    Node := FSelect.Items.Add(nil, Sessions[I].Name);
-    Node.ImageIndex := Sessions[I].ImageIndex;
+    Node := FSelect.Items.Add(nil, Accounts[I].Name);
+    Node.ImageIndex := Accounts[I].ImageIndex;
     if (Node.ImageIndex < 0) then Node.ImageIndex := iiServer;
     Node.SelectedIndex := Node.ImageIndex;
     Node.HasChildren := True;
@@ -528,17 +528,17 @@ begin
     TableNames.Text := ReplaceStr(TableName, ',', #13#10);
     FieldNames.Text := ReplaceStr(FieldName, ',', #13#10);
 
-    SessionNode := FSelect.TopItem;
-    while (Assigned(SessionNode)) do
+    AccountNode := FSelect.TopItem;
+    while (Assigned(AccountNode)) do
     begin
-      if (SessionNode.Text = Client.Session.Name) then
+      if (AccountNode.Text = Client.Account.Name) then
       begin
         if (DatabaseNames.Count = 0) then
-          SessionNode.Selected := True
+          AccountNode.Selected := True
         else
         begin
-          SessionNode.Expand(False);
-          DatabaseNode := SessionNode.getFirstChild();
+          AccountNode.Expand(False);
+          DatabaseNode := AccountNode.getFirstChild();
           while (Assigned(DatabaseNode)) do
           begin
             if ((DatabaseNames.IndexOf(DatabaseNode.Text) < 0) or (TableNames.Count = 0)) then
@@ -569,7 +569,7 @@ begin
           end;
         end;
       end;
-      SessionNode := SessionNode.getNextSibling();
+      AccountNode := AccountNode.getNextSibling();
     end;
     if (SelectedNodes.Count = 1) then
     begin
@@ -662,17 +662,17 @@ begin
   begin
     if (not Assigned(Node.Parent)) then
     begin
-      Index := Sessions.IndexOf(Sessions.SessionByName(Node.Text));
+      Index := Accounts.IndexOf(Accounts.AccountByName(Node.Text));
       if (not Assigned(Connections[Index])) then
-        Connections[Index] := fClient.Clients.CreateClient(Sessions.SessionByName(Node.Text), B);
+        Connections[Index] := fClient.Clients.CreateClient(Accounts.AccountByName(Node.Text), B);
 
       Client := Connections[Index];
     end
     else
       if (not Assigned(Node.Parent.Parent)) then
-        Client := Connections[Sessions.IndexOf(Sessions.SessionByName(Node.Parent.Text))]
+        Client := Connections[Accounts.IndexOf(Accounts.AccountByName(Node.Parent.Text))]
       else
-        Client := Connections[Sessions.IndexOf(Sessions.SessionByName(Node.Parent.Parent.Text))];
+        Client := Connections[Accounts.IndexOf(Accounts.AccountByName(Node.Parent.Parent.Text))];
 
     if (Assigned(Client)) then
     begin
@@ -741,8 +741,8 @@ begin
     URI := TUURI.Create('');
 
     URI.Scheme := 'mysql';
-    URI.Host := Tables[FTables.Selected.Index].Session.Connection.Host;
-    URI.Port := Tables[FTables.Selected.Index].Session.Connection.Port;
+    URI.Host := Tables[FTables.Selected.Index].Account.Connection.Host;
+    URI.Port := Tables[FTables.Selected.Index].Account.Connection.Port;
     URI.Database := Tables[FTables.Selected.Index].DatabaseName;
     URI.Table := Tables[FTables.Selected.Index].TableName;
     URI.Param['view'] := 'browser';
@@ -750,7 +750,7 @@ begin
     if (Assigned(Frame)) then
       ViewFrame := Frame
     else
-      ViewFrame := TFClient(Tables[FTables.Selected.Index].Session.Frame());
+      ViewFrame := TFClient(Tables[FTables.Selected.Index].Account.Frame());
 
     Result := True;
     if (Assigned(ViewFrame)) then
@@ -903,13 +903,13 @@ begin
   begin
     if (FSelect.Items[I].Selected) then
       if (FSelect.Selected.ImageIndex = iiField) then
-        ExecuteClient := Connections[Sessions.IndexOf(Sessions.SessionByName(FSelect.Items[I].Parent.Parent.Parent.Text))]
+        ExecuteClient := Connections[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Parent.Parent.Parent.Text))]
       else if (FSelect.Items[I].ImageIndex = iiBaseTable) then
-        ExecuteClient := Connections[Sessions.IndexOf(Sessions.SessionByName(FSelect.Items[I].Parent.Parent.Text))]
+        ExecuteClient := Connections[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Parent.Parent.Text))]
       else if (FSelect.Items[I].ImageIndex = iiDatabase) then
-        ExecuteClient := Connections[Sessions.IndexOf(Sessions.SessionByName(FSelect.Items[I].Parent.Text))]
+        ExecuteClient := Connections[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Parent.Text))]
       else // iiConnection
-        ExecuteClient := Connections[Sessions.IndexOf(Sessions.SessionByName(FSelect.Items[I].Text))];
+        ExecuteClient := Connections[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Text))];
     Inc(I);
   end;
 
@@ -969,7 +969,7 @@ begin
     end
     else
     begin
-      ReplaceClient := fClient.Clients.CreateClient(ExecuteClient.Session, B);
+      ReplaceClient := fClient.Clients.CreateClient(ExecuteClient.Account, B);
 
       if (Assigned(ReplaceClient)) then
       begin

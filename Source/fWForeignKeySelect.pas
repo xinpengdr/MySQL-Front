@@ -156,7 +156,7 @@ begin
         SQL := SQL + Client.EscapeIdentifier(ParentTable.Fields[I].Name);
       end;
       SQL := 'SELECT ' + SQL + ' FROM ' + Client.EscapeIdentifier(ParentDatabase.Name) + '.' + Client.EscapeIdentifier(ParentTable.Name);
-      if (Client.Session.DefaultSorting and (ParentTable.Indices.Count > 0) and (ParentTable.Indices[0].Name = '')) then
+      if (Client.Account.DefaultSorting and (ParentTable.Indices.Count > 0) and (ParentTable.Indices[0].Name = '')) then
       begin
         SQL := SQL + ' ORDER BY ';
         for I := 0 to ParentTable.Indices[0].Columns.Count - 1 do

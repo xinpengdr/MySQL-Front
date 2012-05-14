@@ -12,7 +12,7 @@ uses
   {$ENDIF}
   SynEditHighlighter, SynHighlighterSQL,
   ExtCtrls_Ext, Forms_Ext, StdCtrls_Ext, ComCtrls_Ext, Dialogs_Ext, StdActns_Ext,
-  fClient, fPreferences, fFClient, fSession, fBase, MySQLDB;
+  fClient, fPreferences, fFClient, fAccount, fBase, MySQLDB;
 
 const
   cWindowClassName = 'MySQL-Front.Application';
@@ -136,7 +136,7 @@ type
     aFImportText: TAction;
     aFImportXML: TAction;
     aFOpen: TAction;
-    aFOpenSession: TAction;
+    aFOpenAccount: TAction;
     aFPrint: TAction;
     aFSave: TAction;
     aFSaveAs: TAction;
@@ -145,7 +145,7 @@ type
     aHManual: TAction;
     aHUpdate: TAction;
     aOGlobals: TAction;
-    aOSessions: TAction;
+    aOAccounts: TAction;
     aSAddress: TAction;
     aSGoto: TAction;
     aSSearchFind: TSearchFind_Ext;
@@ -275,7 +275,7 @@ type
     miHUpdate: TMenuItem;
     miOGlobals: TMenuItem;
     miOptions: TMenuItem;
-    miOSessions: TMenuItem;
+    miOAccounts: TMenuItem;
     miSAddress: TMenuItem;
     miSearch: TMenuItem;
     miSGoto: TMenuItem;
@@ -303,7 +303,7 @@ type
     mtDRollback: TMenuItem;
     mtFClose: TMenuItem;
     mtFCloseAll: TMenuItem;
-    mtFOpenSession: TMenuItem;
+    mtFOpenAccount: TMenuItem;
     mtTabs: TMenuItem;
     mtVRefresh: TMenuItem;
     mtVRefreshAll: TMenuItem;
@@ -376,7 +376,7 @@ type
     TBTabControl: TToolBar;
     tbUndo: TToolButton;
     tbVRefresh: TToolButton;
-    tcOpenSession: TToolButton;
+    tcOpenAccount: TToolButton;
     ToolBar: TToolBar;
     ToolButton1: TToolButton;
     ToolButton10: TToolButton;
@@ -400,13 +400,13 @@ type
     procedure aFCloseAllExecute(Sender: TObject);
     procedure aFCloseExecute(Sender: TObject);
     procedure aFExitExecute(Sender: TObject);
-    procedure aFOpenSessionExecute(Sender: TObject);
+    procedure aFOpenAccountExecute(Sender: TObject);
     procedure aHIndexExecute(Sender: TObject);
     procedure aHInfoExecute(Sender: TObject);
     procedure aHManualExecute(Sender: TObject);
     procedure aHUpdateExecute(Sender: TObject);
     procedure aOGlobalsExecute(Sender: TObject);
-    procedure aOSessionsExecute(Sender: TObject);
+    procedure aOAccountsExecute(Sender: TObject);
     procedure aSAddressExecute(Sender: TObject);
     procedure aSSearchFindNotFound(Sender: TObject);
     procedure aVAddressBarExecute(Sender: TObject);
@@ -510,7 +510,7 @@ type
     procedure CreateParams(var Params: TCreateParams); override;
   public
     destructor Destroy(); override;
-    function DBLogin(const Session: Pointer): Boolean;
+    function DBLogin(const Account: Pointer): Boolean;
   end;
 
 var
@@ -524,7 +524,7 @@ uses
   ShellApi, ShlObj, Themes, DBConsts, CommCtrl, StrUtils, ShLwApi, IniFiles,
   MySQLConsts,
   HTTPTunnel,
-  fDSessions, fDSession, fDOptions, fDLogin, fDStatement,
+  fDAccounts, fDAccount, fDOptions, fDLogin, fDStatement,
   fDTransfer, fDSearch, fDConnecting,
   fDInfo, fDInstallUpdate, fURI;
 
@@ -598,7 +598,7 @@ begin
   Close();
 end;
 
-procedure TWWindow.aFOpenSessionExecute(Sender: TObject);
+procedure TWWindow.aFOpenAccountExecute(Sender: TObject);
 begin
   Perform(CM_ADDTAB, 0, 0);
 end;
@@ -619,7 +619,7 @@ end;
 procedure TWWindow.aHManualExecute(Sender: TObject);
 begin
   if (Assigned(ActiveTab)) then
-    ShellExecute(Application.Handle, 'open', PChar(ActiveTab.Client.Session.ManualURL), '', '', SW_SHOW);
+    ShellExecute(Application.Handle, 'open', PChar(ActiveTab.Client.Account.ManualURL), '', '', SW_SHOW);
 end;
 
 procedure TWWindow.aHUpdateExecute(Sender: TObject);
@@ -646,10 +646,10 @@ begin
   end;
 end;
 
-procedure TWWindow.aOSessionsExecute(Sender: TObject);
+procedure TWWindow.aOAccountsExecute(Sender: TObject);
 begin
-  DSessions.Open := False;
-  DSessions.Execute();
+  DAccounts.Open := False;
+  DAccounts.Execute();
 end;
 
 procedure TWWindow.ApplicationException(Sender: TObject; E: Exception);
@@ -880,7 +880,7 @@ begin
 
   Perform(CM_BOOKMARKCHANGED, 0, 0);
 
-  aHManual.Enabled := Message.Tab.Client.Session.ManualURL <> '';
+  aHManual.Enabled := Message.Tab.Client.Account.ManualURL <> '';
 
   tbDBPrev.Action := Message.Tab.aDPrev;
   tbDBFirst.Action := Message.Tab.DataSetFirst;
@@ -902,33 +902,33 @@ end;
 procedure TWWindow.CMAddTab(var Message: TCMAddTab);
 var
   Client: TCClient;
-  Session: TSSession;
+  Account: TSAccount;
   Tab: TFClient;
   UserAbort: Boolean;
 begin
   Tab := nil;
 
   if (not Assigned(Message.Param) or (Copy(Message.Param, 1, 8) <> 'mysql://')) then
-    Session := nil
+    Account := nil
   else
-    Session := Sessions.SessionByURI(Message.Param);
+    Account := Accounts.AccountByURI(Message.Param);
 
   repeat
-    if (not Assigned(Session)) then
+    if (not Assigned(Account)) then
     begin
-      DSessions.Open := True;
-      UserAbort := not DSessions.Execute();
+      DAccounts.Open := True;
+      UserAbort := not DAccounts.Execute();
       if (not UserAbort) then
-        Session := DSessions.Selected;
+        Account := DAccounts.Selected;
     end;
 
     Client := nil;
-    if (Assigned(Session)) then
+    if (Assigned(Account)) then
     begin
-      Client := Clients.CreateClient(Session, UserAbort);
+      Client := Clients.CreateClient(Account, UserAbort);
 
       if (not Assigned(Client)) then
-        Session := nil
+        Account := nil
       else
       begin
         Perform(CM_DEACTIVATETAB, 0, 0);
@@ -945,13 +945,13 @@ begin
 
           if (Tabs.Count = 0) then
           begin
-            TabControl.Tabs.Add(TabCaption(Session.Name));
+            TabControl.Tabs.Add(TabCaption(Account.Name));
             TabControl.Visible := Preferences.TabsVisible;
             TabControlResize(nil);
           end;
         end;
 
-        Tab := TFClient.CreateTab(Self, PWorkSpace, Client, Message.Param, Session.ImageIndex);
+        Tab := TFClient.CreateTab(Self, PWorkSpace, Client, Message.Param, Account.ImageIndex);
 
         if (not Assigned(Tab) and (Tabs.Count = 0)) then
         begin
@@ -968,7 +968,7 @@ begin
           Tabs.Add(Tab);
           if (Tabs.Count > 1) then
           begin
-            TabControl.Tabs.Add(TabCaption(Session.Name));
+            TabControl.Tabs.Add(TabCaption(Account.Name));
             TabControl.Visible := True;
             TabControlResize(nil);
           end;
@@ -996,11 +996,11 @@ begin
   while (miBookmarks.Count > Index) do
     miBookmarks.Items[Index].Free();
   if (Assigned(ActiveTab)) then
-    for I := 0 to ActiveTab.Client.Session.Desktop.Bookmarks.Count - 1 do
+    for I := 0 to ActiveTab.Client.Account.Desktop.Bookmarks.Count - 1 do
     begin
       NewMenuItem := TMenuItem.Create(Self);
       NewMenuItem.Action := aBookmark;
-      NewMenuItem.Caption := ActiveTab.Client.Session.Desktop.Bookmarks[I].Caption;
+      NewMenuItem.Caption := ActiveTab.Client.Account.Desktop.Bookmarks[I].Caption;
       miBookmarks.Add(NewMenuItem);
     end;
 end;
@@ -1021,7 +1021,7 @@ begin
   Caption := Application.Title;
 
   miFile.Caption := Preferences.LoadStr(3);
-  aFOpenSession.Caption := Preferences.LoadStr(1) + '...';
+  aFOpenAccount.Caption := Preferences.LoadStr(1) + '...';
   aFOpen.Caption := Preferences.LoadStr(581) + '...';
   aFSave.Caption := Preferences.LoadStr(582);
   aFSaveAs.Caption := Preferences.LoadStr(583) + '...';
@@ -1147,7 +1147,7 @@ begin
 
   miOptions.Caption := Preferences.LoadStr(13);
   aOGlobals.Caption := Preferences.LoadStr(52) + '...';
-  aOSessions.Caption := Preferences.LoadStr(25) + '...';
+  aOAccounts.Caption := Preferences.LoadStr(25) + '...';
 
   miExtras.Caption := Preferences.LoadStr(707);
   aEFind.Caption := Preferences.LoadStr(187) + '...';
@@ -1504,9 +1504,9 @@ begin
   StrCopy(Params.WinClassName, cWindowClassName);
 end;
 
-function TWWindow.DBLogin(const Session: Pointer): Boolean;
+function TWWindow.DBLogin(const Account: Pointer): Boolean;
 begin
-  DLogin.Session := Session;
+  DLogin.Account := Account;
   DLogin.Filename := '';
   DLogin.Window := Self;
   Result := DLogin.Execute();
@@ -1522,7 +1522,7 @@ begin
 
   FreeAndNil(CloseButton);
   FreeAndNil(Tabs);
-  FreeAndNil(Sessions);
+  FreeAndNil(Accounts);
 
   {$IFDEF EurekaLog}
     EurekaLog.Free();
@@ -1560,7 +1560,7 @@ begin
   for I := 0 to Tabs.Count - 1 do
     try TFClient(Tabs[I]).CrashRescue(); except end;
 
-  try Sessions.SaveToXML(); except end;
+  try Accounts.SaveToXML(); except end;
 
   if (not IsConnectedToInternet()) then
     Handled := False
@@ -1656,7 +1656,7 @@ begin
     EurekaLog.OnCustomDataRequest := EurekaLogCustomDataRequest;
   {$ENDIF}
 
-  Sessions := TSSessions.Create(DBLogin, SQLError);
+  Accounts := TSAccounts.Create(DBLogin, SQLError);
   Clients.OnOpenConnection := OpenConnection;
 
   MainActionList := ActionList;
@@ -1982,7 +1982,7 @@ begin
 
   if ((ErrorCode = CR_SERVER_GONE_ERROR) and (Connection is TCClient)) then
   begin
-    Tab := TFClient(TCClient(Connection).Session.Frame);
+    Tab := TFClient(TCClient(Connection).Account.Frame);
     if (Boolean(SendMessage(Tab.Handle, CM_CLOSE_TAB_QUERY, 0, 0))) then
       Perform(CM_CLOSE_TAB, 0, LPARAM(Tab));
   end;
@@ -2045,7 +2045,7 @@ begin
 
   TabControl.Tabs.Clear();
   for I := 0 to Tabs.Count - 1 do
-    TabControl.Tabs.Add(TabCaption(TFClient(Tabs[I]).Client.Session.Name));
+    TabControl.Tabs.Add(TabCaption(TFClient(Tabs[I]).Client.Account.Name));
 
   TabControl.TabIndex := NewTabIndex;
 end;
@@ -2209,7 +2209,7 @@ begin
   if (not Assigned(Tab)) then
     ImageIndex := iiServer
   else
-    ImageIndex := Tab.Client.Session.ImageIndex;
+    ImageIndex := Tab.Client.Account.ImageIndex;
 
   if (ImageIndex < 0) then
     ImageIndex := iiServer;
@@ -2308,7 +2308,7 @@ begin
         Hint := ReplaceStr(aFClose.Caption, '&', '')
       else
       begin
-        Hint := TFClient(Tabs[TabIndex]).Client.Session.Name;
+        Hint := TFClient(Tabs[TabIndex]).Client.Account.Name;
 
         if (TabIndex < 9) then
           Hint := Hint + ' (' + ShortCutToText(ShortCut(Ord('1') + TabIndex, [ssCtrl])) + ')';

@@ -2,9 +2,7 @@
 
 uses
   FastMM4,
-  {$IFDEF EurekaLog}
   ExceptionLog,
-  {$ENDIF}
   Windows,
   ShellAPI,
   SysUtils,
@@ -25,10 +23,12 @@ uses
   Forms_Ext in 'VCL\Source\Forms_Ext.pas',
   fClient in 'fClient.pas',
   fPreferences in 'fPreferences.pas',
-  fSession in 'fSession.pas',
+  fAccount in 'fAccount.pas',
   fTools in 'fTools.pas',
   fURI in 'fURI.pas',
   fBase in 'fBase.pas',
+  fDAccount in 'fDAccount.pas' {DAccount},
+  fDAccounts in 'fDAccounts.pas' {DAccounts},
   fDBookmark in 'fDBookmark.pas' {DBookmark},
   fDColumns in 'fDColumns.pas' {DColumns},
   fDConnecting in 'fDConnecting.pas' {DConnecting},
@@ -55,8 +55,6 @@ uses
   fDSegment in 'fDSegment.pas' {DSegment},
   fDSelection in 'fDSelection.pas' {DSelection},
   fDServer in 'fDServer.pas' {DServer},
-  fDSession in 'fDSession.pas' {DSession},
-  fDSessions in 'fDSessions.pas' {DSessions},
   fDSQLHelp in 'fDSQLHelp.pas' {DSQLHelp},
   fDStatement in 'fDStatement.pas' {DStatement},
   fDTable in 'fDTable.pas' {DTable},

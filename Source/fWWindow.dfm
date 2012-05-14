@@ -79,7 +79,6 @@ object WWindow: TWWindow
       Left = 0
       Top = 0
       Width = 691
-      Height = 29
       AutoSize = True
       BorderWidth = 2
       EdgeBorders = [ebBottom]
@@ -491,10 +490,10 @@ object WWindow: TWWindow
     ShowHint = True
     TabOrder = 3
     Visible = False
-    object tcOpenSession: TToolButton
+    object tcOpenAccount: TToolButton
       Left = 0
       Top = 0
-      Action = aFOpenSession
+      Action = aFOpenAccount
     end
   end
   object MPrev: TPopupMenu
@@ -647,14 +646,14 @@ object WWindow: TWWindow
       ShortCut = 32807
       OnExecute = aVNextExecute
     end
-    object aFOpenSession: TAction
+    object aFOpenAccount: TAction
       Category = 'File'
-      Caption = 'aFOpenSession'
+      Caption = 'aFOpenAccount'
       HelpContext = 1001
       HelpType = htContext
       ImageIndex = 40
       ShortCut = 123
-      OnExecute = aFOpenSessionExecute
+      OnExecute = aFOpenAccountExecute
     end
     object aFOpen: TAction
       Category = 'File'
@@ -1267,12 +1266,12 @@ object WWindow: TWWindow
       HelpType = htContext
       ImageIndex = 7
     end
-    object aOSessions: TAction
+    object aOAccounts: TAction
       Category = 'Options'
-      Caption = 'aOSessions'
+      Caption = 'aOAccounts'
       HelpContext = 1065
       HelpType = htContext
-      OnExecute = aOSessionsExecute
+      OnExecute = aOAccountsExecute
     end
     object aEDelete: TEditDelete
       Category = 'Edit'
@@ -1397,7 +1396,7 @@ object WWindow: TWWindow
     object miFile: TMenuItem
       Caption = 'miFile'
       object miFConnect: TMenuItem
-        Action = aFOpenSession
+        Action = aFOpenAccount
       end
       object N8: TMenuItem
         Caption = '-'
@@ -1855,8 +1854,8 @@ object WWindow: TWWindow
       object miOGlobals: TMenuItem
         Action = aOGlobals
       end
-      object miOSessions: TMenuItem
-        Action = aOSessions
+      object miOAccounts: TMenuItem
+        Action = aOAccounts
       end
     end
     object miHelp: TMenuItem
@@ -1917,8 +1916,8 @@ object WWindow: TWWindow
     object N32: TMenuItem
       Caption = '-'
     end
-    object mtFOpenSession: TMenuItem
-      Action = aFOpenSession
+    object mtFOpenAccount: TMenuItem
+      Action = aFOpenAccount
     end
     object mtTabs: TMenuItem
       Caption = 'mtTabs'

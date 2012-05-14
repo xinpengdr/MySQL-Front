@@ -8,7 +8,7 @@ uses
   ODBC,
   DISQLite3Api,
   ComCtrls_Ext, Forms_Ext, StdCtrls_Ext, ExtCtrls_Ext, Dialogs_Ext,
-  fClient, fSession, fBase, MySQLDB, fTools;
+  fClient, fAccount, fBase, MySQLDB, fTools;
 
 const
   LargeSQLScriptSize = 100 * 1024;
@@ -441,7 +441,7 @@ begin
               if ((Copy(DatabaseName, 1, 1) = '"') and (Copy(DatabaseName, Length(DatabaseName), 1) = '"')) then
                 DatabaseName := Copy(DatabaseName, 2, Length(DatabaseName) - 2);
 
-              DLogin.Session := nil;
+              DLogin.Account := nil;
               DLogin.Filename := DatabaseName;
               DLogin.Window := Window;
               Success := DLogin.Execute();

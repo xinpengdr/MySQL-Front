@@ -34,7 +34,7 @@ implementation {***************************************************************}
 uses
   Windows, SysUtils, 
   MySQLDB,
-  fPreferences, fSession, fDSession;
+  fPreferences, fAccount, fDAccount;
 
 var
   FConnecting: TDConnecting;
@@ -69,7 +69,7 @@ end;
 
 procedure TDConnecting.CMPostShow(var Message: TMessage);
 begin
-  if (not Client.Session.Connection.SavePassword and (Client.Session.Connection.Password = '') and not Sessions.DBLogin(Client.Session)) then
+  if (not Client.Account.Connection.SavePassword and (Client.Account.Connection.Password = '') and not Accounts.DBLogin(Client.Account)) then
     ModalResult := mrCancel
   else
     Client.FirstConnect();
@@ -94,9 +94,9 @@ end;
 
 procedure TDConnecting.FormShow(Sender: TObject);
 begin
-  Caption := Client.Session.Name;
+  Caption := Client.Account.Name;
 
-  FBCancel.Enabled := Client.Session.Connection.Asynchron;
+  FBCancel.Enabled := Client.Account.Connection.Asynchron;
 
   Client.AfterConnect := AfterConnect;
 

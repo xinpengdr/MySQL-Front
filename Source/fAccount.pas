@@ -1,4 +1,4 @@
-unit fSession;
+unit fAccount;
 
 interface {********************************************************************}
 
@@ -7,14 +7,14 @@ uses
   fPreferences, MySQLDB;
 
 type
-  TLogin = function(const Session: Pointer): Boolean of object;
+  TLogin = function(const Account: Pointer): Boolean of object;
 
 type
   TSBookmarks = class;
   TSDesktop = class;
   TSConnection = class;
-  TSSession = class;
-  TSSessions = class;
+  TSAccount = class;
+  TSAccounts = class;
 
   TSBookmark = class
   private
@@ -66,13 +66,13 @@ type
   private
     FAddress: string;
     FBookmarks: TSBookmarks;
-    FSession: TSSession;
+    FAccount: TSAccount;
     FXML: IXMLNode;
     function GetAddress(): string;
     function GetXML(): IXMLNode;
     procedure SetAddress(AAddress: string);
   protected
-    property Session: TSSession read FSession;
+    property Account: TSAccount read FAccount;
     property XML: IXMLNode read GetXML;
     procedure Assign(const Source: TSDesktop); virtual;
     procedure LoadFromXML(); virtual;
@@ -94,14 +94,14 @@ type
     ToolBarRefresh: Integer;
     property Address: string read GetAddress write SetAddress;
     property Bookmarks: TSBookmarks read FBookmarks;
-    constructor Create(const ASession: TSSession); overload; virtual;
+    constructor Create(const AAccount: TSAccount); overload; virtual;
     destructor Destroy(); override;
   end;
 
   TSConnection = class
   private
     FXML: IXMLNode;
-    FSession: TSSession;
+    FAccount: TSAccount;
     function GetXML(): IXMLNode;
   protected
     Section: string;
@@ -124,18 +124,18 @@ type
     SavePassword: Boolean;
     UseInformationSchema: Boolean;
     User: string;
-    property Session: TSSession read FSession;
+    property Account: TSAccount read FAccount;
     procedure Assign(const Source: TSConnection); virtual;
-    constructor Create(const ASession: TSSession); virtual;
+    constructor Create(const AAccount: TSAccount); virtual;
   end;
 
-  TSSession = class
+  TSAccount = class
   type
     TDefaultLimit = (dlOff = 0, dlRemember = 1, dlOn = 2);
     TEventProc = procedure (const ClassType: TClass) of object;
     TDesktop = record
       Control: Pointer;
-      SessionEventProc: TEventProc;
+      AccountEventProc: TEventProc;
     end;
   private
     FDesktop: TSDesktop;
@@ -146,7 +146,7 @@ type
     FDesktopCount: Integer;
     FDesktops: array of TDesktop;
     FXML: IXMLNode;
-    FSessions: TSSessions;
+    FAccounts: TSAccounts;
     Modified: Boolean;
     function GetBookmarksFilename(): TFileName;
     function GetDataPath(): TFileName;
@@ -171,7 +171,7 @@ type
     function GetIndex(): Integer;
     procedure LoadFromXML();
     procedure SaveToXML(); virtual;
-    procedure SessionEvent(const ClassType: TClass); virtual;
+    procedure AccountEvent(const ClassType: TClass); virtual;
     function ValidDatabaseName(const ADatabaseName: string): Boolean;
   public
     Startup: string;
@@ -193,9 +193,9 @@ type
     property Index: Integer read GetIndex;
     property LastLogin: TDateTime read FLastLogin write SetLastLogin;
     property Name: string read GetName write SetName;
-    property Sessions: TSSessions read FSessions;
-    procedure Assign(const Source: TSSession); virtual;
-    constructor Create(const ASessions: TSSessions; const AXML: IXMLNode = nil); virtual;
+    property Accounts: TSAccounts read FAccounts;
+    procedure Assign(const Source: TSAccount); virtual;
+    constructor Create(const AAccounts: TSAccounts; const AXML: IXMLNode = nil); virtual;
     destructor Destroy(); override;
     function GetDefaultDatabase(): string; virtual;
     procedure RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc); virtual;
@@ -204,45 +204,45 @@ type
     function FullAddress(const AAddress: string): string; virtual;
   end;
 
-  TSSessions = class(TList)
+  TSAccounts = class(TList)
   private
-    DefaultSessionName: string;
+    DefaultAccountName: string;
     FDBLogin: TLogin;
     FOnSQLError: TMySQLConnection.TErrorEvent;
     FXMLDocument: IXMLDocument;
     function GetDataPath(): TFileName;
-    function GetDefault(): TSSession;
+    function GetDefault(): TSAccount;
     function GetFilename(): TFileName;
     function GetXML(): IXMLNode;
-    function GetFSessions(Index: Integer): TSSession;
-    procedure SetDefault(const ASession: TSSession);
+    function GetFAccounts(Index: Integer): TSAccount;
+    procedure SetDefault(const AAccount: TSAccount);
   protected
     Section: string;
     property DataPath: TFileName read GetDataPath;
     property Filename: TFileName read GetFilename;
     property XML: IXMLNode read GetXML;
   public
-    property Default: TSSession read GetDefault write SetDefault;
+    property Default: TSAccount read GetDefault write SetDefault;
     property DBLogin: TLogin read FDBLogin;
     property OnSQLError: TMySQLConnection.TErrorEvent read FOnSQLError;
-    property Session[Index: Integer]: TSSession read GetFSessions; default;
-    procedure AddSession(const NewSession: TSSession); virtual;
-    procedure AppendIconsToImageList(const AImageList: TImageList; const ASession: TSSession = nil); virtual;
+    property Account[Index: Integer]: TSAccount read GetFAccounts; default;
+    procedure AddAccount(const NewAccount: TSAccount); virtual;
+    procedure AppendIconsToImageList(const AImageList: TImageList; const AAccount: TSAccount = nil); virtual;
     procedure Clear(); override;
     constructor Create(const ADBLogin: TLogin; const AOnSQLError: TMySQLConnection.TErrorEvent);
-    function DeleteSession(const ASession: TSSession): Boolean; virtual;
+    function DeleteAccount(const AAccount: TSAccount): Boolean; virtual;
     destructor Destroy(); override;
     procedure LoadFromXML(); virtual;
     procedure SaveToXML(); virtual;
-    function SessionByName(const SessionName: string): TSSession; virtual;
-    function SessionByURI(const AURI: string): TSSession; virtual;
-    procedure UpdateSession(const Session, NewSession: TSSession); virtual;
+    function AccountByName(const AccountName: string): TSAccount; virtual;
+    function AccountByURI(const AURI: string): TSAccount; virtual;
+    procedure UpdateAccount(const Account, NewAccount: TSAccount); virtual;
   end;
 
 function HostIsLocalhost(const Host: string): Boolean;
 
 var
-  Sessions: TSSessions;
+  Accounts: TSAccounts;
 
 implementation {***************************************************************}
 
@@ -402,7 +402,7 @@ begin
   if (Assigned(XML)) then
   begin
     Caption := XML.Attributes['name'];
-    if (Assigned(XMLNode(XML, 'uri'))) then FURI := Bookmarks.Desktop.Session.FullAddress(XMLNode(XML, 'uri').Text);
+    if (Assigned(XMLNode(XML, 'uri'))) then FURI := Bookmarks.Desktop.Account.FullAddress(XMLNode(XML, 'uri').Text);
   end;
 end;
 
@@ -411,7 +411,7 @@ begin
   XML.OwnerDocument.Options := XML.OwnerDocument.Options + [doNodeAutoCreate];
 
   XML.Attributes['name'] := Caption;
-  XMLNode(XML, 'uri').Text := Bookmarks.Desktop.Session.PackAddress(URI);
+  XMLNode(XML, 'uri').Text := Bookmarks.Desktop.Account.PackAddress(URI);
 
   XML.OwnerDocument.Options := XML.OwnerDocument.Options - [doNodeAutoCreate];
 end;
@@ -429,7 +429,7 @@ begin
     FBookmarks[Count - 1] := TSBookmark.Create(Self, XML.AddChild('bookmark'));
     FBookmarks[Count - 1].Assign(NewBookmark);
 
-    Desktop.Session.SessionEvent(ClassType);
+    Desktop.Account.AccountEvent(ClassType);
   end;
 end;
 
@@ -486,7 +486,7 @@ begin
 
     SetLength(FBookmarks, Count - 1);
 
-    Desktop.Session.SessionEvent(ClassType);
+    Desktop.Account.AccountEvent(ClassType);
   end;
 end;
 
@@ -504,7 +504,7 @@ end;
 
 function TSBookmarks.GetDataPath(): TFileName;
 begin
-  Result := Desktop.Session.DataPath;
+  Result := Desktop.Account.DataPath;
 end;
 
 function TSBookmarks.GetXML(): IXMLNode;
@@ -583,7 +583,7 @@ begin
     else
       FBookmarks[NewIndex] := TempBookmark;
 
-    Desktop.Session.SessionEvent(ClassType);
+    Desktop.Account.AccountEvent(ClassType);
   end;
 end;
 
@@ -606,7 +606,7 @@ begin
 
     Bookmark.Assign(NewBookmark);
 
-    Desktop.Session.SessionEvent(ClassType);
+    Desktop.Account.AccountEvent(ClassType);
   end;
 end;
 
@@ -617,7 +617,7 @@ var
   I: Integer;
   J: Integer;
 begin
-  Address := Session.FullAddress(Source.Session.PackAddress(Source.Address));
+  Address := Account.FullAddress(Source.Account.PackAddress(Source.Address));
   BlobHeight := Source.BlobHeight;
   BookmarksVisible := Source.BookmarksVisible;
   for I := 0 to Length(ContentWidths) - 1 do
@@ -636,14 +636,14 @@ begin
   ToolBarRefresh := Source.ToolBarRefresh;
 end;
 
-constructor TSDesktop.Create(const ASession: TSSession);
+constructor TSDesktop.Create(const AAccount: TSAccount);
 var
   I: Integer;
   J: Integer;
 begin
   inherited Create();
 
-  FSession := ASession;
+  FAccount := AAccount;
   FXML := nil;
 
   FAddress := '/';
@@ -679,13 +679,13 @@ end;
 
 function TSDesktop.GetAddress(): string;
 begin
-  Result := Session.FullAddress(FAddress);
+  Result := Account.FullAddress(FAddress);
 end;
 
 function TSDesktop.GetXML(): IXMLNode;
 begin
   if (not Assigned(FXML)) then
-    FXML := Session.DesktopXML;
+    FXML := Account.DesktopXML;
 
   Result := FXML;
 end;
@@ -827,7 +827,7 @@ end;
 
 procedure TSDesktop.SetAddress(AAddress: string);
 begin
-  FAddress := Session.PackAddress(AAddress);
+  FAddress := Account.PackAddress(AAddress);
 end;
 
 { TSConnection ****************************************************************}
@@ -851,11 +851,11 @@ begin
   User := Source.User;
 end;
 
-constructor TSConnection.Create(const ASession: TSSession);
+constructor TSConnection.Create(const AAccount: TSAccount);
 begin
   inherited Create();
 
-  FSession := ASession;
+  FAccount := AAccount;
   FXML := nil;
 
   Charset := '';
@@ -877,8 +877,8 @@ end;
 
 function TSConnection.GetXML(): IXMLNode;
 begin
-  if (not Assigned(FXML) and Assigned(Session.XML)) then
-    FXML := XMLNode(Session.XML, 'connection');
+  if (not Assigned(FXML) and Assigned(Account.XML)) then
+    FXML := XMLNode(Account.XML, 'connection');
 
   Result := FXML;
 end;
@@ -947,11 +947,11 @@ begin
   XMLNode(XML, 'user').Text := User;
 end;
 
-{ TSSession *******************************************************************}
+{ TSAccount *******************************************************************}
 
-procedure TSSession.Assign(const Source: TSSession);
+procedure TSAccount.Assign(const Source: TSAccount);
 begin
-  if (not Assigned(Sessions)) then FSessions := Source.Sessions;
+  if (not Assigned(Accounts)) then FAccounts := Source.Accounts;
 
   CacheSize := Source.CacheSize;
   DefaultLimit := Source.DefaultLimit;
@@ -971,9 +971,9 @@ begin
     Desktop.Assign(Source.Desktop);
 end;
 
-constructor TSSession.Create(const ASessions: TSSessions; const AXML: IXMLNode = nil);
+constructor TSAccount.Create(const AAccounts: TSAccounts; const AXML: IXMLNode = nil);
 begin
-  FSessions := ASessions;
+  FAccounts := AAccounts;
   FXML := AXML;
 
   FDesktopCount := 0;
@@ -995,7 +995,7 @@ begin
   FDesktop := nil;
 end;
 
-destructor TSSession.Destroy();
+destructor TSAccount.Destroy();
 begin
   if (Assigned(FDesktop)) then FDesktop.Free();
   Connection.Free();
@@ -1003,7 +1003,7 @@ begin
   inherited;
 end;
 
-function TSSession.Frame(): Pointer;
+function TSAccount.Frame(): Pointer;
 begin
   if (Length(FDesktops) = 0) then
     Result := nil
@@ -1011,7 +1011,7 @@ begin
     Result := FDesktops[0].Control;
 end;
 
-function TSSession.FullAddress(const AAddress: string): string;
+function TSAccount.FullAddress(const AAddress: string): string;
 var
   Buffer: array[0 .. INTERNET_MAX_URL_LENGTH] of Char;
   Size: Cardinal;
@@ -1042,7 +1042,7 @@ begin
     Result := 'mysql:' + Result;
 end;
 
-function TSSession.GetBookmarksFilename(): TFileName;
+function TSAccount.GetBookmarksFilename(): TFileName;
 begin
   if (not DirectoryExists(DataPath)) then
     Result := ''
@@ -1050,12 +1050,12 @@ begin
     Result := DataPath + 'Bookmarks.xml';
 end;
 
-function TSSession.GetDataPath(): TFileName;
+function TSAccount.GetDataPath(): TFileName;
 begin
-  Result := Sessions.DataPath + ReplaceStr(Name, '/', '_') + PathDelim;
+  Result := Accounts.DataPath + ReplaceStr(Name, '/', '_') + PathDelim;
 end;
 
-function TSSession.GetDefaultDatabase(): string;
+function TSAccount.GetDefaultDatabase(): string;
 var
   DatabaseNames: TCSVStrings;
   Found: Boolean;
@@ -1105,7 +1105,7 @@ begin
   end;
 end;
 
-function TSSession.GetDesktop(): TSDesktop;
+function TSAccount.GetDesktop(): TSDesktop;
 begin
   if (not Assigned(FDesktop) and Assigned(DesktopXML)) then
     FDesktop := TSDesktop.Create(Self);
@@ -1113,7 +1113,7 @@ begin
   Result := FDesktop;
 end;
 
-function TSSession.GetDesktopFilename(): TFileName;
+function TSAccount.GetDesktopFilename(): TFileName;
 begin
   if (not DirectoryExists(DataPath)) then
     Result := ''
@@ -1121,7 +1121,7 @@ begin
     Result := DataPath + 'Desktop.xml';
 end;
 
-function TSSession.GetDesktopXML(): IXMLNode;
+function TSAccount.GetDesktopXML(): IXMLNode;
 begin
   if (not Assigned(FDesktopXMLDocument)) then
   begin
@@ -1145,7 +1145,7 @@ begin
   Result := FDesktopXMLDocument.DocumentElement;
 end;
 
-function TSSession.GetHistoryFilename(): TFileName;
+function TSAccount.GetHistoryFilename(): TFileName;
 begin
   if (not DirectoryExists(DataPath)) then
     Result := ''
@@ -1153,7 +1153,7 @@ begin
     Result := DataPath + 'History.xml'
 end;
 
-function TSSession.GetHistoryXML(): IXMLNode;
+function TSAccount.GetHistoryXML(): IXMLNode;
 begin
   if (not Assigned(FHistoryXMLDocument)) then
   begin
@@ -1181,7 +1181,7 @@ begin
   Result := FHistoryXMLDocument.DocumentElement;
 end;
 
-function TSSession.GetIconFilename(): TFileName;
+function TSAccount.GetIconFilename(): TFileName;
 begin
   if (not DirectoryExists(DataPath)) then
     Result := ''
@@ -1189,12 +1189,12 @@ begin
     Result := DataPath + 'favicon.ico';
 end;
 
-function TSSession.GetIndex(): Integer;
+function TSAccount.GetIndex(): Integer;
 begin
-  Result := Sessions.IndexOf(Self);
+  Result := Accounts.IndexOf(Self);
 end;
 
-function TSSession.GetName(): string;
+function TSAccount.GetName(): string;
 begin
   if (FName = '') and (Assigned(XML)) then
     FName := XML.Attributes['name'];
@@ -1202,18 +1202,18 @@ begin
   Result := FName;
 end;
 
-function TSSession.GetXML(): IXMLNode;
+function TSAccount.GetXML(): IXMLNode;
 var
   I: Integer;
 begin
-  if (not Assigned(FXML) and Assigned(Sessions) and Assigned(Sessions.XML) and (FName <> '')) then
+  if (not Assigned(FXML) and Assigned(Accounts) and Assigned(Accounts.XML) and (FName <> '')) then
   begin
-    for I := 0 to Sessions.XML.ChildNodes.Count - 1 do
-      if ((Sessions.XML.ChildNodes[I].NodeName = 'session') and (lstrcmpi(PChar(string(Sessions.XML.ChildNodes[I].Attributes['name'])), PChar(FName)) = 0)) then
-        FXML := Sessions.XML.ChildNodes[I];
-    if (not Assigned(FXML) and (doNodeAutoCreate in Sessions.XML.OwnerDocument.Options)) then
+    for I := 0 to Accounts.XML.ChildNodes.Count - 1 do
+      if ((Accounts.XML.ChildNodes[I].NodeName = 'account') and (lstrcmpi(PChar(string(Accounts.XML.ChildNodes[I].Attributes['name'])), PChar(FName)) = 0)) then
+        FXML := Accounts.XML.ChildNodes[I];
+    if (not Assigned(FXML) and (doNodeAutoCreate in Accounts.XML.OwnerDocument.Options)) then
     begin
-      FXML := Sessions.XML.AddChild('session');
+      FXML := Accounts.XML.AddChild('account');
       FXML.Attributes['name'] := FName;
     end;
   end;
@@ -1221,7 +1221,7 @@ begin
   Result := FXML;
 end;
 
-procedure TSSession.LoadFromXML();
+procedure TSAccount.LoadFromXML();
 begin
   if (Assigned(XML)) then
   begin
@@ -1246,7 +1246,7 @@ begin
   end;
 end;
 
-function TSSession.PackAddress(const AAddress: string): string;
+function TSAccount.PackAddress(const AAddress: string): string;
 var
   URI: TUURI;
 begin
@@ -1271,14 +1271,14 @@ begin
   end;
 end;
 
-procedure TSSession.RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc);
+procedure TSAccount.RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc);
 begin
   SetLength(FDesktops, Length(FDesktops) + 1);
   FDesktops[Length(FDesktops) - 1].Control := AControl;
-  FDesktops[Length(FDesktops) - 1].SessionEventProc := AEventProc;
+  FDesktops[Length(FDesktops) - 1].AccountEventProc := AEventProc;
 end;
 
-procedure TSSession.SaveToXML();
+procedure TSAccount.SaveToXML();
 begin
   if (Assigned(XML)) then
   begin
@@ -1313,23 +1313,23 @@ begin
  end;
 end;
 
-procedure TSSession.SessionEvent(const ClassType: TClass);
+procedure TSAccount.AccountEvent(const ClassType: TClass);
 var
   I: Integer;
 begin
   for I := 0 to Length(FDesktops) - 1 do
-    if (Assigned(FDesktops[I].SessionEventProc)) then
-      FDesktops[I].SessionEventProc(ClassType);
+    if (Assigned(FDesktops[I].AccountEventProc)) then
+      FDesktops[I].AccountEventProc(ClassType);
 end;
 
-procedure TSSession.SetLastLogin(const ALastLogin: TDateTime);
+procedure TSAccount.SetLastLogin(const ALastLogin: TDateTime);
 begin
   FLastLogin := ALastLogin;
 
   Modified := True;
 end;
 
-procedure TSSession.SetName(const AName: string);
+procedure TSAccount.SetName(const AName: string);
 begin
   Assert(not Assigned(FXML) or (AName = FXML.Attributes['name']));
 
@@ -1337,7 +1337,7 @@ begin
   FName := AName;
 end;
 
-procedure TSSession.UnRegisterDesktop(const AControl: Pointer);
+procedure TSAccount.UnRegisterDesktop(const AControl: Pointer);
 var
   I: Integer;
   J: Integer;
@@ -1354,7 +1354,7 @@ begin
     end;
 end;
 
-function TSSession.ValidDatabaseName(const ADatabaseName: string): Boolean;
+function TSAccount.ValidDatabaseName(const ADatabaseName: string): Boolean;
 var
   S: string;
   TempDatabaseName: string;
@@ -1378,20 +1378,20 @@ begin
       end;
 end;
 
-{ TSSessions ******************************************************************}
+{ TSAccounts ******************************************************************}
 
-procedure TSSessions.AddSession(const NewSession: TSSession);
+procedure TSAccounts.AddAccount(const NewAccount: TSAccount);
 begin
-  if (not Assigned(SessionByName(NewSession.Name))) then
+  if (not Assigned(AccountByName(NewAccount.Name))) then
   begin
-    Add(TSSession.Create(Self));
-    Session[Count - 1].Assign(NewSession);
+    Add(TSAccount.Create(Self));
+    Account[Count - 1].Assign(NewAccount);
 
-    AppendIconsToImageList(Preferences.SmallImages, NewSession);
+    AppendIconsToImageList(Preferences.SmallImages, NewAccount);
   end;
 end;
 
-procedure TSSessions.AppendIconsToImageList(const AImageList: TImageList; const ASession: TSSession = nil);
+procedure TSAccounts.AppendIconsToImageList(const AImageList: TImageList; const AAccount: TSAccount = nil);
 var
   I: Integer;
   Icon: TIcon;
@@ -1401,68 +1401,68 @@ begin
     Icon := TIcon.Create();
 
     for I := 0 to Count - 1 do
-      if (not Assigned(ASession) or (Session[I] = ASession)) then
-        if (FileExists(Session[I].IconFilename)) then
+      if (not Assigned(AAccount) or (Account[I] = AAccount)) then
+        if (FileExists(Account[I].IconFilename)) then
           try
-            Icon.LoadFromFile(Session[I].IconFilename);
-            Session[I].ImageIndex := AImageList.Count;
+            Icon.LoadFromFile(Account[I].IconFilename);
+            Account[I].ImageIndex := AImageList.Count;
             ImageList_AddIcon(AImageList.Handle, Icon.Handle);
           except
-            Session[I].ImageIndex := -1;
+            Account[I].ImageIndex := -1;
           end
         else
-          Session[I].ImageIndex := -1;
+          Account[I].ImageIndex := -1;
 
     Icon.Free();
   end;
 end;
 
-procedure TSSessions.Clear();
+procedure TSAccounts.Clear();
 begin
   while (Count > 0) do
   begin
-    Session[0].Free();
+    Account[0].Free();
     Delete(0);
   end;
 
   inherited;
 end;
 
-constructor TSSessions.Create(const ADBLogin: TLogin; const AOnSQLError: TMySQLConnection.TErrorEvent);
+constructor TSAccounts.Create(const ADBLogin: TLogin; const AOnSQLError: TMySQLConnection.TErrorEvent);
 begin
   inherited Create();
 
   FDBLogin := ADBLogin;
   FOnSQLError := AOnSQLError;
 
-  Section := 'Sessions';
+  Section := 'Accounts';
 
   LoadFromXML();
 
   AppendIconsToImageList(Preferences.SmallImages);
 end;
 
-function TSSessions.DeleteSession(const ASession: TSSession): Boolean;
+function TSAccounts.DeleteAccount(const AAccount: TSAccount): Boolean;
 var
   I: Integer;
   Index: Integer;
 begin
-  if (FileExists(ASession.DesktopFilename)) then
-    DeleteFile(PChar(ASession.DesktopFilename));
-  if (FileExists(ASession.HistoryFilename)) then
-    DeleteFile(PChar(ASession.HistoryFilename));
-  if (FileExists(ASession.IconFilename)) then
-    DeleteFile(PChar(ASession.IconFilename));
-  if (DirectoryExists(ASession.DataPath)) then
-    RemoveDirectory(PChar(ASession.DataPath));
+  if (FileExists(AAccount.DesktopFilename)) then
+    DeleteFile(PChar(AAccount.DesktopFilename));
+  if (FileExists(AAccount.HistoryFilename)) then
+    DeleteFile(PChar(AAccount.HistoryFilename));
+  if (FileExists(AAccount.IconFilename)) then
+    DeleteFile(PChar(AAccount.IconFilename));
+  if (DirectoryExists(AAccount.DataPath)) then
+    RemoveDirectory(PChar(AAccount.DataPath));
 
   for I := XML.ChildNodes.Count - 1 downto 0 do
-    if ((XML.ChildNodes[I].NodeName = 'session') and (lstrcmpi(PChar(string(XML.ChildNodes[I].Attributes['name'])), PChar(ASession.Name)) = 0)) then
+    if ((XML.ChildNodes[I].NodeName = 'account') and (lstrcmpi(PChar(string(XML.ChildNodes[I].Attributes['name'])), PChar(AAccount.Name)) = 0)) then
       XML.ChildNodes.Remove(XML.ChildNodes[I]);
 
-  Index := IndexOf(ASession);
+  Index := IndexOf(AAccount);
 
-  Session[Index].Free();
+  Account[Index].Free();
   Delete(Index);
 
   SaveToXML();
@@ -1470,7 +1470,7 @@ begin
   Result := True;
 end;
 
-destructor TSSessions.Destroy();
+destructor TSAccounts.Destroy();
 begin
   SaveToXML();
 
@@ -1479,27 +1479,27 @@ begin
   inherited;
 end;
 
-function TSSessions.GetDataPath(): TFileName;
+function TSAccounts.GetDataPath(): TFileName;
 begin
-  Result := Preferences.UserPath + 'Sessions' + PathDelim;
+  Result := Preferences.UserPath + 'Accounts' + PathDelim;
 end;
 
-function TSSessions.GetDefault(): TSSession;
+function TSAccounts.GetDefault(): TSAccount;
 begin
-  Result := SessionByName(DefaultSessionName);
+  Result := AccountByName(DefaultAccountName);
 end;
 
-function TSSessions.GetFilename(): TFileName;
+function TSAccounts.GetFilename(): TFileName;
 begin
-  Result := DataPath + 'Sessions.xml';
+  Result := DataPath + 'Accounts.xml';
 end;
 
-function TSSessions.GetFSessions(Index: Integer): TSSession;
+function TSAccounts.GetFAccounts(Index: Integer): TSAccount;
 begin
-  Result := TSSession(Items[Index]);
+  Result := TSAccount(Items[Index]);
 end;
 
-function TSSessions.GetXML(): IXMLNode;
+function TSAccounts.GetXML(): IXMLNode;
 var
   I: Integer;
 begin
@@ -1512,7 +1512,7 @@ begin
       if (VersionStrToVersion(FXMLDocument.DocumentElement.Attributes['version']) < 10003) then
       begin
         for I := 0 to FXMLDocument.DocumentElement.ChildNodes.Count - 1 do
-          if ((FXMLDocument.DocumentElement.ChildNodes[I].NodeName = 'session')
+          if ((FXMLDocument.DocumentElement.ChildNodes[I].NodeName = 'account')
             and Assigned(XMLNode(FXMLDocument.DocumentElement.ChildNodes[I], 'connection/library/type'))
             and (UpperCase(XMLNode(FXMLDocument.DocumentElement.ChildNodes[I], 'connection/library/type').Text) = 'HTTPTUNNEL')
             and (LowerCase(XMLNode(FXMLDocument.DocumentElement.ChildNodes[I], 'connection/host').Text) = LOCAL_HOST)) then
@@ -1525,7 +1525,7 @@ begin
     begin
       FXMLDocument := NewXMLDocument();
       FXMLDocument.Encoding := 'utf-8';
-      FXMLDocument.Node.AddChild('sessions').Attributes['version'] := '1.0.3';
+      FXMLDocument.Node.AddChild('accounts').Attributes['version'] := '1.0.3';
     end;
 
     FXMLDocument.Options := FXMLDocument.Options - [doAttrNull, doNodeAutoCreate];
@@ -1534,7 +1534,7 @@ begin
   Result := FXMLDocument.DocumentElement;
 end;
 
-procedure TSSessions.LoadFromXML();
+procedure TSAccounts.LoadFromXML();
 var
   I: Integer;
   Index: Integer;
@@ -1548,37 +1548,37 @@ begin
 
     for I := 0 to XML.ChildNodes.Count - 1 do
     begin
-      if ((XML.ChildNodes[I].NodeName = 'session') and (XML.ChildNodes[I].Attributes['name'] <> '')) then
+      if ((XML.ChildNodes[I].NodeName = 'account') and (XML.ChildNodes[I].Attributes['name'] <> '')) then
       begin
         Index := TList(Self).Count;
         for J := TList(Self).Count - 1 downto 0 do
-          if (lstrcmpi(PChar(string(XML.ChildNodes[I].Attributes['name'])), PChar(Session[J].Name)) <= 0) then
+          if (lstrcmpi(PChar(string(XML.ChildNodes[I].Attributes['name'])), PChar(Account[J].Name)) <= 0) then
             Index := J;
 
-        Insert(Index, TSSession.Create(Self, XML.ChildNodes[I]));
-        Session[Index].LoadFromXML();
+        Insert(Index, TSAccount.Create(Self, XML.ChildNodes[I]));
+        Account[Index].LoadFromXML();
       end;
     end;
 
     if (Assigned(XMLNode(XML, 'default'))) then
-      DefaultSessionName := XMLNode(XML, 'default').Text;
+      DefaultAccountName := XMLNode(XML, 'default').Text;
 
     FXMLDocument.Options := FXMLDocument.Options + [doNodeAutoCreate];
   end;
 end;
 
-procedure TSSessions.SaveToXML();
+procedure TSAccounts.SaveToXML();
 var
   I: Integer;
 begin
   XML.OwnerDocument.Options := XML.OwnerDocument.Options + [doNodeAutoCreate];
 
   for I := 0 to Count - 1 do
-    if (Session[I].Modified) then
-      Session[I].SaveToXML();
+    if (Account[I].Modified) then
+      Account[I].SaveToXML();
 
   if (Assigned(XML)) then
-    XMLNode(XML, 'default').Text := DefaultSessionName;
+    XMLNode(XML, 'default').Text := DefaultAccountName;
 
   XML.OwnerDocument.Options := XML.OwnerDocument.Options - [doNodeAutoCreate];
 
@@ -1588,25 +1588,25 @@ begin
       FXMLDocument.SaveToFile(Filename);
 end;
 
-function TSSessions.SessionByName(const SessionName: string): TSSession;
+function TSAccounts.AccountByName(const AccountName: string): TSAccount;
 var
   I: Integer;
 begin
   Result := nil;
 
   for I:=0 to Count - 1 do
-    if (Session[I].Name = SessionName) then
-      Result := Session[I];
+    if (Account[I].Name = AccountName) then
+      Result := Account[I];
 end;
 
-function TSSessions.SessionByURI(const AURI: string): TSSession;
+function TSAccounts.AccountByURI(const AURI: string): TSAccount;
 var
   Found: Integer;
   Host: string;
   I: Integer;
   Name: string;
-  NewSession: TSSession;
-  NewSessionName: string;
+  NewAccount: TSAccount;
+  NewAccountName: string;
   URI: TUURI;
   URLComponents: TURLComponents;
 begin
@@ -1624,52 +1624,52 @@ begin
     begin
       ZeroMemory(@URLComponents, SizeOf(URLComponents));
       URLComponents.dwStructSize := SizeOf(URLComponents);
-      if ((Session[I].Connection.LibraryType <> ltHTTP) or (lstrcmpi(PChar(Session[I].Connection.Host), LOCAL_HOST) <> 0)) then
-        Host := LowerCase(Session[I].Connection.Host)
-      else if (Session[I].Connection.Host = LOCAL_HOST_NAMEDPIPE) then
+      if ((Account[I].Connection.LibraryType <> ltHTTP) or (lstrcmpi(PChar(Account[I].Connection.Host), LOCAL_HOST) <> 0)) then
+        Host := LowerCase(Account[I].Connection.Host)
+      else if (Account[I].Connection.Host = LOCAL_HOST_NAMEDPIPE) then
         Host := LOCAL_HOST
-      else if (InternetCrackUrl(PChar(Session[I].Connection.HTTPTunnelURI), Length(Session[I].Connection.HTTPTunnelURI), 0, URLComponents)) then
+      else if (InternetCrackUrl(PChar(Account[I].Connection.HTTPTunnelURI), Length(Account[I].Connection.HTTPTunnelURI), 0, URLComponents)) then
       begin
         Inc(URLComponents.dwHostNameLength);
         GetMem(URLComponents.lpszHostName, URLComponents.dwHostNameLength * SizeOf(URLComponents.lpszHostName[0]));
-        InternetCrackUrl(PChar(Session[I].Connection.HTTPTunnelURI), Length(Session[I].Connection.HTTPTunnelURI), 0, URLComponents);
+        InternetCrackUrl(PChar(Account[I].Connection.HTTPTunnelURI), Length(Account[I].Connection.HTTPTunnelURI), 0, URLComponents);
         SetString(Host, URLComponents.lpszHostName, URLComponents.dwHostNameLength);
         FreeMem(URLComponents.lpszHostName);
       end
       else
         Host := LOCAL_HOST;
-      if ((lstrcmpi(PChar(Host), PChar(URI.Host)) = 0) and (URI.Port = Session[I].Connection.Port)
-        and ((URI.Username = '') or (lstrcmpi(PChar(URI.Username), PChar(Session[I].Connection.User)) = 0))) then
+      if ((lstrcmpi(PChar(Host), PChar(URI.Host)) = 0) and (URI.Port = Account[I].Connection.Port)
+        and ((URI.Username = '') or (lstrcmpi(PChar(URI.Username), PChar(Account[I].Connection.User)) = 0))) then
       begin
-        Result := Session[I];
+        Result := Account[I];
         Inc(Found);
       end;
     end;
 
     if (Found = 0) then
     begin
-      NewSessionName := URI.Host;
+      NewAccountName := URI.Host;
       if (URI.Username <> '') then
-        NewSessionName := NewSessionName + ' (' + URI.Username + ')';
-      Name := NewSessionName;
+        NewAccountName := NewAccountName + ' (' + URI.Username + ')';
+      Name := NewAccountName;
       I := 1;
-      while (Assigned(SessionByName(Name))) do
+      while (Assigned(AccountByName(Name))) do
       begin
         Inc(I);
-        Name := NewSessionName + ' (' + IntToStr(I) + ')';
+        Name := NewAccountName + ' (' + IntToStr(I) + ')';
       end;
 
-      NewSession := TSSession.Create(Self);
-      NewSession.Name := Name;
-      NewSession.Connection.Host := URI.Host;
-      NewSession.Connection.Port := URI.Port;
-      NewSession.Connection.User := URI.Username;
-      NewSession.Connection.Password := URI.Password;
-      NewSession.Connection.Database := URI.Database;
-      AddSession(NewSession);
-      NewSession.Free();
+      NewAccount := TSAccount.Create(Self);
+      NewAccount.Name := Name;
+      NewAccount.Connection.Host := URI.Host;
+      NewAccount.Connection.Port := URI.Port;
+      NewAccount.Connection.User := URI.Username;
+      NewAccount.Connection.Password := URI.Password;
+      NewAccount.Connection.Database := URI.Database;
+      AddAccount(NewAccount);
+      NewAccount.Free();
 
-      Result := SessionByName(NewSessionName);
+      Result := AccountByName(NewAccountName);
 
       SaveToXML();
     end
@@ -1680,28 +1680,28 @@ begin
   end;
 end;
 
-procedure TSSessions.SetDefault(const ASession: TSSession);
+procedure TSAccounts.SetDefault(const AAccount: TSAccount);
 begin
-  if (not Assigned(ASession)) then
-    DefaultSessionName := ''
+  if (not Assigned(AAccount)) then
+    DefaultAccountName := ''
   else
-    DefaultSessionName := ASession.Name;
+    DefaultAccountName := AAccount.Name;
 end;
 
-procedure TSSessions.UpdateSession(const Session, NewSession: TSSession);
+procedure TSAccounts.UpdateAccount(const Account, NewAccount: TSAccount);
 begin
-  if (Assigned(Session) and Assigned(NewSession) and (not Assigned(SessionByName(NewSession.Name)) or (NewSession.Name = Session.Name))) then
+  if (Assigned(Account) and Assigned(NewAccount) and (not Assigned(AccountByName(NewAccount.Name)) or (NewAccount.Name = Account.Name))) then
   begin
-    if (Assigned(Session.XML)) then
-      Session.XML.Attributes['name'] := NewSession.Name;
+    if (Assigned(Account.XML)) then
+      Account.XML.Attributes['name'] := NewAccount.Name;
 
-    if (NewSession.Name <> Session.Name) then
-      if (DirectoryExists(Session.DataPath)) then
-        RenameFile(Session.DataPath, NewSession.DataPath);
+    if (NewAccount.Name <> Account.Name) then
+      if (DirectoryExists(Account.DataPath)) then
+        RenameFile(Account.DataPath, NewAccount.DataPath);
 
-    Session.Assign(NewSession);
+    Account.Assign(NewAccount);
 
-    AppendIconsToImageList(Preferences.SmallImages, NewSession);
+    AppendIconsToImageList(Preferences.SmallImages, NewAccount);
 
     SaveToXML();
   end;

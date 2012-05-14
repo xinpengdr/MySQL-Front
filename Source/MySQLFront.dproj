@@ -65,10 +65,16 @@
 			<DCCReference Include="VCL\Source\Forms_Ext.pas"/>
 			<DCCReference Include="fClient.pas"/>
 			<DCCReference Include="fPreferences.pas"/>
-			<DCCReference Include="fSession.pas"/>
+			<DCCReference Include="fAccount.pas"/>
 			<DCCReference Include="fTools.pas"/>
 			<DCCReference Include="fURI.pas"/>
 			<DCCReference Include="fBase.pas"/>
+			<DCCReference Include="fDAccount.pas">
+				<Form>DAccount</Form>
+			</DCCReference>
+			<DCCReference Include="fDAccounts.pas">
+				<Form>DAccounts</Form>
+			</DCCReference>
 			<DCCReference Include="fDBookmark.pas">
 				<Form>DBookmark</Form>
 			</DCCReference>
@@ -146,12 +152,6 @@
 			</DCCReference>
 			<DCCReference Include="fDServer.pas">
 				<Form>DServer</Form>
-			</DCCReference>
-			<DCCReference Include="fDSession.pas">
-				<Form>DSession</Form>
-			</DCCReference>
-			<DCCReference Include="fDSessions.pas">
-				<Form>DSessions</Form>
 			</DCCReference>
 			<DCCReference Include="fDSQLHelp.pas">
 				<Form>DSQLHelp</Form>

@@ -7,7 +7,7 @@ uses
   Dialogs, ComCtrls, ExtCtrls, StdCtrls, DB, ShDocVw, DBGrids,
   ODBC,
   ComCtrls_Ext, Forms_Ext, StdCtrls_Ext, ExtCtrls_Ext, Dialogs_Ext,
-  fClient, fSession, fBase, fTools, fCWorkbench;
+  fClient, fAccount, fBase, fTools, fCWorkbench;
 
 type
   TExportType = (etSQLFile, etTextFile, etExcelFile, etAccessFile, etSQLiteFile, etODBC, etHTMLFile, etXMLFile, etPrint);
@@ -722,7 +722,7 @@ begin
 
   if ((Change = ctState) and Assigned(Item) and Item.Selected) then
     repeat
-      DLogin.Session := nil;
+      DLogin.Account := nil;
       DLogin.Filename := Item.Caption;
       DLogin.Window := Window;
       Success := DLogin.Execute();

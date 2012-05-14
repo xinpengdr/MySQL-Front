@@ -1,10 +1,10 @@
-object DSessions: TDSessions
+object DAccounts: TDAccounts
   Left = 0
   Top = 0
   HelpContext = 1065
   BorderIcons = [biSystemMenu]
   BorderStyle = bsDialog
-  Caption = 'DSessions'
+  Caption = 'DAccounts'
   ClientHeight = 273
   ClientWidth = 337
   Color = clBtnFace
@@ -24,13 +24,13 @@ object DSessions: TDSessions
     273)
   PixelsPerInch = 106
   TextHeight = 13
-  object GSessions: TGroupBox_Ext
+  object GAccounts: TGroupBox_Ext
     Left = 8
     Top = 8
     Width = 322
     Height = 216
     Anchors = [akLeft, akTop, akRight, akBottom]
-    Caption = 'GSessions'
+    Caption = 'GAccounts'
     TabOrder = 0
     DesignSize = (
       322
@@ -62,7 +62,7 @@ object DSessions: TDSessions
       Anchors = [akLeft, akBottom]
       TabOrder = 3
     end
-    object PSessions: TPanel_Ext
+    object PAccounts: TPanel_Ext
       Left = 8
       Top = 16
       Width = 306
@@ -72,7 +72,7 @@ object DSessions: TDSessions
       BevelOuter = bvLowered
       ParentBackground = False
       TabOrder = 0
-      object FSessions: TListView_Ext
+      object FAccounts: TListView_Ext
         Left = 2
         Top = 2
         Width = 302
@@ -81,7 +81,7 @@ object DSessions: TDSessions
         BorderStyle = bsNone
         Columns = <
           item
-            Caption = 'Session'
+            Caption = 'Account'
             Width = 150
           end
           item
@@ -94,11 +94,11 @@ object DSessions: TDSessions
         PopupMenu = PopupMenu
         TabOrder = 0
         ViewStyle = vsReport
-        OnColumnClick = FSessionsColumnClick
-        OnCompare = FSessionsCompare
-        OnDblClick = FSessionsDblClick
-        OnResize = FSessionsResize
-        OnSelectItem = FSessionsSelectItem
+        OnColumnClick = FAccountsColumnClick
+        OnCompare = FAccountsCompare
+        OnDblClick = FAccountsDblClick
+        OnResize = FAccountsResize
+        OnSelectItem = FAccountsSelectItem
       end
     end
   end

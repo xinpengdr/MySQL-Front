@@ -6,7 +6,7 @@ uses
   Windows, Messages, SysUtils, Classes, Controls, Forms, WinCred,
   Dialogs, StdCtrls,
   Forms_Ext,
-  fClient, fBase, fSession, ExtCtrls, StdCtrls_Ext;
+  fClient, fBase, fAccount, ExtCtrls, StdCtrls_Ext;
 
 const
   CREDUI_MAX_MESSAGE_LENGTH        = 32767;
@@ -32,7 +32,7 @@ type
     FPassword: TEdit;
     FSavePassword: TCheckBox;
     FUsername: TEdit;
-    GSession: TGroupBox_Ext;
+    GAccount: TGroupBox_Ext;
     procedure FBSettingsClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormHide(Sender: TObject);
@@ -45,7 +45,7 @@ type
   public
     Filename: TFileName;
     Password: string;
-    Session: TSSession;
+    Account: TSAccount;
     Username: string;
     Window: TForm;
     function Execute(): Boolean;
@@ -58,7 +58,7 @@ implementation {***************************************************************}
 {$R *.dfm}
 
 uses
-  fDSession, fPreferences;
+  fDAccount, fPreferences;
 
 var
   FLogin: TDLogin;
@@ -86,7 +86,7 @@ procedure TDLogin.CMChangePreferences(var Message: TMessage);
 begin
   Caption := Preferences.LoadStr(49);
 
-  GSession.Caption := Preferences.LoadStr(34);
+  GAccount.Caption := Preferences.LoadStr(34);
   FLUsername.Caption := Preferences.LoadStr(561) + ':';
   FLPassword.Caption := Preferences.LoadStr(40) + ':';
   FSavePassword.Caption := Preferences.LoadStr(50);
@@ -104,7 +104,7 @@ var
   Save: BOOL;
   Flags: DWORD;
 begin
-  if (Assigned(Session) or not CheckWin32Version(5, 1)) then
+  if (Assigned(Account) or not CheckWin32Version(5, 1)) then
   begin
     Handle := 0;
     CredUIPromptForCredentials := nil;
@@ -149,11 +149,11 @@ end;
 
 procedure TDLogin.FBSettingsClick(Sender: TObject);
 begin
-  DSession.Session := Session;
-  DSession.Username := Trim(FUsername.Text);
-  DSession.Password := Trim(FPassword.Text);
-  DSession.ShowType := stLogin;
-  if (not DSession.Execute()) then
+  DAccount.Account := Account;
+  DAccount.Username := Trim(FUsername.Text);
+  DAccount.Password := Trim(FPassword.Text);
+  DAccount.ShowType := stLogin;
+  if (not DAccount.Execute()) then
     ActiveControl := FPassword
   else
     FormShow(Sender);
@@ -169,11 +169,11 @@ procedure TDLogin.FormHide(Sender: TObject);
 begin
   if (ModalResult = mrOk) then
   begin
-    if (Assigned(Session)) then
+    if (Assigned(Account)) then
     begin
-      Session.Connection.SavePassword := FSavePassword.Checked;
-      Session.Connection.User := Trim(FUsername.Text);
-      Session.Connection.Password := Trim(FPassword.Text);
+      Account.Connection.SavePassword := FSavePassword.Checked;
+      Account.Connection.User := Trim(FUsername.Text);
+      Account.Connection.Password := Trim(FPassword.Text);
     end;
     Username := Trim(FUsername.Text);
     Password := Trim(FPassword.Text);
@@ -182,7 +182,7 @@ end;
 
 procedure TDLogin.FormShow(Sender: TObject);
 begin
-  if (not Assigned(Session)) then
+  if (not Assigned(Account)) then
   begin
     FUsername.Text := 'Admin';
     FPassword.Text := '';
@@ -190,15 +190,15 @@ begin
   end
   else
   begin
-    FUsername.Text := Session.Connection.User;
-    FPassword.Text := Session.Connection.Password;
-    FSavePassword.Checked := Session.Connection.SavePassword;
+    FUsername.Text := Account.Connection.User;
+    FPassword.Text := Account.Connection.Password;
+    FSavePassword.Checked := Account.Connection.SavePassword;
   end;
-  FSavePassword.Visible := Assigned(Session);
-  FBSettings.Visible := Assigned(Session);
+  FSavePassword.Visible := Assigned(Account);
+  FBSettings.Visible := Assigned(Account);
 
   ActiveControl := FBCancel;
-  if (not Assigned(Session)) then
+  if (not Assigned(Account)) then
     ActiveControl := FUsername
   else
     ActiveControl := FPassword;

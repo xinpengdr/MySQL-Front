@@ -7,7 +7,7 @@ uses
   Graphics,
   DB,
   SQLUtils, MySQLDB,
-  fSession;
+  fAccount;
 
 type
   TMySQLEventType = (etUnknown, etSingle, etMultiple);
@@ -1442,7 +1442,7 @@ type
     FProcesses: TCProcesses;
     FPrefetch: Integer;
     FQueryBuilderResult: TCResultSet;
-    FSession: TSSession;
+    FAccount: TSAccount;
     FStati: TCStati;
     FSQLEditorResult: TCResultSet;
     FSQLMonitor: TMySQLMonitor;
@@ -1501,7 +1501,7 @@ type
     procedure FirstConnect(); overload; virtual;
     procedure FirstConnect(const AConnectionType: Integer; const ALibraryName: string; const AHost, AUser, APassword, ADatabase: string; const APort: Integer; const ACompression, AMultiThreading: Boolean); overload; virtual;
     constructor CreateConnection(); overload; virtual;
-    constructor CreateConnection(const ASession: TSSession); overload; virtual;
+    constructor CreateConnection(const AAccount: TSAccount); overload; virtual;
     function DatabaseByName(const DatabaseName: string): TCDatabase; virtual;
     procedure DecodeInterval(const Value: string; const IntervalType: TMySQLIntervalType; var Year, Month, Day, Quarter, Week, Hour, Minute, Second, MSec: Word); virtual;
     function DeleteDatabase(const Database: TCDatabase): Boolean; virtual;
@@ -1529,7 +1529,7 @@ type
     function PluginByName(const PluginName: string): TCPlugin; virtual;
     function ProcessById(const ProcessId: Integer): TCProcess; virtual;
     procedure Refresh(); virtual;
-    procedure RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc; const ASessionEventProc: TSSession.TEventProc); virtual;
+    procedure RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc; const AAccountEventProc: TSAccount.TEventProc); virtual;
     procedure RollbackTransaction(); override;
     procedure StartTransaction(); override;
     function StatusByName(const StatusName: string): TCStatus; virtual;
@@ -1563,7 +1563,7 @@ type
     property Plugins: TCPlugins read FPlugins;
     property Processes: TCProcesses read FProcesses;
     property QueryBuilderResult: TCResultSet read GetQueryBuilderResult;
-    property Session: TSSession read FSession;
+    property Account: TSAccount read FAccount;
     property SlowLog: string read GetSlowLog;
     property SlowLogActive: Boolean read GetSlowLogActive;
     property Stati: TCStati read FStati;
@@ -1585,8 +1585,8 @@ type
     property Client[Index: Integer]: TCClient read GetClient; default;
     property OnOpenConnection: TOpenConnectionEvent read FOnOpenConnection write FOnOpenConnection;
     constructor Create(); virtual;
-    function ClientBySession(const Session: TSSession; const DatabaseName: string): TCClient; virtual;
-    function CreateClient(const ASession: TSSession; out UserAbort: Boolean): TCClient;
+    function ClientByAccount(const Account: TSAccount; const DatabaseName: string): TCClient; virtual;
+    function CreateClient(const AAccount: TSAccount; out UserAbort: Boolean): TCClient;
     procedure ReleaseClient(var AClient: TCClient);
   end;
 
@@ -3335,7 +3335,7 @@ end;
 
 function TCTableDesktop.GetLimited(): Boolean;
 begin
-  case (Table.Database.Client.Session.DefaultLimit) of
+  case (Table.Database.Client.Account.DefaultLimit) of
     dlOff: Result := False;
     dlRemember:
       begin
@@ -3375,7 +3375,7 @@ end;
 
 procedure TCTableDesktop.SetLimited(const ALimited: Boolean);
 begin
-  if (Table.Database.Client.Session.DefaultLimit = dlRemember) then
+  if (Table.Database.Client.Account.DefaultLimit = dlRemember) then
     XMLNode(Table.DesktopXML, 'limit', True).Attributes['used'] := BoolToStr(ALimited, True);
 end;
 
@@ -3746,7 +3746,7 @@ begin
         Database.Client.CachedTables[J] := Database.Client.CachedTables[J + 1];
       SetLength(Database.Client.CachedTables, Length(Database.Client.CachedTables) - 1);
     end;
-  while ((CacheSize div (1024 * 1024) >= Database.Client.Session.CacheSize) and (Length(Database.Client.CachedTables) > 0)) do
+  while ((CacheSize div (1024 * 1024) >= Database.Client.Account.CacheSize) and (Length(Database.Client.CachedTables) > 0)) do
   begin
     CacheSize := 0;
     FreeAndNil(Database.Client.CachedTables[0].FDataSet);
@@ -8057,8 +8057,8 @@ begin
   if (not DataSet.IsEmpty()) then
   begin
     SetLength(DatabaseNames, 0);
-    if (Assigned(Client.Session)) then
-      CSVSplitValues(Client.Session.Connection.Database, ',', '"', DatabaseNames);
+    if (Assigned(Client.Account)) then
+      CSVSplitValues(Client.Account.Connection.Database, ',', '"', DatabaseNames);
 
     repeat
       if (not UseInformationSchema) then
@@ -8099,9 +8099,9 @@ begin
       end;
     until (not DataSet.FindNext());
   end
-  else if (Assigned(Client.Session) and (Client.Session.Connection.Database <> '')) then
+  else if (Assigned(Client.Account) and (Client.Account.Connection.Database <> '')) then
   begin
-    CSVSplitValues(Client.Session.Connection.Database, ',', '"', DatabaseNames);
+    CSVSplitValues(Client.Account.Connection.Database, ',', '"', DatabaseNames);
     for I := 0 to Length(DatabaseNames) - 1 do
     begin
       DatabaseName := DatabaseNames[I];
@@ -8159,10 +8159,10 @@ begin
 
   DesktopXML.ChildNodes.Remove(TCDatabase(AObject).DesktopXML);
 
-  if (Client.Session.Connection.Database <> '') then
+  if (Client.Account.Connection.Database <> '') then
   begin
     SetLength(Names, 0);
-    CSVSplitValues(Client.Session.Connection.Database, ',', '"', Names);
+    CSVSplitValues(Client.Account.Connection.Database, ',', '"', Names);
     for I := Length(Names) - 1 downto 0 do
       if (Names[I] = AObject.Name) then
       begin
@@ -8170,11 +8170,11 @@ begin
           Names[I] := Names[I + 1];
         SetLength(Names, Length(Names) - 1);
       end;
-    Client.Session.Connection.Database := '';
+    Client.Account.Connection.Database := '';
     for I := 0 to Length(Names) - 1 do
     begin
-      if (I > 0) then Client.Session.Connection.Database := Client.Session.Connection.Database + ',';
-      Client.Session.Connection.Database := Client.Session.Connection.Database + CSVEscape(Names[I]);
+      if (I > 0) then Client.Account.Connection.Database := Client.Account.Connection.Database + ',';
+      Client.Account.Connection.Database := Client.Account.Connection.Database + CSVEscape(Names[I]);
     end;
   end;
 
@@ -8196,8 +8196,8 @@ end;
 
 function TCDatabases.GetDesktopXML(): IXMLNode;
 begin
-  if (not Assigned(FDesktopXML) and Assigned(Client.Session.DesktopXML)) then
-    FDesktopXML := XMLNode(Client.Session.DesktopXML, 'browser/databases', True);
+  if (not Assigned(FDesktopXML) and Assigned(Client.Account.DesktopXML)) then
+    FDesktopXML := XMLNode(Client.Account.DesktopXML, 'browser/databases', True);
 
   Result := FDesktopXML;
 end;
@@ -8223,12 +8223,12 @@ begin
   else
   begin
     Result := 'SELECT * FROM ' + Client.EscapeIdentifier(information_schema) + '.' + Client.EscapeIdentifier('SCHEMATA');
-    if (Assigned(Client.Session) and (Client.Session.Connection.Database <> '')) then
+    if (Assigned(Client.Account) and (Client.Account.Connection.Database <> '')) then
     begin
       Result := Result + ' WHERE ' + Client.EscapeIdentifier('SCHEMA_NAME') + ' IN (';
 
       SetLength(DatabaseNames, 0);
-      CSVSplitValues(Client.Session.Connection.Database, ',', '"', DatabaseNames);
+      CSVSplitValues(Client.Account.Connection.Database, ',', '"', DatabaseNames);
       for I := 0 to Length(DatabaseNames) - 1 do
       begin
         if (I > 0) then Result := Result + ',';
@@ -8341,7 +8341,7 @@ begin
   begin
     if (Client.ServerVersion < 40101) then
     begin
-      if (Assigned(Client.Session) and (Client.Session.Connection.Charset = '')) then
+      if (Assigned(Client.Account) and (Client.Account.Connection.Charset = '')) then
         Client.Charset := Client.VariableByName('character_set').Value;
     end;
 
@@ -9886,8 +9886,8 @@ function TCClient.AddDatabase(const NewDatabase: TCDatabase): Boolean;
 begin
   Result := UpdateDatabase(nil, NewDatabase);
 
-  if (Result and (Session.Connection.Database <> '')) then
-    Session.Connection.Database := Session.Connection.Database + ',' + CSVEscape(NewDatabase.Name);
+  if (Result and (Account.Connection.Database <> '')) then
+    Account.Connection.Database := Account.Connection.Database + ',' + CSVEscape(NewDatabase.Name);
 end;
 
 function TCClient.AddHost(const NewHost: TCHost): Boolean;
@@ -9962,7 +9962,7 @@ begin
     if (not Assigned(FStati)) then FStati := TCStati.Create(Self);
     if (not Assigned(FUsers)) then FUsers := TCUsers.Create(Self);
 
-    if (Assigned(Session) and not Session.IconFetched and not FileExists(Session.IconFilename) and not HostIsLocalHost(Host)) then
+    if (Assigned(Account) and not Account.IconFetched and not FileExists(Account.IconFilename) and not HostIsLocalHost(Host)) then
     begin
       Internet := InternetOpen(PChar(Application.Title), INTERNET_OPEN_TYPE_PRECONFIG, nil, nil, 0);
 
@@ -10005,10 +10005,10 @@ begin
               Stream.Seek(0, soFromBeginning);
               Icon.LoadFromStream(Stream);
               Preferences.SmallImages.AddIcon(Icon);
-              Session.ImageIndex := Preferences.SmallImages.Count - 1;
+              Account.ImageIndex := Preferences.SmallImages.Count - 1;
 
-              if (ForceDirectories(ExtractFilePath(Session.IconFilename))) then
-                Icon.SaveToFile(Session.IconFilename);
+              if (ForceDirectories(ExtractFilePath(Account.IconFilename))) then
+                Icon.SaveToFile(Account.IconFilename);
               Icon.Free();
             end;
           except
@@ -10022,15 +10022,15 @@ begin
 
         InternetCloseHandle(Internet);
 
-        Session.IconFetched := True;
+        Account.IconFetched := True;
       end;
     end;
 
-    if (Assigned(Session)) then
+    if (Assigned(Account)) then
     begin
-      Session.LastLogin := Now();
+      Account.LastLogin := Now();
 
-      if ((ServerVersion > 40100) and not Session.ManualURLFetched) then
+      if ((ServerVersion > 40100) and not Account.ManualURLFetched) then
       begin
         BeginSilent();
 
@@ -10072,8 +10072,8 @@ begin
             Equal := I + 1;
 
         if (Copy(URL1, 1, 7) = 'http://') then
-          Session.ManualURL := Copy(URL1, 1, Equal - 1);
-        Session.ManualURLFetched := True;
+          Account.ManualURL := Copy(URL1, 1, Equal - 1);
+        Account.ManualURLFetched := True;
       end;
     end;
   end;
@@ -10378,7 +10378,7 @@ begin
   FInformationSchema := nil;
   FMaxAllowedPacket := 0;
   FPerformanceSchema := nil;
-  FSession := nil;
+  FAccount := nil;
   SetLength(CachedTables, 0);
 
   FSQLMonitor := nil;
@@ -10399,7 +10399,7 @@ begin
   RegisterClient(Self, ConnectChange);
 end;
 
-constructor TCClient.CreateConnection(const ASession: TSSession);
+constructor TCClient.CreateConnection(const AAccount: TSAccount);
 begin
   inherited Create(nil);
 
@@ -10407,7 +10407,7 @@ begin
   FInformationSchema := nil;
   FMaxAllowedPacket := 0;
   FPerformanceSchema := nil;
-  FSession := ASession;
+  FAccount := AAccount;
   FDesktop.Control := nil;
   FDesktop.EventProc := nil;
   SetLength(CachedTables, 0);
@@ -10839,26 +10839,26 @@ procedure TCClient.FirstConnect();
 begin
   Connected := False;
 
-  Asynchron := Session.Connection.ASynchron;
-  if (Session.Connection.Charset <> '') then
-    Charset := Session.Connection.Charset;
-  Compression := Session.Connection.Compression;
-  FDatabaseName := Session.GetDefaultDatabase();
-  case (Session.Connection.LibraryType) of
+  Asynchron := Account.Connection.ASynchron;
+  if (Account.Connection.Charset <> '') then
+    Charset := Account.Connection.Charset;
+  Compression := Account.Connection.Compression;
+  FDatabaseName := Account.GetDefaultDatabase();
+  case (Account.Connection.LibraryType) of
     ltBuiltIn: LibraryName := '';
-    ltDLL: LibraryName := Session.Connection.LibraryFilename;
-    ltHTTP: LibraryName := Session.Connection.HTTPTunnelURI;
+    ltDLL: LibraryName := Account.Connection.LibraryFilename;
+    ltHTTP: LibraryName := Account.Connection.HTTPTunnelURI;
   end;
-  Host := Session.Connection.Host;
-  LibraryType := Session.Connection.LibraryType;
+  Host := Account.Connection.Host;
+  LibraryType := Account.Connection.LibraryType;
   LoginPrompt := False;
-  FMultiStatements := Session.Connection.MultiStatements;
+  FMultiStatements := Account.Connection.MultiStatements;
   OnUpdateIndexDefs := UpdateIndexDefs;
-  Password := Session.Connection.Password;
-  Port := Session.Connection.Port;
-  FPrefetch := Session.Connection.Prefetch;
-  Startup := Session.Startup;
-  Username := Session.Connection.User;
+  Password := Account.Connection.Password;
+  Port := Account.Connection.Port;
+  FPrefetch := Account.Connection.Prefetch;
+  Startup := Account.Startup;
+  Username := Account.Connection.User;
 
   try
     Open();
@@ -11050,7 +11050,7 @@ end;
 
 function TCClient.GetUseInformationSchema(): Boolean;
 begin
-  Result := Assigned(Session) and Session.Connection.UseInformationSchema;
+  Result := Assigned(Account) and Account.Connection.UseInformationSchema;
 end;
 
 function TCClient.GetUserRights(): TCUserRight;
@@ -11366,7 +11366,7 @@ begin
   ExecuteEvent(Initialize);
 end;
 
-procedure TCClient.RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc; const ASessionEventProc: TSSession.TEventProc);
+procedure TCClient.RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc; const AAccountEventProc: TSAccount.TEventProc);
 begin
   {$IFOPT R+}
     if (Assigned(FDesktop.Control)) then raise Exception.Create(SDesktopAlreadyRegistered);
@@ -11375,7 +11375,7 @@ begin
   FDesktop.Control := AControl;
   FDesktop.EventProc := AEventProc;
 
-  Session.RegisterDesktop(AControl, ASessionEventProc);
+  Account.RegisterDesktop(AControl, AAccountEventProc);
 end;
 
 procedure TCClient.RollbackTransaction();
@@ -11552,7 +11552,7 @@ end;
 
 procedure TCClient.UnRegisterDesktop(const AControl: Pointer);
 begin
-  Session.UnRegisterDesktop(AControl);
+  Account.UnRegisterDesktop(AControl);
 
   FDesktop.Control := nil;
   FDesktop.EventProc := nil;
@@ -12039,19 +12039,19 @@ end;
 
 { TCClients ***************************************************************}
 
-function TCClients.ClientBySession(const Session: TSSession; const DatabaseName: string): TCClient;
+function TCClients.ClientByAccount(const Account: TSAccount; const DatabaseName: string): TCClient;
 var
   I: Integer;
 begin
   Result := nil;
 
   for I := 0 to Count - 1 do
-    if (Clients[I].Session = Session) and (Clients[I].DatabaseName = DatabaseName) then
+    if (Clients[I].Account = Account) and (Clients[I].DatabaseName = DatabaseName) then
       Result := Clients[I];
 
   if (not Assigned(Result)) then
     for I := 0 to Count - 1 do
-      if (Clients[I].Session = Session) then
+      if (Clients[I].Account = Account) then
         Result := Clients[I];
 end;
 
@@ -12062,17 +12062,17 @@ begin
   FOnOpenConnection := nil;
 end;
 
-function TCClients.CreateClient(const ASession: TSSession; out UserAbort: Boolean): TCClient;
+function TCClients.CreateClient(const AAccount: TSAccount; out UserAbort: Boolean): TCClient;
 var
   Client: TCClient;
 begin
   UserAbort := False;
 
-  Client := TCClient.CreateConnection(ASession);
+  Client := TCClient.CreateConnection(AAccount);
 
   if (Assigned(Client)) then
   begin
-    Client.OnSQLError := Sessions.OnSQLError;
+    Client.OnSQLError := Accounts.OnSQLError;
 
     if (Assigned(OnOpenConnection)) then
       OnOpenConnection(Client, UserAbort)
@@ -12085,7 +12085,7 @@ begin
     begin
       Add(Client);
 
-      ASession.DesktopCount := ASession.DesktopCount + 1;
+      AAccount.DesktopCount := AAccount.DesktopCount + 1;
     end;
   end;
 
@@ -12101,7 +12101,7 @@ procedure TCClients.ReleaseClient(var AClient: TCClient);
 var
   Index: Integer;
 begin
-  AClient.Session.DesktopCount := AClient.Session.DesktopCount - 1;
+  AClient.Account.DesktopCount := AClient.Account.DesktopCount - 1;
 
   Index := IndexOf(AClient);
 

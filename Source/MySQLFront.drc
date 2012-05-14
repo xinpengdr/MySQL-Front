@@ -1547,11 +1547,12 @@ END
 /* C:\Program Files (x86)\Embarcadero\RAD Studio\7.0\lib\dbctrls.res */
 /* C:\Program Files (x86)\Embarcadero\RAD Studio\7.0\lib\dbgrids.res */
 /* C:\Program Files (x86)\Embarcadero\RAD Studio\7.0\lib\extdlgs.res */
-/* C:\Users\Nils\Documents\MySQL-Front\Source\fDBookmark.dfm */
-/* C:\Users\Nils\Documents\MySQL-Front\Source\fDColumns.dfm */
 /* SynEdit\Resource\SynEdit.res */
 /* C:\Users\Nils\Documents\MySQL-Front\Source\fDDatabases.dfm */
-/* C:\Users\Nils\Documents\MySQL-Front\Source\fDSession.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDAccount.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDAccounts.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDBookmark.dfm */
+/* C:\Users\Nils\Documents\MySQL-Front\Source\fDColumns.dfm */
 /* C:\Users\Nils\Documents\MySQL-Front\Source\fDConnecting.dfm */
 /* C:\Users\Nils\Documents\MySQL-Front\Source\fDDatabase.dfm */
 /* C:\Users\Nils\Documents\MySQL-Front\Source\fDEvent.dfm */
@@ -1610,7 +1611,6 @@ END
 /* C:\Users\Nils\Documents\MySQL-Front\Source\fWForeignKeySelect.dfm */
 /* C:\Users\Nils\Documents\MySQL-Front\Source\fDSegment.dfm */
 /* C:\Users\Nils\Documents\MySQL-Front\Source\fFClient.dfm */
-/* C:\Users\Nils\Documents\MySQL-Front\Source\fDSessions.dfm */
 /* C:\Users\Nils\Documents\MySQL-Front\Source\fWWindow.dfm */
 /* C:\Users\Nils\Documents\MySQL-Front\Source\MySQLFront.res */
-/* C:\Users\Nils\AppData\Local\Temp\dtf7D80.tmp */
+/* C:\Users\Nils\AppData\Local\Temp\dtf95D6.tmp */

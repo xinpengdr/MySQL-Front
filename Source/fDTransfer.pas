@@ -6,7 +6,7 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, ComCtrls, ExtCtrls, StdCtrls, DB,
   ComCtrls_Ext, Forms_Ext, ExtCtrls_Ext,
-  fClient, fBase, MySQLDB, fSession, fTools, Menus,
+  fClient, fBase, MySQLDB, fAccount, fTools, Menus,
   StdCtrls_Ext;
 
 type
@@ -323,12 +323,12 @@ begin
     Top := Preferences.Transfer.Top;
   end;
 
-  SetLength(Connections, Sessions.Count);
-  for I := 0 to Sessions.Count - 1 do
+  SetLength(Connections, Accounts.Count);
+  for I := 0 to Accounts.Count - 1 do
   begin
-    if (Assigned(MasterClient) and (Sessions[I] = MasterClient.Session)) then
+    if (Assigned(MasterClient) and (Accounts[I] = MasterClient.Account)) then
       Connections[I] := MasterClient
-    else if (Assigned(MasterClient) and (Sessions[I] = MasterClient.Session)) then
+    else if (Assigned(MasterClient) and (Accounts[I] = MasterClient.Account)) then
       Connections[I] := MasterClient
     else
       Connections[I] := nil;
@@ -390,7 +390,7 @@ var
   I: Integer;
   Node: TTreeNode;
   SelectedNodes: TList;
-  SessionNode: TTreeNode;
+  AccountNode: TTreeNode;
   TableNames: TStringList;
   TableNode: TTreeNode;
 begin
@@ -402,16 +402,16 @@ begin
   FMaster.Items.Clear();
   FSlave.Items.Clear();
 
-  for I := 0 to Sessions.Count - 1 do
+  for I := 0 to Accounts.Count - 1 do
   begin
-    Node := FMaster.Items.Add(nil, Sessions[I].Name);
-    Node.ImageIndex := Sessions[I].ImageIndex;
+    Node := FMaster.Items.Add(nil, Accounts[I].Name);
+    Node.ImageIndex := Accounts[I].ImageIndex;
     if (Node.ImageIndex < 0) then Node.ImageIndex := iiServer;
     Node.SelectedIndex := Node.ImageIndex;
     Node.HasChildren := True;
 
-    Node := FSlave.Items.Add(nil, Sessions[I].Name);
-    Node.ImageIndex := Sessions[I].ImageIndex;
+    Node := FSlave.Items.Add(nil, Accounts[I].Name);
+    Node.ImageIndex := Accounts[I].ImageIndex;
     if (Node.ImageIndex < 0) then Node.ImageIndex := iiServer;
     Node.SelectedIndex := Node.ImageIndex;
     Node.HasChildren := True;
@@ -426,17 +426,17 @@ begin
     DatabaseNames.Text := ReplaceStr(MasterDatabaseName, ',', #13#10);
     TableNames.Text := ReplaceStr(MasterTableName, ',', #13#10);
 
-    SessionNode := FMaster.TopItem;
-    while (Assigned(SessionNode)) do
+    AccountNode := FMaster.TopItem;
+    while (Assigned(AccountNode)) do
     begin
-      if (SessionNode.Text = MasterClient.Session.Name) then
+      if (AccountNode.Text = MasterClient.Account.Name) then
       begin
         if (DatabaseNames.Count = 0) then
-          SessionNode.Selected := True
+          AccountNode.Selected := True
         else
         begin
-          SessionNode.Expand(False);
-          DatabaseNode := SessionNode.getFirstChild();
+          AccountNode.Expand(False);
+          DatabaseNode := AccountNode.getFirstChild();
           while (Assigned(DatabaseNode)) do
           begin
             if ((DatabaseNames.IndexOf(DatabaseNode.Text) < 0) or (TableNames.Count = 0)) then
@@ -456,7 +456,7 @@ begin
           end;
         end;
       end;
-      SessionNode := SessionNode.getNextSibling();
+      AccountNode := AccountNode.getNextSibling();
     end;
     if (SelectedNodes.Count = 1) then
     begin
@@ -473,16 +473,16 @@ begin
 
     if (Assigned(MasterClient)) then
     begin
-      SessionNode := FSlave.TopItem;
-      while (Assigned(SessionNode)) do
+      AccountNode := FSlave.TopItem;
+      while (Assigned(AccountNode)) do
       begin
-        if (SessionNode.Text = MasterClient.Session.Name) then
+        if (AccountNode.Text = MasterClient.Account.Name) then
         begin
-          SessionNode.Selected := True;
+          AccountNode.Selected := True;
           if (SlaveDatabaseName <> '') then
           begin
-            SessionNode.Expand(False);
-            DatabaseNode := SessionNode.getFirstChild();
+            AccountNode.Expand(False);
+            DatabaseNode := AccountNode.getFirstChild();
             while (Assigned(DatabaseNode)) do
             begin
               if (DatabaseNode.Text = SlaveDatabaseName) then
@@ -504,7 +504,7 @@ begin
             end;
           end;
         end;
-        SessionNode := SessionNode.getNextSibling();
+        AccountNode := AccountNode.getNextSibling();
       end;
     end;
     if (Assigned(FSlave.Selected) and FSlave.AutoExpand) then
@@ -662,10 +662,10 @@ begin
 
     if (not Assigned(Node.Parent)) then
     begin
-      I := Sessions.SessionByName(Node.Text).Index;
+      I := Accounts.AccountByName(Node.Text).Index;
       if ((0 <= I) and (I < Length(Connections)) and not Assigned(Connections[I])) then
       begin
-        Connections[I] := fClient.Clients.CreateClient(Sessions.SessionByName(Node.Text), B);
+        Connections[I] := fClient.Clients.CreateClient(Accounts.AccountByName(Node.Text), B);
         if (Assigned(Connections[I])) then
           Connections[I].OnConvertError := OnConvertError;
       end;
@@ -675,9 +675,9 @@ begin
     else
     begin
       if (not Assigned(Node.Parent.Parent)) then
-        Client := Connections[Sessions.SessionByName(Node.Parent.Text).Index]
+        Client := Connections[Accounts.AccountByName(Node.Parent.Text).Index]
       else
-        Client := Connections[Sessions.SessionByName(Node.Parent.Parent.Text).Index];
+        Client := Connections[Accounts.AccountByName(Node.Parent.Parent.Text).Index];
     end;
 
     if (Assigned(Client)) then
@@ -740,7 +740,7 @@ var
   //  J: Integer;
   //  MClient: TCClient;
   //  MDatabase: TCDatabase;
-  //  SSession: TSSession;
+  //  SAccount: TSAccount;
   ProgressInfos: TTools.TProgressInfos;
 begin
   FBForward.Enabled := False;
@@ -779,21 +779,21 @@ begin
         iiBaseTable:
           if (Assigned(Transfer)) then
             AddTable(
-              Connections[Sessions.SessionByName(FMaster.Items[I].Parent.Parent.Text).Index], FMaster.Items[I].Parent.Text, FMaster.Items[I].Text,
-              Connections[Sessions.SessionByName(FSlave.Selected.Parent.Text).Index], FSlave.Selected.Text, FMaster.Items[I].Text
+              Connections[Accounts.AccountByName(FMaster.Items[I].Parent.Parent.Text).Index], FMaster.Items[I].Parent.Text, FMaster.Items[I].Text,
+              Connections[Accounts.AccountByName(FSlave.Selected.Parent.Text).Index], FSlave.Selected.Text, FMaster.Items[I].Text
             );
         iiDatabase:
           begin
 // ToDo
-//            MClient := Connections[Sessions.SessionByName(FMaster.Items[I].Parent.Text).Index];
+//            MClient := Connections[Accounts.AccountByName(FMaster.Items[I].Parent.Text).Index];
 //            MDatabase := MClient.DatabaseByName(FMaster.Items[I].Text);
-//            SSession := Sessions.SessionByName(FSlave.Selected.Text);
+//            SAccount := Accounts.AccountByName(FSlave.Selected.Text);
 //            if (MDatabase.Initialize()) then
 //              for J := 0 to MDatabase.Tables.Count - 1 do
 //                if (Assigned(Transfer) and (MDatabase.Tables[J] is TCBaseTable) and Assigned(TCBaseTable(MDatabase.Tables[J]).Engine) and not TCBaseTable(MDatabase.Tables[J]).Engine.IsMerge and (RightStr(MDatabase.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
 //                  AddTable(
 //                    MClient, MDatabase.Name, MDatabase.Tables[J].Name,
-//                    Connections[SSession.Index], MDatabase.Name, MDatabase.Tables[J].Name
+//                    Connections[SAccount.Index], MDatabase.Name, MDatabase.Tables[J].Name
 //                  );
           end;
       end;

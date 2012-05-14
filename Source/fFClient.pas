@@ -13,7 +13,7 @@ uses
   acSQL92SynProvider, acQBBase, acAST, acQBEventMetaProvider, acMYSQLSynProvider, acSQLBuilderPlainText,
   ComCtrls_Ext, StdCtrls_Ext, Dialogs_Ext, Forms_Ext, ExtCtrls_Ext,
   MySQLDB, MySQLDBGrid,
-  fDExport, fDImport, fClient, fSession, fBase, fPreferences, fTools,
+  fDExport, fDImport, fClient, fAccount, fBase, fPreferences, fTools,
   fCWorkbench, ToolWin;
 
 const
@@ -770,7 +770,7 @@ type
     procedure FNavigatorEmptyExecute(Sender: TObject);
     procedure FNavigatorRefresh(const Event: TCClient.TEvent);
     procedure FormClientEvent(const Event: TCClient.TEvent);
-    procedure FormSessionEvent(const ClassType: TClass);
+    procedure FormAccountEvent(const ClassType: TClass);
     procedure FRTFShow(Sender: TObject);
     procedure FSQLHistoryRefresh(Sender: TObject);
     procedure FTextShow(Sender: TObject);
@@ -1077,7 +1077,7 @@ procedure TFClient.aBAddExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  DBookmark.Bookmarks := Client.Session.Desktop.Bookmarks;
+  DBookmark.Bookmarks := Client.Account.Desktop.Bookmarks;
   DBookmark.Bookmark := nil;
   DBookmark.NewCaption := AddressToCaption(Address);
   DBookmark.NewURI := Address;
@@ -1089,15 +1089,15 @@ procedure TFClient.aBDeleteExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  Client.Session.Desktop.Bookmarks.DeleteBookmark(Client.Session.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption));
+  Client.Account.Desktop.Bookmarks.DeleteBookmark(Client.Account.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption));
 end;
 
 procedure TFClient.aBEditExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  DBookmark.Bookmarks := Client.Session.Desktop.Bookmarks;
-  DBookmark.Bookmark := Client.Session.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption);
+  DBookmark.Bookmarks := Client.Account.Desktop.Bookmarks;
+  DBookmark.Bookmark := Client.Account.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption);
   DBookmark.Execute();
 end;
 
@@ -1105,7 +1105,7 @@ procedure TFClient.aBookmarkExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  Address := Client.Session.Desktop.Bookmarks.ByCaption(TMenuItem(Sender).Caption).URI;
+  Address := Client.Account.Desktop.Bookmarks.ByCaption(TMenuItem(Sender).Caption).URI;
 end;
 
 function TFClient.ActiveViewToParam(const AActiveView: TActiveView): Variant;
@@ -1593,7 +1593,7 @@ begin
       avDiagram: if (not (ttDiagram in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttDiagram); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
     end;
 
-    ToolBarData.Caption := Client.Session.Name + ' - ' + AddressToCaption(Address);
+    ToolBarData.Caption := Client.Account.Name + ' - ' + AddressToCaption(Address);
 
     ToolBarData.ActiveView := ActiveView;
 
@@ -1706,13 +1706,13 @@ begin
 
   if (URI.Scheme <> 'mysql') then
     AllowChange := False
-  else if (lstrcmpi(PChar(URI.Host), PChar(Client.Session.Connection.Host)) <> 0) then
+  else if (lstrcmpi(PChar(URI.Host), PChar(Client.Account.Connection.Host)) <> 0) then
     AllowChange := False
-  else if (URI.Port <> Client.Session.Connection.Port) then
+  else if (URI.Port <> Client.Account.Connection.Port) then
     AllowChange := False
-  else if ((URI.Username <> '') and (lstrcmpi(PChar(URI.Username), PChar(Client.Session.Connection.User)) <> 0)) then
+  else if ((URI.Username <> '') and (lstrcmpi(PChar(URI.Username), PChar(Client.Account.Connection.User)) <> 0)) then
     AllowChange := False
-  else if ((URI.Password <> '') and (URI.Password <> Client.Session.Connection.Password)) then
+  else if ((URI.Password <> '') and (URI.Password <> Client.Account.Connection.Password)) then
     AllowChange := False
   else
   begin
@@ -1833,13 +1833,13 @@ begin
 
   if (URI.Scheme <> 'mysql') then
     Result := nil
-  else if (lstrcmpi(PChar(URI.Host), PChar(Client.Session.Connection.Host)) <> 0) then
+  else if (lstrcmpi(PChar(URI.Host), PChar(Client.Account.Connection.Host)) <> 0) then
     Result := nil
-  else if (URI.Port <> Client.Session.Connection.Port) then
+  else if (URI.Port <> Client.Account.Connection.Port) then
     Result := nil
-  else if ((URI.Username <> '') and (lstrcmpi(PChar(URI.Username), PChar(Client.Session.Connection.User)) <> 0)) then
+  else if ((URI.Username <> '') and (lstrcmpi(PChar(URI.Username), PChar(Client.Account.Connection.User)) <> 0)) then
     Result := nil
-  else if ((URI.Password <> '') and (URI.Password <> Client.Session.Connection.Password)) then
+  else if ((URI.Password <> '') and (URI.Password <> Client.Account.Connection.Password)) then
     Result := nil
   else
   begin
@@ -2803,8 +2803,8 @@ begin
 
   if (Assigned(DExport.DBGrid) or (DExport.DBObjects.Count >= 1)) then
   begin
-    if (Assigned(Client) and (Client.Session.Connection.Charset <> '')) then
-      CodePage := Client.CharsetToCodePage(Client.Session.Connection.Charset)
+    if (Assigned(Client) and (Client.Account.Connection.Charset <> '')) then
+      CodePage := Client.CharsetToCodePage(Client.Account.Connection.Charset)
     else if ((DExport.DBObjects.Count = 1) and (TObject(DExport.DBObjects[0]) is TCBaseTable)) then
       CodePage := Client.CharsetToCodePage(TCBaseTable(DExport.DBObjects[0]).DefaultCharset)
     else if (Assigned(Database)) then
@@ -2885,7 +2885,7 @@ begin
       if (Assigned(DExport.DBGrid)) then
         SaveDialog.FileName := Preferences.LoadStr(362) + '.' + SaveDialog.DefaultExt
       else if (not Assigned(Database)) then
-        SaveDialog.FileName := TCDBObject(DExport.DBObjects[0]).Database.Client.Session.Name + '.' + SaveDialog.DefaultExt
+        SaveDialog.FileName := TCDBObject(DExport.DBObjects[0]).Database.Client.Account.Name + '.' + SaveDialog.DefaultExt
       else if (DExport.DBObjects.Count = 1) then
         SaveDialog.FileName := TCDBObject(DExport.DBObjects[0]).Name + '.' + SaveDialog.DefaultExt
       else
@@ -3240,7 +3240,7 @@ begin
         DSQLHelp.Title := DataSet.FieldByName('name').AsString;
         DSQLHelp.Description := Trim(DataSet.FieldByName('description').AsString);
         DSQLHelp.Example := Trim(DataSet.FieldByName('example').AsString);
-        DSQLHelp.ManualURL := Client.Session.ManualURL;
+        DSQLHelp.ManualURL := Client.Account.ManualURL;
         DSQLHelp.Refresh();
       end;
     end;
@@ -3329,7 +3329,7 @@ begin
   else if (Window.ActiveControl = FBookmarks) then
   begin
     if (Assigned(FBookmarks.Selected)) then
-      Window.Perform(CM_ADDTAB, 0, LPARAM(PChar(string(Client.Session.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption).URI))));
+      Window.Perform(CM_ADDTAB, 0, LPARAM(PChar(string(Client.Account.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption).URI))));
   end;
 end;
 
@@ -3342,7 +3342,7 @@ begin
   else if (Window.ActiveControl = FBookmarks) then
   begin
     if (Assigned(FBookmarks.Selected)) then
-      ShellExecute(Application.Handle, 'open', PChar(TFileName(Application.ExeName)), PChar(string(Client.Session.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption).URI)), '', SW_SHOW);
+      ShellExecute(Application.Handle, 'open', PChar(TFileName(Application.ExeName)), PChar(string(Client.Account.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption).URI)), '', SW_SHOW);
   end;
 end;
 
@@ -4045,11 +4045,11 @@ begin
         if (Assigned(Database) and Assigned(Database.Workbench) and TWWorkbench(Database.Workbench).Modified) then
         begin
           try
-            ForceDirectories(ExtractFilePath(Client.Session.DataPath + Database.Name));
+            ForceDirectories(ExtractFilePath(Client.Account.DataPath + Database.Name));
           except
-            raise EInOutError.Create(SysErrorMessage(GetLastError()) + '  (' + Client.Session.DataPath + Database.Name + ')');
+            raise EInOutError.Create(SysErrorMessage(GetLastError()) + '  (' + Client.Account.DataPath + Database.Name + ')');
           end;
-          TWWorkbench(Database.Workbench).SaveToFile(Client.Session.DataPath + Database.Name + PathDelim + 'Diagram.xml');
+          TWWorkbench(Database.Workbench).SaveToFile(Client.Account.DataPath + Database.Name + PathDelim + 'Diagram.xml');
         end;
       end;
 
@@ -4286,25 +4286,25 @@ procedure TFClient.CMPostShow(var Message: TMessage);
 var
   URI: TUURI;
 begin
-  PNavigator.Visible := Client.Session.Desktop.NavigatorVisible;
-  PBookmarks.Visible := Client.Session.Desktop.BookmarksVisible;
-  PSQLHistory.Visible := Client.Session.Desktop.SQLHistoryVisible; if (PSQLHistory.Visible) then FSQLHistoryRefresh(nil);
+  PNavigator.Visible := Client.Account.Desktop.NavigatorVisible;
+  PBookmarks.Visible := Client.Account.Desktop.BookmarksVisible;
+  PSQLHistory.Visible := Client.Account.Desktop.SQLHistoryVisible; if (PSQLHistory.Visible) then FSQLHistoryRefresh(nil);
   PSideBar.Visible := PNavigator.Visible or PBookmarks.Visible or PSQLHistory.Visible; SSideBar.Visible := PSideBar.Visible;
 
-  PSideBar.Width := Client.Session.Desktop.SelectorWitdth;
+  PSideBar.Width := Client.Account.Desktop.SelectorWitdth;
 
   FSQLEditor.Options := FSQLEditor.Options + [eoScrollPastEol];  // Speed up the performance
-  FSQLEditor.Text := Client.Session.Desktop.EditorContent;
+  FSQLEditor.Text := Client.Account.Desktop.EditorContent;
   if (Length(FSQLEditor.Lines.Text) < LargeSQLScriptSize) then
     FSQLEditor.Options := FSQLEditor.Options - [eoScrollPastEol]  // Slow down the performance on large content
   else
     FSQLEditor.Options := FSQLEditor.Options + [eoScrollPastEol];  // Speed up the performance
-  PResult.Height := Client.Session.Desktop.DataHeight;
+  PResult.Height := Client.Account.Desktop.DataHeight;
   PResultHeight := PResult.Height;
-  PBlob.Height := Client.Session.Desktop.BlobHeight;
+  PBlob.Height := Client.Account.Desktop.BlobHeight;
 
-  PLog.Height := Client.Session.Desktop.LogHeight;
-  PLog.Visible := Client.Session.Desktop.LogVisible; SLog.Visible := PLog.Visible;
+  PLog.Height := Client.Account.Desktop.LogHeight;
+  PLog.Visible := Client.Account.Desktop.LogVisible; SLog.Visible := PLog.Visible;
 
   aVBlobText.Checked := True;
 
@@ -4321,7 +4321,7 @@ begin
     Address := Param
   else if (Param <> '') then
   begin
-    URI := TUURI.Create(Client.Session.Desktop.Address);
+    URI := TUURI.Create(Client.Account.Desktop.Address);
     URI.Param['view'] := 'editor';
     URI.Table := '';
     URI.Param['system'] := Null;
@@ -4332,7 +4332,7 @@ begin
     URI.Free();
   end
   else
-    Address := Client.Session.Desktop.Address;
+    Address := Client.Account.Desktop.Address;
   Param := '';
 
   if (PSideBar.Visible) then
@@ -4524,13 +4524,13 @@ end;
 procedure TFClient.CrashRescue();
 begin
   if ((SQLEditor.Filename <> '') and not FSQLEditor.Modified) then
-    Client.Session.Desktop.EditorContent := ''
+    Client.Account.Desktop.EditorContent := ''
   else
-    Client.Session.Desktop.EditorContent := FSQLEditor.Text;
+    Client.Account.Desktop.EditorContent := FSQLEditor.Text;
 
   try
     if (Assigned(Workbench)) then
-      Workbench.SaveToFile(Client.Session.DataPath + Workbench.Name + PathDelim + 'Diagram.xml');
+      Workbench.SaveToFile(Client.Account.DataPath + Workbench.Name + PathDelim + 'Diagram.xml');
   except
   end;
 end;
@@ -4766,13 +4766,13 @@ begin
   SelectedItem := '';
 
   if (Assigned(AClient)) then
-    AClient.RegisterDesktop(Self, FormClientEvent, FormSessionEvent);
+    AClient.RegisterDesktop(Self, FormClientEvent, FormAccountEvent);
 
   Wanted := TWanted.Create(Self);
 
   ToolBarData.Addresses := TStringList.Create();
   ToolBarData.AddressMRU := TMRUList.Create(0);
-  ToolBarData.AddressMRU.Assign(Client.Session.Desktop.AddressMRU);
+  ToolBarData.AddressMRU.Assign(Client.Account.Desktop.AddressMRU);
   FilterMRU := TMRUList.Create(100);
   ToolBarData.CurrentAddress := -1;
 
@@ -4782,7 +4782,7 @@ begin
   else
     SyntaxProvider.IdentCaseSens := icsNonSensitive;
 
-  FormSessionEvent(Client.Session.Desktop.Bookmarks.ClassType);
+  FormAccountEvent(Client.Account.Desktop.Bookmarks.ClassType);
 
 
   CloseButton := TPicture.Create();
@@ -5234,31 +5234,31 @@ begin
   SetDataSource();
 
   if ((SQLEditor.Filename <> '') and not FSQLEditor.Modified) then
-    Client.Session.Desktop.EditorContent := ''
+    Client.Account.Desktop.EditorContent := ''
   else
-    Client.Session.Desktop.EditorContent := FSQLEditor.Text;
-  Client.Session.Desktop.NavigatorVisible := PNavigator.Visible;
-  Client.Session.Desktop.BookmarksVisible := PBookmarks.Visible;
-  Client.Session.Desktop.SQLHistoryVisible := PSQLHistory.Visible;
-  Client.Session.Desktop.SelectorWitdth := PSideBar.Width;
-  Client.Session.Desktop.LogVisible := PLog.Visible;
-  Client.Session.Desktop.LogHeight := PLog.Height;
+    Client.Account.Desktop.EditorContent := FSQLEditor.Text;
+  Client.Account.Desktop.NavigatorVisible := PNavigator.Visible;
+  Client.Account.Desktop.BookmarksVisible := PBookmarks.Visible;
+  Client.Account.Desktop.SQLHistoryVisible := PSQLHistory.Visible;
+  Client.Account.Desktop.SelectorWitdth := PSideBar.Width;
+  Client.Account.Desktop.LogVisible := PLog.Visible;
+  Client.Account.Desktop.LogHeight := PLog.Height;
   URI := TUURI.Create(Address);
   URI.Param['file'] := '';
-  Client.Session.Desktop.Address := URI.Address;
+  Client.Account.Desktop.Address := URI.Address;
   FreeAndNil(URI);
   if (ToolBarData.RefreshAll) then
-    Client.Session.Desktop.ToolBarRefresh := 1
+    Client.Account.Desktop.ToolBarRefresh := 1
   else
-    Client.Session.Desktop.ToolBarRefresh := 0;
+    Client.Account.Desktop.ToolBarRefresh := 0;
 
   if (PResult.Align <> alBottom) then
-    Client.Session.Desktop.DataHeight := PResultHeight
+    Client.Account.Desktop.DataHeight := PResultHeight
   else
-    Client.Session.Desktop.DataHeight := PResult.Height;
-  Client.Session.Desktop.BlobHeight := PBlob.Height;
+    Client.Account.Desktop.DataHeight := PResult.Height;
+  Client.Account.Desktop.BlobHeight := PBlob.Height;
 
-  Client.Session.Desktop.AddressMRU.Assign(ToolBarData.AddressMRU);
+  Client.Account.Desktop.AddressMRU.Assign(ToolBarData.AddressMRU);
 
   Client.UnRegisterDesktop(Self);
   Clients.ReleaseClient(Client);
@@ -5350,7 +5350,7 @@ var
 begin
   TargetItem := TListView(Sender).GetItemAt(X, Y);
 
-  Client.Session.Desktop.Bookmarks.MoveBookmark(Client.Session.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption), FBookmarks.Items.IndexOf(TargetItem));
+  Client.Account.Desktop.Bookmarks.MoveBookmark(Client.Account.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption), FBookmarks.Items.IndexOf(TargetItem));
 end;
 
 procedure TFClient.FBookmarksDragOver(Sender, Source: TObject; X,
@@ -7266,10 +7266,10 @@ procedure TFClient.FListRefresh(Sender: TObject);
     I, Index, ContentWidth: Integer;
   begin
     Index := ContentWidthIndexFromImageIndex(SelectedImageIndex);
-    if ((0 <= Index) and (Index < Length(Client.Session.Desktop.ContentWidths))) then
-      for I := 0 to Min(FList.Columns.Count, Length(Client.Session.Desktop.ContentWidths[Index])) - 1 do
+    if ((0 <= Index) and (Index < Length(Client.Account.Desktop.ContentWidths))) then
+      for I := 0 to Min(FList.Columns.Count, Length(Client.Account.Desktop.ContentWidths[Index])) - 1 do
       begin
-        ContentWidth := Client.Session.Desktop.ContentWidths[Index][I];
+        ContentWidth := Client.Account.Desktop.ContentWidths[Index][I];
         if (ContentWidth <= 10) then
           FList.Column[I].Width := 100
         else
@@ -8756,18 +8756,18 @@ begin
   end;
 end;
 
-procedure TFClient.FormSessionEvent(const ClassType: TClass);
+procedure TFClient.FormAccountEvent(const ClassType: TClass);
 var
   I: Integer;
   NewListItem: TListItem;
 begin
-  if (ClassType = Client.Session.Desktop.Bookmarks.ClassType) then
+  if (ClassType = Client.Account.Desktop.Bookmarks.ClassType) then
   begin
     FBookmarks.Items.Clear();
-    for I := 0 to Client.Session.Desktop.Bookmarks.Count - 1 do
+    for I := 0 to Client.Account.Desktop.Bookmarks.Count - 1 do
     begin
       NewListItem := FBookmarks.Items.Add();
-      NewListItem.Caption := Client.Session.Desktop.Bookmarks[I].Caption;
+      NewListItem.Caption := Client.Account.Desktop.Bookmarks[I].Caption;
       NewListItem.ImageIndex := 73;
     end;
 
@@ -9264,8 +9264,8 @@ begin
 
     if (FSQLHistory.Items.Count > 0) then
       XML := IXMLNode(FSQLHistory.Items[FSQLHistory.Items.Count - 1].Data)
-    else if (Client.Session.HistoryXML.ChildNodes.Count > 0) then
-      XML := Client.Session.HistoryXML.ChildNodes[0]
+    else if (Client.Account.HistoryXML.ChildNodes.Count > 0) then
+      XML := Client.Account.HistoryXML.ChildNodes[0]
     else
       XML := nil;
 
@@ -9449,7 +9449,7 @@ var
   DatabaseName: string;
   Index: Integer;
   S: string;
-  SessionName: string;
+  AccountName: string;
   Table: TCBaseTable;
   TableName: string;
   Values: TStringList;
@@ -9473,13 +9473,13 @@ begin
       S := Values[0];
 
       if (Pos('.', S) = 0) then
-        SessionName := ''
+        AccountName := ''
       else
       begin
         Index := Pos('.', S);
         while ((Index > 1) and (S[Index - 1] = '\')) do
           Inc(Index, Pos('.', Copy(S, Index + 1, Length(S) - Index)));
-        SessionName := ReplaceStr(Copy(S, 1, Index - 1), '\.', '.');
+        AccountName := ReplaceStr(Copy(S, 1, Index - 1), '\.', '.');
         Delete(S, 1, Index);
       end;
       if (Pos('.', S) = 0) then
@@ -9496,7 +9496,7 @@ begin
 
       Table := Client.DatabaseByName(SelectedDatabase).BaseTableByName(TableName);
 
-      aEPasteEnabled := (SessionName = Client.Session.Name) and (DatabaseName = SelectedDatabase)
+      aEPasteEnabled := (AccountName = Client.Account.Name) and (DatabaseName = SelectedDatabase)
         and Assigned(Table) and Assigned(Table.Engine) and Table.Engine.ForeignKeyAllowed
         and not Assigned(Workbench.TableByCaption(Table.Name));
     end;
@@ -9670,7 +9670,7 @@ var
   Index: Integer;
   MenuItem: TMenuItem;
   S: string;
-  SessionName: string;
+  AccountName: string;
   Table: TCBaseTable;
   TableName: string;
   Values: TStringList;
@@ -9697,13 +9697,13 @@ begin
       S := Values[0];
 
       if (Pos('.', S) = 0) then
-        SessionName := ''
+        AccountName := ''
       else
       begin
         Index := Pos('.', S);
         while ((Index > 1) and (S[Index - 1] = '\')) do
           Inc(Index, Pos('.', Copy(S, Index + 1, Length(S) - Index)));
-        SessionName := ReplaceStr(Copy(S, 1, Index - 1), '\.', '.');
+        AccountName := ReplaceStr(Copy(S, 1, Index - 1), '\.', '.');
         Delete(S, 1, Index);
       end;
       if (Pos('.', S) = 0) then
@@ -10308,7 +10308,7 @@ begin
   Wanted.Clear();
 
   if (Assigned(FBookmarks.Selected)) then
-    Address := Client.Session.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption).URI;
+    Address := Client.Account.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption).URI;
 end;
 
 procedure TFClient.MBookmarksPopup(Sender: TObject);
@@ -10997,11 +10997,11 @@ var
   URI: TUURI;
 begin
   URI := TUURI.Create('');
-  URI.Host := Client.Session.Connection.Host;
-  if (Client.Session.Connection.Port <> MYSQL_PORT) then
-    URI.Port := Client.Session.Connection.Port;
-  URI.Username := Client.Session.Connection.User;
-  URI.Password := Client.Session.Connection.Password;
+  URI.Host := Client.Account.Connection.Host;
+  if (Client.Account.Connection.Port <> MYSQL_PORT) then
+    URI.Port := Client.Account.Connection.Port;
+  URI.Username := Client.Account.Connection.User;
+  URI.Password := Client.Account.Connection.Password;
   if (Filename = '') then
   begin
     URI.Database := DatabaseName;
@@ -11269,17 +11269,17 @@ begin
   if (StringList.Count > 0) then
   begin
     SourceURI := TUURI.Create(StringList.Values['Address']);
-    SourceClient := Clients.ClientBySession(Sessions.SessionByURI(SourceURI.Address), SourceURI.Database);
+    SourceClient := Clients.ClientByAccount(Accounts.AccountByURI(SourceURI.Address), SourceURI.Database);
     if (Assigned(SourceClient)) then
       SourceClientCreated := False
-    else if (not Assigned(Sessions.SessionByURI(SourceURI.Address))) then
+    else if (not Assigned(Accounts.AccountByURI(SourceURI.Address))) then
     begin
       SourceClient := nil;
       SourceClientCreated := False;
     end
     else
     begin
-      SourceClient := Clients.CreateClient(Sessions.SessionByURI(SourceURI.Address), B);
+      SourceClient := Clients.CreateClient(Accounts.AccountByURI(SourceURI.Address), B);
       SourceClientCreated := Assigned(SourceClient);
     end;
 
@@ -12159,8 +12159,8 @@ procedure TFClient.PWorkbenchRefresh(Sender: TObject);
     Result.PopupMenu := MWorkbench;
     Result.VertScrollBar.Tracking := True;
 
-    if (FileExists(Client.Session.DataPath + SelectedDatabase + PathDelim + 'Diagram.xml')) then
-      Result.LoadFromFile(Client.Session.DataPath + SelectedDatabase + PathDelim + 'Diagram.xml');
+    if (FileExists(Client.Account.DataPath + SelectedDatabase + PathDelim + 'Diagram.xml')) then
+      Result.LoadFromFile(Client.Account.DataPath + SelectedDatabase + PathDelim + 'Diagram.xml');
   end;
 
 var
@@ -12353,9 +12353,9 @@ begin
         SynMemo.SelLength := Len - StartingCommentLength - EndingCommentLength;
       end;
 
-      if ((Client.ErrorCode = 0) and (Client.ExecutedStmts = 1) and Assigned(Client.Session.HistoryXML)) then
+      if ((Client.ErrorCode = 0) and (Client.ExecutedStmts = 1) and Assigned(Client.Account.HistoryXML)) then
       begin
-        XML := Client.Session.HistoryXML.AddChild('sql');
+        XML := Client.Account.HistoryXML.AddChild('sql');
         if ((ResultSet.Count = 0) or (ResultSet.RawDataSets[0].FieldCount = 0)) then
           XML.Attributes['type'] := 'statement'
         else
@@ -12375,8 +12375,8 @@ begin
         if (Client.Connected and (Client.InsertId > 0)) then
           XML.AddChild('insert_id').Text := IntToStr(Client.InsertId);
 
-        while (Client.Session.HistoryXML.ChildNodes.Count > 100) do
-          Client.Session.HistoryXML.ChildNodes.Delete(0);
+        while (Client.Account.HistoryXML.ChildNodes.Count > 100) do
+          Client.Account.HistoryXML.ChildNodes.Delete(0);
 
         FSQLHistoryRefresh(nil);
       end;
@@ -13142,9 +13142,9 @@ begin
   if (LastSelectedImageIndex >= 0) then
   begin
     Index := ContentWidthIndexFromImageIndex(LastSelectedImageIndex);
-    if ((0 <= Index) and (Index < Length(Client.Session.Desktop.ContentWidths))) then
-      for I := 0 to Min(FList.Columns.Count, Length(Client.Session.Desktop.ContentWidths[Index])) - 1 do
-        Client.Session.Desktop.ContentWidths[Index][I] := FList.Columns[I].Width;
+    if ((0 <= Index) and (Index < Length(Client.Account.Desktop.ContentWidths))) then
+      for I := 0 to Min(FList.Columns.Count, Length(Client.Account.Desktop.ContentWidths[Index])) - 1 do
+        Client.Account.Desktop.ContentWidths[Index][I] := FList.Columns[I].Width;
   end;
 end;
 
@@ -13357,7 +13357,7 @@ begin
     SortDef := TIndexDef.Create(nil, '', '', []);
     if (Table.DataSet.Active) then
       SortDef.Assign(Table.DataSet.SortDef)
-    else if (Client.Session.DefaultSorting and (Table is TCBaseTable) and (TCBaseTable(Table).Indices.Count > 0) and (TCBaseTable(Table).Indices[0].Name = '')) then
+    else if (Client.Account.DefaultSorting and (Table is TCBaseTable) and (TCBaseTable(Table).Indices.Count > 0) and (TCBaseTable(Table).Indices[0].Name = '')) then
       TCBaseTable(Table).Indices[0].GetSortDef(SortDef);
 
     Table.Open(FilterSQL, QuickSearch, SortDef, Offset, Limit);

@@ -236,7 +236,7 @@ type
     constructor Create(const APreferences: TPPreferences); override;
   end;
 
-  TPSessions = class(TPWindow)
+  TPAccounts = class(TPWindow)
   protected
     procedure LoadFromXML(const XML: IXMLNode); override;
     procedure SaveToXML(const XML: IXMLNode); override;
@@ -346,7 +346,7 @@ type
     Routine: TPRoutine;
     Server: TPServer;
     SQLHelp: TPSQLHelp;
-    Sessions: TPSessions;
+    Accounts: TPAccounts;
     Statement: TPStatement;
     Table: TPTable;
     TableService: TPTableService;
@@ -1200,23 +1200,23 @@ begin
   XMLNode(XML, 'top').Text := IntToStr(Top);
 end;
 
-{ TPSessions ******************************************************************}
+{ TPAccounts ******************************************************************}
 
-constructor TPSessions.Create(const APreferences: TPPreferences);
+constructor TPAccounts.Create(const APreferences: TPPreferences);
 begin
   inherited;
 
   SelectOrder := 0;
 end;
 
-procedure TPSessions.LoadFromXML(const XML: IXMLNode);
+procedure TPAccounts.LoadFromXML(const XML: IXMLNode);
 begin
   inherited;
 
   if (Assigned(XMLNode(XML, 'selectorder'))) then TryStrToInt(XMLNode(XML, 'selectorder').Text, SelectOrder);
 end;
 
-procedure TPSessions.SaveToXML(const XML: IXMLNode);
+procedure TPAccounts.SaveToXML(const XML: IXMLNode);
 begin
   inherited;
 
@@ -1433,7 +1433,7 @@ begin
   Replace := TPReplace.Create(Self);
   Routine := TPRoutine.Create(Self);
   Server := TPServer.Create(Self);
-  Sessions := TPSessions.Create(Self);
+  Accounts := TPAccounts.Create(Self);
   SQLHelp := TPSQLHelp.Create(Self);
   Statement := TPStatement.Create(Self);
   Table := TPTable.Create(Self);
@@ -1467,7 +1467,7 @@ begin
   Replace.Free();
   Routine.Free();
   Server.Free();
-  Sessions.Free();
+  Accounts.Free();
   SQLHelp.Free();
   Statement.Free();
   Table.Free();
@@ -1707,17 +1707,17 @@ begin
   if (Assigned(XMLNode(XML, 'log/dbresult'))) then TryStrToBool(XMLNode(XML, 'log/dbresult').Attributes['visible'], LogResult);
   if (Assigned(XMLNode(XML, 'log/time'))) then TryStrToBool(XMLNode(XML, 'log/time').Attributes['visible'], LogTime);
   if (Assigned(XMLNode(XML, 'windowstate'))) then TryStrToWindowState(XMLNode(XML, 'windowstate').Text, WindowState);
-  if (Assigned(XMLNode(XML, 'session/toolbar/objectbrowser')) and TryStrToBool(XMLNode(XML, 'session/toolbar/objectbrowser').Attributes['visible'], Visible)) then
+  if (Assigned(XMLNode(XML, 'account/toolbar/objectbrowser')) and TryStrToBool(XMLNode(XML, 'account/toolbar/objectbrowser').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttObjectBrowser] else ToolbarTabs := ToolbarTabs - [ttObjectBrowser];
-  if (Assigned(XMLNode(XML, 'session/toolbar/databrowser')) and TryStrToBool(XMLNode(XML, 'session/toolbar/databrowser').Attributes['visible'], Visible)) then
+  if (Assigned(XMLNode(XML, 'account/toolbar/databrowser')) and TryStrToBool(XMLNode(XML, 'account/toolbar/databrowser').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttDataBrowser] else ToolbarTabs := ToolbarTabs - [ttDataBrowser];
-  if (Assigned(XMLNode(XML, 'session/toolbar/objectide')) and TryStrToBool(XMLNode(XML, 'session/toolbar/objectide').Attributes['visible'], Visible)) then
+  if (Assigned(XMLNode(XML, 'account/toolbar/objectide')) and TryStrToBool(XMLNode(XML, 'account/toolbar/objectide').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttObjectIDE] else ToolbarTabs := ToolbarTabs - [ttObjectIDE];
-  if (Assigned(XMLNode(XML, 'session/toolbar/querybuilder')) and TryStrToBool(XMLNode(XML, 'session/toolbar/querybuilder').Attributes['visible'], Visible)) then
+  if (Assigned(XMLNode(XML, 'account/toolbar/querybuilder')) and TryStrToBool(XMLNode(XML, 'account/toolbar/querybuilder').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttQueryBuilder] else ToolbarTabs := ToolbarTabs - [ttQueryBuilder];
-  if (Assigned(XMLNode(XML, 'session/toolbar/sqleditor')) and TryStrToBool(XMLNode(XML, 'session/toolbar/sqleditor').Attributes['visible'], Visible)) then
+  if (Assigned(XMLNode(XML, 'account/toolbar/sqleditor')) and TryStrToBool(XMLNode(XML, 'account/toolbar/sqleditor').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttSQLEditor] else ToolbarTabs := ToolbarTabs - [ttSQLEditor];
-  if (Assigned(XMLNode(XML, 'session/toolbar/diagram')) and TryStrToBool(XMLNode(XML, 'session/toolbar/diagram').Attributes['visible'], Visible)) then
+  if (Assigned(XMLNode(XML, 'account/toolbar/diagram')) and TryStrToBool(XMLNode(XML, 'account/toolbar/diagram').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttDiagram] else ToolbarTabs := ToolbarTabs - [ttDiagram];
   if (Assigned(XMLNode(XML, 'skin/file'))) then SkinFilename := ExtractFileName(XMLNode(XML, 'skin/file').Text);
   if (Assigned(XMLNode(XML, 'sql/font/charset'))) then TryStrToInt(XMLNode(XML, 'sql/font/charset').Text, SQLFontCharset);
@@ -1779,7 +1779,7 @@ begin
   Replace.LoadFromXML(XMLNode(XML, 'replace'));
   Routine.LoadFromXML(XMLNode(XML, 'routine'));
   Server.LoadFromXML(XMLNode(XML, 'server'));
-  Sessions.LoadFromXML(XMLNode(XML, 'sessions'));
+  Accounts.LoadFromXML(XMLNode(XML, 'accounts'));
   SQLHelp.LoadFromXML(XMLNode(XML, 'sqlhelp'));
   Statement.LoadFromXML(XMLNode(XML, 'statement'));
   Table.LoadFromXML(XMLNode(XML, 'table'));
@@ -1978,12 +1978,12 @@ begin
   XMLNode(XML, 'log/time').Attributes['visible'] := LogTime;
   if (WindowState in [wsNormal, wsMaximized	]) then
     XMLNode(XML, 'windowstate').Text := WindowStateToStr(WindowState);
-  XMLNode(XML, 'session/toolbar/objectbrowser').Attributes['visible'] := ttObjectBrowser in ToolbarTabs;
-  XMLNode(XML, 'session/toolbar/databrowser').Attributes['visible'] := ttDataBrowser in ToolbarTabs;
-  XMLNode(XML, 'session/toolbar/objectide').Attributes['visible'] := ttObjectIDE in ToolbarTabs;
-  XMLNode(XML, 'session/toolbar/querybuilder').Attributes['visible'] := ttQueryBuilder in ToolbarTabs;
-  XMLNode(XML, 'session/toolbar/sqleditor').Attributes['visible'] := ttSQLEditor in ToolbarTabs;
-  XMLNode(XML, 'session/toolbar/diagram').Attributes['visible'] := ttDiagram in ToolbarTabs;
+  XMLNode(XML, 'account/toolbar/objectbrowser').Attributes['visible'] := ttObjectBrowser in ToolbarTabs;
+  XMLNode(XML, 'account/toolbar/databrowser').Attributes['visible'] := ttDataBrowser in ToolbarTabs;
+  XMLNode(XML, 'account/toolbar/objectide').Attributes['visible'] := ttObjectIDE in ToolbarTabs;
+  XMLNode(XML, 'account/toolbar/querybuilder').Attributes['visible'] := ttQueryBuilder in ToolbarTabs;
+  XMLNode(XML, 'account/toolbar/sqleditor').Attributes['visible'] := ttSQLEditor in ToolbarTabs;
+  XMLNode(XML, 'account/toolbar/diagram').Attributes['visible'] := ttDiagram in ToolbarTabs;
   XMLNode(XML, 'skin/file').Text := ExtractFileName(SkinFilename);
   XMLNode(XML, 'sql/font/charset').Text := IntToStr(SQLFontCharset);
   XMLNode(XML, 'sql/font/color').Text := ColorToString(SQLFontColor);
@@ -2044,7 +2044,7 @@ begin
   Replace.SaveToXML(XMLNode(XML, 'replace'));
   Routine.SaveToXML(XMLNode(XML, 'routine'));
   Server.SaveToXML(XMLNode(XML, 'server'));
-  Sessions.SaveToXML(XMLNode(XML, 'sessions'));
+  Accounts.SaveToXML(XMLNode(XML, 'accounts'));
   SQLHelp.SaveToXML(XMLNode(XML, 'sqlhelp'));
   Statement.SaveToXML(XMLNode(XML, 'statement'));
   Table.SaveToXML(XMLNode(XML, 'table'));

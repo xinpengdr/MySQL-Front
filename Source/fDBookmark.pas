@@ -6,7 +6,7 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls,
   Forms_Ext, StdCtrls_Ext,
-  fBase, fSession;
+  fBase, fAccount;
 
 type
   TDBookmark = class(TForm_Ext)

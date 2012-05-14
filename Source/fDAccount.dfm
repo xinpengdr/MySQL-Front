@@ -1,10 +1,10 @@
-object DSession: TDSession
+object DAccount: TDAccount
   Left = 616
   Top = 338
   HelpContext = 1065
   BorderIcons = [biSystemMenu]
   BorderStyle = bsDialog
-  Caption = 'DSession'
+  Caption = 'DAccount'
   ClientHeight = 338
   ClientWidth = 329
   Color = clBtnFace
@@ -426,10 +426,6 @@ object DSession: TDSession
     end
     object TSDebug: TTabSheet
       Caption = 'TSDebug'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GDebug: TGroupBox_Ext
         Left = 4
         Top = 4

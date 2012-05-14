@@ -1,4 +1,4 @@
-unit fDSession;
+unit fDAccount;
 
 interface {********************************************************************}
 
@@ -6,13 +6,13 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ComCtrls, ExtCtrls,
   ComCtrls_Ext, Forms_Ext, StdCtrls_Ext, ExtCtrls_Ext, Dialogs_Ext,
-  fSession, fBase, fClient, SynEdit, SynMemo, Menus;
+  fAccount, fBase, fClient, SynEdit, SynMemo, Menus;
 
 type
-  TDSessionShowType = (stDefault, stLogin);
+  TDAccountShowType = (stDefault, stLogin);
 
 type
-  TDSession = class (TForm_Ext)
+  TDAccount = class (TForm_Ext)
     FBCancel: TButton;
     FBDatabase: TButton;
     FBHelp: TButton;
@@ -97,7 +97,7 @@ type
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
-    function GetSessionName(): string;
+    function GetAccountName(): string;
     procedure TSBasicsShow(Sender: TObject);
   private
     IconChanged: Boolean;
@@ -106,14 +106,14 @@ type
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Password: string;
-    Session: TSSession;
-    ShowType: TDSessionShowType;
+    Account: TSAccount;
+    ShowType: TDAccountShowType;
     Username: string;
     function Execute(): Boolean;
-    property SessionName: string read GetSessionName;
+    property AccountName: string read GetAccountName;
   end;
 
-function DSession(): TDSession;
+function DAccount(): TDAccount;
 
 implementation {***************************************************************}
 
@@ -127,22 +127,22 @@ uses
   fDDatabases, fPreferences;
 
 var
-  FSession: TDSession;
+  FAccount: TDAccount;
 
-function DSession(): TDSession;
+function DAccount(): TDAccount;
 begin
-  if (not Assigned(FSession)) then
+  if (not Assigned(FAccount)) then
   begin
-    Application.CreateForm(TDSession, FSession);
-    FSession.Perform(CM_CHANGEPREFERENCES, 0, 0);
+    Application.CreateForm(TDAccount, FAccount);
+    FAccount.Perform(CM_CHANGEPREFERENCES, 0, 0);
   end;
 
-  Result := FSession;
+  Result := FAccount;
 end;
 
-{ TDSession *******************************************************************}
+{ TDAccount *******************************************************************}
 
-function TDSession.CheckConnectInfos(): Boolean;
+function TDAccount.CheckConnectInfos(): Boolean;
 begin
   Result := False;
 
@@ -156,7 +156,7 @@ begin
     Result := True;
 end;
 
-procedure TDSession.CMChangePreferences(var Message: TMessage);
+procedure TDAccount.CMChangePreferences(var Message: TMessage);
 begin
   TSBasics.Caption := Preferences.LoadStr(108);
   GBasics.Caption := Preferences.LoadStr(85);
@@ -246,13 +246,13 @@ begin
   OpenDialog.Title := ReplaceStr(Preferences.LoadStr(581), '&', '');
 end;
 
-function TDSession.Execute(): Boolean;
+function TDAccount.Execute(): Boolean;
 begin
   ShowModal();
   Result := ModalResult = mrOk;
 end;
 
-procedure TDSession.FBDatabaseClick(Sender: TObject);
+procedure TDAccount.FBDatabaseClick(Sender: TObject);
 var
   Client: TCClient;
   LibraryName: string;
@@ -271,7 +271,7 @@ begin
       Client.BeginSilent();
       Client.FirstConnect(FConnectionType.ItemIndex, LibraryName, FHost.Text, FUser.Text, FPassword.Text, '', FUDPort.Position, FCompression.Checked, False);
       if (Client.ErrorCode <> 0) then
-        Sessions.OnSQLError(Client, Client.ErrorCode, Client.ErrorMessage)
+        Accounts.OnSQLError(Client, Client.ErrorCode, Client.ErrorMessage)
       else if (Client.Connected) then
       begin
         DDatabases.Client := Client;
@@ -288,7 +288,7 @@ begin
   end;
 end;
 
-procedure TDSession.FBHelpClick(Sender: TObject);
+procedure TDAccount.FBHelpClick(Sender: TObject);
 begin
   if (GetKeyState(VK_MENU) >= 0) then
     Application.HelpContext(HelpContext)
@@ -304,7 +304,7 @@ begin
   end;
 end;
 
-procedure TDSession.FBIconClick(Sender: TObject);
+procedure TDAccount.FBIconClick(Sender: TObject);
 begin
   OpenDialog.FileName := '';
 
@@ -325,7 +325,7 @@ begin
     ActiveControl := FBOk;
 end;
 
-procedure TDSession.FCharsetDropDown(Sender: TObject);
+procedure TDAccount.FCharsetDropDown(Sender: TObject);
 var
   Client: TCClient;
   I: Integer;
@@ -345,7 +345,7 @@ begin
       Client.BeginSilent();
       Client.FirstConnect(FConnectionType.ItemIndex, LibraryName, FHost.Text, FUser.Text, FPassword.Text, '', FUDPort.Position, FCompression.Checked, False);
       if (Client.ErrorCode <> 0) then
-        Sessions.OnSQLError(Client, Client.ErrorCode, Client.ErrorMessage)
+        Accounts.OnSQLError(Client, Client.ErrorCode, Client.ErrorMessage)
       else if (Client.Connected) then
       begin
         for I := 0 to Client.Charsets.Count - 1 do
@@ -359,7 +359,7 @@ begin
   end;
 end;
 
-procedure TDSession.FConnectionTypeChange(Sender: TObject);
+procedure TDAccount.FConnectionTypeChange(Sender: TObject);
 begin
   FLibraryFilename.Visible := FConnectionType.ItemIndex = 1;
   FHTTPTunnelURI.Visible := FConnectionType.ItemIndex = 2;
@@ -370,7 +370,7 @@ begin
     FHTTPTunnelURIChange(Sender);
 end;
 
-procedure TDSession.FEditChange(Sender: TObject);
+procedure TDAccount.FEditChange(Sender: TObject);
 var
   Name: string;
 begin
@@ -379,35 +379,35 @@ begin
   else
     Name := FName.Text;
   FBOk.Enabled := (FHost.Text <> '')
-    and (not Assigned(Sessions.SessionByName(Name)) or Assigned(Session) and (Sessions.SessionByName(Name) = Session));
+    and (not Assigned(Accounts.AccountByName(Name)) or Assigned(Account) and (Accounts.AccountByName(Name) = Account));
   FBDatabase.Enabled := FHost.Text <> '';
 end;
 
-procedure TDSession.FHostExit(Sender: TObject);
+procedure TDAccount.FHostExit(Sender: TObject);
 begin
   if (FName.Text = '') then
     FName.Text := FHost.Text;
 end;
 
-procedure TDSession.FHTTPTunnelURIChange(Sender: TObject);
+procedure TDAccount.FHTTPTunnelURIChange(Sender: TObject);
 begin
   FBOk.Enabled := (FHTTPTunnelURI.Text = '') or (Copy(FHTTPTunnelURI.Text, 1, 7) = 'http://') or (Copy(FHTTPTunnelURI.Text, 1, 8) = 'https://');
 end;
 
-procedure TDSession.FHTTPTunnelURIEnter(Sender: TObject);
+procedure TDAccount.FHTTPTunnelURIEnter(Sender: TObject);
 begin
   if ((FHTTPTunnelURI.Text = '') and (Trim(FHost.Text) <> '') and (lstrcmpi(PChar(Trim(FHost.Text)), LOCAL_HOST) <> 0)) then
     FHTTPTunnelURI.Text := 'http://' + Trim(FHost.Text) + '/libMySQL.php';
 end;
 
-procedure TDSession.FIconClick(Sender: TObject);
+procedure TDAccount.FIconClick(Sender: TObject);
 begin
   FBIcon.Click();
 end;
 
-procedure TDSession.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+procedure TDAccount.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
-  NewSession: TSSession;
+  NewAccount: TSAccount;
 begin
   if (ModalResult = mrOk) then
   begin
@@ -420,68 +420,68 @@ begin
 
     if (CanClose) then
     begin
-      NewSession := TSSession.Create(Sessions);
-      if (Assigned(Session)) then
-        NewSession.Assign(Session);
+      NewAccount := TSAccount.Create(Accounts);
+      if (Assigned(Account)) then
+        NewAccount.Assign(Account);
 
-      NewSession.Name := Trim(FName.Text);
+      NewAccount.Name := Trim(FName.Text);
       if (IconChanged) then
       begin
         try
-          ForceDirectories(ExtractFilePath(NewSession.IconFilename));
-          FIcon.Picture.Icon.SaveToFile(NewSession.IconFilename);
-          NewSession.ImageIndex := Preferences.SmallImages.Count - 1;
+          ForceDirectories(ExtractFilePath(NewAccount.IconFilename));
+          FIcon.Picture.Icon.SaveToFile(NewAccount.IconFilename);
+          NewAccount.ImageIndex := Preferences.SmallImages.Count - 1;
         except
-          MsgBox(Preferences.LoadStr(522, NewSession.IconFilename), Preferences.LoadStr(45), MB_OK + MB_ICONERROR);
+          MsgBox(Preferences.LoadStr(522, NewAccount.IconFilename), Preferences.LoadStr(45), MB_OK + MB_ICONERROR);
         end;
       end;
-      NewSession.Connection.Host := Trim(FHost.Text);
-      NewSession.Connection.Port := FUDPort.Position;
+      NewAccount.Connection.Host := Trim(FHost.Text);
+      NewAccount.Connection.Port := FUDPort.Position;
       case (FConnectionType.ItemIndex) of
-        0: NewSession.Connection.LibraryType := ltBuiltIn;
-        1: NewSession.Connection.LibraryType := ltDLL;
-        2: NewSession.Connection.LibraryType := ltHTTP;
+        0: NewAccount.Connection.LibraryType := ltBuiltIn;
+        1: NewAccount.Connection.LibraryType := ltDLL;
+        2: NewAccount.Connection.LibraryType := ltHTTP;
       end;
-      NewSession.Connection.LibraryFilename := Trim(FLibraryFilename.Text);
-      NewSession.Connection.HTTPTunnelURI := Trim(FHTTPTunnelURI.Text);
-      NewSession.Connection.Charset := Trim(FCharset.Text);
+      NewAccount.Connection.LibraryFilename := Trim(FLibraryFilename.Text);
+      NewAccount.Connection.HTTPTunnelURI := Trim(FHTTPTunnelURI.Text);
+      NewAccount.Connection.Charset := Trim(FCharset.Text);
 
-      NewSession.Connection.User := Trim(FUser.Text);
-      NewSession.Connection.Password := Trim(FPassword.Text);
-      NewSession.Connection.SavePassword := (NewSession.Connection.User <> '') and ((NewSession.Connection.Password <> '') or Assigned(Session) and (Session.Connection.User = NewSession.Connection.User) and (Session.Connection.Password = ''));
-      NewSession.Connection.Database := ReplaceStr(Trim(FDatabase.Text), ';', ',');
+      NewAccount.Connection.User := Trim(FUser.Text);
+      NewAccount.Connection.Password := Trim(FPassword.Text);
+      NewAccount.Connection.SavePassword := (NewAccount.Connection.User <> '') and ((NewAccount.Connection.Password <> '') or Assigned(Account) and (Account.Connection.User = NewAccount.Connection.User) and (Account.Connection.Password = ''));
+      NewAccount.Connection.Database := ReplaceStr(Trim(FDatabase.Text), ';', ',');
 
-      NewSession.Startup := Trim(FStartup.Text);
+      NewAccount.Startup := Trim(FStartup.Text);
 
       if (FLimitOff.Checked) then
-        NewSession.DefaultLimit := dlOff
+        NewAccount.DefaultLimit := dlOff
       else if (FLimitOn.Checked) then
-        NewSession.DefaultLimit := dlOn
+        NewAccount.DefaultLimit := dlOn
       else
-        NewSession.DefaultLimit := dlRemember;
-      NewSession.DefaultSorting := FDefaultSorting.Checked;
+        NewAccount.DefaultLimit := dlRemember;
+      NewAccount.DefaultSorting := FDefaultSorting.Checked;
 
-      NewSession.CacheSize := FUDCacheSize.Position;
-      NewSession.Connection.ASynchron := FAsynchron.Checked;
-      NewSession.Connection.Compression := FCompression.Checked;
-      NewSession.Connection.MultiStatements := FMultiStatements.Checked;
-      NewSession.Connection.UseInformationSchema := FUseInformationSchema.Checked;
-      NewSession.Connection.Prefetch := FPrefetch.ItemIndex;
+      NewAccount.CacheSize := FUDCacheSize.Position;
+      NewAccount.Connection.ASynchron := FAsynchron.Checked;
+      NewAccount.Connection.Compression := FCompression.Checked;
+      NewAccount.Connection.MultiStatements := FMultiStatements.Checked;
+      NewAccount.Connection.UseInformationSchema := FUseInformationSchema.Checked;
+      NewAccount.Connection.Prefetch := FPrefetch.ItemIndex;
 
-      Username := NewSession.Connection.User;
-      Password := NewSession.Connection.Password;
+      Username := NewAccount.Connection.User;
+      Password := NewAccount.Connection.Password;
 
-      if (not Assigned(Session)) then
-        Sessions.AddSession(NewSession)
+      if (not Assigned(Account)) then
+        Accounts.AddAccount(NewAccount)
       else
-        Sessions.UpdateSession(Session, NewSession);
+        Accounts.UpdateAccount(Account, NewAccount);
 
-      NewSession.Free();
+      NewAccount.Free();
     end;
   end;
 end;
 
-procedure TDSession.FormCreate(Sender: TObject);
+procedure TDAccount.FormCreate(Sender: TObject);
 begin
   FStartup.Highlighter := MainHighlighter;
 
@@ -510,18 +510,18 @@ begin
   TSDebug.TabVisible := False;
 end;
 
-procedure TDSession.FormShow(Sender: TObject);
+procedure TDAccount.FormShow(Sender: TObject);
 begin
-  if (not Assigned(Session)) then
+  if (not Assigned(Account)) then
     Caption := Preferences.LoadStr(204)
   else
-    Caption := Preferences.LoadStr(842, Session.Name);
+    Caption := Preferences.LoadStr(842, Account.Name);
 
   FCharset.Items.Clear();
 
   FConnectionType.Items.Text := Preferences.LoadStr(649) + #13#10 + Preferences.LoadStr(650) + #13#10 + Preferences.LoadStr(651);
 
-  if (not Assigned(Session)) then
+  if (not Assigned(Account)) then
   begin
     FName.Text := '';
     IconChanged := False;
@@ -550,46 +550,46 @@ begin
   end
   else
   begin
-    FName.Text := Session.Name;
+    FName.Text := Account.Name;
 
     IconChanged := False;
 
-    FHost.Text := Session.Connection.Host;
-    if (Session.Connection.Port = 0) then
+    FHost.Text := Account.Connection.Host;
+    if (Account.Connection.Port = 0) then
       FUDPort.Position := MYSQL_PORT
     else
-      FUDPort.Position := Session.Connection.Port;
-    case (Session.Connection.LibraryType) of
+      FUDPort.Position := Account.Connection.Port;
+    case (Account.Connection.LibraryType) of
       ltBuiltIn: FConnectionType.ItemIndex := 0;
       ltDLL: FConnectionType.ItemIndex := 1;
       ltHTTP: FConnectionType.ItemIndex := 2;
     end;
-    FLibraryFilename.Text := Session.Connection.LibraryFilename;
-    FHTTPTunnelURI.Text := Session.Connection.HTTPTunnelURI;
-    FCharset.Text := Session.Connection.Charset;
+    FLibraryFilename.Text := Account.Connection.LibraryFilename;
+    FHTTPTunnelURI.Text := Account.Connection.HTTPTunnelURI;
+    FCharset.Text := Account.Connection.Charset;
 
     FUser.Text := Username;
     FPassword.Text := Password;
-    FDatabase.Text := Session.Connection.Database;
+    FDatabase.Text := Account.Connection.Database;
 
-    if (Session.Startup = '') then
+    if (Account.Startup = '') then
       FStartup.Lines.Clear
     else
-      FStartup.Lines.Text := Session.Startup + #13#10;
+      FStartup.Lines.Text := Account.Startup + #13#10;
 
-    case (Session.DefaultLimit) of
+    case (Account.DefaultLimit) of
       dlOff: FLimitOff.Checked := True;
       dlRemember: FLimitRemember.Checked := True;
       dlOn: FLimitOn.Checked := True;
     end;
-    FDefaultSorting.Checked := Session.DefaultSorting;
+    FDefaultSorting.Checked := Account.DefaultSorting;
 
-    FUDCacheSize.Position := Session.CacheSize;
-    FCompression.Checked := Session.Connection.Compression;
-    FMultiStatements.Checked := Session.Connection.MultiStatements;
-    FAsynchron.Checked := Session.Connection.ASynchron;
-    FUseInformationSchema.Checked := Session.Connection.UseInformationSchema;
-    FPrefetch.ItemIndex := Session.Connection.Prefetch;
+    FUDCacheSize.Position := Account.CacheSize;
+    FCompression.Checked := Account.Connection.Compression;
+    FMultiStatements.Checked := Account.Connection.MultiStatements;
+    FAsynchron.Checked := Account.Connection.ASynchron;
+    FUseInformationSchema.Checked := Account.Connection.UseInformationSchema;
+    FPrefetch.ItemIndex := Account.Connection.Prefetch;
   end;
 
 
@@ -609,19 +609,19 @@ begin
   end;
 end;
 
-function TDSession.GetSessionName(): string;
+function TDAccount.GetAccountName(): string;
 begin
   Result := Trim(FName.Text);
 end;
 
-procedure TDSession.TSBasicsShow(Sender: TObject);
+procedure TDAccount.TSBasicsShow(Sender: TObject);
 begin
-  if (Assigned(Session) and FileExists(Session.IconFilename)) then
-    FIcon.Picture.Icon.LoadFromFile(Session.IconFilename)
+  if (Assigned(Account) and FileExists(Account.IconFilename)) then
+    FIcon.Picture.Icon.LoadFromFile(Account.IconFilename)
   else
     Preferences.SmallImages.GetIcon(iiServer, FIcon.Picture.Icon);
 end;
 
 initialization
-  FSession := nil;
+  FAccount := nil;
 end.

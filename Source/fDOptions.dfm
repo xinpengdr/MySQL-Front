@@ -518,6 +518,10 @@ object DOptions: TDOptions
     object TSLog: TTabSheet
       Caption = 'TSLog'
       ImageIndex = 5
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GLog: TGroupBox_Ext
         Left = 4
         Top = 4
