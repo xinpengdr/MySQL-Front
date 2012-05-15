@@ -963,7 +963,6 @@ type
     procedure ParseCreateDatabase(const SQL: string);
     procedure SetDefaultCharset(const ADefaultCharset: string);
   protected
-    property DesktopXML: IXMLNode read GetDesktopXML;
     function GetActualSource(): Boolean; override;
     function Build(const DataSet: TMySQLQuery): Boolean; virtual;
     function GetSource(): string; override;
@@ -972,22 +971,9 @@ type
     function SQLAlterTable(const Table, NewTable: TCBaseTable; const EncloseFields: Boolean = True): string; virtual;
     function SQLGetSource(): string; virtual;
     function SQLTruncateTable(const Table: TCBaseTable): string; virtual;
-  public
-    property Actual: Boolean read GetActual;
-    property ActualSources: Boolean read GetActualSources;
-    property DefaultCharset: string read GetDefaultCharset write SetDefaultCharset;
-    property DefaultCodePage: Cardinal read FDefaultCodePage;
-    property Count: Integer read GetCount;
-    property Collation: string read GetCollation write FCollation;
-    property Created: TDateTime read GetCreated;
-    property Events: TCEvents read FEvents;
+    property DesktopXML: IXMLNode read GetDesktopXML;
     property PrefetchObjects: Boolean read GetPrefetchObjects;
-    property Routines: TCRoutines read FRoutines;
-    property Size: Int64 read GetSize;
-    property Tables: TCTables read FTables;
-    property Triggers: TCTriggers read FTriggers;
-    property Updated: TDateTime read GetUpdated;
-    property Workbench: TComponent read FWorkbench write FWorkbench;
+  public
     function AddEvent(const NewEvent: TCEvent): Boolean; virtual;
     function AddRoutine(const NewRoutine: TCRoutine): Boolean; virtual;
     function AddTable(const NewTable: TCBaseTable): Boolean; virtual;
@@ -1025,6 +1011,20 @@ type
     function UpdateTrigger(const Trigger, NewTrigger: TCTrigger): Boolean; virtual;
     function UpdateView(const View, NewView: TCView): Boolean; virtual;
     function ViewByName(const TableName: string): TCView; overload; virtual;
+    property Actual: Boolean read GetActual;
+    property ActualSources: Boolean read GetActualSources;
+    property DefaultCharset: string read GetDefaultCharset write SetDefaultCharset;
+    property DefaultCodePage: Cardinal read FDefaultCodePage;
+    property Count: Integer read GetCount;
+    property Collation: string read GetCollation write FCollation;
+    property Created: TDateTime read GetCreated;
+    property Events: TCEvents read FEvents;
+    property Routines: TCRoutines read FRoutines;
+    property Size: Int64 read GetSize;
+    property Tables: TCTables read FTables;
+    property Triggers: TCTriggers read FTriggers;
+    property Updated: TDateTime read GetUpdated;
+    property Workbench: TComponent read FWorkbench write FWorkbench;
   end;
 
   TCSystemDatabase = class(TCDatabase)
@@ -1412,7 +1412,7 @@ type
 
   TCClient = class(TMySQLConnection)
   type
-    TEventType = (ceBuild, ceUpdated, ceObjectCreated, ceObjectDroped, ceInitialize, ceBeforeCancel, ceBeforeClose, ceBeforeOpen, ceAfterOpen, ceAfterReceivingRecords, ceBeforeReceivingRecords, ceBeforeScroll, ceAfterScroll, ceAfterCancel, ceAfterClose, ceAfterPost, ceBeforePost, ceMonitor);
+    TEventType = (ceBuild, ceUpdated, ceObjectCreated, ceObjectDroped, ceInitialize, ceBeforeExecuteSQL, ceBeforeCancel, ceBeforeClose, ceBeforeOpen, ceAfterOpen, ceAfterReceivingRecords, ceBeforeReceivingRecords, ceBeforeScroll, ceAfterExecuteSQL, ceAfterScroll, ceAfterCancel, ceAfterClose, ceAfterPost, ceBeforePost, ceMonitor);
     TInitialize = function (): Boolean of object;
     TEvent = record
       EventType: TEventType;
@@ -1422,17 +1422,13 @@ type
       Initialize: TInitialize;
     end;
     TEventProc = procedure (const AEvent: TEvent) of object;
-    TDesktop = record
-      Control: Pointer;
-      EventProc: TEventProc;
-    end;
   private
     AutoCommitBeforeTransaction: Boolean;
+    EventProcs: TList;
     FCharsets: TCCharsets;
     FCollations: TCCollations;
     FCurrentUser: string;
     FDatabases: TCDatabases;
-    FDesktop: TDesktop;
     FEngines: TCEngines;
     FFieldTypes: TCFieldTypes;
     FHosts: TCHosts;
@@ -1451,12 +1447,11 @@ type
     FVariables: TCVariables;
     StmtMonitor: TMySQLMonitor;
     procedure ConnectChange(Sender: TObject; Connecting: Boolean);
-    procedure DoEvent(const AEvent: TEvent);
+    procedure DoExecuteEvent(const AEvent: TEvent);
     function GetActual(): Boolean;
     function GetCaption(): string;
     function GetCollation(): string;
     function GetDefaultCharset(): string;
-    function GetDesktop(): Pointer;
     function GetLogActive(): Boolean;
     function GetQueryBuilderResult(): TCResultSet;
     function GetSlowLogActive(): Boolean;
@@ -1464,11 +1459,14 @@ type
     function GetUseInformationSchema(): Boolean;
     function GetUserRights(): TCUserRight;
   protected
+    CachedTables: array of TCTable;
     FLowerCaseTableNames: Byte;
     FMaxAllowedPacket: Integer;
-    CachedTables: array of TCTable;
+    procedure DoAfterExecuteSQL(); override;
+    procedure DoBeforeExecuteSQL(); override;
     procedure BuildUser(const DataSet: TMySQLQuery); virtual;
     function ClientResult(const Connection: TMySQLConnection; const Data: Boolean): Boolean; virtual;
+    procedure ExecuteEvent(const EventType: TEventType); overload; virtual;
     procedure ExecuteEvent(const EventType: TEventType; const Sender: TObject; const CItem: TCItem;  const Database: TCDatabase = nil); overload; virtual;
     procedure ExecuteEvent(const Initialize: TInitialize); overload; virtual;
     function GetAutoCommit(): Boolean; override;
@@ -1484,6 +1482,7 @@ type
     procedure SetCharset(const ACharset: string); override;
     property InformationSchema: TCDatabase read FInformationSchema;
     property PerformanceSchema: TCDatabase read FPerformanceSchema;
+    property Prefetch: Integer read FPrefetch;
     property UseInformationSchema: Boolean read GetUseInformationSchema;
   public
     function AddDatabase(const NewDatabase: TCDatabase): Boolean; virtual;
@@ -1529,7 +1528,7 @@ type
     function PluginByName(const PluginName: string): TCPlugin; virtual;
     function ProcessById(const ProcessId: Integer): TCProcess; virtual;
     procedure Refresh(); virtual;
-    procedure RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc; const AAccountEventProc: TSAccount.TEventProc); virtual;
+    procedure RegisterEventProc(const AEventProc: TEventProc); virtual;
     procedure RollbackTransaction(); override;
     procedure StartTransaction(); override;
     function StatusByName(const StatusName: string): TCStatus; virtual;
@@ -1541,7 +1540,7 @@ type
     function UpdateHost(const Host, NewHost: TCHost): Boolean; virtual;
     function UpdateUser(const User, NewUser: TCUser): Boolean; virtual;
     function UpdateVariable(const Variable, NewVariable: TCVariable; const UpdateModes: TCVariable.TUpdateModes): Boolean; virtual;
-    procedure UnRegisterDesktop(const AControl: Pointer); virtual;
+    procedure UnRegisterEventProc(const AEventProc: TEventProc); virtual;
     function UserByCaption(const Caption: string): TCUser; virtual;
     function UserByName(const UserName: string): TCUser; virtual;
     function VariableByName(const VariableName: string): TCVariable; virtual;
@@ -1553,7 +1552,6 @@ type
     property CurrentUser: string read FCurrentUser;
     property Databases: TCDatabases read FDatabases;
     property DefaultCharset: string read GetDefaultCharset;
-    property Desktop: Pointer read GetDesktop;
     property Engines: TCEngines read FEngines;
     property FieldTypes: TCFieldTypes read FFieldTypes;
     property Hosts: TCHosts read FHosts;
@@ -6918,7 +6916,7 @@ end;
 
 function TCDatabase.GetPrefetchObjects(): Boolean;
 begin
-  case (Client.FPrefetch) of
+  case (Client.Prefetch) of
     0: Result := False;
     2: Result := True;
     else Result := ((Tables.Actual and (Tables.Count <= PrefetchTableCount))
@@ -6991,14 +6989,14 @@ var
 begin
   SQL := '';
 
-  if ((Param is TCTable)) then
+  if (Param is TCTable) then
   begin
     if (not TCDBObject(Param).ActualSource) then
       SQL := SQL + TCDBObject(Param).SQLGetSource();
     if (not TCTable(Param).Actual) then
       SQL := SQL + Tables.SQLGetItems(TCTable(Param).Name);
   end
-  else if ((Param is TCTrigger)) then
+  else if (Param is TCTrigger) then
   begin
     if (not TCTrigger(Param).Actual) then
       SQL := SQL + Triggers.SQLGetItems(TCTrigger(Param).Name);
@@ -7013,7 +7011,7 @@ begin
       SQL := SQL + Triggers.SQLGetItems();
     if (Assigned(Events) and not Events.Actual) then
       SQL := SQL + Events.SQLGetItems();
-    if (not Tables.Actual and PrefetchObjects) then
+    if (not Tables.Actual) then
       SQL := SQL + Tables.SQLGetItems();
   end;
 
@@ -7043,7 +7041,7 @@ begin
     if (not TCDBObject(Param).ActualSource) then
       SQL := SQL + TCDBObject(Param).SQLGetSource();
   end
-  else if ((Param is TList) and not PrefetchObjects) then
+  else if (Param is TList) then
   begin
     for I := 0 to TList(Param).Count - 1 do
       if (not TCDBObject(TList(Param)[I]).ActualSource) then
@@ -7056,13 +7054,14 @@ begin
           if (TCDBObject(TList(Param)[I]) is TCView) then
             FetchViewFields := True;
         end;
-  end
-  else
+  end;
+
+  if (not Assigned(Param) or (Param is TCDBObject) or PrefetchObjects) then
   begin
-    if (not ActualSource) then
+    if (not ActualSource and not Assigned(Param) and PrefetchObjects) then
       SQL := SQL + SQLGetSource();
     for I := 0 to Tables.Count - 1 do
-      if (not Tables[I].ActualSource) then
+      if (not Tables[I].ActualSource and (not Assigned(Param) or (TCDBObject(Param) <> Tables[I])) and PrefetchObjects) then
       begin
         if (not (Tables[I] is TCView)) then
           SQL := SQL + Tables[I].SQLGetSource()
@@ -7075,15 +7074,15 @@ begin
       end;
     if (Assigned(Routines)) then
       for I := 0 to Routines.Count - 1 do
-        if (not Routines[I].ActualSource) then
+        if (not Routines[I].ActualSource and (not Assigned(Param) or (TCDBObject(Param) <> Routines[I])) and PrefetchObjects) then
           SQL := SQL + Routines[I].SQLGetSource();
     if (Assigned(Triggers)) then
       for I := 0 to Triggers.Count - 1 do
-        if (not Triggers[I].ActualSource) then
+        if (not Triggers[I].ActualSource and (not Assigned(Param) or (TCDBObject(Param) <> Triggers[I])) and PrefetchObjects) then
           SQL := SQL + Triggers[I].SQLGetSource();
     if (Assigned(Events)) then
       for I := 0 to Events.Count - 1 do
-        if (not Events[I].ActualSource) then
+        if (not Events[I].ActualSource and (not Assigned(Param) or (TCDBObject(Param) <> Events[I])) and PrefetchObjects) then
           SQL := SQL + Events[I].SQLGetSource();
   end;
 
@@ -9900,6 +9899,20 @@ begin
   Result := UpdateUser(nil, ANewUser);
 end;
 
+procedure TCClient.DoAfterExecuteSQL();
+begin
+  inherited;
+
+  ExecuteEvent(ceAfterExecuteSQL);
+end;
+
+procedure TCClient.DoBeforeExecuteSQL();
+begin
+  ExecuteEvent(ceBeforeExecuteSQL);
+
+  inherited;
+end;
+
 procedure TCClient.BuildUser(const DataSet: TMySQLQuery);
 var
   S: string;
@@ -10372,9 +10385,8 @@ constructor TCClient.CreateConnection();
 begin
   inherited Create(nil);
 
+  EventProcs := TList.Create();
   FCurrentUser := '';
-  FDesktop.Control := nil;
-  FDesktop.EventProc := nil;
   FInformationSchema := nil;
   FMaxAllowedPacket := 0;
   FPerformanceSchema := nil;
@@ -10403,13 +10415,12 @@ constructor TCClient.CreateConnection(const AAccount: TSAccount);
 begin
   inherited Create(nil);
 
+  EventProcs := TList.Create();
   FCurrentUser := '';
   FInformationSchema := nil;
   FMaxAllowedPacket := 0;
   FPerformanceSchema := nil;
   FAccount := AAccount;
-  FDesktop.Control := nil;
-  FDesktop.EventProc := nil;
   SetLength(CachedTables, 0);
 
   FSQLMonitor := TMySQLMonitor.Create(nil);
@@ -10614,6 +10625,8 @@ destructor TCClient.Destroy();
 begin
   UnRegisterClient(Self);
 
+  EventProcs.Free();
+
   if (Assigned(FSQLEditorResult)) then FSQLEditorResult.Free();
   if (Assigned(FQueryBuilderResult)) then FQueryBuilderResult.Free();
 
@@ -10638,10 +10651,16 @@ begin
   inherited;
 end;
 
-procedure TCClient.DoEvent(const AEvent: TEvent);
+procedure TCClient.DoExecuteEvent(const AEvent: TEvent);
+var
+  I: Integer;
+  EventProc: TEventProc;
 begin
-  if (Assigned(FDesktop.EventProc)) then
-    FDesktop.EventProc(AEvent);
+  for I := 0 to EventProcs.Count - 1 do
+  begin
+    MoveMemory(@TMethod(EventProc), EventProcs[I], SizeOf(TMethod));
+    EventProc(AEvent);
+  end;
 end;
 
 function TCClient.EmptyDatabases(const DatabaseNames: array of string): Boolean;
@@ -10750,6 +10769,19 @@ begin
       Result := EscapeIdentifier(Username) + '@' + EscapeIdentifier(Host);
 end;
 
+procedure TCClient.ExecuteEvent(const EventType: TEventType);
+var
+  Event: TEvent;
+begin
+  Event.EventType := EventType;
+  Event.Sender := nil;
+  Event.CItem := nil;
+  Event.Database := nil;
+  Event.Initialize := nil;
+
+  DoExecuteEvent(Event);
+end;
+
 procedure TCClient.ExecuteEvent(const EventType: TEventType; const Sender: TObject; const CItem: TCItem;  const Database: TCDatabase = nil);
 var
   Event: TEvent;
@@ -10760,7 +10792,7 @@ begin
   Event.Database := Database;
   Event.Initialize := nil;
 
-  DoEvent(Event);
+  DoExecuteEvent(Event);
 end;
 
 procedure TCClient.ExecuteEvent(const Initialize: TInitialize);
@@ -10773,7 +10805,7 @@ begin
   Event.CItem := nil;
   Event.Initialize := Initialize;
 
-  DoEvent(Event);
+  DoExecuteEvent(Event);
 end;
 
 function TCClient.FieldTypeByCaption(const Caption: string): TCFieldType;
@@ -11043,11 +11075,6 @@ begin
   DataSet.Free();
 end;
 
-function TCClient.GetDesktop(): Pointer;
-begin
-  Result := FDesktop.Control;
-end;
-
 function TCClient.GetUseInformationSchema(): Boolean;
 begin
   Result := Assigned(Account) and Account.Connection.UseInformationSchema;
@@ -11176,7 +11203,7 @@ end;
 
 procedure TCClient.MonitorLog(const Sender: TObject; const Text: PChar; const Len: Integer; const ATraceType: TMySQLMonitor.TTraceType);
 begin
-  ExecuteEvent(ceMonitor, nil, nil);
+  ExecuteEvent(ceMonitor);
 end;
 
 procedure TCClient.MonitorExecutedStmts(const Sender: TObject; const Text: PChar; const Len: Integer; const ATraceType: TMySQLMonitor.TTraceType);
@@ -11366,16 +11393,23 @@ begin
   ExecuteEvent(Initialize);
 end;
 
-procedure TCClient.RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc; const AAccountEventProc: TSAccount.TEventProc);
+procedure TCClient.RegisterEventProc(const AEventProc: TEventProc);
+var
+  I: Integer;
+  Index: Integer;
+  ListEntry: Pointer;
 begin
-  {$IFOPT R+}
-    if (Assigned(FDesktop.Control)) then raise Exception.Create(SDesktopAlreadyRegistered);
-  {$ENDIF}
+  Index := -1;
+  for I := 0 to EventProcs.Count - 1 do
+    if (CompareMem(EventProcs[I], @TMethod(AEventProc), SizeOf(TMethod))) then
+      Index := I;
 
-  FDesktop.Control := AControl;
-  FDesktop.EventProc := AEventProc;
-
-  Account.RegisterDesktop(AControl, AAccountEventProc);
+  if (Index < 0) then
+  begin
+    GetMem(ListEntry, SizeOf(TMethod));
+    MoveMemory(ListEntry, @TMethod(AEventProc), SizeOf(TMethod));
+    EventProcs.Add(ListEntry);
+  end;
 end;
 
 procedure TCClient.RollbackTransaction();
@@ -11550,12 +11584,21 @@ begin
   if (DBIdentifier = '%') then Result := '' else Result := DBIdentifier;
 end;
 
-procedure TCClient.UnRegisterDesktop(const AControl: Pointer);
+procedure TCClient.UnRegisterEventProc(const AEventProc: TEventProc);
+var
+  I: Integer;
+  Index: Integer;
 begin
-  Account.UnRegisterDesktop(AControl);
+  Index := -1;
+  for I := 0 to EventProcs.Count - 1 do
+    if (CompareMem(EventProcs[I], @TMethod(AEventProc), SizeOf(TMethod))) then
+      Index := I;
 
-  FDesktop.Control := nil;
-  FDesktop.EventProc := nil;
+  if (Index >= 0) then
+  begin
+    FreeMem(EventProcs[Index]);
+    EventProcs.Delete(Index);
+  end;
 end;
 
 function TCClient.UpdateDatabase(const Database, NewDatabase: TCDatabase): Boolean;

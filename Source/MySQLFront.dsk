@@ -1,23 +1,38 @@
 ﻿[Closed Files]
-File_0=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fDSearch.pas',0,1,945,74,972,0,0,,
-File_1=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fDOptions.pas',0,1,558,12,585,0,0,,
-File_2=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fDImport.pas',0,1,1,1,1,0,0,,
-File_3=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fDLogin.pas',0,1,174,27,201,0,0,,
-File_4=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fDExport.pas',0,1,698,21,725,0,0,,
-File_5=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fDConnecting.pas',0,4,72,37,99,0,0,,
-File_6=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fDVariable.pas',0,1,103,56,103,0,0,,
-File_7=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fClient.pas',0,1,11970,21,11997,0,0,,{1,449,1}{2,1956,1}{7,11268,35}
-File_8=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fDTransfer.pas',0,1,769,43,796,0,0,,
-File_9=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fWForeignKeySelect.pas',0,1,145,25,159,0,0,,
-File_10=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fTools.pas',0,1,3645,23,3659,0,0,,
+File_0=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fDForeignKey.pas',0,1,388,32,406,0,0,,
+File_1=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fTools.pas',0,1,1,1,1,0,0,,
+File_2=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fDSearch.pas',0,1,696,50,707,0,0,,
+File_3=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\fDTransfer.pas',0,1,691,20,698,0,0,,
+File_4=TSourceModule,'c:\program files (x86)\embarcadero\rad studio\7.0\SOURCE\WIN32\VCL\Controls.pas',0,1,211,10,226,0,0,,
+File_5=TSourceModule,'c:\program files (x86)\embarcadero\rad studio\7.0\source\Win32\db\DB.pas',0,1,3177,31,3193,0,0,,
+File_6=TSourceModule,'c:\program files (x86)\embarcadero\rad studio\7.0\SOURCE\WIN32\RTL\SYS\System.pas',0,1,320,3,334,0,0,,
+File_7=TSourceModule,'C:\Users\Nils\Documents\MySQL-Front\Source\VCL\Source\Forms_Ext.pas',0,1,1,23,9,0,0,,
+File_8=TSourceModule,'c:\program files (x86)\embarcadero\rad studio\7.0\SOURCE\WIN32\VCL\Forms.pas',0,1,115,38,130,0,0,,
+File_9=TSourceModule,'c:\program files (x86)\embarcadero\rad studio\7.0\source\Win32\rtl\common\Classes.pas',0,1,1368,13,1383,0,0,,
 
 [Modules]
-Module0=C:\Users\Nils\Documents\MySQL-Front\Source\fWWindow.pas
-Module1=C:\Users\Nils\Documents\MySQL-Front\Source\MySQL-DataSet\Source\MySQLDB.pas
-Module2=C:\Users\Nils\Documents\MySQL-Front\Source\fAccount.pas
-Module3=C:\Users\Nils\Documents\MySQL-Front\Source\fFClient.pas
-Count=4
+Module0=C:\Users\Nils\Documents\MySQL-Front\Source\fClient.pas
+Module1=C:\Users\Nils\Documents\MySQL-Front\Source\fDExport.pas
+Module2=C:\Users\Nils\Documents\MySQL-Front\Source\fFClient.pas
+Module3=C:\Users\Nils\Documents\MySQL-Front\Source\fWWindow.pas
+Module4=C:\Users\Nils\Documents\MySQL-Front\Source\MySQL-DataSet\Source\MySQLDB.pas
+Count=5
 EditWindowCount=1
+
+[C:\Users\Nils\Documents\MySQL-Front\Source\fClient.pas]
+ModuleType=TSourceModule
+FormState=0
+FormOnTop=0
+
+[C:\Users\Nils\Documents\MySQL-Front\Source\fDExport.pas]
+ModuleType=TSourceModule
+FormState=1
+FormOnTop=0
+
+[C:\Users\Nils\Documents\MySQL-Front\Source\fFClient.pas]
+ModuleType=TSourceModule
+FormState=1
+FormOnTop=0
 
 [C:\Users\Nils\Documents\MySQL-Front\Source\fWWindow.pas]
 ModuleType=TSourceModule
@@ -29,23 +44,14 @@ ModuleType=TSourceModule
 FormState=0
 FormOnTop=0
 
-[C:\Users\Nils\Documents\MySQL-Front\Source\fAccount.pas]
-ModuleType=TSourceModule
-FormState=0
-FormOnTop=0
-
-[C:\Users\Nils\Documents\MySQL-Front\Source\fFClient.pas]
-ModuleType=TSourceModule
-FormState=1
-FormOnTop=0
-
 [EditWindow0]
-ViewCount=4
-CurrentEditView=C:\Users\Nils\Documents\MySQL-Front\Source\fWWindow.pas
+ViewCount=5
+CurrentEditView=C:\Users\Nils\Documents\MySQL-Front\Source\fClient.pas
 View0=0
 View1=1
 View2=2
 View3=3
+View4=4
 PercentageSizes=1
 Create=1
 Visible=1
@@ -65,10 +71,10 @@ TopPanelSize=0
 LeftPanelSize=0
 RightPanelSize=0
 RightPanelClients=PropertyInspector,DockSite3,DockSite2
-RightPanelData=000008000102030000001100000050726F7065727479496E73706563746F7209000000446F636B536974653309000000446F636B5369746532E40C000000000000026B1C000000000000FFFFFFFF
+RightPanelData=000008000102030000001100000050726F7065727479496E73706563746F7209000000446F636B536974653309000000446F636B5369746532800C00000000000002C424000000000000FFFFFFFF
 BottomPanelSize=0
 BottomPanelClients=MessageView,DockSite1
-BottomPanelData=000008000102020000000F0000004D65737361676556696577466F726D09000000446F636B5369746531803E0000000000000234080000000000000100000000803E00000F0000004D65737361676556696577466F726DFFFFFFFF
+BottomPanelData=000008000102020000000F0000004D65737361676556696577466F726D09000000446F636B5369746531803E00000000000002D0070000000000000100000000803E00000F0000004D65737361676556696577466F726DFFFFFFFF
 BottomMiddlePanelSize=0
 BottomMiddlePanelClients=DockSite0
 BottomMiddelPanelData=0000080001000100000009000000446F636B53697465302619000000000000007E1B000000000000FFFFFFFF
@@ -77,8 +83,8 @@ BottomMiddelPanelData=0000080001000100000009000000446F636B5369746530261900000000
 CustomEditViewType=TEditView
 Module=C:\Users\Nils\Documents\MySQL-Front\Source\fWWindow.pas
 CursorX=1
-CursorY=1
-TopLine=1
+CursorY=241
+TopLine=209
 LeftCol=1
 Elisions=
 Bookmarks=
@@ -88,33 +94,44 @@ EditViewName=C:\Users\Nils\Documents\MySQL-Front\Source\fWWindow.pas
 CustomEditViewType=TEditView
 Module=C:\Users\Nils\Documents\MySQL-Front\Source\fFClient.pas
 CursorX=1
-CursorY=1
-TopLine=1
+CursorY=750
+TopLine=724
 LeftCol=1
 Elisions=
-Bookmarks=
+Bookmarks={1,3462,1}
 EditViewName=C:\Users\Nils\Documents\MySQL-Front\Source\fFClient.pas
 
 [View2]
 CustomEditViewType=TEditView
-Module=C:\Users\Nils\Documents\MySQL-Front\Source\fAccount.pas
-CursorX=1
-CursorY=1
+Module=C:\Users\Nils\Documents\MySQL-Front\Source\fDExport.pas
+CursorX=41
+CursorY=522
+TopLine=514
+LeftCol=1
+Elisions=
+Bookmarks=
+EditViewName=C:\Users\Nils\Documents\MySQL-Front\Source\fDExport.pas
+
+[View3]
+CustomEditViewType=TEditView
+Module=C:\Users\Nils\Documents\MySQL-Front\Source\fClient.pas
+CursorX=51
+CursorY=9
 TopLine=1
 LeftCol=1
 Elisions=
 Bookmarks=
-EditViewName=C:\Users\Nils\Documents\MySQL-Front\Source\fAccount.pas
+EditViewName=C:\Users\Nils\Documents\MySQL-Front\Source\fClient.pas
 
-[View3]
+[View4]
 CustomEditViewType=TEditView
 Module=C:\Users\Nils\Documents\MySQL-Front\Source\MySQL-DataSet\Source\MySQLDB.pas
 CursorX=1
-CursorY=1
-TopLine=1
+CursorY=273
+TopLine=257
 LeftCol=1
 Elisions=
-Bookmarks={7,2645,1}
+Bookmarks={1,5302,1}{7,2648,1}
 EditViewName=C:\Users\Nils\Documents\MySQL-Front\Source\MySQL-DataSet\Source\MySQLDB.pas
 
 [Watches]
@@ -142,8 +159,9 @@ Dockable=1
 StayOnTop=0
 
 [Breakpoints]
-Count=1
-Breakpoint0='C:\Users\Nils\Documents\MySQL-Front\Source\MySQL-DataSet\Source\MySQLDB.pas',3031,'',0,1,'',1,0,0,'',1,'','','',0,''
+Count=2
+Breakpoint0='C:\Users\Nils\Documents\MySQL-Front\Source\MySQL-DataSet\Source\MySQLDB.pas',3034,'',0,1,'',1,0,0,'',1,'','','',0,''
+Breakpoint1='C:\Users\Nils\Documents\MySQL-Front\Source\fDExport.pas',760,'',0,1,'',1,0,0,'',1,'','','',0,''
 
 [EmbarcaderoWin32Debugger_AddressBreakpoints]
 Count=0
@@ -196,12 +214,12 @@ State=0
 Left=0
 Top=24
 Width=10000
-Height=1800
+Height=1700
 MaxLeft=-1
 MaxTop=-1
 ClientWidth=10000
-ClientHeight=1800
-TBDockHeight=1800
+ClientHeight=1700
+TBDockHeight=1700
 LRDockWidth=2766
 Dockable=1
 StayOnTop=0
@@ -275,11 +293,11 @@ State=0
 Left=0
 Top=0
 Width=2000
-Height=6638
+Height=6738
 MaxLeft=-1
 MaxTop=-1
 ClientWidth=2000
-ClientHeight=6638
+ClientHeight=6738
 TBDockHeight=225
 LRDockWidth=7406
 Dockable=1
@@ -440,21 +458,16 @@ State=0
 Left=78
 Top=346
 Width=2062
-Height=6975
+Height=7562
 MaxLeft=-1
 MaxTop=-1
 ClientWidth=2062
-ClientHeight=6975
-TBDockHeight=6975
+ClientHeight=7562
+TBDockHeight=7562
 LRDockWidth=2062
 Dockable=1
 StayOnTop=0
 SplitPos=121
-
-[PropInspDesignerSelection]
-ArrangeBy=Name
-SelectedItem=Name,
-ExpandedItems=Anchors=0,BorderIcons=0,Constraints=0,Font=0,GlassFrame=0,HorzScrollBar=0,Margins=0,Padding=0
 
 [BreakpointWindow]
 PercentageSizes=1

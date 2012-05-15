@@ -27,7 +27,7 @@ for /D /R %%I in (*) do (
   if exist "%%I\*.~dsk" DEL "%%I\*.~dsk"
 )
 
-CHOICE /M "Clean all?"
+CHOICE /M "Clean build packages?"
 if Errorlevel 2 goto End
 if Errorlevel 1 goto CleanAll
 goto End

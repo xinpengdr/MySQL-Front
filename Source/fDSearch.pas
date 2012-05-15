@@ -700,7 +700,7 @@ begin
         end
         else if (Node.ImageIndex = iiBaseTable) then
         begin
-// ToDo
+// ToDo: Initialize
 //          Database := Client.DatabaseByName(Node.Parent.Text);
 //          Table := Database.BaseTableByName(Node.Text);
 //          if (Database.Initialize()) then

@@ -23,7 +23,7 @@
 			<DCC_RangeChecking>true</DCC_RangeChecking>
 			<DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
 			<DCC_Optimize>false</DCC_Optimize>
-			<DCC_UsePackage>vcl;rtl;vclx;vclimg;vclactnband;dbrtl;vcldb;vcltouch;xmlrtl;dsnap;dsnapcon;bdertl;TeeUI;TeeDB;Tee;vclib;ibxpress;inet;intrawebdb_100_140;Intraweb_100_140;VclSmp;vclie;websnap;webdsnap;inetdb;inetdbbde;inetdbxpress;soaprtl;vclribbon;DbxCommonDriver;DbxClientDriver;DBXInterBaseDriver;DBXMySQLDriver;DBXFirebirdDriver;DBXSybaseASEDriver;DBXSybaseASADriver;DBXOracleDriver;DBXMSSQLDriver;DBXInformixDriver;DBXDb2Driver;DISQLite3_D2010;MySQL_DataSet;Win32_Extensions;TPerlRegEx_D2010;dbexpress;dbxcds;vcldbx;adortl;DataSnapIndy10ServerTransport;DataSnapProviderClient;IndySystem;IndyCore;IndyProtocols;DataSnapServer</DCC_UsePackage>
+			<DCC_UsePackage>vcl;rtl;vclx;vclimg;vclactnband;dbrtl;vcldb;vcltouch;xmlrtl;dsnap;dsnapcon;bdertl;TeeUI;TeeDB;Tee;inet;intrawebdb_100_140;Intraweb_100_140;vclie;websnap;webdsnap;inetdb;inetdbbde;inetdbxpress;soaprtl;vclribbon;DbxCommonDriver;DbxClientDriver;DBXInterBaseDriver;DBXMySQLDriver;DBXFirebirdDriver;DBXSybaseASEDriver;DBXSybaseASADriver;DBXOracleDriver;DBXMSSQLDriver;DBXInformixDriver;DBXDb2Driver;DISQLite3_D2010;MySQL_DataSet;Win32_Extensions;TPerlRegEx_D2010</DCC_UsePackage>
 			<DCC_ExeOutput>..\Temp</DCC_ExeOutput>
 			<DCC_BplOutput>..\Temp</DCC_BplOutput>
 			<DCC_DcuOutput>..\Temp</DCC_DcuOutput>
@@ -63,9 +63,9 @@
 			<DCCReference Include="VCL\Source\ComCtrls_Ext.pas"/>
 			<DCCReference Include="VCL\Source\CommCtrl_Ext.pas"/>
 			<DCCReference Include="VCL\Source\Forms_Ext.pas"/>
+			<DCCReference Include="fAccount.pas"/>
 			<DCCReference Include="fClient.pas"/>
 			<DCCReference Include="fPreferences.pas"/>
-			<DCCReference Include="fAccount.pas"/>
 			<DCCReference Include="fTools.pas"/>
 			<DCCReference Include="fURI.pas"/>
 			<DCCReference Include="fBase.pas"/>
@@ -196,12 +196,12 @@
 			<BuildConfiguration Include="Base">
 				<Key>Base</Key>
 			</BuildConfiguration>
-			<BuildConfiguration Include="Debug">
-				<Key>Cfg_2</Key>
-				<CfgParent>Base</CfgParent>
-			</BuildConfiguration>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_1</Key>
+				<CfgParent>Base</CfgParent>
+			</BuildConfiguration>
+			<BuildConfiguration Include="Debug">
+				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>
 			</BuildConfiguration>
 		</ItemGroup>
@@ -226,7 +226,7 @@
 						<VersionInfo Name="MajorVer">5</VersionInfo>
 						<VersionInfo Name="MinorVer">2</VersionInfo>
 						<VersionInfo Name="Release">0</VersionInfo>
-						<VersionInfo Name="Build">0</VersionInfo>
+						<VersionInfo Name="Build">1</VersionInfo>
 						<VersionInfo Name="Debug">False</VersionInfo>
 						<VersionInfo Name="PreRelease">True</VersionInfo>
 						<VersionInfo Name="Special">False</VersionInfo>
@@ -238,7 +238,7 @@
 					<VersionInfoKeys>
 						<VersionInfoKeys Name="CompanyName"/>
 						<VersionInfoKeys Name="FileDescription">MySQL-Front</VersionInfoKeys>
-						<VersionInfoKeys Name="FileVersion">5.2.0.0</VersionInfoKeys>
+						<VersionInfoKeys Name="FileVersion">5.2.0.1</VersionInfoKeys>
 						<VersionInfoKeys Name="InternalName"/>
 						<VersionInfoKeys Name="LegalCopyright"/>
 						<VersionInfoKeys Name="LegalTrademarks"/>
@@ -249,6 +249,19 @@
 						<VersionInfoKeys Name="Build Date">01/07/2010</VersionInfoKeys>
 					</VersionInfoKeys>
 					<Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dclact140.bpl">Embarcadero ActionBar Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dclbde140.bpl">Embarcadero BDE DB Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\samplevisualizers140.bpl">Embarcadero Sample Debugger Visualizers</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\Bin\dclib140.bpl">Embarcadero InterBase Express Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dclado140.bpl">Embarcadero ADO DB Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dclIndyCore140.bpl">Indy 10 Core Design Time</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\Bin\dclIndyProtocols140.bpl">Indy 10 Protocols Design Time</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dclsmp140.bpl">Embarcadero Sample Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dclDataSnapIndy10ServerTransport140.bpl">Embarcadero DBExpress DataSnap Server Transport Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dclDataSnapProviderClient140.bpl">Embarcadero DBExpress DataSnap Provider Client Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dclDataSnapServer140.bpl">Embarcadero DBExpress DataSnap Server Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dcldbx140.bpl">Embarcadero dbExpress Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dcldbxcds140.bpl">Embarcadero SimpleDataset Component (DBX)</Excluded_Packages>
 						<Excluded_Packages Name="$(BDS)\bin\dcloffice2k140.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
 						<Excluded_Packages Name="$(BDS)\bin\dclofficexp140.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
 					</Excluded_Packages>

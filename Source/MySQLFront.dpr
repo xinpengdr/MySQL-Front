@@ -2,7 +2,9 @@
 
 uses
   FastMM4,
+  {$IFDEF EurekaLog}
   ExceptionLog,
+  {$ENDIF}
   Windows,
   ShellAPI,
   SysUtils,
@@ -21,9 +23,9 @@ uses
   ComCtrls_Ext in 'VCL\Source\ComCtrls_Ext.pas',
   CommCtrl_Ext in 'VCL\Source\CommCtrl_Ext.pas',
   Forms_Ext in 'VCL\Source\Forms_Ext.pas',
+  fAccount in 'fAccount.pas',
   fClient in 'fClient.pas',
   fPreferences in 'fPreferences.pas',
-  fAccount in 'fAccount.pas',
   fTools in 'fTools.pas',
   fURI in 'fURI.pas',
   fBase in 'fBase.pas',

@@ -2052,7 +2052,8 @@ end;
 
 function TMySQLConnection.Error(const AHandle: MySQLConsts.MYSQL): string;
 begin
-//  if (ServerVersion < 50000) then // ToDo: Diese Version ist frei aus der Luft gegriffen. Bitte anpassen!!!
+// ToDo: Diese Version ist frei aus der Luft gegriffen. Bitte anpassen!!!
+//  if (ServerVersion < 50000) then
 //    Result := LibDecode(my_char(SQLUnescape(RawByteString(Lib.mysql_error(AHandle)))))
 //  else
     Result := LibDecode(Lib.mysql_error(AHandle));
@@ -2606,6 +2607,8 @@ begin
       StartTime := Now();
       SynchroThread.Success := Lib.mysql_real_query(SynchroThread.Handle, my_char(LibSQL), LibLength) = 0;
       SynchroThread.Time := SynchroThread.Time + Now() - StartTime;
+
+//      Sleep(2000);
     end;
 
     if (SynchroThread.Success and not SynchroThread.Terminated) then
@@ -5287,22 +5290,16 @@ end;
 
 procedure TMySQLDataSet.InternalCancel();
 begin
-  InternRecordBuffers.CriticalSection.Enter();
-
-  if (InternRecordBuffers.Count = 0) then
-    FreeInternRecordBuffer(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer)
-  else
+  if (PExternRecordBuffer(ActiveBuffer())^.BookmarkFlag <> bfCurrent) then
   begin
-    if (PExternRecordBuffer(ActiveBuffer()).BookmarkFlag = bfEOF) then // Append
-      Dec(InternRecordBuffers.Index);
-
-    FreeInternRecordBuffer(InternRecordBuffers[InternRecordBuffers.Index]);
-    InternRecordBuffers.Delete(InternRecordBuffers.Index);
+    FreeInternRecordBuffer(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer);
+    PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer := nil;
+  end
+  else if (PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData <> PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData) then
+  begin
+    FreeMem(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData);
+    PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData := PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData;
   end;
-
-  PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer := nil;
-
-  InternRecordBuffers.CriticalSection.Leave();
 end;
 
 procedure TMySQLDataSet.InternalClose();
@@ -5426,29 +5423,9 @@ var
   I: Integer;
   RBS: RawByteString;
 begin
-  if (InternRecordBuffers.Count = 0) then
-  begin
-    PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer := AllocInternRecordBuffer();
-  end
-  else if (PExternRecordBuffer(ActiveBuffer())^.BookmarkFlag = bfBOF) then
-  begin
-    InternRecordBuffers.Index := 0;
-    InternRecordBuffers.Insert(InternRecordBuffers.Index, AllocInternRecordBuffer());
-    PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer := InternRecordBuffers[InternRecordBuffers.Index];
-  end
-  else if (PExternRecordBuffer(ActiveBuffer())^.BookmarkFlag in [bfBOF, bfInserted]) then
-  begin
-    InternalSetToRecord(ActiveBuffer());
-    InternRecordBuffers.Insert(InternRecordBuffers.Index, AllocInternRecordBuffer());
-    PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer := InternRecordBuffers[InternRecordBuffers.Index];
-    for I := ActiveRecord + 1 to BufferCount - 1 do
-      Inc(PExternRecordBuffer(Buffers[I])^.RecNo);
-  end
-  else if (PExternRecordBuffer(ActiveBuffer())^.BookmarkFlag in [bfEOF]) then
-  begin
-    InternRecordBuffers.Index := InternRecordBuffers.Add(AllocInternRecordBuffer());
-    PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer := InternRecordBuffers[InternRecordBuffers.Index];
-  end;
+  InternalSetToRecord(ActiveBuffer());
+
+  PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer := AllocInternRecordBuffer();
 
   if (Filtered) then
     Inc(FilteredRecordCount);
@@ -5560,8 +5537,13 @@ begin
 
     if (Success) then
     begin
-      if (InternRecordBuffers.Count = 0) then
-        InternRecordBuffers.Add(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer);
+      case (PExternRecordBuffer(ActiveBuffer())^.BookmarkFlag) of
+        bfInserted:
+          InternRecordBuffers.Insert(InternRecordBuffers.Index, PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer);
+        bfBOF,
+        bfEOF:
+          InternRecordBuffers.Index := InternRecordBuffers.Add(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer);
+      end;
 
       if (Connection.Connected) then
         for I := 0 to Fields.Count - 1 do

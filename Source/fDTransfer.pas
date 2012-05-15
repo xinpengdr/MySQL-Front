@@ -695,7 +695,7 @@ begin
         end
         else if ((Node.ImageIndex = iiDatabase) and (Sender = FMaster)) then
         begin
-// ToDo
+// ToDo: Initialize
 //          Database := Client.DatabaseByName(Node.Text);
 //          if (Database.Initialize()) then
 //            for I := 0 to Database.Tables.Count - 1 do
@@ -784,7 +784,7 @@ begin
             );
         iiDatabase:
           begin
-// ToDo
+// ToDo: Initialize
 //            MClient := Connections[Accounts.AccountByName(FMaster.Items[I].Parent.Text).Index];
 //            MDatabase := MClient.DatabaseByName(FMaster.Items[I].Text);
 //            SAccount := Accounts.AccountByName(FSlave.Selected.Text);

@@ -48,10 +48,13 @@ type
     procedure FormShow(Sender: TObject);
     procedure FParentDatabaseChange(Sender: TObject);
     procedure FParentTableChange(Sender: TObject);
+    procedure FTableChange(Sender: TObject);
   private
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     function GetParentDatabase(): TCDatabase;
     function GetParentTable(): TCBaseTable;
-    property ParentDatabase: TCDatabase read GetParentDatabase;
+    property SelectedParentDatabase: TCDatabase read GetParentDatabase;
+    property SelectedParentTable: TCBaseTable read GetParentTable;
   protected
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
@@ -171,6 +174,19 @@ begin
   FMatchPartialClick(Sender);
 end;
 
+procedure TDForeignKey.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if ((Event.EventType = ceBuild) and (Event.Sender = Database.Tables)
+    or (Event.EventType = ceUpdated) and (Event.CItem = Table)) then
+    FTableChange(Event.Sender)
+  else if ((Event.EventType = ceBuild) and (Event.Sender = Table.Client.Databases)
+    or (Event.EventType = ceUpdated) and (Event.CItem = SelectedParentDatabase)) then
+    FParentDatabaseChange(Event.Sender)
+  else if ((Event.EventType = ceBuild) and (Event.Sender = SelectedParentDatabase.Tables)
+    or (Event.EventType = ceUpdated) and (Event.CItem = SelectedParentTable)) then
+    FParentTableChange(Event.Sender);
+end;
+
 procedure TDForeignKey.FormCloseQuery(Sender: TObject;
   var CanClose: Boolean);
 var
@@ -193,8 +209,8 @@ begin
         SetLength(NewForeignKey.Fields, Length(NewForeignKey.Fields) + 1);
         NewForeignKey.Fields[Length(NewForeignKey.Fields) - 1] := Table.FieldByName(FFields.Items.Strings[I]);
       end;
-    NewForeignKey.Parent.DatabaseName := ParentDatabase.Name;
-    NewForeignKey.Parent.TableName := GetParentTable().Name;
+    NewForeignKey.Parent.DatabaseName := SelectedParentDatabase.Name;
+    NewForeignKey.Parent.TableName := SelectedParentTable.Name;
     SetLength(NewForeignKey.Parent.FieldNames, 0);
     for I := 0 to FParentFields.Count - 1 do
       if (FParentFields.Selected[I]) then
@@ -258,6 +274,8 @@ end;
 
 procedure TDForeignKey.FormHide(Sender: TObject);
 begin
+  Database.Client.UnRegisterEventProc(FormClientEvent);
+
   Preferences.ForeignKey.Width := Width;
   Preferences.ForeignKey.Height := Height;
 end;
@@ -292,10 +310,6 @@ begin
     Caption := Preferences.LoadStr(842, ForeignKey.Name);
     HelpContext := 1057;
   end;
-
-  FFields.Clear();
-  for I := 0 to Table.Fields.Count - 1 do
-    FFields.Items.Add(Table.Fields.Field[I].Name);
 
   FDatabase.Text := Table.Database.Name;
   FTable.Text := Table.Name;
@@ -389,6 +403,8 @@ begin
   ActiveControl := FBCancel;
   if (FBOk.Visible) then
     ActiveControl := FName;
+
+  Database.Client.RegisterEventProc(FormClientEvent);
 end;
 
 procedure TDForeignKey.FParentDatabaseChange(Sender: TObject);
@@ -396,17 +412,22 @@ var
   I: Integer;
 begin
   FParentTable.Clear();
-  FParentTable.Enabled := Assigned(ParentDatabase) and (not Assigned(ForeignKey) or (Table.Database.Client.ServerVersion >= 40013));
 
-  if (Assigned(ParentDatabase)) then
+  if (not Assigned(SelectedParentDatabase)) then
+    FParentTable.Cursor := crDefault
+  else if (SelectedParentDatabase.Initialize()) then
+    FParentTable.Cursor := crSQLWait
+  else
   begin
-// ToDo:    ParentDatabase.Initialize();
-    for I := 0 to ParentDatabase.Tables.Count - 1 do
-      if (ParentDatabase.Tables.Table[I] is TCBaseTable) then
-        FParentTable.Items.Add(ParentDatabase.Tables.Table[I].Name);
-  end;
+    FParentTable.Cursor := crDefault;
 
-  FBOkCheckEnabled(Sender);
+    for I := 0 to SelectedParentDatabase.Tables.Count - 1 do
+      if (SelectedParentDatabase.Tables.Table[I] is TCBaseTable) then
+        FParentTable.Items.Add(SelectedParentDatabase.Tables.Table[I].Name);
+
+    FParentTable.Enabled := not Assigned(ForeignKey) or (Table.Database.Client.ServerVersion >= 40013);
+    FBOkCheckEnabled(Sender);
+  end;
 end;
 
 procedure TDForeignKey.FParentTableChange(Sender: TObject);
@@ -414,13 +435,42 @@ var
   I: Integer;
 begin
   FParentFields.Clear();
-  FParentFields.Enabled := Assigned(GetParentTable()) and (not Assigned(ForeignKey) or (Table.Database.Client.ServerVersion >= 40013));
 
-  if (Assigned(GetParentTable())) then
-    for I := 0 to GetParentTable().Fields.Count - 1 do
-      FParentFields.Items.Add(GetParentTable().Fields.Field[I].Name);
+  if (not Assigned(SelectedParentTable)) then
+    FParentFields.Cursor := crDefault
+  else if (SelectedParentDatabase.Initialize(SelectedParentTable)) then
+    FParentFields.Cursor := crSQLWait
+  else
+  begin
+    FParentFields.Cursor := crDefault;
 
-  FBOkCheckEnabled(Sender);
+    for I := 0 to SelectedParentTable.Fields.Count - 1 do
+      FParentFields.Items.Add(SelectedParentTable.Fields.Field[I].Name);
+
+    FParentFields.Enabled := not Assigned(ForeignKey) or (Table.Database.Client.ServerVersion >= 40013);
+    FBOkCheckEnabled(Sender);
+  end;
+end;
+
+procedure TDForeignKey.FTableChange(Sender: TObject);
+var
+  I: Integer;
+begin
+  FFields.Clear();
+
+  if (not Assigned(Table)) then
+    FFields.Cursor := crDefault
+  else if (Table.Initialize()) then
+    FFields.Cursor := crSQLWait
+  else
+  begin
+    FFields.Cursor := crDefault;
+
+    FFields.Items.BeginUpdate();
+    for I := 0 to Table.Fields.Count - 1 do
+      FFields.Items.Add(Table.Fields.Field[I].Name);
+    FFields.Items.EndUpdate();
+  end;
 end;
 
 function TDForeignKey.GetParentDatabase(): TCDatabase;
@@ -430,10 +480,10 @@ end;
 
 function TDForeignKey.GetParentTable(): TCBaseTable;
 begin
-  if (not Assigned(ParentDatabase)) then
+  if (not Assigned(SelectedParentDatabase)) then
     Result := nil
   else
-    Result := ParentDatabase.BaseTableByName(FParentTable.Text);
+    Result := SelectedParentDatabase.BaseTableByName(FParentTable.Text);
 end;
 
 initialization

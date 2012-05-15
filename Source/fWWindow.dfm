@@ -27,18 +27,20 @@ object WWindow: TWWindow
   TextHeight = 14
   object PWorkSpace: TPanel_Ext
     Left = 0
-    Top = 121
+    Top = 124
     Width = 691
-    Height = 318
+    Height = 315
     Align = alClient
     BevelOuter = bvNone
     Color = clAppWorkSpace
     ParentBackground = False
     TabOrder = 5
+    ExplicitTop = 121
+    ExplicitHeight = 318
   end
   object TabControl: TTabControl
     Left = 0
-    Top = 93
+    Top = 96
     Width = 691
     Height = 28
     Align = alTop
@@ -63,12 +65,13 @@ object WWindow: TWWindow
     OnMouseUp = TabControlMouseUp
     OnResize = TabControlResize
     OnStartDrag = TabControlStartDrag
+    ExplicitTop = 93
   end
   object PAddressBar: TPanel_Ext
     Left = 0
     Top = 64
     Width = 691
-    Height = 29
+    Height = 32
     Align = alTop
     AutoSize = True
     BevelOuter = bvNone
@@ -1508,7 +1511,7 @@ object WWindow: TWWindow
       object miEUndo: TMenuItem
         Action = aEUndo
       end
-      object aERedo1: TMenuItem
+      object miERedo: TMenuItem
         Action = aERedo
       end
       object N5: TMenuItem

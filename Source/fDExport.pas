@@ -183,6 +183,7 @@ type
     ODBCEnv: SQLHENV;
     procedure CheckActivePageChange(const ActivePageIndex: Integer);
     procedure ClearTSFields(Sender: TObject);
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure InitTSFields(Sender: TObject);
     procedure OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
@@ -527,7 +528,7 @@ begin
 
     if ((I = DBObjects.Count - 1) or (TCDBObject(DBObjects[I + 1]).Database <> TCDBObject(DBObjects[I]).Database)) then
     begin
-// ToDo     TCDBObject(DBObjects[I]).Database.Initialize();
+// ToDo:     TCDBObject(DBObjects[I]).Database.Initialize();
       SetLength(Objects, 0);
     end;
   end;
@@ -754,6 +755,11 @@ begin
   FBForward.Click();
 end;
 
+procedure TDExport.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  Write;
+end;
+
 procedure TDExport.FormCreate(Sender: TObject);
 begin
   Export := nil;
@@ -801,6 +807,8 @@ end;
 
 procedure TDExport.FormHide(Sender: TObject);
 begin
+  Client.UnRegisterEventProc(FormClientEvent);
+
   if (ModalResult = mrOk) then
   begin
     Preferences.Export.CSVHeadline := FCSVHeadline.Checked;
@@ -883,6 +891,7 @@ begin
 
   FBCancel.ModalResult := mrCancel;
 
+  Client.UnRegisterEventProc(FormClientEvent);
   PostMessage(Handle, CM_POSTSHOW, 0, 0);
 end;
 
