@@ -181,9 +181,11 @@ type
     FLReferrers: array of TLabel;
     ODBC: SQLHDBC;
     ODBCEnv: SQLHENV;
+    SQLWait: Boolean;
     procedure CheckActivePageChange(const ActivePageIndex: Integer);
     procedure ClearTSFields(Sender: TObject);
     procedure FormClientEvent(const Event: TCClient.TEvent);
+    procedure InitializeDBObjects();
     procedure InitTSFields(Sender: TObject);
     procedure OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
@@ -307,11 +309,19 @@ begin
     else
       FBForward.Caption := Preferences.LoadStr(230);
 
-  FBForward.Enabled := FBForward.Visible and (NextActivePageIndex >= 0) and ((NextActivePageIndex < TSExecute.PageIndex) or True);
+  FBForward.Enabled := FBForward.Visible and (NextActivePageIndex >= 0) and ((NextActivePageIndex < TSExecute.PageIndex) or not SQLWait);
   FBForward.Default := True;
+
+  if (not FBForward.Enabled and SQLWait) then
+    FBForward.Cursor := crSQLWait
+  else
+    FBForward.Cursor := crDefault;
 
   FBCancel.Caption := Preferences.LoadStr(30);
   FBCancel.Default := False;
+
+  if (not Assigned(ActiveControl) and FBForward.Enabled) then
+    ActiveControl := FBForward;
 end;
 
 procedure TDExport.ClearTSFields(Sender: TObject);
@@ -434,6 +444,8 @@ begin
     FBCancel.ModalResult := mrOk
   else
     FBCancel.ModalResult := mrCancel;
+
+  ActiveControl := nil;
 end;
 
 procedure TDExport.CMPostShow(var Message: TMessage);
@@ -443,11 +455,6 @@ begin
   for I := 0 to PageControl.PageCount - 1 do
     if ((PageControl.ActivePageIndex < 0) and PageControl.Pages[I].Enabled) then
       PageControl.ActivePageIndex := I;
-
-  if (FBForward.Enabled) then
-    ActiveControl := FBForward
-  else
-    ActiveControl := FBCancel;
 end;
 
 procedure TDExport.CMSysFontChanged(var Message: TMessage);
@@ -503,43 +510,8 @@ end;
 function TDExport.Execute(): Boolean;
 var
   FilenameP: array [0 .. MAX_PATH] of Char;
-  I: Integer;
-  Objects: array of TCDBObject;
 begin
   PageControl.ActivePageIndex := -1;
-
-  case (ExportType) of
-    etSQLFile: HelpContext := 1014;
-    etTextFile: HelpContext := 1134;
-    etExcelFile: HelpContext := 1107;
-    etAccessFile: HelpContext := 1129;
-    etSQLiteFile: HelpContext := 1128;
-    etHTMLFile: HelpContext := 1016;
-    etXMLFile: HelpContext := 1017;
-    etPrint: HelpContext := 1018;
-    else HelpContext := -1;
-  end;
-
-  SetLength(Objects, 0);
-  for I := 0 to DBObjects.Count - 1 do
-  begin
-    SetLength(Objects, Length(Objects) + 1);
-    Objects[Length(Objects) - 1] := DBObjects[I];
-
-    if ((I = DBObjects.Count - 1) or (TCDBObject(DBObjects[I + 1]).Database <> TCDBObject(DBObjects[I]).Database)) then
-    begin
-// ToDo:     TCDBObject(DBObjects[I]).Database.Initialize();
-      SetLength(Objects, 0);
-    end;
-  end;
-
-  for I := DBObjects.Count - 1 downto 0 do
-    if (TCDBObject(DBObjects[I]).Source = '') then
-      DBObjects.Delete(I)
-    else if (TCDBObject(DBObjects[I]) is TCBaseTable) then
-      TCBaseTable(DBObjects[I]).ForeignKeys.Count; // Fetch parent table
-
-  DBObjects.Sort(DBObjectsSortItem);
 
   if (ExportType <> etPrint) then
     Result := True
@@ -551,13 +523,7 @@ begin
   end;
 
   if (Result) then
-  begin
-    if (Assigned(DBGrid)) then
-      DBGrid.DataSource.DataSet.DisableControls();
     Result := ShowModal() = mrOk;
-    if (Assigned(DBGrid)) then
-      DBGrid.DataSource.DataSet.EnableControls();
-  end;
 end;
 
 procedure TDExport.FBBackClick(Sender: TObject);
@@ -757,7 +723,8 @@ end;
 
 procedure TDExport.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  Write;
+  if (Event.EventType in [ceAfterExecuteSQL]) then
+    InitializeDBObjects();
 end;
 
 procedure TDExport.FormCreate(Sender: TObject);
@@ -808,6 +775,9 @@ end;
 procedure TDExport.FormHide(Sender: TObject);
 begin
   Client.UnRegisterEventProc(FormClientEvent);
+
+  if (Assigned(DBGrid)) then
+    DBGrid.DataSource.DataSet.EnableControls();
 
   if (ModalResult = mrOk) then
   begin
@@ -868,6 +838,18 @@ begin
   else
     Caption := Preferences.LoadStr(210) + ' ' + ExtractFileName(Filename);
 
+  case (ExportType) of
+    etSQLFile: HelpContext := 1014;
+    etTextFile: HelpContext := 1134;
+    etExcelFile: HelpContext := 1107;
+    etAccessFile: HelpContext := 1129;
+    etSQLiteFile: HelpContext := 1128;
+    etHTMLFile: HelpContext := 1016;
+    etXMLFile: HelpContext := 1017;
+    etPrint: HelpContext := 1018;
+    else HelpContext := -1;
+  end;
+
   if (Assigned(DBGrid)) then
     FHTMLStructure.Caption := Preferences.LoadStr(794)
   else
@@ -891,7 +873,14 @@ begin
 
   FBCancel.ModalResult := mrCancel;
 
-  Client.UnRegisterEventProc(FormClientEvent);
+  if (Assigned(DBGrid)) then
+    DBGrid.DataSource.DataSet.DisableControls();
+
+  Client.RegisterEventProc(FormClientEvent);
+
+  DBObjects.Sort(DBObjectsSortItem);
+  InitializeDBObjects();
+
   PostMessage(Handle, CM_POSTSHOW, 0, 0);
 end;
 
@@ -961,6 +950,39 @@ procedure TDExport.FTableTagKeyPress(Sender: TObject;
   var Key: Char);
 begin
   FTableTagClick(Sender);
+end;
+
+procedure TDExport.InitializeDBObjects();
+var
+  Database: TCDatabase;
+  Index: Integer;
+  Objects: TList;
+begin
+  SQLWait := False;
+
+  if (DBObjects.Count > 0) then
+  begin
+    Objects := TList.Create();
+
+    Index := 0;
+    Database := TCDBObject(DBObjects[0]).Database;
+    repeat
+      if ((Index = DBObjects.Count) or (TCDBObject(DBObjects[Index]).Database <> Database)) then
+      begin
+        SQLWait := Database.InitializeSources(Objects);
+        Objects.Clear();
+      end
+      else
+        Objects.Add(DBObjects[Index]);
+
+      Inc(Index);
+    until (SQLWait or (Index > DBObjects.Count));
+
+    Objects.Free();
+  end;
+
+  if (not SQLWait) then
+    CheckActivePageChange(PageControl.ActivePageIndex);
 end;
 
 procedure TDExport.InitTSFields(Sender: TObject);
@@ -1150,13 +1172,13 @@ begin
       etSQLFile:
         try
           ExportSQL := TTExportSQL.Create(Client, Filename, CodePage);
-          ExportSQL.CreateDatabaseStatements := FCreateDatabase.Checked;
+          ExportSQL.CreateDatabaseStmts := FCreateDatabase.Checked;
           ExportSQL.Data := FHTMLData.Checked;
           ExportSQL.DisableKeys := FDisableKeys.Checked;
-          ExportSQL.IncludeDropStatements := FDrop.Checked;
+          ExportSQL.IncludeDropStmts := FDrop.Checked;
           ExportSQL.ReplaceData := FReplaceData.Checked;
           ExportSQL.Structure := FSQLStructure.Checked;
-          ExportSQL.UseDatabaseStatements := FUseDatabase.Checked;
+          ExportSQL.UseDatabaseStmts := FUseDatabase.Checked;
 
           Export := ExportSQL;
         except
@@ -1296,13 +1318,13 @@ begin
       etSQLFile:
         try
           ExportSQL := TTExportSQL.Create(Client, Filename, CodePage);
-          ExportSQL.CreateDatabaseStatements := FCreateDatabase.Checked;
+          ExportSQL.CreateDatabaseStmts := FCreateDatabase.Checked;
           ExportSQL.Data := FSQLData.Checked;
           ExportSQL.DisableKeys := FDisableKeys.Checked;
-          ExportSQL.IncludeDropStatements := FDrop.Checked;
+          ExportSQL.IncludeDropStmts := FDrop.Checked;
           ExportSQL.ReplaceData := FReplaceData.Checked;
           ExportSQL.Structure := FSQLStructure.Checked;
-          ExportSQL.UseDatabaseStatements := FUseDatabase.Checked;
+          ExportSQL.UseDatabaseStmts := FUseDatabase.Checked;
           for I := 0 to DBObjects.Count - 1 do
             ExportSQL.Add(TCDBObject(DBObjects[I]));
 

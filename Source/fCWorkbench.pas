@@ -8,7 +8,7 @@ uses
   fClient;
 
 const
-  CM_ENDLASSO = WM_USER + 900;
+  CM_ENDLASSO = WM_USER + 400;
 
 type
   TWPoint = class;

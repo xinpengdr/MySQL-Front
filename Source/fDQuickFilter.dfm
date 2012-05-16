@@ -13,7 +13,7 @@ object DQuickFilter: TDQuickFilter
   Font.Name = 'MS Sans Serif'
   Font.Style = []
   OldCreateOrder = False
-  Position = poScreenCenter
+  Position = poOwnerFormCenter
   OnHide = FormHide
   OnShow = FormShow
   PixelsPerInch = 96

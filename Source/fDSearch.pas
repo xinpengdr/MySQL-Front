@@ -87,28 +87,25 @@ type
     procedure FSelectDblClick(Sender: TObject);
     procedure FSelectExpanding(Sender: TObject; Node: TTreeNode;
       var AllowExpansion: Boolean);
-    procedure FSelectMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
-    procedure FSelectMouseUp(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
     procedure FTablesDblClick(Sender: TObject);
     procedure mTCopyClick(Sender: TObject);
     procedure TSExecuteShow(Sender: TObject);
     procedure TSFOptionsShow(Sender: TObject);
     procedure TSROptionsShow(Sender: TObject);
     procedure TSSelectShow(Sender: TObject);
+    procedure FSelectGetImageIndex(Sender: TObject; Node: TTreeNode);
   private
-    Connections: array of TCClient;
+    Clients: array of TCClient;
     ExecuteClient: TCClient;
     Find: TTFind;
-    MouseDownNode: TTreeNode;
     Replace: TTReplace;
     ReplaceClient: TCClient;
     Tables: array of TDSTableItem;
+    WantedNode: TTreeNode;
     procedure CMExecutenDoneF(var Message: TMessage);
     procedure CMExecutenDoneR(var Message: TMessage);
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
-  protected
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMExecutedDone(var Message: TMessage); message CM_EXECUTIONDONE;
     procedure CMUpdateProgressInfo(var Message: TMessage); message CM_UPDATEPROGRESSINFO;
@@ -363,6 +360,12 @@ begin
   FFRegExprClick(Sender);
 end;
 
+procedure TDSearch.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if ((Event.EventType in [ceAfterExecuteSQL]) and Assigned(WantedNode)) then
+    WantedNode.Expand(False);
+end;
+
 procedure TDSearch.FormCreate(Sender: TObject);
 var
   I: Integer;
@@ -411,12 +414,18 @@ var
   I: Integer;
 begin
   FSelect.Selected := nil; // Make sure, not to call FSelectedChange with a selcted node
+  FSelect.Items.BeginUpdate();
   FSelect.Items.Clear();
+  FSelect.Items.EndUpdate();
 
-  for I := 0 to Length(Connections) - 1 do
-    if (Assigned(Connections[I]) and (Connections[I] <> Client)) then
-      fClient.Clients.ReleaseClient(Connections[I]);
-  SetLength(Connections, 0);
+  for I := 0 to Length(Clients) - 1 do
+    if (Assigned(Clients[I])) then
+    begin
+      Clients[I].UnRegisterEventProc(FormClientEvent);
+      if (Clients[I] <> Client) then
+        fClient.Clients.ReleaseClient(Clients[I]);
+    end;
+  SetLength(Clients, 0);
 
   if (SearchOnly) then
   begin
@@ -496,24 +505,23 @@ begin
     end;
   end;
 
-  FSelect.Items.Clear();
+  WantedNode := nil;
   FErrorMessages.Visible := not SearchOnly;
   FTables.Visible := SearchOnly;
   FFFindTextChange(Sender);
 
-  SetLength(Connections, Accounts.Count);
+  SetLength(Clients, Accounts.Count);
 
   for I := 0 to Accounts.Count - 1 do
   begin
     if (Assigned(Client) and (Accounts[I] = Client.Account)) then
-      Connections[I] := Client
+      Clients[I] := Client
     else
-      Connections[I] := nil;
+      Clients[I] := nil;
 
     Node := FSelect.Items.Add(nil, Accounts[I].Name);
     Node.ImageIndex := Accounts[I].ImageIndex;
     if (Node.ImageIndex < 0) then Node.ImageIndex := iiServer;
-    Node.SelectedIndex := Node.ImageIndex;
     Node.HasChildren := True;
   end;
 
@@ -594,10 +602,10 @@ begin
   PageControl.ActivePage := TSSelect;
 
   ActiveControl := FBCancel;
-  if (Assigned(Client)) then
-    ActiveControl := FSelect
-  else
-    ActiveControl := FBCancel;
+//  if (Assigned(Client)) then
+    ActiveControl := FSelect;
+//  else
+//    ActiveControl := FBCancel;
 
   FBCancel.Caption := Preferences.LoadStr(30);
   FBCancel.ModalResult := mrCancel;
@@ -620,17 +628,9 @@ begin
 end;
 
 procedure TDSearch.FSelectChange(Sender: TObject; Node: TTreeNode);
-var
-  AllowExpansion: Boolean;
 begin
   if ((ModalResult = mrNone) and Assigned(Node)) then
     FSelect.MultiSelect := Assigned(Node.Parent);
-
-  if (Assigned(Node) and Node.Selected and not Node.Expanded and not Assigned(Node.Parent)) then
-  begin
-    AllowExpansion := True;
-    FSelectExpanding(Sender, Node, AllowExpansion);
-  end;
 
   FBForward.Enabled := Assigned(FSelect.Selected);
 end;
@@ -645,89 +645,101 @@ procedure TDSearch.FSelectExpanding(Sender: TObject; Node: TTreeNode;
   var AllowExpansion: Boolean);
 var
   B: Boolean;
-  //  Table: TCBaseTable;
   Client: TCClient;
   Database: TCDatabase;
   I: Integer;
   Index: Integer;
   NewNode: TTreeNode;
+  Table: TCBaseTable;
   TreeView: TTreeView_Ext;
 begin
   TreeView := TTreeView_Ext(Sender);
 
-  if (not Assigned(TreeView.Selected)) then
-    TreeView.Selected := Node;
+  if (Assigned(WantedNode)) then
+  begin
+    for I := 0 to Length(Clients) - 1 do
+      if (Assigned(Clients[I])) then
+        Clients[I].UnRegisterEventProc(FormClientEvent);
+    WantedNode := nil;
+  end;
 
   if (Assigned(TreeView.Selected)) then
   begin
     if (not Assigned(Node.Parent)) then
     begin
       Index := Accounts.IndexOf(Accounts.AccountByName(Node.Text));
-      if (not Assigned(Connections[Index])) then
-        Connections[Index] := fClient.Clients.CreateClient(Accounts.AccountByName(Node.Text), B);
+      if (not Assigned(Clients[Index])) then
+        Clients[Index] := fClient.Clients.CreateClient(Accounts.AccountByName(Node.Text), B);
 
-      Client := Connections[Index];
+      Client := Clients[Index];
     end
     else
       if (not Assigned(Node.Parent.Parent)) then
-        Client := Connections[Accounts.IndexOf(Accounts.AccountByName(Node.Parent.Text))]
+        Client := Clients[Accounts.IndexOf(Accounts.AccountByName(Node.Parent.Text))]
       else
-        Client := Connections[Accounts.IndexOf(Accounts.AccountByName(Node.Parent.Parent.Text))];
+        Client := Clients[Accounts.IndexOf(Accounts.AccountByName(Node.Parent.Parent.Text))];
 
     if (Assigned(Client)) then
     begin
       if (Node.HasChildren and not Assigned(Node.getFirstChild())) then
         if (not Assigned(Node.Parent)) then
         begin
-          for I := 0 to Client.Databases.Count - 1 do
-            if (not (Client.Databases[I] is TCSystemDatabase)) then
-              begin
-                NewNode := TreeView.Items.AddChild(Node, Client.Databases[I].Name);
-                NewNode.ImageIndex := iiDatabase; NewNode.SelectedIndex := NewNode.ImageIndex;
-                NewNode.HasChildren := True;
-              end;
+          if (Client.Initialize()) then
+          begin
+            Client.RegisterEventProc(FormClientEvent);
+            WantedNode := Node;
+          end
+          else
+            for I := 0 to Client.Databases.Count - 1 do
+              if (not (Client.Databases[I] is TCSystemDatabase)) then
+                begin
+                  NewNode := TreeView.Items.AddChild(Node, Client.Databases[I].Name);
+                  NewNode.ImageIndex := iiDatabase;
+                  NewNode.HasChildren := True;
+                end;
         end
         else if (Node.ImageIndex = iiDatabase) then
         begin
           Database := Client.DatabaseByName(Node.Text);
+          if (Database.Initialize(Database.Tables)) then
+          begin
+            Client.RegisterEventProc(FormClientEvent);
+            WantedNode := Node;
+          end
+          else
             for I := 0 to Database.Tables.Count - 1 do
               if ((Database.Tables[I] is TCBaseTable) and Assigned(TCBaseTable(Database.Tables[I]).Engine) and not TCBaseTable(Database.Tables[I]).Engine.IsMerge and (RightStr(Database.Tables[I].Name, Length(BackupExtension)) <> BackupExtension)) then
               begin
                 NewNode := TreeView.Items.AddChild(Node, Database.Tables[I].Name);
-                NewNode.ImageIndex := iiBaseTable; NewNode.SelectedIndex := NewNode.ImageIndex;
+                NewNode.ImageIndex := iiBaseTable;
                 NewNode.HasChildren := True;
               end;
         end
         else if (Node.ImageIndex = iiBaseTable) then
         begin
-// ToDo: Initialize
-//          Database := Client.DatabaseByName(Node.Parent.Text);
-//          Table := Database.BaseTableByName(Node.Text);
-//          if (Database.Initialize()) then
-//            for I := 0 to Table.Fields.Count - 1 do
-//            begin
-//              NewNode := TreeView.Items.AddChild(Node, Table.Fields[I].Name);
-//              NewNode.ImageIndex := iiField; NewNode.SelectedIndex := NewNode.ImageIndex;
-//            end;
+          Database := Client.DatabaseByName(Node.Parent.Text);
+          Table := Database.BaseTableByName(Node.Text);
+          if (Database.InitializeSources(Table)) then
+          begin
+            Client.RegisterEventProc(FormClientEvent);
+            WantedNode := Node;
+          end
+          else
+            for I := 0 to Table.Fields.Count - 1 do
+            begin
+              NewNode := TreeView.Items.AddChild(Node, Table.Fields[I].Name);
+              NewNode.ImageIndex := iiField;
+            end;
         end;
-      Node.HasChildren := Assigned(Node.getFirstChild());
+      if (not Assigned(WantedNode)) then
+        Node.HasChildren := Assigned(Node.getFirstChild());
     end;
   end;
 end;
 
-procedure TDSearch.FSelectMouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
+procedure TDSearch.FSelectGetImageIndex(Sender: TObject; Node: TTreeNode);
 begin
-  if (Sender is TTreeView_Ext) then
-    MouseDownNode := TTreeView_Ext(Sender).GetNodeAt(X, Y)
-  else
-    MouseDownNode := nil;
-end;
-
-procedure TDSearch.FSelectMouseUp(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
-begin
-  MouseDownNode := nil;
+  Node.SelectedIndex := Node.ImageIndex;
 end;
 
 procedure TDSearch.FTablesDblClick(Sender: TObject);
@@ -886,7 +898,9 @@ begin
 
   FErrors.Caption := '0';
   FErrorMessages.Lines.Clear();
+  FTables.Items.BeginUpdate();
   FTables.Items.Clear();
+  FTables.Items.EndUpdate();
 
   ProgressInfos.TablesDone := 0;
   ProgressInfos.TablesSum := 0;
@@ -903,13 +917,13 @@ begin
   begin
     if (FSelect.Items[I].Selected) then
       if (FSelect.Selected.ImageIndex = iiField) then
-        ExecuteClient := Connections[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Parent.Parent.Parent.Text))]
+        ExecuteClient := Clients[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Parent.Parent.Parent.Text))]
       else if (FSelect.Items[I].ImageIndex = iiBaseTable) then
-        ExecuteClient := Connections[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Parent.Parent.Text))]
+        ExecuteClient := Clients[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Parent.Parent.Text))]
       else if (FSelect.Items[I].ImageIndex = iiDatabase) then
-        ExecuteClient := Connections[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Parent.Text))]
+        ExecuteClient := Clients[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Parent.Text))]
       else // iiConnection
-        ExecuteClient := Connections[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Text))];
+        ExecuteClient := Clients[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Text))];
     Inc(I);
   end;
 

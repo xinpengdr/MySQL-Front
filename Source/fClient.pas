@@ -1412,7 +1412,7 @@ type
 
   TCClient = class(TMySQLConnection)
   type
-    TEventType = (ceBuild, ceUpdated, ceObjectCreated, ceObjectDroped, ceInitialize, ceBeforeExecuteSQL, ceBeforeCancel, ceBeforeClose, ceBeforeOpen, ceAfterOpen, ceAfterReceivingRecords, ceBeforeReceivingRecords, ceBeforeScroll, ceAfterExecuteSQL, ceAfterScroll, ceAfterCancel, ceAfterClose, ceAfterPost, ceBeforePost, ceMonitor);
+    TEventType = (ceBuild, ceUpdated, ceCreated, ceDroped, ceInitialize, ceBeforeExecuteSQL, ceBeforeCancel, ceBeforeClose, ceBeforeOpen, ceAfterOpen, ceAfterReceivingRecords, ceBeforeReceivingRecords, ceBeforeScroll, ceAfterExecuteSQL, ceAfterScroll, ceAfterCancel, ceAfterClose, ceAfterPost, ceBeforePost, ceMonitor);
     TInitialize = function (): Boolean of object;
     TEvent = record
       EventType: TEventType;
@@ -2029,7 +2029,7 @@ begin
     TList(Self).Add(AObject);
 
   if (ExecuteEvent) then
-    Client.ExecuteEvent(ceObjectCreated, Self, AObject);
+    Client.ExecuteEvent(ceCreated, Self, AObject);
 end;
 
 function TCObjects.Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean;
@@ -2057,7 +2057,7 @@ end;
 
 procedure TCObjects.Delete(const AObject: TCObject);
 begin
-  Client.ExecuteEvent(ceObjectDroped, Self, AObject);
+  Client.ExecuteEvent(ceDroped, Self, AObject);
 
   inherited Delete(IndexOf(AObject));
 
@@ -2117,7 +2117,7 @@ begin
     TList(Self).Add(AObject);
 
   if (Event) then
-    Client.ExecuteEvent(ceObjectCreated, Self, AObject, Database);
+    Client.ExecuteEvent(ceCreated, Self, AObject, Database);
 end;
 
 constructor TCDBObjects.Create(const ADatabase: TCDatabase);
@@ -2138,7 +2138,7 @@ begin
   begin
     inherited Delete(Index);
 
-    Client.ExecuteEvent(ceObjectDroped, Self, AObject, Database);
+    Client.ExecuteEvent(ceDroped, Self, AObject, Database);
 
     AObject.Free();
   end;
@@ -5004,7 +5004,7 @@ begin
     TList(Self).Add(AObject);
 
   if (Event) then
-    Client.ExecuteEvent(ceObjectCreated, Self, AObject, Database);
+    Client.ExecuteEvent(ceCreated, Self, AObject, Database);
 end;
 
 procedure TCTables.AddTable(const NewTable: TCTable);
@@ -8154,7 +8154,7 @@ begin
   Assert(AObject is TCDatabase);
 
 
-  Client.ExecuteEvent(ceObjectDroped, Self, AObject);
+  Client.ExecuteEvent(ceDroped, Self, AObject);
 
   DesktopXML.ChildNodes.Remove(TCDatabase(AObject).DesktopXML);
 
@@ -11264,7 +11264,7 @@ begin
                       Table := Database.TableByName(TableName);
                       if (Assigned(Table)) then
                       begin
-                        ExecuteEvent(ceObjectDroped, Database.Tables, Table);
+                        ExecuteEvent(ceDroped, Database.Tables, Table);
                         Database.Tables.Delete(Table.Index);
 
                         Table.FDatabase := DatabaseByName(DatabaseName);
@@ -11283,7 +11283,7 @@ begin
                   begin
                     if (DDLStmt.DefinitionType = dtAlterRename) then
                     begin
-                      ExecuteEvent(ceObjectDroped, Database.Tables, Table);
+                      ExecuteEvent(ceDroped, Database.Tables, Table);
                       Database.Tables.Delete(Table.Index);
 
                       Table.FDatabase := DatabaseByName(DDLStmt.NewDatabaseName);

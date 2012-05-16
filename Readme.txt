@@ -20,7 +20,7 @@ http://www.yunqa.de/delphi/doku.php/products/sqlite3/
 Unicode SynEdit:
 http://mh-nexus.de/en/unisynedit.php
 
-Active Query Builder VCL Edition:  (Shareware)
+Active Query Builder VCL Edition:
 http://www.activequerybuilder.com/
 
 Mirkes MPHexEditor:
@@ -32,10 +32,10 @@ very long. Inside this project there is a own transformation from Delphi 7
 to Delphi 2010.
 
 
-Tools to build a setup program:
-===============================
+Tools to build the setup program:
+=================================
 
-EurekaLog:  (Shareware)
+EurekaLog:
 http://www.eurekalog.com/
 
 Gawk for Windows:
@@ -44,7 +44,7 @@ http://gnuwin32.sourceforge.net/packages/gawk.htm
 Ultimate Packer for eXecutables (UPX):
 http://upx.sourceforge.net/
 
-Help & Manual:  (Shareware)
+Help & Manual:
 http://www.ec-software.com/
 
 HTML Help Workshop:  (only required, if Help & Manual is used)
@@ -69,7 +69,7 @@ FastMM_FullDebugMode.dll inside the Temp folder. This .dll is inside the
 Source\FastMM folder.
 
 
-Building a setup program:
-=========================
+Building the setup program:
+===========================
 
 The Setup Program will be built with the Built_Setup.bat file.

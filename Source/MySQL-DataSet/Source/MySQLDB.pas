@@ -984,8 +984,9 @@ begin
   SynchronizingThreadsCS.Enter();
   Index := SynchronizingThreads.IndexOf(SynchroThread);
   if (Index < 0) then
-    SynchroThread := nil;
-  SynchronizingThreads.Delete(Index);
+    SynchroThread := nil
+  else
+    SynchronizingThreads.Delete(Index);
   SynchronizingThreadsCS.Leave();
 
   if (Assigned(SynchroThread)) then
@@ -2052,7 +2053,7 @@ end;
 
 function TMySQLConnection.Error(const AHandle: MySQLConsts.MYSQL): string;
 begin
-// ToDo: Diese Version ist frei aus der Luft gegriffen. Bitte anpassen!!!
+// Why was this needed???
 //  if (ServerVersion < 50000) then
 //    Result := LibDecode(my_char(SQLUnescape(RawByteString(Lib.mysql_error(AHandle)))))
 //  else

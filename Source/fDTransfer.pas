@@ -74,6 +74,7 @@ type
     procedure TSExecuteShow(Sender: TObject);
     procedure TSSelectShow(Sender: TObject);
     procedure TSTransferOptionsShow(Sender: TObject);
+    procedure TreeViewGetSelectedIndex(Sender: TObject; Node: TTreeNode);
   private
     Connections: array of TCClient;
     MouseDownNode: TTreeNode;
@@ -407,13 +408,11 @@ begin
     Node := FMaster.Items.Add(nil, Accounts[I].Name);
     Node.ImageIndex := Accounts[I].ImageIndex;
     if (Node.ImageIndex < 0) then Node.ImageIndex := iiServer;
-    Node.SelectedIndex := Node.ImageIndex;
     Node.HasChildren := True;
 
     Node := FSlave.Items.Add(nil, Accounts[I].Name);
     Node.ImageIndex := Accounts[I].ImageIndex;
     if (Node.ImageIndex < 0) then Node.ImageIndex := iiServer;
-    Node.SelectedIndex := Node.ImageIndex;
     Node.HasChildren := True;
   end;
 
@@ -689,7 +688,7 @@ begin
             if (not (Client.Databases[I] is TCSystemDatabase)) then
             begin
               NewNode := TreeView.Items.AddChild(Node, Client.Databases[I].Name);
-              NewNode.ImageIndex := iiDatabase; NewNode.SelectedIndex := NewNode.ImageIndex;
+              NewNode.ImageIndex := iiDatabase;
               NewNode.HasChildren := (Sender = FMaster);
             end;
         end
@@ -702,13 +701,18 @@ begin
 //              if ((Database.Tables[I] is TCBaseTable) and Assigned(TCBaseTable(Database.Tables[I]).Engine) and not TCBaseTable(Database.Tables[I]).Engine.IsMerge and (RightStr(Database.Tables[I].Name, Length(BackupExtension)) <> BackupExtension)) then
 //              begin
 //                NewNode := TreeView.Items.AddChild(Node, Database.Tables[I].Name);
-//                NewNode.ImageIndex := iiBaseTable; NewNode.SelectedIndex := NewNode.ImageIndex;
+//                NewNode.ImageIndex := iiBaseTable;
 //                NewNode.HasChildren := False;
 //              end;
         end;
       Node.HasChildren := Assigned(Node.getFirstChild());
     end;
   end;
+end;
+
+procedure TDTransfer.TreeViewGetSelectedIndex(Sender: TObject; Node: TTreeNode);
+begin
+  Node.SelectedIndex := Node.ImageIndex;
 end;
 
 procedure TDTransfer.TreeViewMouseDown(Sender: TObject;

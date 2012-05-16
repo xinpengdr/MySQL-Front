@@ -369,11 +369,11 @@ type
     procedure ExecuteTrigger(const Trigger: TCTrigger); override;
     function FileCreate(const Filename: TFileName; out Error: TTools.TError): Boolean; override;
   public
-    CreateDatabaseStatements: Boolean;
+    CreateDatabaseStmts: Boolean;
     DisableKeys: Boolean;
-    IncludeDropStatements: Boolean;
+    IncludeDropStmts: Boolean;
     ReplaceData: Boolean;
-    UseDatabaseStatements: Boolean;
+    UseDatabaseStmts: Boolean;
     constructor Create(const AClient: TCClient; const AFilename: TFileName; const ACodePage: Cardinal); override;
   end;
 
@@ -1083,7 +1083,7 @@ begin
   FErrorCount := 0;
 
   FUserAbort := CreateEvent(nil, False, False, 'UserAbort');
-  CriticalSection.Create();
+  CriticalSection := TCriticalSection.Create();
 end;
 
 function TTools.DatabaseError(const Client: TCClient): TTools.TError;
@@ -3669,7 +3669,7 @@ begin
     DataSet := TMySQLQuery.Create(nil);
     DataSet.Connection := Client;
     DataSet.CommandText := SQL;
-    while (Success = daSuccess) do
+    while ((Success = daSuccess) and not DataSet.Active) do
     begin
       DataSet.Open();
       if (not DataSet.Active) then
@@ -3873,11 +3873,11 @@ constructor TTExportSQL.Create(const AClient: TCClient; const AFilename: TFileNa
 begin
   inherited;
 
-  CreateDatabaseStatements := False;
+  CreateDatabaseStmts := False;
   DisableKeys := False;
   ForeignKeySources := '';
-  IncludeDropStatements := False;
-  UseDatabaseStatements := True;
+  IncludeDropStmts := False;
+  UseDatabaseStmts := True;
 end;
 
 procedure TTExportSQL.ExecuteDatabaseFooter(const Database: TCDatabase);
@@ -3894,12 +3894,12 @@ begin
   begin
     Content := '';
 
-    if (UseDatabaseStatements or CreateDatabaseStatements) then
+    if (UseDatabaseStmts or CreateDatabaseStmts) then
     begin
       Content := Content + #13#10;
 
-      if (CreateDatabaseStatements) then
-        Content := Content + Database.GetSourceEx(IncludeDropStatements) + #13#10;
+      if (CreateDatabaseStmts) then
+        Content := Content + Database.GetSourceEx(IncludeDropStmts) + #13#10;
 
       Content := Content + Database.SQLUse();
     end;
@@ -4016,7 +4016,7 @@ begin
     Content := Content + '#' + #13#10;
   end;
   Content := Content + #13#10;
-  Content := Content + Routine.GetSourceEx(IncludeDropStatements) + #13#10;
+  Content := Content + Routine.GetSourceEx(IncludeDropStmts) + #13#10;
 
   WriteContent(Content);
 end;
@@ -4071,7 +4071,7 @@ begin
 
     if (Table is TCBaseTable) then
     begin
-      Content := Content + Table.GetSourceEx(IncludeDropStatements, False, @ForeignKeySource) + #13#10;
+      Content := Content + Table.GetSourceEx(IncludeDropStmts, False, @ForeignKeySource) + #13#10;
 
       if (ForeignKeySource <> '') then
       begin
@@ -4084,7 +4084,7 @@ begin
       end;
     end
     else if (Table is TCView) then
-      Content := Content + Table.GetSourceEx(IncludeDropStatements, False) + #13#10;
+      Content := Content + Table.GetSourceEx(IncludeDropStmts, False) + #13#10;
   end;
 
   if (Assigned(Table) and Data) then
@@ -4093,7 +4093,7 @@ begin
     begin
       Content := Content + #13#10;
       Content := Content + '#' + #13#10;
-      Content := Content + '# Data for "' + Table.Name + '"' + #13#10;
+      Content := Content + '# Data for table "' + Table.Name + '"' + #13#10;
       Content := Content + '#' + #13#10;
     end;
 
@@ -4183,7 +4183,7 @@ begin
   Content := Content + '# Source for trigger "' + Trigger.Name + '"' + #13#10;
   Content := Content + '#' + #13#10;
   Content := Content + #13#10;
-  Content := Content + Trigger.GetSourceEx(IncludeDropStatements) + #13#10;
+  Content := Content + Trigger.GetSourceEx(IncludeDropStmts) + #13#10;
 
   WriteContent(Content);
 end;
@@ -5969,7 +5969,7 @@ begin
     DataSet.Connection := Client;
     DataSet.CommandText := SQL;
 
-    while (Success = daSuccess) do
+    while ((Success = daSuccess) and not DataSet.Active) do
     begin
       DataSet.Open();
       if (not DataSet.Active) then
@@ -6152,7 +6152,7 @@ begin
   DataSet := TMySQLQuery.Create(nil);
   DataSet.Connection := Client;
   DataSet.CommandText := SQL;
-  while (Success = daSuccess) do
+  while ((Success = daSuccess) and not DataSet.Active) do
   begin
     DataSet.Open();
     if (Client.ErrorCode > 0) then
@@ -6186,7 +6186,7 @@ begin
   DataSet.Connection := Client;
   DataSet.CommandText := SQL;
 
-  while (Success = daSuccess) do
+  while ((Success = daSuccess) and not DataSet.Active) do
   begin
     DataSet.Open();
     if (Client.ErrorCode > 0) then
@@ -6502,7 +6502,7 @@ begin
         DataSet.Connection := Items[0].Slave.Client;
         DataSet.CommandText := 'SELECT @@UNIQUE_CHECKS, @@FOREIGN_KEY_CHECKS';
 
-        while (Success = daSuccess) do
+        while ((Success = daSuccess) and not DataSet.Active) do
         begin
           DataSet.Open();
           if (Items[0].Slave.Client.ErrorCode > 0) then
@@ -6639,7 +6639,7 @@ begin
         TargetDataSet := TMySQLQuery.Create(nil);
         TargetDataSet.Connection := TargetDatabase.Client;
         TargetDataSet.CommandText := SQL;
-        while (Success = daSuccess) do
+        while ((Success = daSuccess) and not TargetDataSet.Active) do
         begin
           TargetDataSet.Open();
           if (TargetDatabase.Client.ErrorCode > 0) then
@@ -6685,7 +6685,7 @@ begin
           TargetExistingDataSet := TMySQLDataSet.Create(nil);
           TargetExistingDataSet.Connection := TargetDatabase.Client;
           TargetExistingDataSet.CommandText := SQL;
-          while (Success = daSuccess) do
+          while ((Success = daSuccess) and not TargetExistingDataSet.Active) do
           begin
             TargetExistingDataSet.Open();
             if (TargetDatabase.Client.ErrorCode > 0) then
@@ -6708,7 +6708,7 @@ begin
         SQL := SQL + WhereClausel;
 
       SourceDataSet.CommandText := SQL;
-      while (Success = daSuccess) do
+      while ((Success = daSuccess) and not SourceDataSet.Active) do
       begin
         SourceDataSet.Open();
         if (SourceDatabase.Client.ErrorCode > 0) then

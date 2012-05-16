@@ -28,6 +28,7 @@ const
   CM_POST_BUILDER_QUERY_CHANGE = WM_USER + 508;
   CM_POST_MONITOR = WM_USER + 509;
   CM_REMOVE_WFOREIGENKEY = WM_USER + 510;
+  WM_WANTED_SYNCHRONIZE = WM_USER + 511;
 
   sbMessage = 0;
   sbItem = 1;
@@ -668,6 +669,8 @@ type
       procedure SetAddress(const AAddress: string);
       procedure SetFNavigatorNodeExpand(const ANode: string);
       procedure SetInitialize(const AInitialize: TCClient.TInitialize);
+    protected
+      procedure Synchronize();
     public
       property Action: TAction read FAction write SetAction;
       property Address: string read FAddress write SetAddress;
@@ -854,6 +857,7 @@ type
     procedure CMPostShow(var Message: TMessage); message CM_POSTSHOW;
     procedure CMRemoveWForeignKey(var Message: TMessage); message CM_REMOVE_WFOREIGENKEY;
     procedure CMSysFontChanged(var Message: TMessage); message CM_SYSFONTCHANGED;
+    procedure CMWantedSynchronize(var Message: TWMTimer); message WM_WANTED_SYNCHRONIZE;
     procedure WMNotify(var Message: TWMNotify); message WM_NOTIFY;
     procedure WMParentNotify(var Message: TWMParentNotify); message WM_PARENTNOTIFY;
     procedure WMTimer(var Message: TWMTimer); message WM_TIMER;
@@ -993,14 +997,7 @@ begin
   FFNavigatorNodeExpand := '';
 end;
 
-constructor TFClient.TWanted.Create(const AFClient: TFClient);
-begin
-  FClient := AFClient;
-
-  Clear();
-end;
-
-procedure TFClient.TWanted.Execute();
+procedure TFClient.TWanted.Synchronize();
 var
   ExpandingEvent: TTVExpandingEvent;
   TempAction: TAction;
@@ -1035,6 +1032,21 @@ begin
     TempNode.Expand(False);
     FClient.FNavigator.OnExpanding := ExpandingEvent;
   end;
+end;
+
+constructor TFClient.TWanted.Create(const AFClient: TFClient);
+begin
+  FClient := AFClient;
+
+  Clear();
+end;
+
+procedure TFClient.TWanted.Execute();
+begin
+  if (not FClient.Client.Asynchron) then
+    FClient.Perform(WM_WANTED_SYNCHRONIZE, 0, 0)
+  else
+    PostMessage(FClient.Handle, WM_WANTED_SYNCHRONIZE, 0, 0);
 end;
 
 function TFClient.TWanted.GetNothing(): Boolean;
@@ -2666,6 +2678,7 @@ var
   Database: TCDatabase;
   FolderName: string;
   I: Integer;
+  Initialized: Boolean;
   J: Integer;
   Table: TCBaseTable;
   TableNames: array of string;
@@ -2761,7 +2774,7 @@ begin
   else if (FocusedCItem is TCDatabase) then
   begin
     Database := TCDatabase(FocusedCItem);
-    if (not (Database is TCSystemDatabase) and Database.Initialize()) then
+    if (not (Database is TCSystemDatabase)) then
     begin
       for J := 0 to Database.Tables.Count - 1 do
         DExport.DBObjects.Add(Database.Tables[J]);
@@ -2792,18 +2805,28 @@ begin
   else if (Assigned(FocusedCItem)) then
     DExport.DBObjects.Add(FocusedCItem)
   else
+  begin
+    Initialized := False;
     for I := 0 to DExport.Client.Databases.Count - 1 do
-      if ((Client.TableNameCmp(Client.Databases[I].Name, 'mysql') <> 0) and not (Database is TCSystemDatabase) and Client.Databases[I].Initialize()) then
-      begin
-        for J := 0 to Client.Databases[I].Tables.Count - 1 do
-          DExport.DBObjects.Add(Client.Databases[I].Tables[J]);
-        if (Assigned(Client.Databases[I].Routines)) then
-          for J := 0 to Client.Databases[I].Routines.Count - 1 do
-            DExport.DBObjects.Add(Client.Databases[I].Routines[J]);
-        if (Assigned(Client.Databases[I].Triggers)) then
-          for J := 0 to Client.Databases[I].Triggers.Count - 1 do
-            DExport.DBObjects.Add(Client.Databases[I].Triggers[J]);
-      end;
+      if ((Client.TableNameCmp(Client.Databases[I].Name, 'mysql') <> 0) and not (Client.Databases[I] is TCSystemDatabase)) then
+        Initialized := Initialized or Client.Databases[I].Initialize();
+
+    if (Initialized and (Sender is TAction)) then
+      Wanted.Action := TAction(Sender)
+    else
+      for I := 0 to DExport.Client.Databases.Count - 1 do
+        if ((Client.TableNameCmp(Client.Databases[I].Name, 'mysql') <> 0) and not (Client.Databases[I] is TCSystemDatabase)) then
+        begin
+          for J := 0 to Client.Databases[I].Tables.Count - 1 do
+            DExport.DBObjects.Add(Client.Databases[I].Tables[J]);
+          if (Assigned(Client.Databases[I].Routines)) then
+            for J := 0 to Client.Databases[I].Routines.Count - 1 do
+              DExport.DBObjects.Add(Client.Databases[I].Routines[J]);
+          if (Assigned(Client.Databases[I].Triggers)) then
+            for J := 0 to Client.Databases[I].Triggers.Count - 1 do
+              DExport.DBObjects.Add(Client.Databases[I].Triggers[J]);
+        end;
+  end;
 
   if (Assigned(DExport.DBGrid) or (DExport.DBObjects.Count >= 1)) then
   begin
@@ -3738,7 +3761,7 @@ begin
   if (Assigned(Workbench)) then
     Workbench.Refresh();
 
-  if ((Event.EventType = ceObjectCreated) and Assigned(Event.Database) and (SelectedDatabase = Event.Database.Name)) then
+  if ((Event.EventType = ceCreated) and Assigned(Event.Database) and (SelectedDatabase = Event.Database.Name)) then
     case (View) of
       avDiagram:
         if (Event.CItem is TCBaseTable) then
@@ -3755,7 +3778,7 @@ begin
         end;
     end;
 
-  if ((Event.EventType = ceObjectCreated) and (Event.CItem is TCDBObject)) then
+  if ((Event.EventType = ceCreated) and (Event.CItem is TCDBObject)) then
     Wanted.Initialize := TCDBObject(Event.CItem).Initialize;
 end;
 
@@ -4595,6 +4618,12 @@ begin
 
   SendMessage(FLog.Handle, EM_SETTEXTMODE, TM_PLAINTEXT, 0);
   SendMessage(FLog.Handle, EM_SETWORDBREAKPROC, 0, LPARAM(@EditWordBreakProc));
+end;
+
+procedure TFClient.CMWantedSynchronize(var Message: TWMTimer);
+begin
+  if (not (csDestroying in ComponentState)) then
+    Wanted.Synchronize();
 end;
 
 function TFClient.ContentWidthIndexFromImageIndex(AImageIndex: Integer): Integer;
@@ -8357,18 +8386,18 @@ begin
   begin
     Node := FNavigator.Items.getFirstNode();
 
-    if (Event.EventType in [ceBuild, ceObjectDroped]) then
+    if (Event.EventType in [ceBuild, ceDroped]) then
     begin
       Child := Node.getFirstChild();
       while (Assigned(Child) and (Child.ImageIndex in [iiDatabase, iiSystemDatabase])) do
       begin
         Sibling := Child.getNextSibling();
-        if (not Assigned(Client.DatabaseByName(Child.Text)) or (Event.EventType = ceObjectDroped) and (Event.CItem = Client.DatabaseByName(Child.Text))) then
+        if (not Assigned(Client.DatabaseByName(Child.Text)) or (Event.EventType = ceDroped) and (Event.CItem = Client.DatabaseByName(Child.Text))) then
           Child.Delete();
         Child := Sibling;
       end;
     end;
-    if (Event.EventType in [ceBuild, ceObjectCreated]) then
+    if (Event.EventType in [ceBuild, ceCreated]) then
     begin
       for I := 0 to Client.Databases.Count - 1 do
       begin
@@ -8411,18 +8440,18 @@ begin
     begin
       if (Event.Sender is TCTables) then
       begin
-        if (Event.EventType in [ceBuild, ceObjectDroped]) then
+        if (Event.EventType in [ceBuild, ceDroped]) then
         begin
           Child := Node.getFirstChild();
           while (Assigned(Child) and (Child.ImageIndex in [iiBaseTable, iiSystemView, iiView])) do
           begin
             Sibling := Child.getNextSibling();
-            if (not Assigned(Database.TableByName(Child.Text)) or (Event.EventType = ceObjectDroped) and (Event.CItem = Database.TableByName(Child.Text))) then
+            if (not Assigned(Database.TableByName(Child.Text)) or (Event.EventType = ceDroped) and (Event.CItem = Database.TableByName(Child.Text))) then
               Child.Delete();
             Child := Sibling;
           end;
         end;
-        if (Event.EventType in [ceBuild, ceObjectCreated]) then
+        if (Event.EventType in [ceBuild, ceCreated]) then
           for I := 0 to Database.Tables.Count - 1 do
           begin
             Child := Node.getFirstChild();
@@ -8448,7 +8477,7 @@ begin
       end
       else if (Event.Sender is TCRoutines) then
       begin
-        if (Event.EventType in [ceBuild, ceObjectDroped]) then
+        if (Event.EventType in [ceBuild, ceDroped]) then
         begin
           Child := Node.getFirstChild();
           while (Assigned(Child) and (Child.ImageIndex in [iiBaseTable, iiSystemView, iiView])) do
@@ -8456,13 +8485,13 @@ begin
           while (Assigned(Child) and (Child.ImageIndex in [iiProcedure, iiFunction])) do
           begin
             Sibling := Child.getNextSibling();
-            if ((Child.ImageIndex = iiProcedure) and (not Assigned(Database.ProcedureByName(Child.Text)) or (Event.EventType = ceObjectDroped) and (Event.CItem = Database.ProcedureByName(Child.Text)))
-              or (Child.ImageIndex = iiFunction) and (not Assigned(Database.FunctionByName(Child.Text)) or (Event.EventType = ceObjectDroped) and (Event.CItem = Database.FunctionByName(Child.Text)))) then
+            if ((Child.ImageIndex = iiProcedure) and (not Assigned(Database.ProcedureByName(Child.Text)) or (Event.EventType = ceDroped) and (Event.CItem = Database.ProcedureByName(Child.Text)))
+              or (Child.ImageIndex = iiFunction) and (not Assigned(Database.FunctionByName(Child.Text)) or (Event.EventType = ceDroped) and (Event.CItem = Database.FunctionByName(Child.Text)))) then
               Child.Delete();
             Child := Sibling;
           end;
         end;
-        if (Event.EventType in [ceBuild, ceObjectCreated]) then
+        if (Event.EventType in [ceBuild, ceCreated]) then
           for I := 0 to Database.Routines.Count - 1 do
           begin
             Child := Node.getFirstChild();
@@ -8485,7 +8514,7 @@ begin
       end
       else if (Event.Sender is TCEvents) then
       begin
-        if (Event.EventType in [ceBuild, ceObjectDroped]) then
+        if (Event.EventType in [ceBuild, ceDroped]) then
         begin
           Child := Node.getFirstChild();
           while (Assigned(Child) and (Child.ImageIndex in [iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction])) do
@@ -8493,12 +8522,12 @@ begin
           while (Assigned(Child) and (Child.ImageIndex in [iiEvent])) do
           begin
             Sibling := Child.getNextSibling();
-            if (not Assigned(Database.EventByName(Child.Text)) or (Event.EventType = ceObjectDroped) and (Event.CItem = Database.EventByName(Child.Text))) then
+            if (not Assigned(Database.EventByName(Child.Text)) or (Event.EventType = ceDroped) and (Event.CItem = Database.EventByName(Child.Text))) then
               Child.Delete();
             Child := Sibling;
           end;
         end;
-        if (Event.EventType in [ceBuild, ceObjectCreated]) then
+        if (Event.EventType in [ceBuild, ceCreated]) then
           for I := 0 to Database.Events.Count - 1 do
           begin
             Child := Node.getFirstChild();
@@ -8542,7 +8571,7 @@ begin
 
         if (Assigned(Table) and (Table is TCBaseTable)) then
         begin
-          if (Event.EventType in [ceBuild, ceObjectDroped]) then
+          if (Event.EventType in [ceBuild, ceDroped]) then
           begin
             Child := Node.getFirstChild();
             while (Assigned(Child) and not (Child.ImageIndex in [iiTrigger])) do
@@ -8556,7 +8585,7 @@ begin
             end;
           end;
 
-          if (Event.EventType in [ceBuild, ceUpdated, ceObjectCreated]) then
+          if (Event.EventType in [ceBuild, ceUpdated, ceCreated]) then
             for I := 0 to Database.Triggers.Count - 1 do
               if (Database.Triggers[I].Table = Table) then
               begin
@@ -8804,8 +8833,8 @@ begin
     case (Event.EventType) of
       ceBuild,
       ceUpdated,
-      ceObjectCreated,
-      ceObjectDroped:
+      ceCreated,
+      ceDroped:
         ClientRefresh(Event);
       ceInitialize:
         Wanted.Initialize := Event.Initialize;

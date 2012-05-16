@@ -360,7 +360,8 @@ end;
 
 procedure TDAccounts.PopupMenuPopup(Sender: TObject);
 begin
-  aOpen.Enabled := Assigned(FAccounts.Selected) and Assigned(Accounts.AccountByURI(Accounts.AccountByName(FAccounts.Selected.Caption).Desktop.Address));
+  aOpen.Enabled := Assigned(FAccounts.Selected);
+  aNew.Enabled := not Assigned(FAccounts.Selected);
   miOpen.Default := Open;
   miEdit.Default := not miOpen.Default;
   ShowEnabledItems(PopupMenu.Items);

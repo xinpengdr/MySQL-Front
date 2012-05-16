@@ -60,67 +60,11 @@ object DSearch: TDSearch
     Top = 0
     Width = 341
     Height = 289
-    ActivePage = TSROptions
+    ActivePage = TSSelect
     Anchors = [akLeft, akTop, akRight, akBottom]
     Style = tsButtons
     TabOrder = 0
     TabStop = False
-    object TSSelect: TTabSheet
-      Caption = 'TSSelect'
-      TabVisible = False
-      OnShow = TSSelectShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        333
-        279)
-      object GSelect: TGroupBox_Ext
-        Left = 4
-        Top = 0
-        Width = 325
-        Height = 271
-        Anchors = [akLeft, akTop, akRight, akBottom]
-        Caption = 'GSelect'
-        TabOrder = 0
-        DesignSize = (
-          325
-          271)
-        object PSelect: TPanel_Ext
-          Left = 8
-          Top = 16
-          Width = 308
-          Height = 246
-          Anchors = [akLeft, akTop, akRight, akBottom]
-          BevelInner = bvRaised
-          BevelOuter = bvLowered
-          Caption = 'PSelect'
-          ParentBackground = False
-          TabOrder = 0
-          object FSelect: TTreeView_Ext
-            Left = 2
-            Top = 2
-            Width = 304
-            Height = 242
-            Align = alClient
-            BorderStyle = bsNone
-            HideSelection = False
-            Indent = 19
-            MultiSelect = True
-            MultiSelectStyle = [msControlSelect, msShiftSelect, msSiblingOnly]
-            ReadOnly = True
-            ShowLines = False
-            TabOrder = 0
-            OnChange = FSelectChange
-            OnDblClick = FSelectDblClick
-            OnExpanding = FSelectExpanding
-            OnMouseDown = FSelectMouseDown
-            OnMouseUp = FSelectMouseUp
-          end
-        end
-      end
-    end
     object TSROptions: TTabSheet
       Caption = 'TSROptions'
       ImageIndex = 1
@@ -469,6 +413,61 @@ object DSearch: TDSearch
             TabStop = False
             ViewStyle = vsReport
             OnDblClick = FTablesDblClick
+          end
+        end
+      end
+    end
+    object TSSelect: TTabSheet
+      Caption = 'TSSelect'
+      TabVisible = False
+      OnShow = TSSelectShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
+      DesignSize = (
+        333
+        279)
+      object GSelect: TGroupBox_Ext
+        Left = 4
+        Top = 0
+        Width = 325
+        Height = 271
+        Anchors = [akLeft, akTop, akRight, akBottom]
+        Caption = 'GSelect'
+        TabOrder = 0
+        DesignSize = (
+          325
+          271)
+        object PSelect: TPanel_Ext
+          Left = 8
+          Top = 16
+          Width = 308
+          Height = 246
+          Anchors = [akLeft, akTop, akRight, akBottom]
+          BevelInner = bvRaised
+          BevelOuter = bvLowered
+          Caption = 'PSelect'
+          ParentBackground = False
+          TabOrder = 0
+          object FSelect: TTreeView_Ext
+            Left = 2
+            Top = 2
+            Width = 304
+            Height = 242
+            Align = alClient
+            BorderStyle = bsNone
+            HideSelection = False
+            Indent = 19
+            MultiSelect = True
+            MultiSelectStyle = [msControlSelect, msShiftSelect, msSiblingOnly]
+            ReadOnly = True
+            ShowLines = False
+            TabOrder = 0
+            OnChange = FSelectChange
+            OnDblClick = FSelectDblClick
+            OnExpanding = FSelectExpanding
+            OnGetImageIndex = FSelectGetImageIndex
           end
         end
       end

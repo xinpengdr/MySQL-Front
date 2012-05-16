@@ -57,7 +57,7 @@
 		<Includes_JAVA_VM/>
 		<Includes_DirectX/>
 		<File_Info>
-			<Filename_Long>{BuildInfoName}_Setup.exe</Filename_Long>
+			<Filename_Long>{BuildName}_Setup.exe</Filename_Long>
 			<Filename_Generic>Front.exe</Filename_Generic>
 			<Filename_Versioned>Front0{BuildVerMajor}.exe</Filename_Versioned>
 			<File_Size_Bytes>{BuildPADFileSizeB}</File_Size_Bytes>
