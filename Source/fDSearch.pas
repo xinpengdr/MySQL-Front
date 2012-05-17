@@ -98,13 +98,13 @@ type
     Clients: array of TCClient;
     ExecuteClient: TCClient;
     Find: TTFind;
-    Replace: TTReplace;
+    SQLWait: Boolean;
     ReplaceClient: TCClient;
     Tables: array of TDSTableItem;
-    WantedNode: TTreeNode;
-    procedure CMExecutenDoneF(var Message: TMessage);
-    procedure CMExecutenDoneR(var Message: TMessage);
+    WantedExecute: Boolean;
+    WantedNodeExpand: TTreeNode;
     procedure FormClientEvent(const Event: TCClient.TEvent);
+    function GetClient(const Index: Integer): TCClient;
     procedure OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMExecutedDone(var Message: TMessage); message CM_EXECUTIONDONE;
@@ -190,40 +190,16 @@ end;
 
 procedure TDSearch.CMExecutedDone(var Message: TMessage);
 begin
-  if (SearchOnly) then
-    CMExecutenDoneF(Message)
-  else
-    CMExecutenDoneR(Message);
-end;
-
-procedure TDSearch.CMExecutenDoneF(var Message: TMessage);
-begin
-  if (FTables.Items.Count = 0) then
+  if (SearchOnly and (FTables.Items.Count = 0)) then
     MsgBox(Preferences.LoadStr(533, Find.FindText), Preferences.LoadStr(43), MB_OK + MB_ICONINFORMATION);
 
   FreeAndNil(Find);
-
   if (Assigned(ExecuteClient)) then
     ExecuteClient := nil;
-
-  ModalResult := mrNone;
-
-  FBCancel.Caption := Preferences.LoadStr(231);
-  FBCancel.ModalResult := mrOk;
-end;
-
-procedure TDSearch.CMExecutenDoneR(var Message: TMessage);
-begin
-  FreeAndNil(Replace);
-
   if (Assigned(ReplaceClient)) then
   begin
     fClient.Clients.ReleaseClient(ReplaceClient);
     ReplaceClient := nil;
-  end;
-  if (Assigned(ExecuteClient)) then
-  begin
-    ExecuteClient := nil;
   end;
 
   ModalResult := mrNone;
@@ -272,26 +248,26 @@ begin
   begin
     Found := False;
     for I := 0 to Length(Tables) - 1 do
-      if ((Tables[I].Account = Client.Account) and (Tables[I].DatabaseName = CurrentItem^.DatabaseName) and (Tables[I].TableName = CurrentItem^.TableName)) then
+      if ((Tables[I].Account = ExecuteClient.Account) and (Tables[I].DatabaseName = CurrentItem^.DatabaseName) and (Tables[I].TableName = CurrentItem^.TableName)) then
         Found := True;
 
     if (not Found) then
     begin
       SetLength(Tables, Length(Tables) + 1);
 
-      Tables[Length(Tables) - 1].Account := Client.Account;
+      Tables[Length(Tables) - 1].Account := ExecuteClient.Account;
       Tables[Length(Tables) - 1].DatabaseName := CurrentItem^.DatabaseName;
       Tables[Length(Tables) - 1].TableName := CurrentItem^.TableName;
 
       Item := FTables.Items.Add();
       if (not (FSelect.Selected.ImageIndex in [iiDatabase, iiBaseTable, iiField])) then
-        Item.Caption := Item.Caption + Client.Account.Name + '.';
+        Item.Caption := Item.Caption + ExecuteClient.Account.Name + '.';
       Item.Caption := Item.Caption + CurrentItem^.DatabaseName + '.';
       Item.Caption := Item.Caption + CurrentItem^.TableName + ' (' + IntToStr(CurrentItem^.RecordsFound) + ')';
     end;
   end;
 
-  if (Assigned(Find) and Find.Suspended or Assigned(Replace) and Replace.Suspended) then
+  if (Assigned(Find) and Find.Suspended) then
     Application.ProcessMessages();
 end;
 
@@ -319,12 +295,6 @@ begin
     if (not Find.Suspended) then
       Find.WaitFor();
   end;
-  if (Assigned(Replace)) then
-  begin
-    SetEvent(Replace.UserAbort);
-    if (not Replace.Suspended) then
-      Replace.WaitFor();
-  end;
 end;
 
 procedure TDSearch.FBForwardClick(Sender: TObject);
@@ -347,7 +317,7 @@ end;
 
 procedure TDSearch.FFFindTextChange(Sender: TObject);
 begin
-  FBForward.Enabled := (FFFindText.Text <> '') and True;
+  FBForward.Enabled := (FFFindText.Text <> '') and not SQLWait;
 end;
 
 procedure TDSearch.FFRegExprClick(Sender: TObject);
@@ -362,8 +332,11 @@ end;
 
 procedure TDSearch.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceAfterExecuteSQL]) and Assigned(WantedNode)) then
-    WantedNode.Expand(False);
+  if (Event.EventType in [ceAfterExecuteSQL]) then
+    if (Assigned(WantedNodeExpand)) then
+      WantedNodeExpand.Expand(False)
+    else if (WantedExecute) then
+      TSExecuteShow(Event.Sender);
 end;
 
 procedure TDSearch.FormCreate(Sender: TObject);
@@ -376,7 +349,6 @@ begin
   BorderStyle := bsSizeable;
 
   Find := nil;
-  Replace := nil;
 
   FSelect.Images := Preferences.SmallImages;
 
@@ -505,7 +477,8 @@ begin
     end;
   end;
 
-  WantedNode := nil;
+  WantedExecute := False;
+  WantedNodeExpand := nil;
   FErrorMessages.Visible := not SearchOnly;
   FTables.Visible := SearchOnly;
   FFFindTextChange(Sender);
@@ -601,20 +574,18 @@ begin
 
   PageControl.ActivePage := TSSelect;
 
-  ActiveControl := FBCancel;
-//  if (Assigned(Client)) then
-    ActiveControl := FSelect;
-//  else
-//    ActiveControl := FBCancel;
+  FBForward.Cursor := crDefault;
 
   FBCancel.Caption := Preferences.LoadStr(30);
   FBCancel.ModalResult := mrCancel;
   FBCancel.Default := False;
+
+  ActiveControl := FSelect;
 end;
 
 procedure TDSearch.FRFindTextChange(Sender: TObject);
 begin
-  FBForward.Enabled := (FRFindText.Text <> '') and (FRFindText.Text <> FReplaceText.Text) and True;
+  FBForward.Enabled := (FRFindText.Text <> '') and (FRFindText.Text <> FReplaceText.Text) and not SQLWait;
 end;
 
 procedure TDSearch.FRRegExprClick(Sender: TObject);
@@ -644,97 +615,82 @@ end;
 procedure TDSearch.FSelectExpanding(Sender: TObject; Node: TTreeNode;
   var AllowExpansion: Boolean);
 var
-  B: Boolean;
   Client: TCClient;
   Database: TCDatabase;
   I: Integer;
-  Index: Integer;
   NewNode: TTreeNode;
   Table: TCBaseTable;
   TreeView: TTreeView_Ext;
 begin
   TreeView := TTreeView_Ext(Sender);
 
-  if (Assigned(WantedNode)) then
+  if (Assigned(WantedNodeExpand)) then
   begin
     for I := 0 to Length(Clients) - 1 do
       if (Assigned(Clients[I])) then
         Clients[I].UnRegisterEventProc(FormClientEvent);
-    WantedNode := nil;
+    WantedNodeExpand := nil;
   end;
 
-  if (Assigned(TreeView.Selected)) then
-  begin
-    if (not Assigned(Node.Parent)) then
+  if (Assigned(Node)) then
+    if (Node.HasChildren and not Assigned(Node.getFirstChild())) then
     begin
-      Index := Accounts.IndexOf(Accounts.AccountByName(Node.Text));
-      if (not Assigned(Clients[Index])) then
-        Clients[Index] := fClient.Clients.CreateClient(Accounts.AccountByName(Node.Text), B);
-
-      Client := Clients[Index];
-    end
-    else
-      if (not Assigned(Node.Parent.Parent)) then
-        Client := Clients[Accounts.IndexOf(Accounts.AccountByName(Node.Parent.Text))]
-      else
-        Client := Clients[Accounts.IndexOf(Accounts.AccountByName(Node.Parent.Parent.Text))];
-
-    if (Assigned(Client)) then
-    begin
-      if (Node.HasChildren and not Assigned(Node.getFirstChild())) then
-        if (not Assigned(Node.Parent)) then
-        begin
-          if (Client.Initialize()) then
+      case (Node.ImageIndex) of
+        iiServer:
           begin
-            Client.RegisterEventProc(FormClientEvent);
-            WantedNode := Node;
-          end
-          else
-            for I := 0 to Client.Databases.Count - 1 do
-              if (not (Client.Databases[I] is TCSystemDatabase)) then
+            Client := GetClient(Node.Index);
+            if (Assigned(Client)) then
+              if (Client.Initialize()) then
+                WantedNodeExpand := Node
+              else
+              begin
+                for I := 0 to Client.Databases.Count - 1 do
+                  if (not (Client.Databases[I] is TCSystemDatabase)) then
+                  begin
+                    NewNode := TreeView.Items.AddChild(Node, Client.Databases[I].Name);
+                    NewNode.ImageIndex := iiDatabase;
+                    NewNode.HasChildren := True;
+                  end;
+                Node.HasChildren := Assigned(Node.getFirstChild());
+              end;
+          end;
+        iiDatabase:
+          begin
+            Client := GetClient(Node.Parent.Index);
+            Database := Client.DatabaseByName(Node.Text);
+            if (Database.Initialize(Database.Tables)) then
+              WantedNodeExpand := Node
+            else
+            begin
+              for I := 0 to Database.Tables.Count - 1 do
+                if ((Database.Tables[I] is TCBaseTable) and Assigned(TCBaseTable(Database.Tables[I]).Engine) and not TCBaseTable(Database.Tables[I]).Engine.IsMerge and (RightStr(Database.Tables[I].Name, Length(BackupExtension)) <> BackupExtension)) then
                 begin
-                  NewNode := TreeView.Items.AddChild(Node, Client.Databases[I].Name);
-                  NewNode.ImageIndex := iiDatabase;
+                  NewNode := TreeView.Items.AddChild(Node, Database.Tables[I].Name);
+                  NewNode.ImageIndex := iiBaseTable;
                   NewNode.HasChildren := True;
                 end;
-        end
-        else if (Node.ImageIndex = iiDatabase) then
-        begin
-          Database := Client.DatabaseByName(Node.Text);
-          if (Database.Initialize(Database.Tables)) then
-          begin
-            Client.RegisterEventProc(FormClientEvent);
-            WantedNode := Node;
-          end
-          else
-            for I := 0 to Database.Tables.Count - 1 do
-              if ((Database.Tables[I] is TCBaseTable) and Assigned(TCBaseTable(Database.Tables[I]).Engine) and not TCBaseTable(Database.Tables[I]).Engine.IsMerge and (RightStr(Database.Tables[I].Name, Length(BackupExtension)) <> BackupExtension)) then
-              begin
-                NewNode := TreeView.Items.AddChild(Node, Database.Tables[I].Name);
-                NewNode.ImageIndex := iiBaseTable;
-                NewNode.HasChildren := True;
-              end;
-        end
-        else if (Node.ImageIndex = iiBaseTable) then
-        begin
-          Database := Client.DatabaseByName(Node.Parent.Text);
-          Table := Database.BaseTableByName(Node.Text);
-          if (Database.InitializeSources(Table)) then
-          begin
-            Client.RegisterEventProc(FormClientEvent);
-            WantedNode := Node;
-          end
-          else
-            for I := 0 to Table.Fields.Count - 1 do
-            begin
-              NewNode := TreeView.Items.AddChild(Node, Table.Fields[I].Name);
-              NewNode.ImageIndex := iiField;
+              Node.HasChildren := Assigned(Node.getFirstChild());
             end;
-        end;
-      if (not Assigned(WantedNode)) then
-        Node.HasChildren := Assigned(Node.getFirstChild());
+          end;
+        iiBaseTable:
+          begin
+            Client := GetClient(Node.Parent.Parent.Index);
+            Database := Client.DatabaseByName(Node.Parent.Text);
+            Table := Database.BaseTableByName(Node.Text);
+            if (Table.Initialize()) then
+              WantedNodeExpand := Node
+            else
+            begin
+              for I := 0 to Table.Fields.Count - 1 do
+              begin
+                NewNode := TreeView.Items.AddChild(Node, Table.Fields[I].Name);
+                NewNode.ImageIndex := iiField;
+              end;
+              Node.HasChildren := Assigned(Node.getFirstChild());
+            end;
+          end;
+      end;
     end;
-  end;
 end;
 
 procedure TDSearch.FSelectGetImageIndex(Sender: TObject; Node: TTreeNode);
@@ -775,6 +731,19 @@ begin
     if (Result) then
       FBCancel.Click();
   end;
+end;
+
+function TDSearch.GetClient(const Index: Integer): TCClient;
+var
+  B: Boolean;
+begin
+  if (not Assigned(Clients[Index])) then
+    Clients[Index] := fClient.Clients.CreateClient(Accounts[Index], B);
+
+  Result := Clients[Index];
+
+  if (Assigned(Result)) then
+    Result.RegisterEventProc(FormClientEvent);
 end;
 
 procedure TDSearch.mTCopyClick(Sender: TObject);
@@ -860,42 +829,16 @@ end;
 procedure TDSearch.TSExecuteShow(Sender: TObject);
 var
   B: Boolean;
+  Client: TCClient;
   Database: TCDatabase;
   I: Integer;
   J: Integer;
   K: Integer;
+  Node: TTreeNode;
+  Objects: TList;
   ProgressInfos: TTools.TProgressInfos;
   Table: TCBaseTable;
 begin
-  FBForward.Enabled := False;
-  FBForward.Default := False;
-  FBCancel.Default := True;
-
-
-  Preferences.Find.FindTextMRU.Add(Trim(FFFindText.Text));
-
-  Preferences.Find.Options := [];
-  if (FFMatchCase.Checked) then
-    Include(Preferences.Find.Options, foMatchCase);
-  if (FFWholeValue.Checked) then
-    Include(Preferences.Find.Options, foWholeValue);
-  if (FFRegExpr.Checked) then
-    Include(Preferences.Find.Options, foRegExpr);
-
-  Preferences.Replace.FindTextMRU.Add(Trim(FRFindText.Text));
-  Preferences.Replace.ReplaceTextMRU.Add(Trim(FReplaceText.Text));
-
-  Preferences.Replace.Options := [];
-  if (FRMatchCase.Checked) then
-    Include(Preferences.Replace.Options, roMatchCase);
-  if (FRWholeValue.Checked) then
-    Include(Preferences.Replace.Options, roWholeValue);
-  if (FRRegExpr.Checked) then
-    Include(Preferences.Replace.Options, roRegExpr);
-
-  Preferences.Replace.Backup := FBackup.Checked;
-
-
   FErrors.Caption := '0';
   FErrorMessages.Lines.Clear();
   FTables.Items.BeginUpdate();
@@ -911,23 +854,85 @@ begin
   ProgressInfos.Progress := 0;
   SendMessage(Self.Handle, CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos));
 
-  ExecuteClient := nil;
-  I := 0;
-  while (not Assigned(ExecuteClient) and (I < FSelect.Items.Count)) do
-  begin
-    if (FSelect.Items[I].Selected) then
-      if (FSelect.Selected.ImageIndex = iiField) then
-        ExecuteClient := Clients[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Parent.Parent.Parent.Text))]
-      else if (FSelect.Items[I].ImageIndex = iiBaseTable) then
-        ExecuteClient := Clients[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Parent.Parent.Text))]
-      else if (FSelect.Items[I].ImageIndex = iiDatabase) then
-        ExecuteClient := Clients[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Parent.Text))]
-      else // iiConnection
-        ExecuteClient := Clients[Accounts.IndexOf(Accounts.AccountByName(FSelect.Items[I].Text))];
-    Inc(I);
-  end;
+  FBForward.Enabled := False;
+  FBForward.Default := False;
+  FBCancel.Default := True;
 
-  if (Assigned(ExecuteClient)) then
+
+  Node := FSelect.Selected;
+  while (Assigned(Node.Parent)) do Node := Node.Parent;
+  Client := GetClient(Node.Index);
+
+  Objects := TList.Create();
+  case (FSelect.Selected.ImageIndex) of
+    iiServer:
+      begin
+        WantedExecute := Client.Initialize();
+        if (not WantedExecute) then
+          for I := 0 to Client.Databases.Count - 1 do
+            if (not WantedExecute and not (Client.Databases[I] is TCSystemDatabase)) then
+            begin
+              Database := Client.Databases[I];
+              WantedExecute := Database.Initialize(Database.Tables);
+              if (not WantedExecute) then
+              begin
+                for J := 0 to Database.Tables.Count - 1 do
+                  if (Database.Tables[J] is TCBaseTable) then
+                    Objects.Add(Database.Tables[J]);
+                WantedExecute := Database.InitializeSources(Objects);
+              end;
+            end;
+      end;
+    iiDatabase:
+      begin
+        Database := Client.DatabaseByName(FSelect.Selected.Text);
+        WantedExecute := Database.Initialize(Database.Tables);
+        if (not WantedExecute) then
+        begin
+          for J := 0 to Database.Tables.Count - 1 do
+            if (Database.Tables[J] is TCBaseTable) then
+              Objects.Add(Database.Tables[J]);
+          WantedExecute := Database.InitializeSources(Objects);
+        end;
+      end;
+    iiBaseTable:
+      begin
+        Database := Client.DatabaseByName(FSelect.Selected.Parent.Text);
+        for J := 0 to Database.Tables.Count - 1 do
+          if (FSelect.Selected.Parent.Item[J].Selected) then
+            Objects.Add(Database.Tables[J]);
+        WantedExecute := Database.InitializeSources(Objects);
+      end;
+  end;
+  Objects.Free();
+
+  if (not WantedExecute) then
+  begin
+    Preferences.Find.FindTextMRU.Add(Trim(FFFindText.Text));
+
+    Preferences.Find.Options := [];
+    if (FFMatchCase.Checked) then
+      Include(Preferences.Find.Options, foMatchCase);
+    if (FFWholeValue.Checked) then
+      Include(Preferences.Find.Options, foWholeValue);
+    if (FFRegExpr.Checked) then
+      Include(Preferences.Find.Options, foRegExpr);
+
+    Preferences.Replace.FindTextMRU.Add(Trim(FRFindText.Text));
+    Preferences.Replace.ReplaceTextMRU.Add(Trim(FReplaceText.Text));
+
+    Preferences.Replace.Options := [];
+    if (FRMatchCase.Checked) then
+      Include(Preferences.Replace.Options, roMatchCase);
+    if (FRWholeValue.Checked) then
+      Include(Preferences.Replace.Options, roWholeValue);
+    if (FRRegExpr.Checked) then
+      Include(Preferences.Replace.Options, roRegExpr);
+
+    Preferences.Replace.Backup := FBackup.Checked;
+
+    ExecuteClient := Client;
+
     if (SearchOnly) then
     begin
       SetLength(Tables, 0);
@@ -941,45 +946,6 @@ begin
       Find.MatchCase := FFMatchCase.Checked;
       Find.WholeValue := FFWholeValue.Checked;
       Find.RegExpr := FFRegExpr.Checked;
-
-      for I := 0 to FSelect.Items.Count - 1 do
-        if (FSelect.Items[I].Selected) then
-        begin
-          if (FSelect.Selected.ImageIndex = iiField) then
-          begin
-            Database := ExecuteClient.DatabaseByName(FSelect.Items[I].Parent.Parent.Text);
-            Table := Database.BaseTableByName(FSelect.Items[I].Parent.Text);
-            Find.Add(Table, Table.FieldByName(FSelect.Items[I].Text));
-          end
-          else if (FSelect.Items[I].ImageIndex = iiBaseTable) then
-          begin
-            Database := ExecuteClient.DatabaseByName(FSelect.Items[I].Parent.Text);
-            Find.Add(Database.BaseTableByName(FSelect.Items[I].Text), nil);
-          end
-          else if (FSelect.Items[I].ImageIndex = iiDatabase) then
-          begin
-            Database := ExecuteClient.DatabaseByName(FSelect.Items[I].Text);
-            for J := 0 to Database.Tables.Count - 1 do
-              if ((Database.Tables[J] is TCBaseTable)  and (RightStr(Database.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
-                Find.Add(Database.Tables.BaseTable[J], nil);
-          end
-          else // iiConnection
-          begin
-            for K := 0 to ExecuteClient.Databases.Count - 1 do
-            begin
-              Database := ExecuteClient.Databases[K];
-              if (not (Database is TCSystemDatabase)) then
-                for J := 0 to Database.Tables.Count - 1 do
-                  if ((Database.Tables[J] is TCBaseTable)  and (RightStr(Database.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
-                    Find.Add(Database.Tables.BaseTable[J], nil);
-            end;
-          end;
-        end;
-
-      if (ExecuteClient.Asynchron) then
-        Find.Start()
-      else
-        Find.Execute();
     end
     else
     begin
@@ -987,75 +953,72 @@ begin
 
       if (Assigned(ReplaceClient)) then
       begin
-        Replace := TTReplace.Create(ExecuteClient, ReplaceClient);
+        Find := TTReplace.Create(ExecuteClient, ReplaceClient);
 
-        Replace.Wnd := Self.Handle;
-        Replace.UpdateMessage := CM_UPDATEPROGRESSINFO;
-        Replace.ExecutedMessage := CM_EXECUTIONDONE;
-        Replace.OnError := OnError;
-        Replace.FindText := FRFindText.Text;
-        Replace.ReplaceText := FReplaceText.Text;
-        Replace.MatchCase := FRMatchCase.Checked;
-        Replace.WholeValue := FRWholeValue.Checked;
-        Replace.RegExpr := FRRegExpr.Checked;
-        Replace.Backup := FBackup.Checked;
-
-        if (FSelect.Selected.ImageIndex = iiField) then
-        begin
-          Database := ExecuteClient.DatabaseByName(FSelect.Selected.Parent.Parent.Text);
-          Table := Database.BaseTableByName(FSelect.Selected.Parent.Text);
-          for I := 0 to FSelect.Items.Count - 1 do
-            if (FSelect.Items[I].Selected) then
-              Replace.Add(Table, Table.FieldByName(FSelect.Items[I].Text));
-        end
-        else
-        begin
-          for I := 0 to FSelect.Items.Count - 1 do
-            if (FSelect.Items[I].Selected) then
-            begin
-              if (FSelect.Items[I].ImageIndex = iiBaseTable) then
-              begin
-                Database := ExecuteClient.DatabaseByName(FSelect.Items[I].Parent.Text);
-                Replace.Add(Database.BaseTableByName(FSelect.Items[I].Text), nil);
-              end
-              else if (FSelect.Items[I].ImageIndex = iiDatabase) then
-              begin
-                Database := ExecuteClient.DatabaseByName(FSelect.Items[I].Text);
-                for J := 0 to Database.Tables.Count - 1 do
-                  if ((Database.Tables[J] is TCBaseTable)  and (RightStr(Database.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
-                    Replace.Add(Database.Tables.BaseTable[J], nil);
-              end
-              else // iiConnection
-              begin
-                for K := 0 to ExecuteClient.Databases.Count - 1 do
-                begin
-                  Database := ExecuteClient.Databases.Database[K];
-                  for J := 0 to Database.Tables.Count - 1 do
-                    if ((Database.Tables[J] is TCBaseTable)  and (RightStr(Database.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
-                      Replace.Add(Database.Tables.BaseTable[J], nil);
-                end;
-              end;
-            end;
-        end;
-
-        if (ExecuteClient.Asynchron) then
-          Replace.Start()
-        else
-          Replace.Execute();
+        TTReplace(Find).Wnd := Self.Handle;
+        TTReplace(Find).UpdateMessage := CM_UPDATEPROGRESSINFO;
+        TTReplace(Find).ExecutedMessage := CM_EXECUTIONDONE;
+        TTReplace(Find).OnError := OnError;
+        TTReplace(Find).FindText := FRFindText.Text;
+        TTReplace(Find).ReplaceText := FReplaceText.Text;
+        TTReplace(Find).MatchCase := FRMatchCase.Checked;
+        TTReplace(Find).WholeValue := FRWholeValue.Checked;
+        TTReplace(Find).RegExpr := FRRegExpr.Checked;
+        TTReplace(Find).Backup := FBackup.Checked;
       end;
     end;
+
+    for I := 0 to FSelect.Items.Count - 1 do
+      if (FSelect.Items[I].Selected) then
+      begin
+        if (FSelect.Selected.ImageIndex = iiField) then
+        begin
+          Database := ExecuteClient.DatabaseByName(FSelect.Items[I].Parent.Parent.Text);
+          Table := Database.BaseTableByName(FSelect.Items[I].Parent.Text);
+          Find.Add(Table, Table.FieldByName(FSelect.Items[I].Text));
+        end
+        else if (FSelect.Items[I].ImageIndex = iiBaseTable) then
+        begin
+          Database := ExecuteClient.DatabaseByName(FSelect.Items[I].Parent.Text);
+          Find.Add(Database.BaseTableByName(FSelect.Items[I].Text), nil);
+        end
+        else if (FSelect.Items[I].ImageIndex = iiDatabase) then
+        begin
+          Database := ExecuteClient.DatabaseByName(FSelect.Items[I].Text);
+          for J := 0 to Database.Tables.Count - 1 do
+            if ((Database.Tables[J] is TCBaseTable)  and (RightStr(Database.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
+              Find.Add(Database.Tables.BaseTable[J], nil);
+        end
+        else // iiConnection
+        begin
+          for K := 0 to ExecuteClient.Databases.Count - 1 do
+          begin
+            Database := ExecuteClient.Databases[K];
+            if (not (Database is TCSystemDatabase)) then
+              for J := 0 to Database.Tables.Count - 1 do
+                if ((Database.Tables[J] is TCBaseTable)  and (RightStr(Database.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
+                  Find.Add(Database.Tables.BaseTable[J], nil);
+          end;
+        end;
+      end;
+
+    if (ExecuteClient.Asynchron) then
+      Find.Start()
+    else
+      Find.Execute();
+  end;
 end;
 
 procedure TDSearch.TSFOptionsShow(Sender: TObject);
 begin
+  FFFindTextChange(Sender);
+
   FBBack.Enabled := True;
   FBForward.Caption := Preferences.LoadStr(230);
   FBForward.Default := True;
   FBCancel.Caption := Preferences.LoadStr(30);
   FBCancel.ModalResult := mrCancel;
   FBCancel.Default := False;
-
-  FFFindTextChange(Sender);
 
   ActiveControl := FFFindText;
 end;

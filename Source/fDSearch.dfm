@@ -60,7 +60,7 @@ object DSearch: TDSearch
     Top = 0
     Width = 341
     Height = 289
-    ActivePage = TSSelect
+    ActivePage = TSExecute
     Anchors = [akLeft, akTop, akRight, akBottom]
     Style = tsButtons
     TabOrder = 0
@@ -212,10 +212,6 @@ object DSearch: TDSearch
       ImageIndex = 2
       TabVisible = False
       OnShow = TSExecuteShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         333
         279)

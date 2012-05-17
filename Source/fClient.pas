@@ -1265,6 +1265,7 @@ type
     function GetActual(): Boolean; override;
     function SQLGetItems(const Name: string = ''): string; override;
   public
+    function Initialize(): Boolean; virtual;
     property Process[Index: Integer]: TCProcess read GetProcess; default;
   end;
 
@@ -1470,6 +1471,7 @@ type
     procedure ExecuteEvent(const EventType: TEventType; const Sender: TObject; const CItem: TCItem;  const Database: TCDatabase = nil); overload; virtual;
     procedure ExecuteEvent(const Initialize: TInitialize); overload; virtual;
     function GetAutoCommit(): Boolean; override;
+    function GetHosts(): TCHosts; virtual;
     function GetLoadDataFile(): Boolean; override;
     function GetLog(): string; virtual;
     function GetMaxAllowedPacket(): Integer; override;
@@ -1554,7 +1556,7 @@ type
     property DefaultCharset: string read GetDefaultCharset;
     property Engines: TCEngines read FEngines;
     property FieldTypes: TCFieldTypes read FFieldTypes;
-    property Hosts: TCHosts read FHosts;
+    property Hosts: TCHosts read GetHosts;
     property Log: string read GetLog;
     property LogActive: Boolean read GetLogActive;
     property LowerCaseTableNames: Byte read FLowerCaseTableNames;
@@ -9017,6 +9019,15 @@ begin
   Result := TCProcess(Items[Index]);
 end;
 
+function TCProcesses.Initialize(): Boolean;
+begin
+  Clear();
+
+  Client.SendSQL(SQLGetItems(), Client.ClientResult);
+
+  Result := True;
+end;
+
 function TCProcesses.SQLGetItems(const Name: string = ''): string;
 begin
   if (not Client.UseInformationSchema or (Client.ServerVersion < 50107)) then
@@ -9587,7 +9598,7 @@ begin
         Index := Add(TCUser.Create(Self, UserName));
     until (not DataSet.FindNext());
 
-  Result := inherited;
+  Result := inherited or (Client.ErrorCode = ER_DBACCESS_DENIED_ERROR);
 
   if ((DataSet.RecordCount = 1) and Update) then
     Client.ExecuteEvent(ceUpdated, Self, User[Index])
@@ -9856,7 +9867,7 @@ begin
       FreeAndNil(NewHostDatabase);
     until (not DataSet.FindNext());
 
-  Result := inherited;
+  Result := inherited or (Client.ErrorCode = ER_DBACCESS_DENIED_ERROR);
 
   if ((DataSet.RecordCount = 1) and Update) then
     Client.ExecuteEvent(ceUpdated, Self, Host[Index])
@@ -9935,8 +9946,6 @@ begin
     else
       FUser.FName := Username;
 
-  if (not Assigned(Hosts) and (not Assigned(UserRights) or UserRights.RGrant)) then
-    FHosts := TCHosts.Create(Self);
   if (not Assigned(Processes) and ((ServerVersion < 50000) or not Assigned(UserRights) or UserRights.RProcess)) then
     FProcesses := TCProcesses.Create(Self);
 
@@ -9971,6 +9980,7 @@ begin
     if (not Assigned(FCollations) and (ServerVersion >= 40100)) then FCollations := TCCollations.Create(Self);
     if (not Assigned(FFieldTypes)) then FFieldTypes := TCFieldTypes.Create(Self);
     if (not Assigned(FEngines)) then FEngines := TCEngines.Create(Self);
+    if (not Assigned(FHosts)) then FHosts := TCHosts.Create(Self);
     if (not Assigned(FPlugins) and (ServerVersion >= 50105)) then FPlugins := TCPlugins.Create(Self);
     if (not Assigned(FStati)) then FStati := TCStati.Create(Self);
     if (not Assigned(FUsers)) then FUsers := TCUsers.Create(Self);
@@ -10946,6 +10956,14 @@ begin
     Result := VariableByName('character_set_server').Value;
 end;
 
+function TCClient.GetHosts(): TCHosts;
+begin
+  if (Assigned(UserRights) and not UserRights.RGrant) then
+    Result := nil
+  else
+    Result := FHosts;
+end;
+
 function TCClient.GetLoadDataFile(): Boolean;
 begin
   Result := inherited GetLoadDataFile() and ((ServerVersion < 40003) or VariableByName('local_infile').AsBoolean);
@@ -11189,12 +11207,10 @@ begin
     SQL := SQL + Databases.SQLGetItems();
   if (Assigned(Plugins) and not Plugins.Actual) then
     SQL := SQL + Plugins.SQLGetItems();
-  if (Assigned(Processes) and not Processes.Actual) then
-    SQL := SQL + Processes.SQLGetItems();
-  if (Assigned(Hosts) and not Hosts.Actual) then
-    SQL := SQL + Hosts.SQLGetItems();
   if (Assigned(Users) and not Users.Actual) then
     SQL := SQL + Users.SQLGetItems();
+  if (Assigned(FHosts) and not Hosts.Actual) then
+    SQL := SQL + Hosts.SQLGetItems();
 
   Result := SQL <> '';
   if (Result) then

@@ -5307,7 +5307,7 @@ procedure TMySQLDataSet.InternalClose();
 var
   I: Integer;
 begin
-  if (IsCursorOpen() and Assigned(RecordReceived) and (Connection.SynchroThread.DataSet = Self)) then
+  if (IsCursorOpen() and Assigned(RecordReceived) and Assigned(Connection.SynchroThread) and (Connection.SynchroThread.DataSet = Self)) then
   begin
     Connection.TerminateCS.Enter();
     Connection.SynchroThread.DataSet := nil;

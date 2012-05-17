@@ -4,7 +4,7 @@
     type="win32"
     name="{BuildName}"
     version="{BuildVerStrFull}"
-    processorArchitecture="*"/>
+    processorArchitecture="x86"/>
   <dependency>
     <dependentAssembly>
       <assemblyIdentity

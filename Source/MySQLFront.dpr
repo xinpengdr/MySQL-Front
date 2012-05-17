@@ -2,9 +2,7 @@
 
 uses
   FastMM4,
-  {$IFDEF EurekaLog}
   ExceptionLog,
-  {$ENDIF}
   Windows,
   ShellAPI,
   SysUtils,
