@@ -33,6 +33,7 @@
 	</Company_Info>
 	<Program_Info>
 		<Program_Name>{BuildInfoName}</Program_Name>
+<?php if ($_SERVER['HTTP_USER_AGENT'] == 'MySQL-Front/5.2'): ?>
 		<Program_Version>{BuildVerStr}</Program_Version>
 		<Program_Version_Major>{BuildVerMajor}</Program_Version_Major>
 		<Program_Version_Minor>{BuildVerMinor}</Program_Version_Minor>
@@ -42,7 +43,18 @@
 		<Program_Release_Month>{BuildVerMonth}</Program_Release_Month>
 		<Program_Release_Day>{BuildVerDay}</Program_Release_Day>
 		<Program_Type>Freeware</Program_Type>
-		<Program_Release_Status>{BuildVerUpdateStatus}</Program_Release_Status>
+<?php else: ?>
+		<Program_Version>5.1</Program_Version>
+		<Program_Version_Major>5</Program_Version_Major>
+		<Program_Version_Minor>1</Program_Version_Minor>
+		<Program_Version_Patch>4</Program_Version_Patch>
+		<Program_Version_Build>13</Program_Version_Build>
+		<Program_Release_Year>2009</Program_Release_Year>
+		<Program_Release_Month>10</Program_Release_Month>
+		<Program_Release_Day>19</Program_Release_Day>
+		<Program_Type>Shareware</Program_Type>
+<?php endif; ?>
+		<Program_Release_Status/>
 		<Program_Cost_Dollars/>
 		<Program_Cost_Other/>
 		<Program_Cost_Other_Code/>
@@ -59,10 +71,17 @@
 		<File_Info>
 			<Filename_Long>{BuildName}_Setup.exe</Filename_Long>
 			<Filename_Generic>Front.exe</Filename_Generic>
+<?php if ($_SERVER['HTTP_USER_AGENT'] == 'MySQL-Front/5.2'): ?>
 			<Filename_Versioned>Front0{BuildVerMajor}.exe</Filename_Versioned>
 			<File_Size_Bytes>{BuildPADFileSizeB}</File_Size_Bytes>
 			<File_Size_K>{BuildPADFileSizeKB}</File_Size_K>
 			<File_Size_MB>{BuildPADFileSizeMB}</File_Size_MB>
+<?php else: ?>
+			<Filename_Versioned>Front05.exe</Filename_Versioned>
+			<File_Size_Bytes>3791406</File_Size_Bytes>
+			<File_Size_K>3702</File_Size_K>
+			<File_Size_MB>3</File_Size_MB>
+<?php endif; ?>
 		</File_Info>
 		<Expire_Info>
 			<Has_Expire_Info>N</Has_Expire_Info>
@@ -101,7 +120,11 @@
 			<Application_XML_File_URL>{BuildInternetPadFile}</Application_XML_File_URL>
 		</Application_URLs>
 		<Download_URLs>
+<?php if ($_SERVER['HTTP_USER_AGENT'] == 'MySQL-Front/5.2'): ?>
+			<Primary_Download_URL>http://www.mysqlfront.de/pub/beta/MySQL-Front_Setup</Primary_Download_URL>
+<?php else: ?>
 			<Primary_Download_URL>{BuildInternetDownload}</Primary_Download_URL>
+<?php endif; ?>
 		</Download_URLs>
 	</Web_Info>
 </XML_DIZ_INFO>

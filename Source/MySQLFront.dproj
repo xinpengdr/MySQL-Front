@@ -193,6 +193,7 @@
 			<DCCReference Include="fWForeignKeySelect.pas">
 				<Form>WForeignKeySelect</Form>
 			</DCCReference>
+			<None Include="MySQLFront.todo"/>
 			<BuildConfiguration Include="Base">
 				<Key>Base</Key>
 			</BuildConfiguration>

@@ -640,7 +640,7 @@ begin
           begin
             Client := GetClient(Node.Index);
             if (Assigned(Client)) then
-              if (Client.Initialize()) then
+              if (Client.Initialize() and Client.Asynchron) then
                 WantedNodeExpand := Node
               else
               begin
@@ -658,7 +658,7 @@ begin
           begin
             Client := GetClient(Node.Parent.Index);
             Database := Client.DatabaseByName(Node.Text);
-            if (Database.Initialize(Database.Tables)) then
+            if (Database.Initialize(Database.Tables) and Client.Asynchron) then
               WantedNodeExpand := Node
             else
             begin
@@ -677,7 +677,7 @@ begin
             Client := GetClient(Node.Parent.Parent.Index);
             Database := Client.DatabaseByName(Node.Parent.Text);
             Table := Database.BaseTableByName(Node.Text);
-            if (Table.Initialize()) then
+            if (Database.InitializeSources(Table) and Client.Asynchron) then
               WantedNodeExpand := Node
             else
             begin
@@ -827,6 +827,58 @@ begin
 end;
 
 procedure TDSearch.TSExecuteShow(Sender: TObject);
+
+  procedure InitializeNode(const Client: TCClient; const Node: TTreeNode);
+  var
+    Database: TCDatabase;
+    I: Integer;
+    J: Integer;
+    Objects: TList;
+  begin
+    Objects := TList.Create();
+    case (Node.ImageIndex) of
+      iiServer:
+        begin
+          WantedExecute := Client.Initialize() and Client.Asynchron;
+          if (not WantedExecute) then
+            for I := 0 to Client.Databases.Count - 1 do
+              if (not WantedExecute and not (Client.Databases[I] is TCSystemDatabase)) then
+              begin
+                Database := Client.Databases[I];
+                WantedExecute := Database.Initialize(Database.Tables) and Client.Asynchron;
+                if (not WantedExecute) then
+                begin
+                  for J := 0 to Database.Tables.Count - 1 do
+                    if (Database.Tables[J] is TCBaseTable) then
+                      Objects.Add(Database.Tables[J]);
+                  WantedExecute := Database.InitializeSources(Objects) and Client.Asynchron;
+                end;
+              end;
+        end;
+      iiDatabase:
+        begin
+          Database := Client.DatabaseByName(Node.Text);
+          WantedExecute := Database.Initialize(Database.Tables) and Client.Asynchron;
+          if (not WantedExecute) then
+          begin
+            for J := 0 to Database.Tables.Count - 1 do
+              if (Database.Tables[J] is TCBaseTable) then
+                Objects.Add(Database.Tables[J]);
+            WantedExecute := Database.InitializeSources(Objects) and Client.Asynchron;
+          end;
+        end;
+      iiBaseTable:
+        begin
+          Database := Client.DatabaseByName(Node.Parent.Text);
+          for J := 0 to Database.Tables.Count - 1 do
+            if (Node.Parent.Item[J].Selected) then
+              Objects.Add(Database.Tables[J]);
+          WantedExecute := Database.InitializeSources(Objects) and Client.Asynchron;
+        end;
+    end;
+    Objects.Free();
+  end;
+
 var
   B: Boolean;
   Client: TCClient;
@@ -835,7 +887,6 @@ var
   J: Integer;
   K: Integer;
   Node: TTreeNode;
-  Objects: TList;
   ProgressInfos: TTools.TProgressInfos;
   Table: TCBaseTable;
 begin
@@ -862,49 +913,7 @@ begin
   Node := FSelect.Selected;
   while (Assigned(Node.Parent)) do Node := Node.Parent;
   Client := GetClient(Node.Index);
-
-  Objects := TList.Create();
-  case (FSelect.Selected.ImageIndex) of
-    iiServer:
-      begin
-        WantedExecute := Client.Initialize();
-        if (not WantedExecute) then
-          for I := 0 to Client.Databases.Count - 1 do
-            if (not WantedExecute and not (Client.Databases[I] is TCSystemDatabase)) then
-            begin
-              Database := Client.Databases[I];
-              WantedExecute := Database.Initialize(Database.Tables);
-              if (not WantedExecute) then
-              begin
-                for J := 0 to Database.Tables.Count - 1 do
-                  if (Database.Tables[J] is TCBaseTable) then
-                    Objects.Add(Database.Tables[J]);
-                WantedExecute := Database.InitializeSources(Objects);
-              end;
-            end;
-      end;
-    iiDatabase:
-      begin
-        Database := Client.DatabaseByName(FSelect.Selected.Text);
-        WantedExecute := Database.Initialize(Database.Tables);
-        if (not WantedExecute) then
-        begin
-          for J := 0 to Database.Tables.Count - 1 do
-            if (Database.Tables[J] is TCBaseTable) then
-              Objects.Add(Database.Tables[J]);
-          WantedExecute := Database.InitializeSources(Objects);
-        end;
-      end;
-    iiBaseTable:
-      begin
-        Database := Client.DatabaseByName(FSelect.Selected.Parent.Text);
-        for J := 0 to Database.Tables.Count - 1 do
-          if (FSelect.Selected.Parent.Item[J].Selected) then
-            Objects.Add(Database.Tables[J]);
-        WantedExecute := Database.InitializeSources(Objects);
-      end;
-  end;
-  Objects.Free();
+  InitializeNode(Client, FSelect.Selected);
 
   if (not WantedExecute) then
   begin

@@ -76,11 +76,14 @@ type
     procedure TSTransferOptionsShow(Sender: TObject);
     procedure TreeViewGetSelectedIndex(Sender: TObject; Node: TTreeNode);
   private
-    Connections: array of TCClient;
+    Clients: array of TCClient;
     MouseDownNode: TTreeNode;
     Transfer: TTTransfer;
+    WantedExecute: Boolean;
+    WantedNodeExpand: TTreeNode;
+    procedure FormClientEvent(const Event: TCClient.TEvent);
+    function GetClient(const Index: Integer): TCClient;
     procedure InitTSSelect(Sender: TObject);
-    procedure OnConvertError(Sender: TObject; Text: string);
     procedure OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMExecutedDone(var Message: TMessage); message CM_EXECUTIONDONE;
@@ -256,6 +259,15 @@ begin
   Application.HelpContext(HelpContext);
 end;
 
+procedure TDTransfer.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if (Event.EventType in [ceAfterExecuteSQL]) then
+    if (Assigned(WantedNodeExpand)) then
+      WantedNodeExpand.Expand(False)
+    else if (WantedExecute) then
+      TSExecuteShow(Event.Sender);
+end;
+
 procedure TDTransfer.FormCreate(Sender: TObject);
 begin
   Constraints.MinWidth := Width;
@@ -291,10 +303,14 @@ begin
       if (FTransferDisableKeys.Checked) then Include(Preferences.Transfer.Options, toDisableForeignKeys) else Exclude(Preferences.Transfer.Options, toDisableForeignKeys);
   end;
 
-  for I := 0 to Length(Connections) - 1 do
-    if (Assigned(Connections[I]) and (Connections[I] <> MasterClient) and (Connections[I] <> MasterClient)) then
-      fClient.Clients.ReleaseClient(Connections[I]);
-  SetLength(Connections, 0);
+  for I := 0 to Length(Clients) - 1 do
+    if (Assigned(Clients[I])) then
+    begin
+      Clients[I].UnRegisterEventProc(FormClientEvent);
+      if (Assigned(Clients[I]) and (Clients[I] <> MasterClient) and (Clients[I] <> MasterClient)) then
+        fClient.Clients.ReleaseClient(Clients[I]);
+    end;
+  SetLength(Clients, 0);
 
   Preferences.Transfer.Height := Height;
   Preferences.Transfer.Width := Width;
@@ -324,15 +340,18 @@ begin
     Top := Preferences.Transfer.Top;
   end;
 
-  SetLength(Connections, Accounts.Count);
+  WantedExecute := False;
+  WantedNodeExpand := nil;
+
+  SetLength(Clients, Accounts.Count);
   for I := 0 to Accounts.Count - 1 do
   begin
     if (Assigned(MasterClient) and (Accounts[I] = MasterClient.Account)) then
-      Connections[I] := MasterClient
+      Clients[I] := MasterClient
     else if (Assigned(MasterClient) and (Accounts[I] = MasterClient.Account)) then
-      Connections[I] := MasterClient
+      Clients[I] := MasterClient
     else
-      Connections[I] := nil;
+      Clients[I] := nil;
   end;
 
   InitTSSelect(Sender);
@@ -380,6 +399,19 @@ procedure TDTransfer.FTransferStructureKeyPress(Sender: TObject;
   var Key: Char);
 begin
   FTransferStructureClick(Sender);
+end;
+
+function TDTransfer.GetClient(const Index: Integer): TCClient;
+var
+  B: Boolean;
+begin
+  if (not Assigned(Clients[Index])) then
+    Clients[Index] := fClient.Clients.CreateClient(Accounts[Index], B);
+
+  Result := Clients[Index];
+
+  if (Assigned(Result)) then
+    Result.RegisterEventProc(FormClientEvent);
 end;
 
 procedure TDTransfer.InitTSSelect(Sender: TObject);
@@ -536,11 +568,6 @@ begin
   ShowEnabledItems(MMaster.Items);
 end;
 
-procedure TDTransfer.OnConvertError(Sender: TObject; Text: string);
-begin
-  ConvertError(Sender, Text);
-end;
-
 procedure TDTransfer.OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
 var
   ErrorMsg: string;
@@ -607,17 +634,11 @@ begin
 end;
 
 procedure TDTransfer.TreeViewChange(Sender: TObject; Node: TTreeNode);
-var
-  AllowExpansion: Boolean;
 begin
   if (ModalResult = mrNone) then
   begin
     if ((Sender = FMaster) and Assigned(Node)) then
       FMaster.MultiSelect := Assigned(Node.Parent);
-
-    AllowExpansion := True;
-    if (Assigned(Node) and Node.Selected and not Node.Expanded and not Assigned(Node.Parent)) then
-      TreeViewExpanding(Sender, Node, AllowExpansion);
 
     FBForward.Enabled := Assigned(FMaster.Selected) and Assigned(FMaster.Selected.Parent) and Assigned(FSlave.Selected)
       and (FMaster.Selected.Parent.Level = FSlave.Selected.Level)
@@ -629,85 +650,62 @@ end;
 procedure TDTransfer.TreeViewExpanding(Sender: TObject; Node: TTreeNode;
   var AllowExpansion: Boolean);
 var
-  B: Boolean;
   Client: TCClient;
+  Database: TCDatabase;
   I: Integer;
   NewNode: TTreeNode;
-  NodeSelected: Boolean;
-  TempOnChange: TTVChangedEvent;
-  //  Database: TCDatabase;
   TreeView: TTreeView_Ext;
 begin
   TreeView := TTreeView_Ext(Sender);
 
-  if (not Assigned(TreeView.Selected)) then
-    TreeView.Selected := Node;
-
-  if (Assigned(TreeView.Selected)) then
+  if (Assigned(WantedNodeExpand)) then
   begin
-    if (Sender is TTreeView_Ext) then
-    begin
-      TempOnChange := TTreeView_Ext(Sender).OnChange;
-      TTreeView_Ext(Sender).OnChange := nil;
-      NodeSelected := Node.Selected;
-
-      if (Assigned(Node) and NodeSelected) then
-        for I := 0 to TTreeView_Ext(Sender).Items.Count - 1 do
-          if (TTreeView_Ext(Sender).Items[I].Selected and (TTreeView_Ext(Sender).Items[I] <> Node) and (TTreeView_Ext(Sender).Items[I].Parent <> Node.Parent)) then
-            TTreeView_Ext(Sender).Items[I].Selected := False;
-
-      TTreeView_Ext(Sender).OnChange := TempOnChange;
-    end;
-
-    if (not Assigned(Node.Parent)) then
-    begin
-      I := Accounts.AccountByName(Node.Text).Index;
-      if ((0 <= I) and (I < Length(Connections)) and not Assigned(Connections[I])) then
-      begin
-        Connections[I] := fClient.Clients.CreateClient(Accounts.AccountByName(Node.Text), B);
-        if (Assigned(Connections[I])) then
-          Connections[I].OnConvertError := OnConvertError;
-      end;
-
-      Client := Connections[I];
-    end
-    else
-    begin
-      if (not Assigned(Node.Parent.Parent)) then
-        Client := Connections[Accounts.AccountByName(Node.Parent.Text).Index]
-      else
-        Client := Connections[Accounts.AccountByName(Node.Parent.Parent.Text).Index];
-    end;
-
-    if (Assigned(Client)) then
-    begin
-      if (Node.HasChildren and not Assigned(Node.getFirstChild())) then
-        if (not Assigned(Node.Parent)) then
-        begin
-          for I := 0 to Client.Databases.Count - 1 do
-            if (not (Client.Databases[I] is TCSystemDatabase)) then
-            begin
-              NewNode := TreeView.Items.AddChild(Node, Client.Databases[I].Name);
-              NewNode.ImageIndex := iiDatabase;
-              NewNode.HasChildren := (Sender = FMaster);
-            end;
-        end
-        else if ((Node.ImageIndex = iiDatabase) and (Sender = FMaster)) then
-        begin
-// ToDo: Initialize
-//          Database := Client.DatabaseByName(Node.Text);
-//          if (Database.Initialize()) then
-//            for I := 0 to Database.Tables.Count - 1 do
-//              if ((Database.Tables[I] is TCBaseTable) and Assigned(TCBaseTable(Database.Tables[I]).Engine) and not TCBaseTable(Database.Tables[I]).Engine.IsMerge and (RightStr(Database.Tables[I].Name, Length(BackupExtension)) <> BackupExtension)) then
-//              begin
-//                NewNode := TreeView.Items.AddChild(Node, Database.Tables[I].Name);
-//                NewNode.ImageIndex := iiBaseTable;
-//                NewNode.HasChildren := False;
-//              end;
-        end;
-      Node.HasChildren := Assigned(Node.getFirstChild());
-    end;
+    for I := 0 to Length(Clients) - 1 do
+      if (Assigned(Clients[I])) then
+        Clients[I].UnRegisterEventProc(FormClientEvent);
+    WantedNodeExpand := nil;
   end;
+
+  if (Assigned(Node)) then
+    if (Node.HasChildren and not Assigned(Node.getFirstChild())) then
+    begin
+      case (Node.ImageIndex) of
+        iiServer:
+          begin
+            Client := GetClient(Node.Index);
+            if (Assigned(Client)) then
+              if (Client.Initialize() and Client.Asynchron) then
+                WantedNodeExpand := Node
+              else
+              begin
+                for I := 0 to Client.Databases.Count - 1 do
+                  if (not (Client.Databases[I] is TCSystemDatabase)) then
+                  begin
+                    NewNode := TreeView.Items.AddChild(Node, Client.Databases[I].Name);
+                    NewNode.ImageIndex := iiDatabase;
+                    NewNode.HasChildren := TreeView = FMaster;
+                  end;
+                Node.HasChildren := Assigned(Node.getFirstChild());
+              end;
+          end;
+        iiDatabase:
+          begin
+            Client := GetClient(Node.Parent.Index);
+            Database := Client.DatabaseByName(Node.Text);
+            if (Database.Initialize(Database.Tables) and Client.Asynchron) then
+              WantedNodeExpand := Node
+            else
+            begin
+              for I := 0 to Database.Tables.Count - 1 do
+                if ((Database.Tables[I] is TCBaseTable) and Assigned(TCBaseTable(Database.Tables[I]).Engine) and not TCBaseTable(Database.Tables[I]).Engine.IsMerge and (RightStr(Database.Tables[I].Name, Length(BackupExtension)) <> BackupExtension)) then
+                begin
+                  NewNode := TreeView.Items.AddChild(Node, Database.Tables[I].Name);
+                  NewNode.ImageIndex := iiBaseTable;
+                end;
+            end;
+          end;
+      end;
+    end;
 end;
 
 procedure TDTransfer.TreeViewGetSelectedIndex(Sender: TObject; Node: TTreeNode);
@@ -730,27 +728,80 @@ var
 
   procedure AddTable(const MasterClient: TCClient; const MasterDatabaseName, MasterTableName: string; const SlaveClient: TCClient; const SlaveDatabaseName, SlaveTableName: string);
   begin
-    if ((Answer <> IDYESALL) and Assigned(MasterClient.DatabaseByName(SlaveDatabaseName)) and Assigned(MasterClient.DatabaseByName(SlaveDatabaseName).TableByName(SlaveTableName))) then
+    if ((Answer <> IDYESALL) and Assigned(SlaveClient.DatabaseByName(SlaveDatabaseName)) and Assigned(SlaveClient.DatabaseByName(SlaveDatabaseName).TableByName(SlaveTableName))) then
       Answer := MsgBox(Preferences.LoadStr(700, SlaveDatabaseName + '.' + SlaveTableName), Preferences.LoadStr(101), MB_YESYESTOALLNOCANCEL + MB_ICONQUESTION);
 
     if (Answer in [IDYES, IDYESALL]) then
-      Transfer.Add(MasterClient, MasterDatabaseName, MasterTableName, MasterClient, SlaveDatabaseName, SlaveTableName)
+      Transfer.Add(
+        MasterClient, MasterDatabaseName, MasterTableName,
+        SlaveClient, SlaveDatabaseName, SlaveTableName
+      )
     else if (Answer = IDCANCEL) then
       FreeAndNil(Transfer);
   end;
 
+  function InitializeNode(const Client: TCClient; const Node: TTreeNode): Boolean;
+  var
+    Database: TCDatabase;
+    I: Integer;
+    J: Integer;
+    Objects: TList;
+  begin
+    Objects := TList.Create();
+    case (Node.ImageIndex) of
+      iiServer:
+        begin
+          Result := Client.Initialize() and Client.Asynchron;
+          if (not Result) then
+            for I := 0 to Client.Databases.Count - 1 do
+              if (not Result and not (Client.Databases[I] is TCSystemDatabase)) then
+              begin
+                Database := Client.Databases[I];
+                Result := Database.Initialize(Database.Tables) and Client.Asynchron;
+                if (not Result) then
+                begin
+                  for J := 0 to Database.Tables.Count - 1 do
+                    if (Database.Tables[J] is TCBaseTable) then
+                      Objects.Add(Database.Tables[J]);
+                  Result := Database.InitializeSources(Objects) and Client.Asynchron;
+                end;
+              end;
+        end;
+      iiDatabase:
+        begin
+          Database := Client.DatabaseByName(Node.Text);
+          Result := Database.Initialize(Database.Tables) and Client.Asynchron;
+          if (not Result) then
+          begin
+            for J := 0 to Database.Tables.Count - 1 do
+              if (Database.Tables[J] is TCBaseTable) then
+                Objects.Add(Database.Tables[J]);
+            Result := Database.InitializeSources(Objects) and Client.Asynchron;
+          end;
+        end;
+      iiBaseTable:
+        begin
+          Database := Client.DatabaseByName(Node.Parent.Text);
+          for J := 0 to Database.Tables.Count - 1 do
+            if (Node.Parent.Item[J].Selected) then
+              Objects.Add(Database.Tables[J]);
+          Result := Database.InitializeSources(Objects) and Client.Asynchron;
+        end;
+      else
+        Result := False;
+    end;
+    Objects.Free();
+  end;
+
 var
   I: Integer;
-  //  J: Integer;
-  //  MClient: TCClient;
-  //  MDatabase: TCDatabase;
-  //  SAccount: TSAccount;
+  J: Integer;
+  Database: TCDatabase;
+  MasterClient: TCClient;
+  Node: TTreeNode;
   ProgressInfos: TTools.TProgressInfos;
+  SlaveClient: TCClient;
 begin
-  FBForward.Enabled := False;
-  FBCancel.Default := True;
-  ActiveControl := FBCancel;
-
   FErrors.Caption := '0';
   FErrorMessages.Lines.Clear();
 
@@ -763,53 +814,67 @@ begin
   ProgressInfos.Progress := 0;
   SendMessage(Self.Handle, CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos));
 
-  Answer := IDYES;
+  FBForward.Enabled := False;
+  FBCancel.Default := True;
+  ActiveControl := FBCancel;
 
-  Transfer := TTTransfer.Create();
-  Transfer.Wnd := Self.Handle;
-  Transfer.UpdateMessage := CM_UPDATEPROGRESSINFO;
-  Transfer.ExecutedMessage := CM_EXECUTIONDONE;
-  Transfer.Backup := False;
-  Transfer.Data := FTransferData.Checked;
-  Transfer.DisableKeys := FTransferDisableKeys.Checked;
-  Transfer.Structure := FTransferStructure.Checked;
-  Transfer.UpdateData := False;
-  Transfer.UpdateStructure := False;
-  Transfer.OnError := OnError;
+  Node := FMaster.Selected;
+  while (Assigned(Node.Parent)) do Node := Node.Parent;
+  MasterClient := GetClient(Node.Index);
+  WantedExecute := InitializeNode(MasterClient, FMaster.Selected);
 
-  for I := 0 to FMaster.Items.Count - 1 do
-    if (FMaster.Items[I].Selected) then
-      case (FMaster.Items[I].ImageIndex) of
-        iiBaseTable:
-          if (Assigned(Transfer)) then
-            AddTable(
-              Connections[Accounts.AccountByName(FMaster.Items[I].Parent.Parent.Text).Index], FMaster.Items[I].Parent.Text, FMaster.Items[I].Text,
-              Connections[Accounts.AccountByName(FSlave.Selected.Parent.Text).Index], FSlave.Selected.Text, FMaster.Items[I].Text
-            );
-        iiDatabase:
-          begin
-// ToDo: Initialize
-//            MClient := Connections[Accounts.AccountByName(FMaster.Items[I].Parent.Text).Index];
-//            MDatabase := MClient.DatabaseByName(FMaster.Items[I].Text);
-//            SAccount := Accounts.AccountByName(FSlave.Selected.Text);
-//            if (MDatabase.Initialize()) then
-//              for J := 0 to MDatabase.Tables.Count - 1 do
-//                if (Assigned(Transfer) and (MDatabase.Tables[J] is TCBaseTable) and Assigned(TCBaseTable(MDatabase.Tables[J]).Engine) and not TCBaseTable(MDatabase.Tables[J]).Engine.IsMerge and (RightStr(MDatabase.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
-//                  AddTable(
-//                    MClient, MDatabase.Name, MDatabase.Tables[J].Name,
-//                    Connections[SAccount.Index], MDatabase.Name, MDatabase.Tables[J].Name
-//                  );
-          end;
-      end;
-
-  if (not Assigned(Transfer)) then
-    Perform(CM_EXECUTIONDONE, WPARAM(False), 0)
+  if (WantedExecute) then
+    SlaveClient := nil
   else
+  begin
+    Node := FSlave.Selected;
+    while (Assigned(Node.Parent)) do Node := Node.Parent;
+    SlaveClient := GetClient(Node.Index);
+    WantedExecute := InitializeNode(SlaveClient, FSlave.Selected);
+  end;
+
+  if (not WantedExecute) then
+  begin
+    Answer := IDYES;
+
+    Transfer := TTTransfer.Create();
+    Transfer.Wnd := Self.Handle;
+    Transfer.UpdateMessage := CM_UPDATEPROGRESSINFO;
+    Transfer.ExecutedMessage := CM_EXECUTIONDONE;
+    Transfer.Backup := False;
+    Transfer.Data := FTransferData.Checked;
+    Transfer.DisableKeys := FTransferDisableKeys.Checked;
+    Transfer.Structure := FTransferStructure.Checked;
+    Transfer.UpdateData := False;
+    Transfer.UpdateStructure := False;
+    Transfer.OnError := OnError;
+
+    for I := 0 to FMaster.Selected.Parent.Count - 1 do
+      if (FMaster.Selected.Parent[I].Selected) then
+        case (FMaster.Selected.Parent[I].ImageIndex) of
+          iiDatabase:
+            begin
+              Database := MasterClient.DatabaseByName(FMaster.Selected.Parent[I].Text);
+              for J := 0 to Database.Tables.Count - 1 do
+                if ((Database.Tables[J] is TCBaseTable) and Assigned(TCBaseTable(Database.Tables[J]).Engine) and not TCBaseTable(Database.Tables[J]).Engine.IsMerge and (RightStr(Database.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
+                  AddTable(
+                    MasterClient, Database.Name, Database.Tables[J].Name,
+                    SlaveClient, Database.Name, Database.Tables[J].Name
+                  );
+            end;
+          iiBaseTable:
+            AddTable(
+              MasterClient, FMaster.Selected.Parent.Text, FMaster.Selected.Parent[I].Text,
+              SlaveClient, FSlave.Selected.Text, FMaster.Selected.Parent[I].Text
+            );
+        end;
+
     {$IFNDEF Debug}
       Transfer.Start();
     {$ELSE}
       Transfer.Execute();
     {$ENDIF}
+  end;
 end;
 
 procedure TDTransfer.TSSelectShow(Sender: TObject);

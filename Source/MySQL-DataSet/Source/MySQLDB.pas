@@ -1928,7 +1928,9 @@ var
   StartingCommentLength: Integer;
   StmtLength: Integer;
 begin
-  if (SynchroThread.SQLStmt <= SynchroThread.SQLLastStmtInPacket) then
+  if ((SynchroThread.SQL = '') or (SynchroThread.SQLStmt > SynchroThread.SQLLastStmtInPacket)) then
+    Result := ''
+  else
   begin
     StmtLength := Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]);
     Len := SQLTrimStmt(SynchroThread.SQL, SynchroThread.SQLStmtIndex, StmtLength, StartingCommentLength, EndingCommentLength);
@@ -1936,8 +1938,6 @@ begin
       Dec(Len);
     Result := copy(SynchroThread.SQL, SynchroThread.SQLStmtIndex + StartingCommentLength, Len);
   end
-  else
-    Result := '';
 end;
 
 function TMySQLConnection.GetDateTime(): TDateTime;
@@ -2422,7 +2422,8 @@ begin
   if (Assigned(Lib.mysql_get_server_status)) then
     FAutoCommit := Lib.mysql_get_server_status(Handle) and SERVER_STATUS_AUTOCOMMIT <> 0;
 
-  SynchroThread.SQL := '';
+  if (Lib.mysql_errno(Handle) = 0) then
+    SynchroThread.SQL := '';
 
   DoAfterExecuteSQL();
 end;
@@ -3899,7 +3900,8 @@ procedure TMySQLQuery.InternalClose();
 begin
   if (not (Self is TMySQLDataSet)) then
   begin
-    Connection.SyncHandledResult(Connection.SynchroThread);
+    if (Assigned(Connection.SynchroThread)) then
+      Connection.SyncHandledResult(Connection.SynchroThread);
     FHandle := nil;
   end;
 
@@ -5307,12 +5309,10 @@ procedure TMySQLDataSet.InternalClose();
 var
   I: Integer;
 begin
+  Connection.TerminateCS.Enter();
   if (IsCursorOpen() and Assigned(RecordReceived) and Assigned(Connection.SynchroThread) and (Connection.SynchroThread.DataSet = Self)) then
-  begin
-    Connection.TerminateCS.Enter();
     Connection.SynchroThread.DataSet := nil;
-    Connection.TerminateCS.Leave();
-  end;
+  Connection.TerminateCS.Leave();
 
   if (not HoldFieldDefs) then
     FSortDef.Fields := ''

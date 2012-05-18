@@ -118,7 +118,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 599
+        Height = 225
         HelpContext = 1082
         Align = alClient
         BorderStyle = bsNone
@@ -140,7 +140,6 @@ object FClient: TFClient
         OnExit = FBookmarksExit
         OnDragDrop = FBookmarksDragDrop
         OnDragOver = FBookmarksDragOver
-        ExplicitHeight = 225
       end
     end
     object PNavigator: TPanel_Ext
@@ -319,7 +318,7 @@ object FClient: TFClient
       object FList: TListView_Ext
         Left = 2
         Top = 2
-        Width = 774
+        Width = 463
         Height = 52
         HelpContext = 1035
         Align = alClient
@@ -345,7 +344,6 @@ object FClient: TFClient
         OnDragOver = FListDragOver
         OnKeyDown = ListViewKeyDown
         OnSelectItem = FListSelectItem
-        ExplicitWidth = 463
       end
     end
     object PSQLEditor: TPanel_Ext
@@ -364,7 +362,7 @@ object FClient: TFClient
       object FSQLEditor: TSynMemo
         Left = 2
         Top = 2
-        Width = 774
+        Width = 463
         Height = 46
         HelpContext = 1037
         OnSearchNotFound = SearchNotFound
@@ -397,7 +395,6 @@ object FClient: TFClient
         SearchEngine = FSQLEditorSearch
         WantTabs = True
         OnStatusChange = FSQLEditorStatusChange
-        ExplicitWidth = 463
         RemovedKeystrokes = <
           item
             Command = ecContextHelp
@@ -461,7 +458,7 @@ object FClient: TFClient
           object FGrid: TMySQLDBGrid
             Left = 2
             Top = 2
-            Width = 757
+            Width = 446
             Height = 100
             HelpContext = 1036
             Align = alClient
@@ -532,7 +529,7 @@ object FClient: TFClient
       object SBuilderQuery: TSplitter_Ext
         Left = 0
         Top = 96
-        Width = 778
+        Width = 467
         Height = 4
         Cursor = crVSplit
         Align = alBottom
@@ -544,7 +541,7 @@ object FClient: TFClient
       object PBuilderQuery: TPanel_Ext
         Left = 0
         Top = 100
-        Width = 778
+        Width = 467
         Height = 50
         Align = alBottom
         BevelInner = bvRaised
@@ -553,11 +550,10 @@ object FClient: TFClient
         Constraints.MinHeight = 50
         ParentBackground = False
         TabOrder = 0
-        ExplicitWidth = 467
         object FBuilderEditor: TSynMemo
           Left = 2
           Top = 2
-          Width = 774
+          Width = 463
           Height = 46
           HelpContext = 1120
           OnSearchNotFound = SearchNotFound
@@ -590,13 +586,12 @@ object FClient: TFClient
           WantTabs = True
           OnChange = FBuilderEditorChange
           OnStatusChange = FBuilderEditorStatusChange
-          ExplicitWidth = 463
         end
       end
       object FBuilder: TacQueryBuilder
         Left = 0
         Top = 0
-        Width = 778
+        Width = 467
         Height = 96
         SyntaxProvider = SyntaxProvider
         MetadataProvider = MetadataProvider
@@ -665,7 +660,6 @@ object FClient: TFClient
         OnEnter = FBuilderEnter
         OnExit = FBuilderExit
         OnResize = FBuilderResize
-        ExplicitWidth = 467
       end
     end
     object PDataBrowser: TPanel_Ext
@@ -779,7 +773,6 @@ object FClient: TFClient
         Anchors = [akTop, akRight]
         Caption = 'ToolBarFilterEnabled'
         TabOrder = 6
-        ExplicitLeft = 274
         object FFilterEnabled: TToolButton
           Left = 0
           Top = 0
@@ -801,7 +794,6 @@ object FClient: TFClient
         TabOrder = 7
         OnChange = FQuickSearchChange
         OnKeyPress = FQuickSearchKeyPress
-        ExplicitLeft = 305
       end
       object ToolBarQuickSearchEnabled: TToolBar
         Left = 753
@@ -813,7 +805,6 @@ object FClient: TFClient
         AutoSize = True
         Caption = 'ToolBarQuickSearchEnabled'
         TabOrder = 8
-        ExplicitLeft = 442
         object FQuickSearchEnabled: TToolButton
           Left = 0
           Top = 0
@@ -839,18 +830,17 @@ object FClient: TFClient
       object PObjectIDESpacer: TPanel_Ext
         Left = 0
         Top = 36
-        Width = 778
+        Width = 467
         Height = 2
         Align = alBottom
         BevelOuter = bvNone
         ParentBackground = False
         TabOrder = 0
-        ExplicitWidth = 467
       end
       object FObjectIDEGrid: TMySQLDBGrid
         Left = 0
         Top = 0
-        Width = 778
+        Width = 467
         Height = 36
         HelpContext = 1122
         Align = alClient
@@ -876,13 +866,12 @@ object FClient: TFClient
       object PObjectIDETrigger: TPanel_Ext
         Left = 0
         Top = 38
-        Width = 778
+        Width = 467
         Height = 41
         Align = alBottom
         BevelOuter = bvNone
         ParentBackground = False
         TabOrder = 2
-        ExplicitWidth = 467
         object BINSERT: TButton
           Left = 8
           Top = 8

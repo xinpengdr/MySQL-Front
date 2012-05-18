@@ -212,7 +212,7 @@ type
   private
     FDatabase: TCDatabase;
   protected
-    function Add(const AObject: TCObject; const Event: Boolean = False): Integer; override;
+    function Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer; override;
     procedure Delete(const AObject: TCObject); override;
     function GetCount(): Integer; override;
   public
@@ -718,7 +718,7 @@ type
     function GetTable(Index: Integer): TCTable;
   protected
     property DesktopXML: IXMLNode read GetDesktopXML;
-    function Add(const AObject: TCObject; const Event: Boolean = False): Integer; override;
+    function Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer; override;
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean; override;
     procedure BuildViewFields(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean); virtual;
     procedure Delete(const AObject: TCObject); override;
@@ -1037,7 +1037,7 @@ type
     function GetDesktopXML(): IXMLNode;
   protected
     property DesktopXML: IXMLNode read GetDesktopXML;
-    function Add(const AObject: TCObject; const Event: Boolean = False): Integer; override;
+    function Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer; override;
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean; override;
     procedure Delete(const AObject: TCObject); override;
     function GetCount(): Integer; override;
@@ -2038,7 +2038,7 @@ function TCObjects.Build(const DataSet: TMySQLQuery; const UseInformationSchema:
 begin
   FActual := True;
 
-  Result := False;
+  Result := (Client.ErrorCode = ER_DBACCESS_DENIED_ERROR) or (Client.ErrorCode = ER_TABLEACCESS_DENIED_ERROR);
 end;
 
 procedure TCObjects.Clear();
@@ -2107,7 +2107,7 @@ end;
 
 { TCDBObjects *****************************************************************}
 
-function TCDBObjects.Add(const AObject: TCObject; const Event: Boolean = False): Integer;
+function TCDBObjects.Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer;
 begin
   Result := 0;
   while ((Result < TList(Self).Count) and (lstrcmpi(PChar(Item[Result].Name), PChar(AObject.Name)) < 0)) do
@@ -2118,7 +2118,7 @@ begin
   else
     TList(Self).Add(AObject);
 
-  if (Event) then
+  if (ExecuteEvent) then
     Client.ExecuteEvent(ceCreated, Self, AObject, Database);
 end;
 
@@ -4994,7 +4994,7 @@ end;
 
 { TCTables ********************************************************************}
 
-function TCTables.Add(const AObject: TCObject; const Event: Boolean = False): Integer;
+function TCTables.Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer;
 begin
   Result := 0;
   while ((Result < TList(Self).Count) and (Client.TableNameCmp(Table[Result].Name, AObject.Name) < 0)) do
@@ -5005,7 +5005,7 @@ begin
   else
     TList(Self).Add(AObject);
 
-  if (Event) then
+  if (ExecuteEvent) then
     Client.ExecuteEvent(ceCreated, Self, AObject, Database);
 end;
 
@@ -6095,7 +6095,7 @@ begin
       else if (DataSet.FieldByName('TRIGGER_SCHEMA').AsString = Database.Name) then
         TriggerName := DataSet.FieldByName('TRIGGER_NAME').AsString
       else
-        raise ERangeError.CreateFmt(SPropertyOutOfRange, ['TriggerName']);
+        raise ERangeError.CreateFmt(SPropertyOutOfRange + ' (' + DataSet.CommandText + ')', ['TriggerName']);
 
       Index := IndexByName(TriggerName);
       Update := Index >= 0;
@@ -7955,9 +7955,10 @@ begin
 
   Result := Client.ExecuteSQL(SQL);
 
-  if (Client.Connected and Client.MultiStatements and Assigned(Client.Lib.mysql_set_server_option)) then
-    // Why does the MySQL database loose the Multi Statement state ???
-    Client.Lib.mysql_set_server_option(Client.Handle, MYSQL_OPTION_MULTI_STATEMENTS_ON);
+// Is this workaround still needed? Or was it a bug in previous versions? In which versions?
+//  if (Client.Connected and Client.MultiStatements and Assigned(Client.Lib.mysql_set_server_option)) then
+//    // Why does the MySQL database loose the Multi Statement state ???
+//    Client.Lib.mysql_set_server_option(Client.Handle, MYSQL_OPTION_MULTI_STATEMENTS_ON);
 
   if (not Result and Assigned(Trigger)) then
     Client.ExecuteSQL(Trigger.Source)
@@ -8032,16 +8033,19 @@ end;
 
 { TCDatabases *****************************************************************}
 
-function TCDatabases.Add(const AObject: TCObject; const Event: Boolean = False): Integer;
+function TCDatabases.Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer;
 begin
   Result := 0;
   while ((Result < TList(Self).Count) and (Client.TableNameCmp(Database[Result].Name, AObject.Name) < 0)) do
     Inc(Result);
 
   if (Result < TList(Self).Count) then
-    inherited Insert(Result, AObject)
+    TList(Self).Insert(Result, AObject)
   else
-    inherited Add(AObject);
+    TList(Self).Add(AObject);
+
+  if (ExecuteEvent) then
+    Client.ExecuteEvent(ceCreated, Self, AObject);
 end;
 
 function TCDatabases.Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean;
@@ -9598,7 +9602,7 @@ begin
         Index := Add(TCUser.Create(Self, UserName));
     until (not DataSet.FindNext());
 
-  Result := inherited or (Client.ErrorCode = ER_DBACCESS_DENIED_ERROR);
+  Result := inherited;
 
   if ((DataSet.RecordCount = 1) and Update) then
     Client.ExecuteEvent(ceUpdated, Self, User[Index])
@@ -9867,7 +9871,7 @@ begin
       FreeAndNil(NewHostDatabase);
     until (not DataSet.FindNext());
 
-  Result := inherited or (Client.ErrorCode = ER_DBACCESS_DENIED_ERROR);
+  Result := inherited;
 
   if ((DataSet.RecordCount = 1) and Update) then
     Client.ExecuteEvent(ceUpdated, Self, Host[Index])
@@ -10222,7 +10226,7 @@ begin
         else if (TableNameCmp(DatabaseName, 'mysql') = 0) then
         begin
           if (TableNameCmp(Name, 'host') = 0) then
-            Result := Hosts.Build(DataSet, False)
+            Result := FHosts.Build(DataSet, False)
           else if (TableNameCmp(Name, 'user') = 0) then
             Result := Users.Build(DataSet, False);
         end;
@@ -10635,7 +10639,7 @@ destructor TCClient.Destroy();
 begin
   UnRegisterClient(Self);
 
-  EventProcs.Free();
+  if (Assigned(EventProcs)) then EventProcs.Free();
 
   if (Assigned(FSQLEditorResult)) then FSQLEditorResult.Free();
   if (Assigned(FQueryBuilderResult)) then FQueryBuilderResult.Free();
@@ -11209,7 +11213,7 @@ begin
     SQL := SQL + Plugins.SQLGetItems();
   if (Assigned(Users) and not Users.Actual) then
     SQL := SQL + Users.SQLGetItems();
-  if (Assigned(FHosts) and not Hosts.Actual) then
+  if (Assigned(FHosts) and not FHosts.Actual) then
     SQL := SQL + Hosts.SQLGetItems();
 
   Result := SQL <> '';

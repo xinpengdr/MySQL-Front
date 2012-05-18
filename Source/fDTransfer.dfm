@@ -38,7 +38,7 @@ object DTransfer: TDTransfer
     Top = 0
     Width = 444
     Height = 289
-    ActivePage = TSSelect
+    ActivePage = TSExecute
     Anchors = [akLeft, akTop, akRight, akBottom]
     Style = tsFlatButtons
     TabOrder = 0
@@ -48,6 +48,10 @@ object DTransfer: TDTransfer
       Caption = 'TSSelect'
       TabVisible = False
       OnShow = TSSelectShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         436
         279)
@@ -141,6 +145,10 @@ object DTransfer: TDTransfer
       ImageIndex = 1
       TabVisible = False
       OnShow = TSExecuteShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         436
         279)
@@ -324,6 +332,10 @@ object DTransfer: TDTransfer
       Caption = 'TSTransferOptions'
       TabVisible = False
       OnShow = TSTransferOptionsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         436
         279)

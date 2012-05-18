@@ -115,7 +115,7 @@ end;
 procedure TWMain.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   MakeVerMajor, MakeVerMinor, MakeVerPatch, MakeVerBuild: Integer;
-  MakeVerStr, MakeVerStrFull, MakeVerFileFlag, MakeVerUpdateStatus: String;
+  MakeVerStr, MakeVerStrFull, MakeVerFileFlag: String;
   MakeVerYear, MakeVerMonth, MakeVerDay: Word;
   AwkFile: TStringList;
 begin
@@ -137,14 +137,6 @@ begin
       MakeVerStr := IntToStr(MakeVerMajor) + '.' + IntToStr(MakeVerMinor);
       MakeVerStrFull := MakeVerStr + '.' + IntToStr(MakeVerPatch) + '.' + IntToStr(MakeVerBuild);
       DecodeDate(Date(), MakeVerYear, MakeVerMonth, MakeVerDay);
-      if (Ini.ReadInteger('Version', 'Major', 0) > 0) then
-        MakeVerUpdateStatus := 'New Release'
-      else if (MakeVerMajor <> Ini.ReadInteger('Version', 'Major', 0)) then
-        MakeVerUpdateStatus := 'Major Update'
-      else if (MakeVerMinor <> Ini.ReadInteger('Version', 'Minor', 0)) then
-        MakeVerUpdateStatus := 'Minor Update'
-      else
-        MakeVerUpdateStatus := '';
 
 
       Ini.WriteInteger('Version', 'Major', FUDMajor.Position);
@@ -172,7 +164,6 @@ begin
       AwkFile.Add('  gsub("{BuildVerStr}", "' + MakeVerStr + '", $0)');
       AwkFile.Add('  gsub("{BuildVerStrFull}", "' + MakeVerStrFull + '", $0)');
       AwkFile.Add('  gsub("{BuildVerFileFlag}", "' + MakeVerFileFlag + '", $0)');
-      AwkFile.Add('  gsub("{BuildVerUpdateStatus}", "' + MakeVerUpdateStatus + '", $0)');
       AwkFile.Add('  gsub("{BuildVerYear}", "' + ReplaceStr(Format('%4d', [MakeVerYear]), ' ', '0') + '", $0)');
       AwkFile.Add('  gsub("{BuildVerMonth}", "' + ReplaceStr(Format('%2d', [MakeVerMonth]), ' ', '0') + '", $0)');
       AwkFile.Add('  gsub("{BuildVerDay}", "' + ReplaceStr(Format('%2d', [MakeVerDay]), ' ', '0') + '", $0)');

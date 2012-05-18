@@ -1,5 +1,4 @@
-﻿<!-- EurekaLog First Line
-[Exception Log]
+﻿[Exception Log]
 EurekaLog Version=6105
 Activate=1
 Activate Handle=1
@@ -17,7 +16,7 @@ TerminateBtn Operation=2
 Errors Number=32
 Errors Terminate=1
 Email Address=Bugs@mysqlfront.de
-Email Object=MySQL-Front Bug Report %%_MainModuleVer_%%
+Email Object=MySQL-Front Bug Report %_MainModuleVer_%
 Email Send Options=1
 Output Path=
 Encrypt Password=
@@ -25,21 +24,21 @@ AutoCloseDialogSecs=0
 WebSendMode=0
 SupportULR=
 HTMLLayout Count=15
-HTMLLine0="%U003Chtml%U003E"
-HTMLLine1="  %U003Chead%U003E"
-HTMLLine2="  %U003C/head%U003E"
-HTMLLine3="  %U003Cbody TopMargin=10 LeftMargin=10%U003E"
-HTMLLine4="    %U003Ctable width="100%%" border="0"%U003E"
-HTMLLine5="      %U003Ctr%U003E"
-HTMLLine6="        %U003Ctd nowrap%U003E"
-HTMLLine7="          %U003Cfont face="Lucida Console, Courier" size="2"%U003E"
-HTMLLine8="            %U003C%%HTML_TAG%%%U003E"
-HTMLLine9="          %U003C/font%U003E"
-HTMLLine10="        %U003C/td%U003E"
-HTMLLine11="      %U003C/tr%U003E"
-HTMLLine12="    %U003C/table%U003E"
-HTMLLine13="  %U003C/body%U003E"
-HTMLLine14="%U003C/html%U003E"
+HTMLLine0="<html>"
+HTMLLine1="  <head>"
+HTMLLine2="  </head>"
+HTMLLine3="  <body TopMargin=10 LeftMargin=10>"
+HTMLLine4="    <table width="100%%" border="0">"
+HTMLLine5="      <tr>"
+HTMLLine6="        <td nowrap>"
+HTMLLine7="          <font face="Lucida Console, Courier" size="2">"
+HTMLLine8="            <%%HTML_TAG%%>"
+HTMLLine9="          </font>"
+HTMLLine10="        </td>"
+HTMLLine11="      </tr>"
+HTMLLine12="    </table>"
+HTMLLine13="  </body>"
+HTMLLine14="</html>"
 AutoCrashOperation=2
 AutoCrashNumber=10
 AutoCrashMinutes=1
@@ -71,7 +70,7 @@ loDeleteLogAtVersionChange=0
 loAddComputerNameInLogFileName=0
 loSaveModulesAndProcessesSections=0
 loSaveAssemblerAndCPUSections=0
-soAppStartDate=0
+soAppStartDate=1
 soAppName=1
 soAppVersionNumber=1
 soAppParameters=0
@@ -197,21 +196,21 @@ mtDialog_CPUCaption0="CPU"
 Count mtDialog_CPUHeader=1
 mtDialog_CPUHeader0="CPU Information"
 Count mtDialog_OKButtonCaption=1
-mtDialog_OKButtonCaption0="%U0026OK"
+mtDialog_OKButtonCaption0="OK"
 Count mtDialog_TerminateButtonCaption=1
-mtDialog_TerminateButtonCaption0="%U0026Terminate"
+mtDialog_TerminateButtonCaption0="Terminate"
 Count mtDialog_RestartButtonCaption=1
-mtDialog_RestartButtonCaption0="%U0026Restart"
+mtDialog_RestartButtonCaption0="Restart"
 Count mtDialog_DetailsButtonCaption=1
-mtDialog_DetailsButtonCaption0="%U0026Details"
+mtDialog_DetailsButtonCaption0="Details"
 Count mtDialog_CustomButtonCaption=1
-mtDialog_CustomButtonCaption0="%U0026Help"
+mtDialog_CustomButtonCaption0="Help"
 Count mtDialog_SendMessage=1
-mtDialog_SendMessage0="%U0026Send this error via Internet"
+mtDialog_SendMessage0="Send this error via Internet"
 Count mtDialog_ScreenshotMessage=1
-mtDialog_ScreenshotMessage0="%U0026Attach a Screenshot image"
+mtDialog_ScreenshotMessage0="Attach a Screenshot image"
 Count mtDialog_CopyMessage=1
-mtDialog_CopyMessage0="%U0026Copy to Clipboard"
+mtDialog_CopyMessage0="Copy to Clipboard"
 Count mtDialog_SupportMessage=1
 mtDialog_SupportMessage0="Go to the Support Page"
 Count mtMSDialog_ErrorMsgCaption=1
@@ -233,9 +232,9 @@ mtMSDialog_HowToReproduceCaption0="What were you doing when the problem happened
 Count mtMSDialog_EmailCaption=1
 mtMSDialog_EmailCaption0="Email address (optional):"
 Count mtMSDialog_SendButtonCaption=1
-mtMSDialog_SendButtonCaption0="%U0026Send Error Report"
+mtMSDialog_SendButtonCaption0="Send Error Report"
 Count mtMSDialog_NoSendButtonCaption=1
-mtMSDialog_NoSendButtonCaption0="%U0026Don't Send"
+mtMSDialog_NoSendButtonCaption0="Don't Send"
 Count mtLog_AppHeader=1
 mtLog_AppHeader0="Application"
 Count mtLog_AppStartDate=1
@@ -413,7 +412,7 @@ mtReproduceDialog_Caption0="Request"
 Count mtReproduceDialog_Request=1
 mtReproduceDialog_Request0="Please describe the steps to reproduce the error:"
 Count mtReproduceDialog_OKButtonCaption=1
-mtReproduceDialog_OKButtonCaption0="%U0026OK"
+mtReproduceDialog_OKButtonCaption0="OK"
 Count mtModules_Handle=1
 mtModules_Handle0="Handle"
 Count mtModules_Name=1
@@ -481,4 +480,3 @@ mtException_AntiFreeze0="The application seems to be frozen."
 Count mtInvalidEmailMsg=1
 mtInvalidEmailMsg0="Invalid email."
 TextsCollection=
-EurekaLog Last Line -->

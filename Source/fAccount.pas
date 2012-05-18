@@ -211,10 +211,10 @@ type
     FOnSQLError: TMySQLConnection.TErrorEvent;
     FXMLDocument: IXMLDocument;
     function GetDataPath(): TFileName;
-    function GetDefault(): TSAccount;
+    function GetDefault(): TSAccount; inline;
     function GetFilename(): TFileName;
     function GetXML(): IXMLNode;
-    function GetFAccounts(Index: Integer): TSAccount;
+    function GetFAccounts(Index: Integer): TSAccount; inline;
     procedure SetDefault(const AAccount: TSAccount);
   protected
     Section: string;
