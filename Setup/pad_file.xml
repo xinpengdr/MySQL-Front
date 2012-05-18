@@ -121,7 +121,7 @@
 		</Application_URLs>
 		<Download_URLs>
 <?php if ($_SERVER['HTTP_USER_AGENT'] == 'MySQL-Front/5.2'): ?>
-			<Primary_Download_URL>http://www.mysqlfront.de/pub/beta/MySQL-Front_Setup</Primary_Download_URL>
+			<Primary_Download_URL>http://www.mysqlfront.de/pub/beta/MySQL-Front_Setup.exe</Primary_Download_URL>
 <?php else: ?>
 			<Primary_Download_URL>{BuildInternetDownload}</Primary_Download_URL>
 <?php endif; ?>
