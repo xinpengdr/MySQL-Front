@@ -291,7 +291,7 @@ var
   OldRecNo: Integer;
   S: string;
 begin
-  GetLocaleFormatSettings(LOCALE_USER_DEFAULT, FormatSettings);
+  FormatSettings := TFormatSettings.Create(LOCALE_USER_DEFAULT);
 
   if (OpenClipboard(Handle)) then
   begin
@@ -661,7 +661,7 @@ var
   J: Integer;
   OldRecNo: Integer;
 begin
-  GetLocaleFormatSettings(LOCALE_USER_DEFAULT, FormatSettings);
+  FormatSettings := TFormatSettings.Create(LOCALE_USER_DEFAULT);
 
   if (SelectedRows.Count = 0) then
     Result := SelectedField.AsString

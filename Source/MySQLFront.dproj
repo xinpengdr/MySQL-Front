@@ -4,9 +4,24 @@
 			<MainSource>MySQLFront.dpr</MainSource>
 			<Config Condition="'$(Config)'==''">Debug</Config>
 			<DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
-			<ProjectVersion>12.0</ProjectVersion>
+			<ProjectVersion>13.4</ProjectVersion>
+			<FrameworkType>VCL</FrameworkType>
+			<Base>True</Base>
+			<Platform Condition="'$(Platform)'==''">Win32</Platform>
+			<TargetedPlatforms>1</TargetedPlatforms>
+			<AppType>Application</AppType>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Base)'=='true') or '$(Base_Win64)'!=''">
+			<Base_Win64>true</Base_Win64>
+			<CfgParent>Base</CfgParent>
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
+			<Base_Win32>true</Base_Win32>
+			<CfgParent>Base</CfgParent>
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_1)'!=''">
@@ -20,10 +35,18 @@
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
+			<VerInfo_Build>5</VerInfo_Build>
+			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+			<VerInfo_PreRelease>true</VerInfo_PreRelease>
+			<VerInfo_MinorVer>2</VerInfo_MinorVer>
+			<VerInfo_Keys>CompanyName=;FileDescription=MySQL-Front;FileVersion=5.2.0.5;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=MySQL-Front;ProductVersion=5.2;Comments=;Build Date=01/07/2010</VerInfo_Keys>
+			<DCC_Namespace>Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;Winapi;Bde;System.Win;$(DCC_Namespace)</DCC_Namespace>
+			<VerInfo_Locale>1033</VerInfo_Locale>
+			<VerInfo_MajorVer>5</VerInfo_MajorVer>
 			<DCC_RangeChecking>true</DCC_RangeChecking>
 			<DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
 			<DCC_Optimize>false</DCC_Optimize>
-			<DCC_UsePackage>vcl;rtl;vclx;vclimg;vclactnband;dbrtl;vcldb;vcltouch;xmlrtl;dsnap;bdertl;TeeUI;TeeDB;Tee;DbxCommonDriver;DbxClientDriver;DBXInterBaseDriver;DBXMySQLDriver;DBXFirebirdDriver;DBXSybaseASEDriver;DBXSybaseASADriver;DBXOracleDriver;DBXMSSQLDriver;DBXInformixDriver;DBXDb2Driver;DISQLite3_D2010;MySQL_DataSet;Win32_Extensions;TPerlRegEx_D2010</DCC_UsePackage>
+			<DCC_UsePackage>vcl;rtl;vclx;vclimg;vclactnband;dbrtl;vcldb;vcltouch;xmlrtl;dsnap;bdertl;TeeUI;TeeDB;Tee;DbxCommonDriver;DbxClientDriver;DBXInterBaseDriver;DBXMySQLDriver;DBXFirebirdDriver;DBXSybaseASEDriver;DBXSybaseASADriver;DBXOracleDriver;DBXMSSQLDriver;DBXInformixDriver;DBXDb2Driver;DISQLite3_D2010;MySQL_DataSet;Win32_Extensions;TPerlRegEx_D2010;$(DCC_UsePackage)</DCC_UsePackage>
 			<DCC_ExeOutput>..\Temp</DCC_ExeOutput>
 			<DCC_BplOutput>..\Temp</DCC_BplOutput>
 			<DCC_DcuOutput>..\Temp</DCC_DcuOutput>
@@ -33,6 +56,19 @@
 			<DCC_UnitSearchPath>FastMM\Bin;TPerlRegEx\Bin;DISQLite3\API;DISQLite3\Bin;SynEdit\Resource;SynEdit\Bin;MPHexEditor\Resource;MPHexEditor\Bin;QueryBuilder\Resource;QueryBuilder\Bin;Win32\Bin;MySQL-DataSet\Bin;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
 			<DCC_DependencyCheckOutputName>..\Temp\MySQLFront.exe</DCC_DependencyCheckOutputName>
 			<DCC_Platform>x86</DCC_Platform>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Base_Win64)'!=''">
+			<Icon_MainIcon>MySQLFront_Icon.ico</Icon_MainIcon>
+			<Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Base_Win32)'!=''">
+			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+			<Icon_MainIcon>MySQLFront_Icon.ico</Icon_MainIcon>
+			<DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
+			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+			<VerInfo_Locale>1033</VerInfo_Locale>
+			<Debugger_DebugSourcePath>C:\Documents\MySQL-Front\Source\SynEdit\Source\;$(Debugger_DebugSourcePath)</Debugger_DebugSourcePath>
+			<Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1)'!=''">
 			<DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
@@ -46,7 +82,7 @@
 			<DCC_MapFile>3</DCC_MapFile>
 		</PropertyGroup>
 		<ItemGroup>
-			<DelphiCompile Include="MySQLFront.dpr">
+			<DelphiCompile Include="$(MainSource)">
 				<MainSource>MainSource</MainSource>
 			</DelphiCompile>
 			<DCCReference Include="MySQL-DataSet\Source\MySQLClient.pas"/>
@@ -194,6 +230,10 @@
 				<Form>WForeignKeySelect</Form>
 			</DCCReference>
 			<None Include="MySQLFront.todo"/>
+			<BuildConfiguration Include="Debug">
+				<Key>Cfg_2</Key>
+				<CfgParent>Base</CfgParent>
+			</BuildConfiguration>
 			<BuildConfiguration Include="Base">
 				<Key>Base</Key>
 			</BuildConfiguration>
@@ -201,12 +241,8 @@
 				<Key>Cfg_1</Key>
 				<CfgParent>Base</CfgParent>
 			</BuildConfiguration>
-			<BuildConfiguration Include="Debug">
-				<Key>Cfg_2</Key>
-				<CfgParent>Base</CfgParent>
-			</BuildConfiguration>
 		</ItemGroup>
-		<Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
+		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')" Project="$(BDS)\Bin\CodeGear.Delphi.Targets"/>
 		<ProjectExtensions>
 			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
 			<Borland.ProjectType>VCLApplication</Borland.ProjectType>
@@ -249,30 +285,13 @@
 						<VersionInfoKeys Name="Comments"/>
 						<VersionInfoKeys Name="Build Date">01/07/2010</VersionInfoKeys>
 					</VersionInfoKeys>
-					<Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclemacsedit140.bpl">Embarcadero Editor Emacs Enhancements</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\samplevisualizers140.bpl">Embarcadero Sample Debugger Visualizers</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclmcn140.bpl">Embarcadero DataSnap Connection Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclIndyCore140.bpl">Indy 10 Core Design Time</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\Bin\dclIndyProtocols140.bpl">Indy 10 Protocols Design Time</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclIntraweb_100_140.bpl">VCL for the Web 10.0  Design Package for CodeGear RAD Studio</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclsmp140.bpl">Embarcadero Sample Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclie140.bpl">Internet Explorer Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclwebsnap140.bpl">Embarcadero WebSnap Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclwbm140.bpl">Embarcadero InternetExpress Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclnet140.bpl">Embarcadero Internet Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclsoap140.bpl">Embarcadero SOAP Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclribbon140.bpl">Embarcadero Ribbon Controls</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclDataSnapIndy10ServerTransport140.bpl">Embarcadero DBExpress DataSnap Server Transport Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclDataSnapProviderClient140.bpl">Embarcadero DBExpress DataSnap Provider Client Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclDataSnapServer140.bpl">Embarcadero DBExpress DataSnap Server Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dcldbx140.bpl">Embarcadero dbExpress Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dcldbxcds140.bpl">Embarcadero SimpleDataset Component (DBX)</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dcloffice2k140.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclofficexp140.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
-					</Excluded_Packages>
 				</Delphi.Personality>
+				<Platforms>
+					<Platform value="Win64">False</Platform>
+					<Platform value="Win32">True</Platform>
+				</Platforms>
 			</BorlandProject>
 			<ProjectFileVersion>12</ProjectFileVersion>
 		</ProjectExtensions>
+		<Import Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')" Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj"/>
 	</Project>

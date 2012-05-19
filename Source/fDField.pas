@@ -577,11 +577,11 @@ begin
 
     if (IsIntType()) or (GetType() = mfTimestamp) then
       for I := 1 to Length(FDefault.Text) do
-        if (not CharInSet(FDefault.Text[I], ['0'..'9', DecimalSeparator]) and (FDefault.Text[I] = '-') and FFlagUnsigned.Checked) then
+        if (not CharInSet(FDefault.Text[I], ['0'..'9', FormatSettings.DecimalSeparator]) and (FDefault.Text[I] = '-') and FFlagUnsigned.Checked) then
           begin MessageBeep(MB_ICONERROR); ActiveControl := FDefault; CanClose := False; end;
     if (IsFloatType()) then
       for I := 1 to Length(FDefault.Text) do
-        if (not CharInSet(FDefault.Text[I], ['0'..'9', ThousandSeparator, DecimalSeparator]) and (FDefault.Text[I] = '-') and FFlagUnsigned.Checked) then
+        if (not CharInSet(FDefault.Text[I], ['0'..'9', FormatSettings.ThousandSeparator, FormatSettings.DecimalSeparator]) and (FDefault.Text[I] = '-') and FFlagUnsigned.Checked) then
           begin MessageBeep(MB_ICONERROR); ActiveControl := FDefault; CanClose := False; end;
     if (GetType() = mfVarChar) then
       if (FUDFormatSize.Position = 0) then

@@ -59,13 +59,13 @@ begin
   GetSystemTime(SystemTime);
   with SystemTime do
     DateTime := EncodeDate(wYear, wMonth, wDay) + EncodeTime(wHour, wMinute, wSecond, wMilliseconds);
-  for Month:=1 to 12 do TempLongMonthNames[Month]:=LongMonthNames[Month];
-  for Month:=1 to 12 do LongMonthNames[Month]:=EnglishLongMonthNames[Month];
-  for Day:=1 to 7 do TempShortDayNames[Day]:=ShortDayNames[Day];
-  for Day:=1 to 7 do ShortDayNames[Day]:=EnglishShortDayNames[Day];
+  for Month:=1 to 12 do TempLongMonthNames[Month] := FormatSettings.LongMonthNames[Month];
+  for Month:=1 to 12 do FormatSettings.LongMonthNames[Month] := EnglishLongMonthNames[Month];
+  for Day:=1 to 7 do TempShortDayNames[Day] := FormatSettings.ShortDayNames[Day];
+  for Day:=1 to 7 do FormatSettings.ShortDayNames[Day] := EnglishShortDayNames[Day];
   Result := FormatDateTime('ddd, dd mmm yyyy hh:nn:ss', DateTime) + ' GMT';
-  for Day:=1 to 7 do ShortDayNames[Day]:=TempShortDayNames[Day];
-  for Month:=1 to 12 do LongMonthNames[Month]:=TempLongMonthNames[Month];
+  for Day:=1 to 7 do FormatSettings.ShortDayNames[Day] := TempShortDayNames[Day];
+  for Month:=1 to 12 do FormatSettings.LongMonthNames[Month] := TempLongMonthNames[Month];
 end;
 
 { TWMain **********************************************************************}

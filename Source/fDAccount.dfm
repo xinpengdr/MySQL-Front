@@ -426,6 +426,10 @@ object DAccount: TDAccount
     end
     object TSDebug: TTabSheet
       Caption = 'TSDebug'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GDebug: TGroupBox_Ext
         Left = 4
         Top = 4

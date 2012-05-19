@@ -3200,7 +3200,7 @@ begin
 
   DecodeTime(Client.ExecutionTime, Hour, Minute, Second, MSec);
   if (Hour > 0) or (Minute > 0) then
-    Msg := Msg + '  (' + Preferences.LoadStr(520) + ': ' + FormatDateTime(LongTimeFormat, Client.ExecutionTime) + ')'
+    Msg := Msg + '  (' + Preferences.LoadStr(520) + ': ' + FormatDateTime(FormatSettings.LongTimeFormat, Client.ExecutionTime) + ')'
   else if (Client.ExecutionTime >= 0) then
     Msg := Msg + '  (' + Preferences.LoadStr(520) + ': ' + Format('%2.2f', [Second + MSec / 1000]) + ')';
 
@@ -4160,7 +4160,7 @@ begin
         if (Assigned(Database) and Assigned(Database.Workbench) and TWWorkbench(Database.Workbench).Modified) then
         begin
           try
-            ForceDirectories(ExtractFilePath(Client.Account.DataPath + Database.Name));
+            SysUtils.ForceDirectories(ExtractFilePath(Client.Account.DataPath + Database.Name));
           except
             raise EInOutError.Create(SysErrorMessage(GetLastError()) + '  (' + Client.Account.DataPath + Database.Name + ')');
           end;
@@ -4185,12 +4185,12 @@ procedure TFClient.CMFrameActivate(var Message: TMessage);
 begin
   Include(FrameState, tsActive);
 
-  ThousandSeparator := Client.FormatSettings.ThousandSeparator;
-  DecimalSeparator := Client.FormatSettings.DecimalSeparator;
-  ShortDateFormat := Client.FormatSettings.ShortDateFormat;
-  LongTimeFormat := Client.FormatSettings.LongTimeFormat;
-  DateSeparator := Client.FormatSettings.DateSeparator;
-  TimeSeparator := Client.FormatSettings.TimeSeparator;
+  FormatSettings.ThousandSeparator := Client.FormatSettings.ThousandSeparator;
+  FormatSettings.DecimalSeparator := Client.FormatSettings.DecimalSeparator;
+  FormatSettings.ShortDateFormat := Client.FormatSettings.ShortDateFormat;
+  FormatSettings.LongTimeFormat := Client.FormatSettings.LongTimeFormat;
+  FormatSettings.DateSeparator := Client.FormatSettings.DateSeparator;
+  FormatSettings.TimeSeparator := Client.FormatSettings.TimeSeparator;
 
   Client.BeforeConnect := BeforeConnect;
   Client.AfterConnect := AfterConnect;
@@ -4491,7 +4491,7 @@ var
 begin
   inherited;
 
-  if (not ThemeServices.ThemesEnabled and not CheckWin32Version(6)) then
+  if (not StyleServices.Enabled and not CheckWin32Version(6)) then
   begin
     PNavigator.BevelInner := bvRaised; PNavigator.BevelOuter := bvLowered;
     PBookmarks.BevelInner := bvRaised; PBookmarks.BevelOuter := bvLowered;
@@ -4542,7 +4542,7 @@ begin
 
   SetWindowLong(ListView_GetHeader(FList.Handle), GWL_STYLE, GetWindowLong(ListView_GetHeader(FList.Handle), GWL_STYLE) or HDS_DRAGDROP);
 
-  if (not ThemeServices.ThemesEnabled) then
+  if (not StyleServices.Enabled) then
     PObjectIDESpacer.Color := clBtnFace
   else
     PObjectIDESpacer.Color := clActiveBorder;
@@ -13162,7 +13162,7 @@ begin
     if (not Client.Connected) then
       StatusBar.Panels.Items[sbConnected].Text := ''
     else
-      StatusBar.Panels.Items[sbConnected].Text := Preferences.LoadStr(519) + ': ' + FormatDateTime(ShortTimeFormat, Client.LatestConnect);
+      StatusBar.Panels.Items[sbConnected].Text := Preferences.LoadStr(519) + ': ' + FormatDateTime(FormatSettings.ShortTimeFormat, Client.LatestConnect);
 
     try
       if (Window.ActiveControl = FBuilderEditor) then

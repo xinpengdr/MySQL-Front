@@ -7,7 +7,6 @@ uses
   SysUtils,
   Classes,
   StrUtils,
-  XPMan,
   fWMain in 'fWMain.pas' {WMain};
 
 {$R *.res}

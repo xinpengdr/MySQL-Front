@@ -506,7 +506,7 @@ type
     property ActiveTab: TFClient read GetActiveTab write SetActiveTab;
   protected
     procedure ApplicationException(Sender: TObject; E: Exception);
-    function ApplicationHelp(Command: Word; Data: Longint; var CallHelp: Boolean): Boolean;
+    function ApplicationHelp(Command: Word; Data: THelpEventData; var CallHelp: Boolean): Boolean;
     procedure CreateParams(var Params: TCreateParams); override;
   public
     destructor Destroy(); override;
@@ -683,7 +683,7 @@ begin
   end;
 end;
 
-function TWWindow.ApplicationHelp(Command: Word; Data: Longint; var CallHelp: Boolean): Boolean;
+function TWWindow.ApplicationHelp(Command: Word; Data: THelpEventData; var CallHelp: Boolean): Boolean;
 var
   HTMLCommand: Word;
 begin
@@ -1729,7 +1729,7 @@ begin
 
 
   CloseButton := TPicture.Create();
-  if (ThemeServices.ThemesEnabled) then
+  if (StyleServices.Enabled) then
   begin
     CloseButton.Bitmap.Height := (GetSystemMetrics(SM_CYCAPTION) - 1) - (GetSystemMetrics(SM_CYEDGE) - 1) - GetSystemMetrics(SM_CYEDGE) - 4 + 1;
     if (CloseButton.Bitmap.Height > TabControl.Images.Height - 2) then
@@ -1785,7 +1785,7 @@ begin
   begin
     StatusBar.Panels.Items[sbItem].Width := StatusBar.Canvas.TextWidth('9999 (999999999)') + StatusBar.BorderWidth + 15;
     StatusBar.Panels.Items[sbSummarize].Width := StatusBar.Canvas.TextWidth(Preferences.LoadStr(691, '9999', '999999999')) + StatusBar.BorderWidth + 15;
-    StatusBar.Panels.Items[sbConnected].Width := StatusBar.Canvas.TextWidth(Preferences.LoadStr(519) + ': ' + FormatDateTime(ShortTimeFormat, EncodeTime(23, 59, 59, 999))) + StatusBar.BorderWidth + 15;
+    StatusBar.Panels.Items[sbConnected].Width := StatusBar.Canvas.TextWidth(Preferences.LoadStr(519) + ': ' + FormatDateTime(FormatSettings.ShortTimeFormat, EncodeTime(23, 59, 59, 999))) + StatusBar.BorderWidth + 15;
 
     FirstPanelWidth := StatusBar.Width;
     for I := 1 to StatusBar.Panels.Count - 2 do
@@ -2117,7 +2117,7 @@ begin
 
   TextRect.Right := CloseButtonRects[TabIndex].Left - 2;
 
-  if (ThemeServices.ThemesEnabled) then
+  if (StyleServices.Enabled) then
   begin
     BackgroundRect.Left := Rect.Left;
     BackgroundRect.Top := Rect.Top;
@@ -2127,44 +2127,44 @@ begin
     if (Active) then
     begin
       if ((TabIndex = 0) and (TabControl.Tabs.Count > 1)) then
-        ElementDetails := ThemeServices.GetElementDetails(ttTopTabItemLeftEdgeSelected)
+        ElementDetails := StyleServices.GetElementDetails(ttTopTabItemLeftEdgeSelected)
       else if ((TabIndex = 0) and (TabControl.Tabs.Count = 1)) then
-        ElementDetails := ThemeServices.GetElementDetails(ttTopTabItemBothEdgeSelected)
+        ElementDetails := StyleServices.GetElementDetails(ttTopTabItemBothEdgeSelected)
       else if ((TabIndex = TabControl.Tabs.Count - 1) and (TabControl.Tabs.Count > 1)) then
-        ElementDetails := ThemeServices.GetElementDetails(ttTopTabItemRightEdgeSelected)
+        ElementDetails := StyleServices.GetElementDetails(ttTopTabItemRightEdgeSelected)
       else
-        ElementDetails := ThemeServices.GetElementDetails(ttTopTabItemSelected);
+        ElementDetails := StyleServices.GetElementDetails(ttTopTabItemSelected);
 
-      ThemeServices.DrawElement(Control.Canvas.Handle, ElementDetails, BackgroundRect);
+      StyleServices.DrawElement(Control.Canvas.Handle, ElementDetails, BackgroundRect);
 
       if (Assigned(TabControl.OnGetImageIndex)) then
       begin
         TabControl.OnGetImageIndex(TabControl, TabIndex, ImageIndex);
-        ThemeServices.DrawIcon(Control.Canvas.Handle, ThemeServices.GetElementDetails(ttTabItemSelected), IconRect, TabControl.Images.Handle, ImageIndex);
+        StyleServices.DrawIcon(Control.Canvas.Handle, StyleServices.GetElementDetails(ttTabItemSelected), IconRect, TabControl.Images.Handle, ImageIndex);
       end;
-      ThemeServices.DrawText(Control.Canvas.Handle, ThemeServices.GetElementDetails(ttTabItemSelected), TTabControl(Control).Tabs[TabIndex], TextRect, Control.Canvas.TextFlags, 0);
-      ThemeServices.DrawElement(Control.Canvas.Handle, ThemeServices.GetElementDetails(twSmallCloseButtonNormal), CloseButtonRects[TabIndex]);
+      StyleServices.DrawText(Control.Canvas.Handle, StyleServices.GetElementDetails(ttTabItemSelected), TTabControl(Control).Tabs[TabIndex], TextRect, TTextFormat(Control.Canvas.TextFlags), 0);
+      StyleServices.DrawElement(Control.Canvas.Handle, StyleServices.GetElementDetails(twSmallCloseButtonNormal), CloseButtonRects[TabIndex]);
     end
     else
     begin
       if ((TabIndex = 0) and (TabControl.Tabs.Count > 1)) then
-        ElementDetails := ThemeServices.GetElementDetails(ttTabItemLeftEdgeNormal)
+        ElementDetails := StyleServices.GetElementDetails(ttTabItemLeftEdgeNormal)
       else if ((TabIndex = 0) and (TabControl.Tabs.Count = 1)) then
-        ElementDetails := ThemeServices.GetElementDetails(ttTabItemBothEdgeNormal)
+        ElementDetails := StyleServices.GetElementDetails(ttTabItemBothEdgeNormal)
       else if ((TabIndex = TabControl.Tabs.Count - 1) and (TabControl.Tabs.Count > 1)) then
-        ElementDetails := ThemeServices.GetElementDetails(ttTabItemRightEdgeNormal)
+        ElementDetails := StyleServices.GetElementDetails(ttTabItemRightEdgeNormal)
       else
-        ElementDetails := ThemeServices.GetElementDetails(ttTabItemNormal);
+        ElementDetails := StyleServices.GetElementDetails(ttTabItemNormal);
 
-      ThemeServices.DrawElement(Control.Canvas.Handle, ElementDetails, BackgroundRect);
+      StyleServices.DrawElement(Control.Canvas.Handle, ElementDetails, BackgroundRect);
 
       if (Assigned(TabControl.OnGetImageIndex)) then
       begin
         TabControl.OnGetImageIndex(TabControl, TabIndex, ImageIndex);
-        ThemeServices.DrawIcon(Control.Canvas.Handle, ThemeServices.GetElementDetails(ttTabItemNormal), IconRect, TabControl.Images.Handle, ImageIndex);
+        StyleServices.DrawIcon(Control.Canvas.Handle, StyleServices.GetElementDetails(ttTabItemNormal), IconRect, TabControl.Images.Handle, ImageIndex);
       end;
-      ThemeServices.DrawText(Control.Canvas.Handle, ThemeServices.GetElementDetails(ttTabItemNormal), TTabControl(Control).Tabs[TabIndex], TextRect, Control.Canvas.TextFlags, 0);
-      ThemeServices.DrawElement(Control.Canvas.Handle, ThemeServices.GetElementDetails(twSmallCloseButtonNormal), CloseButtonRects[TabIndex]);
+      StyleServices.DrawText(Control.Canvas.Handle, StyleServices.GetElementDetails(ttTabItemNormal), TTabControl(Control).Tabs[TabIndex], TextRect, TTextFormat(Control.Canvas.TextFlags), 0);
+      StyleServices.DrawElement(Control.Canvas.Handle, StyleServices.GetElementDetails(twSmallCloseButtonNormal), CloseButtonRects[TabIndex]);
     end;
   end
   else
@@ -2253,7 +2253,7 @@ begin
       TabControl.Hint := ''
     else
     begin
-      if (ThemeServices.ThemesEnabled) then
+      if (StyleServices.Enabled) then
       begin
         if (PtInRect(CloseButtonRects[TabIndex], Point(X, Y))) then
         begin
@@ -2261,18 +2261,18 @@ begin
           CaptureTabIndex := TabIndex;
 
           if (PtInRect(CloseButtonRects[TabIndex], MouseDownPoint)) then
-            ThemeServices.DrawElement(TabControl.Canvas.Handle, ThemeServices.GetElementDetails(twSmallCloseButtonPushed), CloseButtonRects[CaptureTabIndex])
+            StyleServices.DrawElement(TabControl.Canvas.Handle, StyleServices.GetElementDetails(twSmallCloseButtonPushed), CloseButtonRects[CaptureTabIndex])
           else
-            ThemeServices.DrawElement(TabControl.Canvas.Handle, ThemeServices.GetElementDetails(twSmallCloseButtonHot), CloseButtonRects[CaptureTabIndex]);
+            StyleServices.DrawElement(TabControl.Canvas.Handle, StyleServices.GetElementDetails(twSmallCloseButtonHot), CloseButtonRects[CaptureTabIndex]);
         end
         else
         begin
           ReleaseCapture();
 
           if (CaptureTabIndex <> TabControl.TabIndex) then
-            ThemeServices.DrawElement(TabControl.Canvas.Handle, ThemeServices.GetElementDetails(twSmallCloseButtonDisabled), CloseButtonRects[CaptureTabIndex])
+            StyleServices.DrawElement(TabControl.Canvas.Handle, StyleServices.GetElementDetails(twSmallCloseButtonDisabled), CloseButtonRects[CaptureTabIndex])
           else
-            ThemeServices.DrawElement(TabControl.Canvas.Handle, ThemeServices.GetElementDetails(twSmallCloseButtonNormal), CloseButtonRects[CaptureTabIndex]);
+            StyleServices.DrawElement(TabControl.Canvas.Handle, StyleServices.GetElementDetails(twSmallCloseButtonNormal), CloseButtonRects[CaptureTabIndex]);
         end
       end
       else

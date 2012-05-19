@@ -120,7 +120,7 @@ implementation {***************************************************************}
 {$R *.dfm}
 
 uses
-  WinINet,
+  WinINet, UITypes,
   StrUtils,
   MySQLConsts,
   MySQLDB,

@@ -1228,7 +1228,7 @@ begin
     if (Assigned(XMLNode(XML, 'cache/size'))) then TryStrToInt(XMLNode(XML, 'cache/size').Text, CacheSize);
     if (Assigned(XMLNode(XML, 'iconfetched'))) then TryStrToBool(XMLNode(XML, 'iconfetched').Text, IconFetched);
     if (Assigned(XMLNode(XML, 'lastlogin'))) then
-      TryStrToFloat(ReplaceStr(XMLNode(XML, 'lastlogin').Text, '.', DecimalSeparator), Double(FLastLogin));
+      TryStrToFloat(ReplaceStr(XMLNode(XML, 'lastlogin').Text, '.', FormatSettings.DecimalSeparator), Double(FLastLogin));
     if (Assigned(XMLNode(XML, 'manualurl'))) then ManualURL := XMLNode(XML, 'manualurl').Text;
     if (Assigned(XMLNode(XML, 'manualurlfetched'))) then TryStrToBool(XMLNode(XML, 'manualurlfetched').Text, ManualURLFetched);
     if (Assigned(XMLNode(XML, 'limit'))) then

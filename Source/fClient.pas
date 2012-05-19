@@ -2751,7 +2751,7 @@ begin
         Result := Fields.Table.Database.Client.UnescapeValue(Value, FieldType);
     mfFloat, mfDouble, mfDecimal:
       begin
-        Result := ReplaceStr(Fields.Table.Database.Client.UnescapeValue(Value, FieldType), '.', DecimalSeparator);
+        Result := ReplaceStr(Fields.Table.Database.Client.UnescapeValue(Value, FieldType), '.', FormatSettings.DecimalSeparator);
         if (Result = '') then Result := 'NULL';
       end;
     mfEnum, mfSet:
@@ -11537,7 +11537,7 @@ begin
   Result := SQLUnescape(Value);
 
   if (FieldType in [mfFloat, mfDouble, mfDecimal]) then
-    Result := ReplaceStr(Result, '.', DecimalSeparator)
+    Result := ReplaceStr(Result, '.', FormatSettings.DecimalSeparator)
   else if ((FieldType = mfTimeStamp) and (UpperCase(Value) = 'CURRENT_TIMESTAMP')) then
     Result := Value
   else if (FieldType in [mfTimeStamp]) then

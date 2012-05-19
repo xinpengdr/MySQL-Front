@@ -229,10 +229,10 @@ end;
 procedure TForm_Ext.Paint();
 begin
   if (BorderStyle = bsSizeable) then
-    if (not ThemeServices.ThemesEnabled) then
+    if (not StyleServices.Enabled) then
       DrawFrameControl(Canvas.Handle, Rect(ClientWidth - GetSystemMetrics(SM_CXVSCROLL), ClientHeight - GetSystemMetrics(SM_CYHSCROLL), ClientWidth, ClientHeight), DFC_SCROLL, DFCS_SCROLLSIZEGRIP)
     else
-      ThemeServices.DrawElement(Canvas.Handle, ThemeServices.GetElementDetails(tsGripper), Rect(ClientWidth - GetSystemMetrics(SM_CXVSCROLL) + 1, ClientHeight - GetSystemMetrics(SM_CYHSCROLL), ClientWidth, ClientHeight));
+      StyleServices.DrawElement(Canvas.Handle, StyleServices.GetElementDetails(tsGripper), Rect(ClientWidth - GetSystemMetrics(SM_CXVSCROLL) + 1, ClientHeight - GetSystemMetrics(SM_CYHSCROLL), ClientWidth, ClientHeight));
 
   inherited;
 end;

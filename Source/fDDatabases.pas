@@ -5,7 +5,7 @@ interface {********************************************************************}
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ComCtrls,
-  ODBC,
+  ODBCAPI,
   Forms_Ext,
   fBase, fClient, StdCtrls_Ext;
 

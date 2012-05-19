@@ -1,6 +1,8 @@
 package FastMM_D2010;
 
 {$R *.res}
+{$R *.otares}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS OFF}
 {$BOOLEVAL OFF}
@@ -22,10 +24,12 @@ package FastMM_D2010;
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
-{$RUNONLY}
-{$IMPLICITBUILD OFF}
+{$DEFINE DEBUG}
 {$DEFINE FullDebugModeInIDE}
 {$DEFINE ClearLogFileOnStartup}
+{$ENDIF IMPLICITBUILDING}
+{$RUNONLY}
+{$IMPLICITBUILD OFF}
 
 requires
   rtl;

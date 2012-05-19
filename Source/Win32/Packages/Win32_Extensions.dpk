@@ -1,6 +1,7 @@
 package Win32_Extensions;
 
 {$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS OFF}
 {$BOOLEVAL OFF}
@@ -22,6 +23,8 @@ package Win32_Extensions;
 {$WRITEABLECONST ON}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
 {$RUNONLY}
 {$IMPLICITBUILD ON}
 
@@ -32,6 +35,6 @@ requires
 contains
   WinCred in '..\Source\WinCred.pas',
   HtmlHlp in '..\Source\HtmlHlp.pas',
-  ODBC in '..\Source\ODBC.pas';
+  ODBCAPI in '..\Source\ODBCAPI.pas';
 
 end.

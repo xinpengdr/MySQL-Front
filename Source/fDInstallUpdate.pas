@@ -438,7 +438,7 @@ begin
   end
   else
   begin
-    FProgressBar.Position := (Message.WParam * 100) div Message.LParam;
+    FProgressBar.Position := (Integer(Message.WParam) * 100) div Integer(Message.LParam);
     FProgressBar.Max := 100;
   end;
 end;

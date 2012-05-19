@@ -1,6 +1,7 @@
 package TPerlRegEx_D2010;
 
 {$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS OFF}
 {$BOOLEVAL OFF}
@@ -22,10 +23,11 @@ package TPerlRegEx_D2010;
 {$WRITEABLECONST ON}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
+{$DEFINE CONDITIONALEXPRESSIONS}
+{$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'TPerlRegEx - Perl Compatible Regular Expressions VCL Component'}
 {$RUNONLY}
 {$IMPLICITBUILD OFF}
-{$DEFINE CONDITIONALEXPRESSIONS}
 
 requires
   vcl,

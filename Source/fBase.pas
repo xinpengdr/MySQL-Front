@@ -858,7 +858,7 @@ end;
 initialization
   LocaleFormatSettings := MySQLDB.LocaleFormatSettings;
 
-  GetLocaleFormatSettings(LOCALE_SYSTEM_DEFAULT, DurationFormatSettings);
+  DurationFormatSettings := TFormatSettings.Create(LOCALE_SYSTEM_DEFAULT);
   DurationFormatSettings.TimeAMString := '';
   DurationFormatSettings.TimePMString := '';
   DurationFormatSettings.ShortTimeFormat := 'hh:mm';

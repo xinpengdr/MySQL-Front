@@ -2,6 +2,7 @@ package DISQLite3_D2010;
 
 {$R *.res}
 {$R 'DISQLite3Reg.dcr'}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
 {$BOOLEVAL OFF}
@@ -23,6 +24,8 @@ package DISQLite3_D2010;
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'The Delphi Inspiration -- DISQLite3 Personal'}
 {$IMPLICITBUILD OFF}
 

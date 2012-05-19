@@ -504,7 +504,7 @@ type
     FCursorOpen: Boolean;
     FDataSize: Int64;
     FilteredRecordCount: Integer;
-    FilterParser: TExprParser2;
+    FilterParser: TExprParser;
     FLocateNext: Boolean;
     FReadOnly: Boolean;
     FRecordReceived: TEvent;
@@ -1018,34 +1018,34 @@ begin
     if (DisplayFormat[I] = 'c') then
     begin
       Delete(Result, I, 1);
-      Insert(ShortDateFormat, Result, I);
+      Insert(FormatSettings.ShortDateFormat, Result, I);
     end;
     if (Copy(DisplayFormat, I, 2) = 'tt') then
     begin
       Delete(Result, I, 1);
-      Insert(LongTimeFormat, Result, I);
+      Insert(FormatSettings.LongTimeFormat, Result, I);
     end;
     if (DisplayFormat[I] = 't') then
     begin
       Delete(Result, I, 1);
-      Insert(ShortTimeFormat, Result, I);
+      Insert(FormatSettings.ShortTimeFormat, Result, I);
     end;
     if (DisplayFormat[I] = '/') then
     begin
       Delete(Result, I, 1);
-      Insert(DateSeparator, Result, I);
+      Insert(FormatSettings.DateSeparator, Result, I);
     end;
     if (DisplayFormat[I] = ':') then
     begin
       Delete(Result, I, 1);
-      Insert(TimeSeparator, Result, I);
+      Insert(FormatSettings.TimeSeparator, Result, I);
     end;
   end;
 
   for I := Length(Result) downto 1 do
     if (Result[I] = 'm') then
       if ((I > 1) and (Result[I - 1] = 'm')) then
-      else if (((I > 1) and (Result[I - 1] = 'h')) or ((I > 2) and (Result[I - 1] = TimeSeparator) and (Result[I - 2] = 'h'))) then
+      else if (((I > 1) and (Result[I - 1] = 'h')) or ((I > 2) and (Result[I - 1] = FormatSettings.TimeSeparator) and (Result[I - 2] = 'h'))) then
         if ((I < Length(Result)) and (Result[I + 1] = 'm')) then
           begin Delete(Result, I, 2); Insert(ReplaceStr(Format('%2d', [SQLTimeStamp.Minute]), ' ', '0'), Result, I); end
         else
@@ -2952,7 +2952,7 @@ constructor TMySQLConnection.Create(AOwner: TComponent);
 begin
   inherited;
 
-  GetLocaleFormatSettings(GetSystemDefaultLCID(), FFormatSettings);
+  FFormatSettings := TFormatSettings.Create(GetSystemDefaultLCID());
   FFormatSettings.ThousandSeparator := #0;
   FFormatSettings.DecimalSeparator := '.';
   FFormatSettings.ShortDateFormat := 'yyyy/MM/dd';
@@ -4573,7 +4573,7 @@ var
 begin
   if (Assigned(FilterParser)) then
     FilterParser.Free();
-  FilterParser := TExprParser2.Create(Self, Filter, FilterOptions, [poExtSyntax], '', nil, FldTypeMap);
+  FilterParser := TExprParser.Create(Self, Filter, FilterOptions, [poExtSyntax], '', nil, FldTypeMap);
 
   InternRecordBuffers.CriticalSection.Enter();
 
@@ -4987,12 +4987,12 @@ function TMySQLDataSet.VisibleInFilter(const InternRecordBuffer: PInternRecordBu
                       raise EDatabaseError.CreateFmt('Missing parameter', [Arg1]);
                   end;
 
-                  S := ShortDateFormat;
+                  S := FormatSettings.ShortDateFormat;
                   try
-                    ShortDateFormat := Arg1;
+                    FormatSettings.ShortDateFormat := Arg1;
                     Result := StrToDate(Arg1);
                   finally
-                    ShortDateFormat := S;
+                    FormatSettings.ShortDateFormat := S;
                   end;
                 end
                 else
@@ -5012,12 +5012,12 @@ function TMySQLDataSet.VisibleInFilter(const InternRecordBuffer: PInternRecordBu
                       raise EDatabaseError.CreateFmt('Missing parameter', [Arg1]);
                   end;
 
-                  S := ShortTimeFormat;
+                  S := FormatSettings.ShortTimeFormat;
                   try
-                    ShortTimeFormat := Arg1;
+                    FormatSettings.ShortTimeFormat := Arg1;
                     Result := StrToTime(Arg1);
                   finally
-                    ShortTimeFormat := S;
+                    FormatSettings.ShortTimeFormat := S;
                   end;
                end
                else
@@ -6573,7 +6573,7 @@ initialization
   SynchronizingThreads := TList.Create();
   SynchronizingThreadsCS := TCriticalSection.Create();
 
-  GetLocaleFormatSettings(LOCALE_USER_DEFAULT, LocaleFormatSettings);
+  LocaleFormatSettings := TFormatSettings.Create(LOCALE_USER_DEFAULT);
   SetLength(MySQLLibraries, 0);
 finalization
   SynchronizingThreadsCS.Free();

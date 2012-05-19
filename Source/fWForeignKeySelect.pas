@@ -47,6 +47,7 @@ implementation {***************************************************************}
 {$R *.dfm}
 
 uses
+  System.Types,
   DBCommon,
   SQLUtils,
   fPreferences;

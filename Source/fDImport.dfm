@@ -54,6 +54,10 @@ object DImport: TDImport
       TabVisible = False
       OnHide = TSTablesHide
       OnShow = TSTablesShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GTable: TGroupBox_Ext
         Left = 4
         Top = 0

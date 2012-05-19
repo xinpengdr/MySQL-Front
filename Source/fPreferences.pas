@@ -2061,7 +2061,7 @@ end;
 initialization
   Preferences := nil;
 
-  GetLocaleFormatSettings(LOCALE_SYSTEM_DEFAULT, FileFormatSettings);
+  FileFormatSettings := TFormatSettings.Create(LOCALE_SYSTEM_DEFAULT);
   FileFormatSettings.ThousandSeparator := ',';
   FileFormatSettings.DecimalSeparator := '.';
   FileFormatSettings.DateSeparator := '/';

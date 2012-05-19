@@ -1,5 +1,6 @@
 package acQueryBuilder_D2010;
 {$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS OFF}
 {$BOOLEVAL OFF}
@@ -21,6 +22,8 @@ package acQueryBuilder_D2010;
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'Active Query Builder Core'}
 {$RUNONLY}
 {$IMPLICITBUILD ON}

@@ -82,7 +82,7 @@ var
 begin
   inherited;
 
-  if (ThemeServices.ThemesEnabled and CheckWin32Version(6) and (ActiveBorder <> alNone)) then
+  if (StyleServices.Enabled and CheckWin32Version(6) and (ActiveBorder <> alNone)) then
   begin
     Rect := ClientRect;
     Canvas.Brush.Color := clActiveBorder;

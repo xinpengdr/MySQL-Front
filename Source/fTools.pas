@@ -3,8 +3,9 @@ unit fTools;
 interface {********************************************************************}
 
 uses
-  Windows, Messages, XMLDoc, XMLIntf, DBGrids, ODBC, msxml,
+  Windows, Messages, XMLDoc, XMLIntf, DBGrids, msxml,
   SysUtils, DB, Classes, Graphics, SyncObjs,
+  ODBCAPI,
   DISQLite3Api,
   MySQLDB, SQLUtils, CSVUtils,
   fClient;
@@ -684,13 +685,13 @@ begin
   S := TimeToStr(EncodeTime(Abs(TZIBias div 60), Abs(TZIBias mod 60), 0, 0), FileFormatSettings);
   S := Copy(S, 1, 2) + Copy(S, 4, 2);
   if TZIBias>0 then S := '-' + S else S := '+' + S;
-  for Month := 1 to 12 do TempShortMonthNames[Month] := ShortMonthNames[Month];
-  for Month := 1 to 12 do ShortMonthNames[Month] := EnglishShortMonthNames[Month];
-  for Day := 1 to 7 do TempShortDayNames[Day] := ShortDayNames[Day];
-  for Day := 1 to 7 do ShortDayNames[Day] := EnglishShortDayNames[Day];
+  for Month := 1 to 12 do TempShortMonthNames[Month] := FormatSettings.ShortMonthNames[Month];
+  for Month := 1 to 12 do FormatSettings.ShortMonthNames[Month] := EnglishShortMonthNames[Month];
+  for Day := 1 to 7 do TempShortDayNames[Day] := FormatSettings.ShortDayNames[Day];
+  for Day := 1 to 7 do FormatSettings.ShortDayNames[Day] := EnglishShortDayNames[Day];
   S := FormatDateTime('ddd, dd mmm yyyy hh:nn:ss "' + S + '"', Now());
-  for Day := 1 to 7 do ShortDayNames[Day] := TempShortDayNames[Day];
-  for Month := 1 to 12 do ShortMonthNames[Month] := TempShortMonthNames[Month];
+  for Day := 1 to 7 do FormatSettings.ShortDayNames[Day] := TempShortDayNames[Day];
+  for Month := 1 to 12 do FormatSettings.ShortMonthNames[Month] := TempShortMonthNames[Month];
   if (Pos('(', TZIName)>0) and (Pos(')', TZIName)>0) then
     S := S + ' ' + Copy(TZIName, Pos('(', TZIName), Pos(')', TZIName)-Pos('(', TZIName) + 1);
   Result := S;

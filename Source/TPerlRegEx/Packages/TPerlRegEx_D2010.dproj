@@ -3,12 +3,26 @@
 			<ProjectGuid>{5a86e69b-444e-478a-93e7-bf0239e244e9}</ProjectGuid>
 			<MainSource>TPerlRegEx_D2010.dpk</MainSource>
 			<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-			<Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
 			<DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
-			<ProjectVersion>12.0</ProjectVersion>
+			<ProjectVersion>13.4</ProjectVersion>
 			<Config Condition="'$(Config)'==''">Debug</Config>
+			<FrameworkType>VCL</FrameworkType>
+			<Base>True</Base>
+			<Platform Condition="'$(Platform)'==''">Win32</Platform>
+			<TargetedPlatforms>1</TargetedPlatforms>
+			<AppType>Package</AppType>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Base)'=='true') or '$(Base_Win64)'!=''">
+			<Base_Win64>true</Base_Win64>
+			<CfgParent>Base</CfgParent>
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
+			<Base_Win32>true</Base_Win32>
+			<CfgParent>Base</CfgParent>
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_1)'!=''">
@@ -22,6 +36,10 @@
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
+			<VerInfo_Locale>1033</VerInfo_Locale>
+			<DCC_Namespace>Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;Winapi;$(DCC_Namespace)</DCC_Namespace>
+			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+			<VerInfo_Keys>CompanyName=JGsoft;FileDescription=Perl Compatible Regular Expressions VCL Component Delphi 2009 Package;FileVersion=1.0.0.0;InternalName=PerlRegExD2009;LegalCopyright=Copyright (c) 1999-2008;LegalTrademarks=;OriginalFilename=PerlRegExD2009;ProductName=Perl Compatible Regular Expressions VCL Component;ProductVersion=1.0.0.0;Comments=See http://www.regular-expressions.info/delphi.html for more information</VerInfo_Keys>
 			<RuntimeOnlyPackage>true</RuntimeOnlyPackage>
 			<DCC_Define>CONDITIONALEXPRESSIONS;$(DCC_Define)</DCC_Define>
 			<DCC_DcuOutput>..\Bin</DCC_DcuOutput>
@@ -42,6 +60,16 @@
 			<DCC_DebugInformation>false</DCC_DebugInformation>
 			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
 			<GenPackage>true</GenPackage>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Base_Win64)'!=''">
+			<Icon_MainIcon>TPerlRegEx_D2010_Icon.ico</Icon_MainIcon>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Base_Win32)'!=''">
+			<Icon_MainIcon>TPerlRegEx_D2010_Icon.ico</Icon_MainIcon>
+			<DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
+			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+			<VerInfo_Locale>1033</VerInfo_Locale>
+			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1)'!=''">
 			<Version>7.0</Version>
@@ -65,26 +93,26 @@
 			<DCC_UNIT_PLATFORM>False</DCC_UNIT_PLATFORM>
 		</PropertyGroup>
 		<ItemGroup>
-			<DelphiCompile Include="TPerlRegEx_D2010.dpk">
+			<DelphiCompile Include="$(MainSource)">
 				<MainSource>MainSource</MainSource>
 			</DelphiCompile>
 			<DCCReference Include="vcl.dcp"/>
 			<DCCReference Include="rtl.dcp"/>
 			<DCCReference Include="..\Source\PerlRegEx.pas"/>
 			<DCCReference Include="..\Source\pcre.pas"/>
-			<BuildConfiguration Include="Base">
-				<Key>Base</Key>
-			</BuildConfiguration>
 			<BuildConfiguration Include="Debug">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>
+			</BuildConfiguration>
+			<BuildConfiguration Include="Base">
+				<Key>Base</Key>
 			</BuildConfiguration>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_1</Key>
 				<CfgParent>Base</CfgParent>
 			</BuildConfiguration>
 		</ItemGroup>
-		<Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
+		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')" Project="$(BDS)\Bin\CodeGear.Delphi.Targets"/>
 		<ProjectExtensions>
 			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
 			<Borland.ProjectType>Package</Borland.ProjectType>
@@ -126,11 +154,16 @@
 						<Source Name="MainSource">TPerlRegEx_D2010.dpk</Source>
 					</Source>
 					<Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dcloffice2k140.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclofficexp140.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDSBIN)\dcloffice2k140.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDSBIN)\dclofficexp140.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
 					</Excluded_Packages>
 				</Delphi.Personality>
+				<Platforms>
+					<Platform value="Win64">False</Platform>
+					<Platform value="Win32">True</Platform>
+				</Platforms>
 			</BorlandProject>
 			<ProjectFileVersion>12</ProjectFileVersion>
 		</ProjectExtensions>
+		<Import Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')" Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj"/>
 	</Project>
