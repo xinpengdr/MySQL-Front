@@ -546,6 +546,7 @@ type
     function InternalOpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean; override;
     procedure InternalPost(); override;
     procedure InternalRefresh(); override;
+    function InternalRefreshEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean; virtual;
     procedure InternalSetToRecord(Buffer: TRecordBuffer); override;
     function IsCursorOpen(): Boolean; override;
     procedure SetBookmarkData(Buffer: TRecordBuffer; Data: Pointer); override;
@@ -4620,7 +4621,7 @@ begin
     InternRecordBuffers.CriticalSection.Leave();
   end;
 
-  RecordReceived.SetEvent();
+  if (Assigned(RecordReceived)) then RecordReceived.SetEvent();
 end;
 
 procedure TMySQLDataSet.MoveRecordBufferData(var DestData: TMySQLQuery.PRecordBufferData; const SourceData: TMySQLQuery.PRecordBufferData);
@@ -5571,7 +5572,7 @@ begin
 
   if (Self is TMySQLTable) then
   begin
-    Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect());
+    Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(), InternalRefreshEvent);
 
     FCursorOpen := True;
   end
@@ -5583,6 +5584,14 @@ begin
   OldSortDef.Free();
 
   SetState(dsBrowse);
+end;
+
+function TMySQLDataSet.InternalRefreshEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+begin
+  Connection.SynchroThread.DataSet := Self;
+  Connection.SyncReceivingData(Connection.SynchroThread);
+
+  Result := False;
 end;
 
 procedure TMySQLDataSet.InternalSetToRecord(Buffer: TRecordBuffer);

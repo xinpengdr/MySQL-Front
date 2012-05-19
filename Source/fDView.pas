@@ -25,13 +25,13 @@ type
     FLName: TLabel;
     FLRecordCount: TLabel;
     FLSecurity: TLabel;
-    FLStatement: TLabel;
+    FLStmt: TLabel;
     FName: TEdit;
     FRecordCount: TLabel;
     FSecurityDefiner: TRadioButton;
     FSecurityInvoker: TRadioButton;
     FSource: TSynMemo;
-    FStatement: TSynMemo;
+    FStmt: TSynMemo;
     GBasics: TGroupBox_Ext;
     GDefiner: TGroupBox_Ext;
     GRecordCount: TGroupBox_Ext;
@@ -65,14 +65,13 @@ type
     procedure FSecurityKeyPress(Sender: TObject; var Key: Char);
     procedure FSourceStatusChange(Sender: TObject;
       Changes: TSynStatusChanges);
-    procedure FStatementChange(Sender: TObject);
+    procedure FStmtChange(Sender: TObject);
     procedure HideTSSource(Sender: TObject);
     procedure TSInformationsShow(Sender: TObject);
-    procedure TSSourceShow(Sender: TObject);
   private
     RecordCount: Integer;
     procedure FBOkCheckEnabled(Sender: TObject);
-  protected
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Database: TCDatabase;
@@ -124,35 +123,35 @@ begin
   FCheckOption.Caption := Preferences.LoadStr(529);
   FCheckOptionCascade.Caption := Preferences.LoadStr(256);
   FCheckOptionLocal.Caption := Preferences.LoadStr(746);
-  FLStatement.Caption := Preferences.LoadStr(307) + ':';
+  FLStmt.Caption := Preferences.LoadStr(307) + ':';
 
-  FStatement.Font.Name := Preferences.SQLFontName;
-  FStatement.Font.Style := Preferences.SQLFontStyle;
-  FStatement.Font.Color := Preferences.SQLFontColor;
-  FStatement.Font.Size := Preferences.SQLFontSize;
-  FStatement.Font.Charset := Preferences.SQLFontCharset;
+  FStmt.Font.Name := Preferences.SQLFontName;
+  FStmt.Font.Style := Preferences.SQLFontStyle;
+  FStmt.Font.Color := Preferences.SQLFontColor;
+  FStmt.Font.Size := Preferences.SQLFontSize;
+  FStmt.Font.Charset := Preferences.SQLFontCharset;
   if (Preferences.Editor.LineNumbersForeground = clNone) then
-    FStatement.Gutter.Font.Color := clWindowText
+    FStmt.Gutter.Font.Color := clWindowText
   else
-    FStatement.Gutter.Font.Color := Preferences.Editor.LineNumbersForeground;
+    FStmt.Gutter.Font.Color := Preferences.Editor.LineNumbersForeground;
   if (Preferences.Editor.LineNumbersBackground = clNone) then
-    FStatement.Gutter.Color := clBtnFace
+    FStmt.Gutter.Color := clBtnFace
   else
-    FStatement.Gutter.Color := Preferences.Editor.LineNumbersBackground;
-  FStatement.Gutter.Font.Style := Preferences.Editor.LineNumbersStyle;
+    FStmt.Gutter.Color := Preferences.Editor.LineNumbersBackground;
+  FStmt.Gutter.Font.Style := Preferences.Editor.LineNumbersStyle;
   if (Preferences.Editor.AutoIndent) then
-    FStatement.Options := FStatement.Options + [eoAutoIndent, eoSmartTabs]
+    FStmt.Options := FStmt.Options + [eoAutoIndent, eoSmartTabs]
   else
-    FStatement.Options := FStatement.Options - [eoAutoIndent, eoSmartTabs];
+    FStmt.Options := FStmt.Options - [eoAutoIndent, eoSmartTabs];
   if (Preferences.Editor.TabToSpaces) then
-    FStatement.Options := FStatement.Options + [eoTabsToSpaces]
+    FStmt.Options := FStmt.Options + [eoTabsToSpaces]
   else
-    FStatement.Options := FStatement.Options - [eoTabsToSpaces];
-  FStatement.RightEdge := Preferences.Editor.RightEdge;
+    FStmt.Options := FStmt.Options - [eoTabsToSpaces];
+  FStmt.RightEdge := Preferences.Editor.RightEdge;
   if (not Preferences.Editor.CurrRowBGColorEnabled) then
-    FStatement.ActiveLineColor := clNone
+    FStmt.ActiveLineColor := clNone
   else
-    FStatement.ActiveLineColor := Preferences.Editor.CurrRowBGColor;
+    FStmt.ActiveLineColor := Preferences.Editor.CurrRowBGColor;
 
   TSInformations.Caption := Preferences.LoadStr(121);
   GDefiner.Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
@@ -203,7 +202,7 @@ var
   I: Integer;
   Parse: TSQLParse;
 begin
-  FBOk.Enabled := (FName.Text <> '') and SQLSingleStmt(FStatement.Text) and SQLCreateParse(Parse, PChar(FStatement.Text), Length(FStatement.Text), Database.Client.ServerVersion) and SQLParseKeyword(Parse, 'SELECT');
+  FBOk.Enabled := (FName.Text <> '') and SQLSingleStmt(FStmt.Text) and SQLCreateParse(Parse, PChar(FStmt.Text), Length(FStmt.Text), Database.Client.ServerVersion) and SQLParseKeyword(Parse, 'SELECT');
   for I := 0 to Database.Tables.Count - 1 do
     if (lstrcmpi(PChar(FName.Text), PChar(Database.Tables[I].Name)) = 0) and not (not Assigned(View) or (lstrcmpi(PChar(FName.Text), PChar(View.Name)) = 0)) then
       FBOk.Enabled := False;
@@ -295,7 +294,7 @@ begin
       NewView.CheckOption := voLocal
     else
       NewView.CheckOption := voDefault;
-    NewView.Statement := Trim(FStatement.Lines.Text);
+    NewView.Stmt := Trim(FStmt.Lines.Text);
 
     if (not Assigned(View)) then
       CanClose := Database.AddView(NewView)
@@ -306,9 +305,20 @@ begin
   end;
 end;
 
+procedure TDView.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if (Event.EventType in [ceBuild, ceUpdated]) then
+  begin
+    FStmt.Cursor := crDefault;
+    FStmt.Lines.Text := Trim(SQLWrapStmt(View.Stmt, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10;
+    FSource.Cursor := crDefault;
+    FSource.Lines.Text := View.Source + #13#10;
+  end;
+end;
+
 procedure TDView.FormCreate(Sender: TObject);
 begin
-  FStatement.Highlighter := MainHighlighter;
+  FStmt.Highlighter := MainHighlighter;
   FSource.Highlighter := MainHighlighter;
 
   Constraints.MinWidth := Width;
@@ -334,6 +344,8 @@ end;
 
 procedure TDView.FormHide(Sender: TObject);
 begin
+  Database.Client.UnRegisterEventProc(FormClientEvent);
+
   Preferences.View.Width := Width;
   Preferences.View.Height := Height;
 
@@ -345,6 +357,8 @@ procedure TDView.FormShow(Sender: TObject);
 var
   TableName: string;
 begin
+  Database.Client.RegisterEventProc(FormClientEvent);
+
   if (not Assigned(View)) then
   begin
     Caption := Preferences.LoadStr(741);
@@ -383,7 +397,9 @@ begin
     FCheckOptionCascade.Checked := False;
     FCheckOptionLocal.Checked := False;
 
-    FStatement.Lines.Text := 'SELECT 1;';
+    FStmt.Lines.Text := 'SELECT 1;';
+
+    FSource.Lines.Clear();
   end
   else
   begin
@@ -405,12 +421,23 @@ begin
     FCheckOptionCascade.Checked := View.CheckOption = voCascaded;
     FCheckOptionLocal.Checked := View.CheckOption = voLocal;
 
-    FStatement.Lines.Text := Trim(SQLWrapStmt(View.Statement, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10;
+    if (Database.Initialize(View)) then
+    begin
+      FStmt.Cursor := crSQLWait;
+      FStmt.Lines.Clear();
+      FSource.Cursor := crSQLWait;
+      FSource.Lines.Clear();
+    end
+    else
+    begin
+      FStmt.Cursor := crDefault;
+      FStmt.Lines.Text := Trim(SQLWrapStmt(View.Stmt, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10;
+      FSource.Cursor := crDefault;
+      FSource.Lines.Text := View.Source + #13#10;
+    end;
 
     FDefiner.Caption := View.Definer;
   end;
-
-  FSource.Lines.Clear();
 
   TSInformations.TabVisible := Assigned(View);
   TSSource.TabVisible := Assigned(View);
@@ -438,7 +465,7 @@ begin
   MainAction('aECopyToFile').Enabled := FSource.SelText <> '';
 end;
 
-procedure TDView.FStatementChange(Sender: TObject);
+procedure TDView.FStmtChange(Sender: TObject);
 begin
   FBOkCheckEnabled(Sender);
   HideTSSource(Sender);
@@ -457,12 +484,6 @@ begin
     RecordCount := View.CountRecords;
 
   FRecordCount.Caption := FormatFloat('#,##0', RecordCount, LocaleFormatSettings);
-end;
-
-procedure TDView.TSSourceShow(Sender: TObject);
-begin
-  if (FSource.Lines.Count = 0) then
-    FSource.Lines.Text := View.Source + #13#10
 end;
 
 initialization

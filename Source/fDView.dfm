@@ -57,10 +57,6 @@ object DView: TDView
     TabOrder = 0
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         297)
@@ -90,13 +86,13 @@ object DView: TDView
           Height = 13
           Caption = 'FLCheckOption'
         end
-        object FLStatement: TLabel
+        object FLStmt: TLabel
           Left = 8
           Top = 208
-          Width = 60
+          Width = 33
           Height = 13
-          Caption = 'FLStatement'
-          FocusControl = FStatement
+          Caption = 'FLStmt'
+          FocusControl = FStmt
         end
         object FLName: TLabel
           Left = 8
@@ -122,7 +118,7 @@ object DView: TDView
           OnChange = HideTSSource
           OnSelect = FAlgorithmSelect
         end
-        object FStatement: TSynMemo
+        object FStmt: TSynMemo
           Left = 8
           Top = 224
           Width = 281
@@ -145,7 +141,7 @@ object DView: TDView
           RightEdge = 0
           RightEdgeColor = clWindow
           ScrollHintFormat = shfTopToBottom
-          OnChange = FStatementChange
+          OnChange = FStmtChange
         end
         object FCheckOptionCascade: TCheckBox
           Left = 136
@@ -211,10 +207,6 @@ object DView: TDView
     object TSInformations: TTabSheet
       Caption = 'TSInformations'
       OnShow = TSInformationsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         297)
@@ -277,11 +269,6 @@ object DView: TDView
     end
     object TSSource: TTabSheet
       Caption = 'TSSource'
-      OnShow = TSSourceShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         297)

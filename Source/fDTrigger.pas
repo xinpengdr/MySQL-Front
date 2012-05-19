@@ -206,7 +206,7 @@ begin
     if (FInsert.Checked) then NewTrigger.Event := teInsert;
     if (FUpdate.Checked) then NewTrigger.Event := teUpdate;
     if (FDelete.Checked) then NewTrigger.Event := teDelete;
-    NewTrigger.Statement := SQLTrimStmt(PChar(FStatement.Text));
+    NewTrigger.Stmt := SQLTrimStmt(PChar(FStatement.Text));
 
     if (not Assigned(Trigger)) then
       CanClose := Table.Database.AddTrigger(NewTrigger)
@@ -291,7 +291,7 @@ begin
     FInsert.Checked := Trigger.Event = teInsert;
     FUpdate.Checked := Trigger.Event = teUpdate;
     FDelete.Checked := Trigger.Event = teDelete;
-    FStatement.Text := Trigger.Statement + #13#10;
+    FStatement.Text := Trigger.Stmt + #13#10;
 
     FDefiner.Caption := Trigger.Definer;
     FSize.Caption := FormatFloat('#,##0', Length(Trigger.Source), LocaleFormatSettings);

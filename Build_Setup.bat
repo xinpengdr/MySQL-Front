@@ -7,9 +7,9 @@ REM ****************************************************************************
 SET BuildName=MySQL-Front
 
 SET BuildAWK=%ProgramFiles(x86)%\gawk\bin\gawk.exe
-SET BuildBRCC=%ProgramFiles(x86)%\Embarcadero\RAD Studio\7.0\bin\brcc32.exe
-SET BuildCompiler=%ProgramFiles(x86)%\Embarcadero\RAD Studio\7.0\bin\dcc32.exe
-SET BuildEurekaLog=%ProgramFiles(x86)%\Embarcadero\RAD Studio\7.0\bin\ecc32.exe
+SET BuildBRCC=%ProgramFiles(x86)%\Embarcadero\RAD Studio\9.0\bin\brcc32.exe
+SET BuildCompiler=%ProgramFiles(x86)%\Embarcadero\RAD Studio\9.0\bin\dcc32.exe
+SET BuildEurekaLog=%ProgramFiles(x86)%\Embarcadero\RAD Studio\9.0\bin\ecc32.exe
 SET BuildUPX=%ProgramFiles(x86)%\UPX\UPX.exe
 SET BuildHelpMan=%ProgramFiles(x86)%\HelpMan3\HelpMan.exe
 SET BuildInnoSetup=%ProgramFiles(x86)%\Inno Setup 5\iscc.exe
@@ -68,6 +68,7 @@ if exist "%BuildEurekaLog%" (
 )
 if Errorlevel 1 goto Error
 DEL "%BuildTempPath%\*.dcu"
+DEL "%BuildSourcePath%\*.drc"
 
 if exist "%BuildTempPath%\%BuildName%.exe" DEL "%BuildTempPath%\%BuildName%.exe"
 "%BuildUPX%" "%BuildTempPath%\MySQLFront.exe" -o "%BuildTempPath%\%BuildName%.exe"

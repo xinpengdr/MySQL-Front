@@ -22,6 +22,7 @@ copy "%CleanSourcePath%\FastMM\FastMM_FullDebugMode.dll" "%CleanTempPath%" > nul
 
 for /D /R %%I in (*) do (
   if exist "%%I\__history" RMDIR /S /Q %%I\__history"
+  if exist "%%I\*.drc" DEL %%I\*.drc"
   if exist "%%I\*.dproj.local" DEL %%I\*.dproj.local"
   if exist "%%I\*.identcache" DEL "%%I\*.identcache"
   if exist "%%I\*.~dsk" DEL "%%I\*.~dsk"

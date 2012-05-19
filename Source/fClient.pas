@@ -686,7 +686,7 @@ type
     FComment: string;
     FDefiner: string;
     FSecurity: TCSecurity;
-    FStatement: string;
+    FStmt: string;
     FSynMemo: TComponent;
     function ParseCreateView(const SQL: string; const RemoveDefiner: Boolean = False; const RemoveDatabaseName: Boolean = False): string;
   protected
@@ -700,7 +700,7 @@ type
     property Comment: string read FComment write FComment;
     property Definer: string read FDefiner;
     property Security: TCSecurity read FSecurity write FSecurity;
-    property Statement: string read FStatement write FStatement;
+    property Stmt: string read FStmt write FStmt;
     property SynMemo: TComponent read FSynMemo write FSynMemo;
     procedure Assign(const Source: TCTable); override;
     procedure Clear(); override;
@@ -842,7 +842,7 @@ type
     FCreated: TDateTime;
     FDefiner: string;
     FEvent: TEvent;
-    FStatement: string;
+    FStmt: string;
     FSynMemo: TComponent;
     FTableName: string;
     FTiming: TTiming;
@@ -865,7 +865,7 @@ type
     property Event: TEvent read FEvent write FEvent;
     property InputDataSet: TMySQLDataSet read GetInputDataSet;
     property Source: string read GetSource;
-    property Statement: string read FStatement write FStatement;
+    property Stmt: string read FStmt write FStmt;
     property SynMemo: TComponent read FSynMemo write FSynMemo;
     property Table: TCBaseTable read GetTable;
     property TableName: string read FTableName write FTableName;
@@ -896,7 +896,7 @@ type
     FIntervalValue: string;
     FPreserve: Boolean;
     FStartDateTime: TDateTime;
-    FStatement: string;
+    FStmt: string;
     FSynMemo: TComponent;
     FUpdated: TDateTime;
   protected
@@ -923,7 +923,7 @@ type
     property Preserve: Boolean read FPreserve write FPreserve;
     property Source: string read GetSource;
     property StartDateTime: TDateTime read FStartDateTime write FStartDateTime;
-    property Statement: string read FStatement write FStatement;
+    property Stmt: string read FStmt write FStmt;
     property SynMemo: TComponent read FSynMemo write FSynMemo;
     property Updated: TDateTime read FUpdated;
   end;
@@ -1615,7 +1615,7 @@ const
 resourcestring
   SDesktopAlreadyRegistered = 'Desktop already registered';
   SUnknownRoutineType = 'Unknown Routine Type (%s)';
-  SUnknownSQLStmt = 'Unknow SQL Statement (%s)';
+  SUnknownSQLStmt = 'Unknow SQL Stmt (%s)';
   SSourceParseError = 'Source code of "%s" cannot be analyzed (%d):' + #10#10 + '%s';
 
 type
@@ -3456,7 +3456,7 @@ begin
       RequestedRecordCount := RecordCount;
     Result := Result + IntToStr(RequestedRecordCount);
   end;
-  Result := Result + ';';
+  Result := Result + ';' + #13#10;
 end;
 
 { TCTable *********************************************************************}
@@ -3581,6 +3581,7 @@ begin
   Result := -1;
 
   DataSet := TMySQLQuery.Create(nil);
+  DataSet.Connection := Client;
   DataSet.CommandText := 'SELECT COUNT(*) FROM '+ Database.Client.EscapeIdentifier(Database.Name) +'.' + Database.Client.EscapeIdentifier(Name);
   DataSet.Open();
   if (DataSet.Active and not DataSet.IsEmpty()) then
@@ -4833,7 +4834,7 @@ begin
   FDefiner := TCView(Source).Definer;
   FCheckOption := TCView(Source).CheckOption;
   FSecurity := TCView(Source).Security;
-  FStatement := TCView(Source).Statement;
+  FStmt := TCView(Source).Stmt;
 end;
 
 procedure TCView.Clear();
@@ -4842,7 +4843,7 @@ begin
   FDefiner := '';
   FCheckOption := voNone;
   FSecurity := seDefiner;
-  FStatement := '';
+  FStmt := '';
 
   inherited;
 end;
@@ -4857,7 +4858,7 @@ begin
   FDefiner := '';
   FCheckOption := voNone;
   FSecurity := seDefiner;
-  FStatement := '';
+  FStmt := '';
 end;
 
 destructor TCView.Destroy();
@@ -4969,7 +4970,7 @@ begin
     else
       FCheckOption := voNone;
 
-    FStatement := Copy(SQL, SQLParseGetIndex(Parse), Len) + ';';
+    FStmt := Copy(SQL, SQLParseGetIndex(Parse), Len) + ';';
   end;
 end;
 
@@ -5934,7 +5935,7 @@ begin
   FEvent := Source.Event;
   FDatabase := Source.Database;
   FDefiner := Source.Definer;
-  FStatement := Source.Statement;
+  FStmt := Source.Stmt;
   OldSource := Source.OldSource;
   FTableName := Source.FTableName;
   FTiming := Source.Timing;
@@ -5949,7 +5950,7 @@ begin
   FCreated := 0;
   FDefiner := '';
   OldSource := '';
-  FStatement := '';
+  FStmt := '';
   FTiming := ttAfter;
 end;
 
@@ -6013,7 +6014,7 @@ begin
   end;
   Result := Result + ' ON ';
   Result := Result + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(FTableName) + #13#10;
-  Result := Result + '  FOR EACH ROW ' + Statement;
+  Result := Result + '  FOR EACH ROW ' + Stmt;
   if (RightStr(Result, 1) <> ';') then Result := Result + ';';
   Result := Result + #13#10;
 end;
@@ -6115,7 +6116,7 @@ begin
           Trigger[Index].FDefiner := ''
         else
           Trigger[Index].FDefiner := DataSet.FieldByName('Definer').AsString;
-        Trigger[Index].FStatement := DataSet.FieldByName('Statement').AsString + ';';
+        Trigger[Index].FStmt := DataSet.FieldByName('Statement').AsString + ';';
         Trigger[Index].FTableName := DataSet.FieldByName('Table').AsString;
         if (UpperCase(DataSet.FieldByName('Timing').AsString) = 'BEFORE') then
           Trigger[Index].FTiming := ttBefore
@@ -6135,7 +6136,7 @@ begin
           Trigger[Index].FDefiner := ''
         else
           Trigger[Index].FDefiner := DataSet.FieldByName('DEFINER').AsString;
-        Trigger[Index].FStatement := DataSet.FieldByName('ACTION_STATEMENT').AsString + ';';
+        Trigger[Index].FStmt := DataSet.FieldByName('ACTION_STATEMENT').AsString + ';';
         Trigger[Index].FTableName := DataSet.FieldByName('EVENT_OBJECT_TABLE').AsString;
         if (UpperCase(DataSet.FieldByName('ACTION_TIMING').AsString) = 'BEFORE') then
           Trigger[Index].FTiming := ttBefore
@@ -6206,7 +6207,7 @@ begin
   FIntervalValue := Source.IntervalValue;
   FPreserve := Source.Preserve;
   FStartDateTime := Source.StartDateTime;
-  FStatement := Source.Statement;
+  FStmt := Source.Stmt;
   FUpdated := Source.Updated;
 end;
 
@@ -6223,7 +6224,7 @@ begin
   FIntervalValue := '';
   FPreserve := False;
   FStartDateTime := 0;
-  FStatement := '';
+  FStmt := '';
   FUpdated := 0;
 
   inherited;
@@ -6244,7 +6245,7 @@ begin
   FIntervalValue := '';
   FPreserve := False;
   FStartDateTime := 0;
-  FStatement := '';
+  FStmt := '';
   FUpdated := 0;
 end;
 
@@ -6323,7 +6324,7 @@ begin
 
     if (not SQLParseKeyword(Parse, 'DO')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 41, SQL]);
 
-    FStatement := RightStr(SQL, Length(SQL) - SQLParseGetIndex(Parse));
+    FStmt := RightStr(SQL, Length(SQL) - SQLParseGetIndex(Parse));
   end;
 end;
 
@@ -6352,7 +6353,7 @@ const
 begin
   Result := 'DROP PROCEDURE IF EXISTS ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(ObjectIDEEventProcedureName) + ';' + #13#10;
   Result := Result + 'CREATE PROCEDURE ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(ObjectIDEEventProcedureName) + '()' + #13#10;
-  Result := Result + Statement + #13#10;
+  Result := Result + Stmt + #13#10;
   Result := Result + 'CALL ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(ObjectIDEEventProcedureName) + '();' + #13#10;
   Result := Result + 'DROP PROCEDURE ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(ObjectIDEEventProcedureName) + ';' + #13#10;
 end;
@@ -6396,7 +6397,7 @@ begin
           Event[Index].FIntervalValue := DataSet.FieldByName('Interval value').AsString;
 //          Event[Index].FPreserve := DataSet.FieldByName('ON_COMPLETION').AsString = 'PRESERVE';
           Event[Index].FStartDateTime := DataSet.FieldByName('Starts').AsDateTime;
-//          Event[Index].FStatement := Trim(SQLTrim(DataSet.FieldByName('EVENT_DEFINITION').AsString));
+//          Event[Index].FStmt := Trim(SQLTrim(DataSet.FieldByName('EVENT_DEFINITION').AsString));
 //          Event[Index].FUpdated := DataSet.FieldByName('LAST_ALTERED').AsDateTime;
         end
         else
@@ -6412,11 +6413,11 @@ begin
           Event[Index].FIntervalValue := DataSet.FieldByName('INTERVAL_VALUE').AsString;
           Event[Index].FPreserve := DataSet.FieldByName('ON_COMPLETION').AsString = 'PRESERVE';
           Event[Index].FStartDateTime := DataSet.FieldByName('STARTS').AsDateTime;
-          Event[Index].FStatement := SQLTrimStmt(DataSet.FieldByName('EVENT_DEFINITION').AsString);
+          Event[Index].FStmt := SQLTrimStmt(DataSet.FieldByName('EVENT_DEFINITION').AsString);
           Event[Index].FUpdated := DataSet.FieldByName('LAST_ALTERED').AsDateTime;
         end;
 
-        if (Copy(Event[Index].Statement, Length(Event[Index].Statement), 1) <> ';') then Event[Index].Statement := Event[Index].Statement + ';';
+        if (Copy(Event[Index].Stmt, Length(Event[Index].Stmt), 1) <> ';') then Event[Index].Stmt := Event[Index].Stmt + ';';
       end;
     until (not DataSet.FindNext());
 
@@ -7768,9 +7769,9 @@ begin
   if (not Assigned(Event) and (NewEvent.Comment <> '') or Assigned(Event) and (NewEvent.Comment <> Event.Comment))then
     SQL := SQL + '  COMMENT ' + SQLEscape(NewEvent.Comment) + #13#10;
 
-  if (not Assigned(Event) and (SQLTrimStmt(NewEvent.Statement) <> '') or Assigned(Event) and (SQLTrimStmt(NewEvent.Statement) <> SQLTrimStmt(Event.Statement)))then
+  if (not Assigned(Event) and (SQLTrimStmt(NewEvent.Stmt) <> '') or Assigned(Event) and (SQLTrimStmt(NewEvent.Stmt) <> SQLTrimStmt(Event.Stmt)))then
   begin
-    SQL := SQL + '  DO ' + SQLTrimStmt(NewEvent.Statement);
+    SQL := SQL + '  DO ' + SQLTrimStmt(NewEvent.Stmt);
     if (SQL[Length(SQL)] = ';') then Delete(SQL, Length(SQL), 1);
   end;
 
@@ -7805,7 +7806,7 @@ begin
       Result := Client.ExecuteSQL(SQL);
 
       if (not Result and Client.MultiStatements and Assigned(Client.Lib.mysql_set_server_option)) then
-        // Warum verliert die MySQL Datenbank den Multi Statement Status ??? (Fixed in 5.0.67 - auch schon vorher?)
+        // Warum verliert die MySQL Datenbank den Multi Stmt Status ??? (Fixed in 5.0.67 - auch schon vorher?)
         Client.Lib.mysql_set_server_option(Client.Handle, MYSQL_OPTION_MULTI_STATEMENTS_ON);
     end;
   end
@@ -7859,7 +7860,7 @@ begin
   end
   else if (not Result) then
   begin
-    // Warum verliert die MySQL Datenbank den Multi Statement Status ???
+    // Warum verliert die MySQL Datenbank den Multi Stmt Status ???
     if (Client.MultiStatements and Assigned(Client.Lib.mysql_set_server_option)) then
       Client.Lib.mysql_set_server_option(Client.Handle, MYSQL_OPTION_MULTI_STATEMENTS_ON);
 
@@ -7957,7 +7958,7 @@ begin
 
 // Is this workaround still needed? Or was it a bug in previous versions? In which versions?
 //  if (Client.Connected and Client.MultiStatements and Assigned(Client.Lib.mysql_set_server_option)) then
-//    // Why does the MySQL database loose the Multi Statement state ???
+//    // Why does the MySQL database loose the Multi Stmt state ???
 //    Client.Lib.mysql_set_server_option(Client.Handle, MYSQL_OPTION_MULTI_STATEMENTS_ON);
 
   if (not Result and Assigned(Trigger)) then
@@ -7987,7 +7988,7 @@ begin
     end;
   end;
   SQL := SQL + 'VIEW ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(NewView.Name);
-  SQL := SQL + ' AS ' + SQLTrimStmt(NewView.Statement);
+  SQL := SQL + ' AS ' + SQLTrimStmt(NewView.Stmt);
   if (SQL[Length(SQL)] = ';') then
     Delete(SQL, Length(SQL), 1);
   case (NewView.CheckOption) of

@@ -23,7 +23,7 @@ if Errorlevel 1 goto Error
 
 CD "%BuildPublishPath%"
 
-if exist "%BuildPublishPath%\Publish.ftp" "%BuildFTP%" -s:"%BuildPublishPath%\Publish.ftp"
+if exist "%BuildPublishPath%\Publish.ftp" "%BuildFTP%" -v -n -s:"%BuildPublishPath%\Publish.ftp"
 if Errorlevel 1 goto Error
 
 goto End

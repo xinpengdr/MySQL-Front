@@ -997,43 +997,6 @@ begin
   FFNavigatorNodeExpand := '';
 end;
 
-procedure TFClient.TWanted.Synchronize();
-var
-  ExpandingEvent: TTVExpandingEvent;
-  TempAction: TAction;
-  TempAddress: string;
-  TempInitialize: TCClient.TInitialize;
-  TempNode: TTreeNode;
-begin
-  if (Assigned(Action)) then
-  begin
-    TempAction := Action;
-    Clear();
-    TempAction.Execute();
-  end
-  else if (Address <> '') then
-  begin
-    TempAddress := Address;
-    Clear();
-    FClient.Address := TempAddress;
-  end
-  else if (Assigned(Initialize)) then
-  begin
-    TempInitialize := Initialize;
-    Clear();
-    TempInitialize();
-  end
-  else if (Assigned(FClient.AddressToNavigatorNode(FFNavigatorNodeExpand))) then
-  begin
-    TempNode := FClient.AddressToNavigatorNode(FFNavigatorNodeExpand);
-    Clear();
-    ExpandingEvent := FClient.FNavigator.OnExpanding;
-    FClient.FNavigator.OnExpanding := nil;
-    TempNode.Expand(False);
-    FClient.FNavigator.OnExpanding := ExpandingEvent;
-  end;
-end;
-
 constructor TFClient.TWanted.Create(const AFClient: TFClient);
 begin
   FClient := AFClient;
@@ -1082,6 +1045,43 @@ procedure TFClient.TWanted.SetInitialize(const AInitialize: TCClient.TInitialize
 begin
   Clear();
   FInitialize := AInitialize;
+end;
+
+procedure TFClient.TWanted.Synchronize();
+var
+  ExpandingEvent: TTVExpandingEvent;
+  TempAction: TAction;
+  TempAddress: string;
+  TempInitialize: TCClient.TInitialize;
+  TempNode: TTreeNode;
+begin
+  if (Assigned(Action)) then
+  begin
+    TempAction := Action;
+    Clear();
+    TempAction.Execute();
+  end
+  else if (Address <> '') then
+  begin
+    TempAddress := Address;
+    Clear();
+    FClient.Address := TempAddress;
+  end
+  else if (Assigned(Initialize)) then
+  begin
+    TempInitialize := Initialize;
+    Clear();
+    TempInitialize();
+  end
+  else if (Assigned(FClient.AddressToNavigatorNode(FFNavigatorNodeExpand))) then
+  begin
+    TempNode := FClient.AddressToNavigatorNode(FFNavigatorNodeExpand);
+    Clear();
+    ExpandingEvent := FClient.FNavigator.OnExpanding;
+    FClient.FNavigator.OnExpanding := nil;
+    TempNode.Expand(False);
+    FClient.FNavigator.OnExpanding := ExpandingEvent;
+  end;
 end;
 
 { TFClient ********************************************************************}
@@ -3579,8 +3579,6 @@ begin
         end;
     end;
   end;
-
-  Wanted.Execute();
 end;
 
 procedure TFClient.aVSideBarExecute(Sender: TObject);
@@ -12079,7 +12077,7 @@ begin
         NewView := TCView.Create(Database);
         NewView.Assign(View);
 
-        NewView.Statement := Trim(SynMemo.Text);
+        NewView.Stmt := Trim(SynMemo.Text);
 
         Result := Database.UpdateView(View, NewView);
 
@@ -12120,7 +12118,7 @@ begin
         NewEvent := TCEvent.Create(Database);
         NewEvent.Assign(Event);
 
-        NewEvent.Statement := Trim(SynMemo.Text);
+        NewEvent.Stmt := Trim(SynMemo.Text);
 
         Result := Database.UpdateEvent(Event, NewEvent);
 
@@ -12133,7 +12131,7 @@ begin
         NewTrigger := TCTrigger.Create(Database);
         NewTrigger.Assign(Trigger);
 
-        NewTrigger.Statement := Trim(SynMemo.Text);
+        NewTrigger.Stmt := Trim(SynMemo.Text);
 
         Result := Database.UpdateTrigger(Trigger, NewTrigger);
 
@@ -12220,7 +12218,7 @@ begin
           View := Database.ViewByName(SelectedNavigator);
           if (not Assigned(View.SynMemo)) then
             View.SynMemo := NewSynMemo();
-          SynMemo.Text := Trim(SQLWrapStmt(View.Statement, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10
+          SynMemo.Text := Trim(SQLWrapStmt(View.Stmt, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10
         end;
       iiProcedure,
       iiFunction:
@@ -12240,14 +12238,14 @@ begin
           Event := Database.EventByName(SelectedNavigator);
           if (not Assigned(Event.SynMemo)) then
             Event.SynMemo := NewSynMemo();
-          SynMemo.Text := Event.Statement + #13#10;
+          SynMemo.Text := Event.Stmt + #13#10;
         end;
       iiTrigger:
         begin
           Trigger := Database.TriggerByName(SelectedNavigator);
           if (not Assigned(Trigger.SynMemo)) then
             Trigger.SynMemo := NewSynMemo();
-          SynMemo.Text := Trigger.Statement + #13#10;
+          SynMemo.Text := Trigger.Stmt + #13#10;
         end;
     end;
   end;
@@ -12409,9 +12407,11 @@ begin
         SQLTrimStmt(Client.CommandText, 1, Len, StartingCommentLength, EndingCommentLength);
         SynMemo.SelStart := aDRunExecuteSelStart + Client.ExecutedSQLLength + StartingCommentLength;
         SynMemo.SelLength := Len - StartingCommentLength - EndingCommentLength;
-      end;
-
-      if ((Client.ErrorCode = 0) and (Client.ExecutedStmts = 1) and Assigned(Client.Account.HistoryXML)) then
+      end
+    end
+    else
+    begin
+      if ((Client.ExecutedStmts = 1) and Assigned(Client.Account.HistoryXML)) then
       begin
         XML := Client.Account.HistoryXML.AddChild('sql');
         if ((ResultSet.Count = 0) or (ResultSet.RawDataSets[0].FieldCount = 0)) then
@@ -12581,16 +12581,8 @@ procedure TFClient.SendQuery(Sender: TObject; const SQL: string);
 begin
   if (Assigned(ResultSet)) then
   begin
-    if ((Sender is TAction) and (SelectedDatabase <> '') and not Client.DatabaseByName(SelectedDatabase).Actual) then
-    begin
-      Wanted.Action := TAction(Sender);
-      Client.DatabaseByName(SelectedDatabase).Initialize();
-    end
-    else if ((Sender is TAction) and (SelectedDatabase <> '') and not Client.DatabaseByName(SelectedDatabase).ActualSources) then
-    begin
-      Wanted.Action := TAction(Sender);
-      Client.DatabaseByName(SelectedDatabase).InitializeSources();
-    end
+    if ((Sender is TAction) and (Client.DatabaseByName(SelectedDatabase).Initialize() or Client.DatabaseByName(SelectedDatabase).InitializeSources())) then
+      Wanted.Action := TAction(Sender)
     else
     begin
       ResultSet.AfterOpen := DataSetAfterOpen;

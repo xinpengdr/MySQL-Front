@@ -314,7 +314,7 @@ begin
     NewEvent.Preserve := FPreserve.Checked;
     if (not Assigned(Event) or (Trim(FComment.Text) <> SQLUnwrapStmt(NewEvent.Comment))) then
       NewEvent.Comment := Trim(FComment.Text);
-    NewEvent.Statement := FStatement.Lines.Text;
+    NewEvent.Stmt := FStatement.Lines.Text;
 
     if (not Assigned(Event)) then
       CanClose := Database.AddEvent(NewEvent)
@@ -443,7 +443,7 @@ begin
     FEnabled.Checked := Event.Enabled;
     FPreserve.Checked := Event.Preserve;
     FComment.Text := SQLUnwrapStmt(Event.Comment);
-    FStatement.Lines.Text := Event.Statement;
+    FStatement.Lines.Text := Event.Stmt;
 
     FDefiner.Caption := Event.Definer;
     FCreated.Caption := SysUtils.DateTimeToStr(Event.Created, LocaleFormatSettings);

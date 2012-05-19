@@ -1,7 +1,7 @@
 Development Enviroment:
 =======================
 
-Embarcadero Delphi 2010:
+Embarcadero Delphi XE2:
 http://www.embarcadero.com/products/delphi
 
 
