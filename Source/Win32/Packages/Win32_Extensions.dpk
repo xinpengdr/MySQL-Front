@@ -34,7 +34,6 @@ requires
 
 contains
   WinCred in '..\Source\WinCred.pas',
-  HtmlHlp in '..\Source\HtmlHlp.pas',
   ODBCAPI in '..\Source\ODBCAPI.pas';
 
 end.

@@ -1,7 +1,6 @@
 package VCL_Extensions;
 
 {$R *.res}
-{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS OFF}
 {$BOOLEVAL OFF}
@@ -23,8 +22,6 @@ package VCL_Extensions;
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
-{$DEFINE DEBUG}
-{$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'VCL Extensions'}
 {$DESIGNONLY}
 {$IMPLICITBUILD ON}

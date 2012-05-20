@@ -15,11 +15,6 @@
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
 			<Base>true</Base>
 		</PropertyGroup>
-		<PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Base)'=='true') or '$(Base_Win64)'!=''">
-			<Base_Win64>true</Base_Win64>
-			<CfgParent>Base</CfgParent>
-			<Base>true</Base>
-		</PropertyGroup>
 		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
 			<Base_Win32>true</Base_Win32>
 			<CfgParent>Base</CfgParent>
@@ -30,15 +25,26 @@
 			<CfgParent>Base</CfgParent>
 			<Base>true</Base>
 		</PropertyGroup>
+		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_1)'=='true') or '$(Cfg_1_Win32)'!=''">
+			<Cfg_1_Win32>true</Cfg_1_Win32>
+			<CfgParent>Cfg_1</CfgParent>
+			<Cfg_1>true</Cfg_1>
+			<Base>true</Base>
+		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_2)'!=''">
 			<Cfg_2>true</Cfg_2>
 			<CfgParent>Base</CfgParent>
 			<Base>true</Base>
 		</PropertyGroup>
+		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_2)'=='true') or '$(Cfg_2_Win32)'!=''">
+			<Cfg_2_Win32>true</Cfg_2_Win32>
+			<CfgParent>Cfg_2</CfgParent>
+			<Cfg_2>true</Cfg_2>
+			<Base>true</Base>
+		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
 			<VerInfo_Locale>1033</VerInfo_Locale>
 			<DCC_Namespace>Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;Winapi;$(DCC_Namespace)</DCC_Namespace>
-			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
 			<VerInfo_Keys>CompanyName=JGsoft;FileDescription=Perl Compatible Regular Expressions VCL Component Delphi 2009 Package;FileVersion=1.0.0.0;InternalName=PerlRegExD2009;LegalCopyright=Copyright (c) 1999-2008;LegalTrademarks=;OriginalFilename=PerlRegExD2009;ProductName=Perl Compatible Regular Expressions VCL Component;ProductVersion=1.0.0.0;Comments=See http://www.regular-expressions.info/delphi.html for more information</VerInfo_Keys>
 			<RuntimeOnlyPackage>true</RuntimeOnlyPackage>
 			<DCC_Define>CONDITIONALEXPRESSIONS;$(DCC_Define)</DCC_Define>
@@ -50,7 +56,6 @@
 			<DCC_IMPLICIT_STRING_CAST>false</DCC_IMPLICIT_STRING_CAST>
 			<DCC_WIDECHAR_REDUCED>false</DCC_WIDECHAR_REDUCED>
 			<DCC_ImageBase>00400000</DCC_ImageBase>
-			<DesignOnlyPackage>false</DesignOnlyPackage>
 			<DCC_WriteableConstants>true</DCC_WriteableConstants>
 			<DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
 			<DCC_Description>TPerlRegEx - Perl Compatible Regular Expressions VCL Component</DCC_Description>
@@ -61,14 +66,8 @@
 			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
 			<GenPackage>true</GenPackage>
 		</PropertyGroup>
-		<PropertyGroup Condition="'$(Base_Win64)'!=''">
-			<Icon_MainIcon>TPerlRegEx_D2010_Icon.ico</Icon_MainIcon>
-		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base_Win32)'!=''">
-			<Icon_MainIcon>TPerlRegEx_D2010_Icon.ico</Icon_MainIcon>
-			<DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
-			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-			<VerInfo_Locale>1033</VerInfo_Locale>
+			<DCC_Namespace>System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
 			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1)'!=''">
@@ -82,6 +81,9 @@
 			<DCC_SYMBOL_PLATFORM>False</DCC_SYMBOL_PLATFORM>
 			<DCC_UNIT_PLATFORM>False</DCC_UNIT_PLATFORM>
 		</PropertyGroup>
+		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
+			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
 			<Version>7.0</Version>
 			<DCC_AssertionsAtRuntime>False</DCC_AssertionsAtRuntime>
@@ -91,6 +93,9 @@
 			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
 			<DCC_SYMBOL_PLATFORM>False</DCC_SYMBOL_PLATFORM>
 			<DCC_UNIT_PLATFORM>False</DCC_UNIT_PLATFORM>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
+			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
 		</PropertyGroup>
 		<ItemGroup>
 			<DelphiCompile Include="$(MainSource)">
@@ -154,8 +159,9 @@
 						<Source Name="MainSource">TPerlRegEx_D2010.dpk</Source>
 					</Source>
 					<Excluded_Packages>
-						<Excluded_Packages Name="$(BDSBIN)\dcloffice2k140.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDSBIN)\dclofficexp140.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDSBIN)\dcloffice2k160.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDSBIN)\dclofficexp160.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\Projects\Bpl\DISQLite3.bpl">The Delphi Inspiration -- DISQLite3 Personal</Excluded_Packages>
 					</Excluded_Packages>
 				</Delphi.Personality>
 				<Platforms>

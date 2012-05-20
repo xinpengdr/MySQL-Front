@@ -34,10 +34,15 @@
 			<CfgParent>Base</CfgParent>
 			<Base>true</Base>
 		</PropertyGroup>
+		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_2)'=='true') or '$(Cfg_2_Win32)'!=''">
+			<Cfg_2_Win32>true</Cfg_2_Win32>
+			<CfgParent>Cfg_2</CfgParent>
+			<Cfg_2>true</Cfg_2>
+			<Base>true</Base>
+		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
 			<DCC_UsePackage>rtl;$(DCC_UsePackage)</DCC_UsePackage>
 			<VerInfo_Locale>1031</VerInfo_Locale>
-			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
 			<DCC_Namespace>Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
 			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
 			<DCC_UNIT_PLATFORM>false</DCC_UNIT_PLATFORM>
@@ -67,21 +72,20 @@
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base_Win64)'!=''">
 			<DCC_UsePackage>vcl;$(DCC_UsePackage)</DCC_UsePackage>
-			<Icon_MainIcon>VCL_Extensions_Icon.ico</Icon_MainIcon>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base_Win32)'!=''">
 			<DCC_UsePackage>vcl;$(DCC_UsePackage)</DCC_UsePackage>
-			<Icon_MainIcon>VCL_Extensions_Icon.ico</Icon_MainIcon>
 			<DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
-			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
 			<VerInfo_Locale>1033</VerInfo_Locale>
-			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1)'!=''">
 			<DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
 			<DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
+			<VerInfo_Locale>1033</VerInfo_Locale>
 		</PropertyGroup>
 		<ItemGroup>
 			<DelphiCompile Include="$(MainSource)">
@@ -108,7 +112,7 @@
 				<CfgParent>Base</CfgParent>
 			</BuildConfiguration>
 		</ItemGroup>
-		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')" Project="$(BDS)\Bin\CodeGear.Delphi.Targets"/>
+		<Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
 		<ProjectExtensions>
 			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
 			<Borland.ProjectType>Package</Borland.ProjectType>
@@ -150,8 +154,9 @@
 						<VersionInfoKeys Name="Comments"/>
 					</VersionInfoKeys>
 					<Excluded_Packages>
-						<Excluded_Packages Name="$(BDSBIN)\dcloffice2k140.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDSBIN)\dclofficexp140.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDSBIN)\dcloffice2k160.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDSBIN)\dclofficexp160.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\Projects\Bpl\DISQLite3.bpl">The Delphi Inspiration -- DISQLite3 Personal</Excluded_Packages>
 					</Excluded_Packages>
 				</Delphi.Personality>
 				<Platforms>
@@ -161,5 +166,5 @@
 			</BorlandProject>
 			<ProjectFileVersion>12</ProjectFileVersion>
 		</ProjectExtensions>
-		<Import Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')" Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj"/>
+		<Import Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj" Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')"/>
 	</Project>

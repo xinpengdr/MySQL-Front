@@ -7,7 +7,7 @@ uses
   Dialogs, StdCtrls, ComCtrls, ActnList, Menus,
   SynEdit, SynMemo,
   Forms_Ext,
-  fBase, fClient, StdCtrls_Ext;
+  fBase, fClient, StdCtrls_Ext, Vcl.ExtCtrls;
 
 type
   TDView = class(TForm_Ext)
@@ -19,6 +19,7 @@ type
     FCheckOptionCascade: TCheckBox;
     FCheckOptionLocal: TCheckBox;
     FDefiner: TLabel;
+    FFields: TListView;
     FLAlgorithm: TLabel;
     FLCheckOption: TLabel;
     FLDefiner: TLabel;
@@ -48,6 +49,8 @@ type
     TSBasics: TTabSheet;
     TSInformations: TTabSheet;
     TSSource: TTabSheet;
+    TSFields: TTabSheet;
+    FSQLWait: TPanel;
     procedure FAlgorithmSelect(Sender: TObject);
     procedure FBHelpClick(Sender: TObject);
     procedure FCheckOptionCascadeClick(Sender: TObject);
@@ -66,12 +69,13 @@ type
     procedure FSourceStatusChange(Sender: TObject;
       Changes: TSynStatusChanges);
     procedure FStmtChange(Sender: TObject);
-    procedure HideTSSource(Sender: TObject);
     procedure TSInformationsShow(Sender: TObject);
+    procedure FSourceChange(Sender: TObject);
   private
     RecordCount: Integer;
     procedure FBOkCheckEnabled(Sender: TObject);
     procedure FormClientEvent(const Event: TCClient.TEvent);
+    procedure Initialized();
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Database: TCDatabase;
@@ -108,6 +112,8 @@ end;
 procedure TDView.CMChangePreferences(var Message: TMessage);
 begin
   Preferences.SmallImages.GetIcon(iiView, Icon);
+
+  FSQLWait.Caption := Preferences.LoadStr(882);
 
   TSBasics.Caption := Preferences.LoadStr(108);
   GBasics.Caption := Preferences.LoadStr(85);
@@ -159,6 +165,14 @@ begin
   GRecordCount.Caption := Preferences.LoadStr(170);
   FLRecordCount.Caption := Preferences.LoadStr(116) + ':';
 
+  TSFields.Caption := Preferences.LoadStr(253);
+  FFields.Column[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
+  FFields.Column[1].Caption := Preferences.LoadStr(69);
+  FFields.Column[2].Caption := Preferences.LoadStr(71);
+  FFields.Column[3].Caption := Preferences.LoadStr(72);
+  FFields.Column[4].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
+  FFields.Column[5].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
+
   TSSource.Caption := Preferences.LoadStr(198);
   FSource.Font.Name := Preferences.SQLFontName;
   FSource.Font.Style := Preferences.SQLFontStyle;
@@ -189,7 +203,7 @@ end;
 procedure TDView.FAlgorithmSelect(Sender: TObject);
 begin
   FBOkCheckEnabled(Sender);
-  HideTSSource(Sender);
+  TSSource.TabVisible := False;
 end;
 
 procedure TDView.FBHelpClick(Sender: TObject);
@@ -202,9 +216,11 @@ var
   I: Integer;
   Parse: TSQLParse;
 begin
-  FBOk.Enabled := (FName.Text <> '') and SQLSingleStmt(FStmt.Text) and SQLCreateParse(Parse, PChar(FStmt.Text), Length(FStmt.Text), Database.Client.ServerVersion) and SQLParseKeyword(Parse, 'SELECT');
+  FBOk.Enabled := PageControl.Visible
+    and (FName.Text <> '')
+    and SQLSingleStmt(FStmt.Text) and SQLCreateParse(Parse, PChar(FStmt.Text), Length(FStmt.Text), Database.Client.ServerVersion) and SQLParseKeyword(Parse, 'SELECT');
   for I := 0 to Database.Tables.Count - 1 do
-    if (lstrcmpi(PChar(FName.Text), PChar(Database.Tables[I].Name)) = 0) and not (not Assigned(View) or (lstrcmpi(PChar(FName.Text), PChar(View.Name)) = 0)) then
+    if (Database.Client.TableNameCmp(FName.Text, Database.Tables[I].Name) = 0) and not (not Assigned(View) or (Database.Client.TableNameCmp(FName.Text, View.Name) = 0)) then
       FBOk.Enabled := False;
 end;
 
@@ -217,7 +233,7 @@ begin
   end;
 
   FBOkCheckEnabled(Sender);
-  HideTSSource(Sender);
+  TSSource.TabVisible := False;
 end;
 
 procedure TDView.FCheckOptionCascadeKeyPress(Sender: TObject;
@@ -235,7 +251,7 @@ begin
   end;
 
   FBOkCheckEnabled(Sender);
-  HideTSSource(Sender);
+  TSSource.TabVisible := False;
 end;
 
 procedure TDView.FCheckOptionKeyPress(Sender: TObject; var Key: Char);
@@ -252,7 +268,7 @@ begin
   end;
 
   FBOkCheckEnabled(Sender);
-  HideTSSource(Sender);
+  TSSource.TabVisible := False;
 end;
 
 procedure TDView.FCheckOptionLocalKeyPress(Sender: TObject; var Key: Char);
@@ -263,7 +279,7 @@ end;
 procedure TDView.FNameChange(Sender: TObject);
 begin
   FBOkCheckEnabled(Sender);
-  HideTSSource(Sender);
+  TSSource.TabVisible := False;
 end;
 
 procedure TDView.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -308,12 +324,7 @@ end;
 procedure TDView.FormClientEvent(const Event: TCClient.TEvent);
 begin
   if (Event.EventType in [ceBuild, ceUpdated]) then
-  begin
-    FStmt.Cursor := crDefault;
-    FStmt.Lines.Text := Trim(SQLWrapStmt(View.Stmt, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10;
-    FSource.Cursor := crDefault;
-    FSource.Lines.Text := View.Source + #13#10;
-  end;
+    Initialized();
 end;
 
 procedure TDView.FormCreate(Sender: TObject);
@@ -348,6 +359,12 @@ begin
 
   Preferences.View.Width := Width;
   Preferences.View.Height := Height;
+
+  FStmt.Lines.Clear();
+
+  FFields.Items.BeginUpdate();
+  FFields.Items.Clear();
+  FFields.Items.EndUpdate();
 
   FSource.Lines.Clear();
   PageControl.ActivePage := TSBasics;
@@ -397,66 +414,48 @@ begin
     FCheckOptionCascade.Checked := False;
     FCheckOptionLocal.Checked := False;
 
-    FStmt.Lines.Text := 'SELECT 1;';
-
     FSource.Lines.Clear();
+
+    PageControl.Visible := True;
+    FSQLWait.Visible := not PageControl.Visible;
   end
   else
   begin
     FName.Text := View.Name;
 
-    case (View.Algorithm) of
-      vaUndefined: FAlgorithm.ItemIndex := 0;
-      vaMerge: FAlgorithm.ItemIndex := 1;
-      vaTemptable: FAlgorithm.ItemIndex := 2;
-      else FAlgorithm.Text := '';
-    end;
-
-    case (View.Security) of
-      seDefiner: FSecurityDefiner.Checked := True;
-      seInvoker: FSecurityInvoker.Checked := True;
-    end;
-
-    FCheckOption.Checked := View.CheckOption <> voNone;
-    FCheckOptionCascade.Checked := View.CheckOption = voCascaded;
-    FCheckOptionLocal.Checked := View.CheckOption = voLocal;
-
-    if (Database.Initialize(View)) then
-    begin
-      FStmt.Cursor := crSQLWait;
-      FStmt.Lines.Clear();
-      FSource.Cursor := crSQLWait;
-      FSource.Lines.Clear();
-    end
-    else
-    begin
-      FStmt.Cursor := crDefault;
-      FStmt.Lines.Text := Trim(SQLWrapStmt(View.Stmt, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10;
-      FSource.Cursor := crDefault;
-      FSource.Lines.Text := View.Source + #13#10;
-    end;
+    PageControl.Visible := not View.Initialize();
+    FSQLWait.Visible := not PageControl.Visible;
+    if (PageControl.Visible) then
+      Initialized();
 
     FDefiner.Caption := View.Definer;
   end;
 
   TSInformations.TabVisible := Assigned(View);
+  TSFields.TabVisible := Assigned(View);
   TSSource.TabVisible := Assigned(View);
 
   FBOk.Enabled := not Assigned(View);
 
   ActiveControl := FBCancel;
-  ActiveControl := FName;
+  if (PageControl.Visible) then
+    ActiveControl := FName;
 end;
 
 procedure TDView.FSecurityClick(Sender: TObject);
 begin
   FBOkCheckEnabled(Sender);
-  HideTSSource(Sender);
+  TSSource.TabVisible := False;
 end;
 
 procedure TDView.FSecurityKeyPress(Sender: TObject; var Key: Char);
 begin
   FSecurityClick(Sender);
+end;
+
+procedure TDView.FSourceChange(Sender: TObject);
+begin
+  TSFields.TabVisible := False;
 end;
 
 procedure TDView.FSourceStatusChange(Sender: TObject;
@@ -468,12 +467,62 @@ end;
 procedure TDView.FStmtChange(Sender: TObject);
 begin
   FBOkCheckEnabled(Sender);
-  HideTSSource(Sender);
+  TSFields.TabVisible := False;
+  TSSource.TabVisible := False;
 end;
 
-procedure TDView.HideTSSource(Sender: TObject);
+procedure TDView.Initialized();
+var
+  I: Integer;
+  Item: TListItem;
+  ViewField: TCViewField;
 begin
-  TSSource.TabVisible := False;
+  case (View.Algorithm) of
+    vaUndefined: FAlgorithm.ItemIndex := 0;
+    vaMerge: FAlgorithm.ItemIndex := 1;
+    vaTemptable: FAlgorithm.ItemIndex := 2;
+    else FAlgorithm.Text := '';
+  end;
+
+  case (View.Security) of
+    seDefiner: FSecurityDefiner.Checked := True;
+    seInvoker: FSecurityInvoker.Checked := True;
+  end;
+
+  FCheckOption.Checked := View.CheckOption <> voNone;
+  FCheckOptionCascade.Checked := View.CheckOption = voCascaded;
+  FCheckOptionLocal.Checked := View.CheckOption = voLocal;
+
+  FStmt.Lines.Text := Trim(SQLWrapStmt(View.Stmt, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10;
+
+  FFields.Items.BeginUpdate();
+  for I := 0 to View.Fields.Count - 1 do
+  begin
+    ViewField := TCViewField(View.Fields[I]);
+    Item := FFields.Items.Add();
+    Item.Caption := ViewField.Name;
+    if (ViewField.FieldType <> mfUnknown) then
+    begin
+      Item.SubItems.Add(ViewField.DBTypeStr());
+      if (ViewField.NullAllowed) then
+        Item.SubItems.Add(Preferences.LoadStr(74))
+      else
+        Item.SubItems.Add(Preferences.LoadStr(75));
+      if (ViewField.AutoIncrement) then
+        Item.SubItems.Add('<auto_increment>')
+      else
+        Item.SubItems.Add(ViewField.Default);
+      if (ViewField.Charset <> View.Database.DefaultCharset) then
+        Item.SubItems.Add(ViewField.Charset);
+    end;
+    Item.ImageIndex := iiViewField;
+  end;
+  FFields.Items.EndUpdate();
+
+  FSource.Lines.Text := View.Source + #13#10;
+
+  PageControl.Visible := True;
+  FSQLWait.Visible := not PageControl.Visible;
 end;
 
 procedure TDView.TSInformationsShow(Sender: TObject);

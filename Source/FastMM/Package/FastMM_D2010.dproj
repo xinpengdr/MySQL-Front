@@ -1,12 +1,11 @@
 ﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 		<PropertyGroup>
-			<ProjectGuid>{5BA1D25E-9D08-4B83-921B-601398EA94FB}</ProjectGuid>
+			<ProjectGuid>{0141547A-1387-459E-8E0E-FD6F0FB2EB63}</ProjectGuid>
 			<MainSource>FastMM_D2010.dpk</MainSource>
-			<Config Condition="'$(Config)'==''">Debug</Config>
-			<DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
 			<ProjectVersion>13.4</ProjectVersion>
 			<FrameworkType>None</FrameworkType>
 			<Base>True</Base>
+			<Config Condition="'$(Config)'==''">Debug</Config>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
 			<TargetedPlatforms>1</TargetedPlatforms>
 			<AppType>Package</AppType>
@@ -14,69 +13,78 @@
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
 			<Base>true</Base>
 		</PropertyGroup>
-		<PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Base)'=='true') or '$(Base_Win64)'!=''">
-			<Base_Win64>true</Base_Win64>
-			<CfgParent>Base</CfgParent>
-			<Base>true</Base>
-		</PropertyGroup>
 		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
 			<Base_Win32>true</Base_Win32>
 			<CfgParent>Base</CfgParent>
 			<Base>true</Base>
 		</PropertyGroup>
-		<PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_1)'!=''">
+		<PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_1)'!=''">
 			<Cfg_1>true</Cfg_1>
 			<CfgParent>Base</CfgParent>
 			<Base>true</Base>
 		</PropertyGroup>
-		<PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_2)'!=''">
+		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_1)'=='true') or '$(Cfg_1_Win32)'!=''">
+			<Cfg_1_Win32>true</Cfg_1_Win32>
+			<CfgParent>Cfg_1</CfgParent>
+			<Cfg_1>true</Cfg_1>
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_2)'!=''">
 			<Cfg_2>true</Cfg_2>
 			<CfgParent>Base</CfgParent>
 			<Base>true</Base>
 		</PropertyGroup>
+		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_2)'=='true') or '$(Cfg_2_Win32)'!=''">
+			<Cfg_2_Win32>true</Cfg_2_Win32>
+			<CfgParent>Cfg_2</CfgParent>
+			<Cfg_2>true</Cfg_2>
+			<Base>true</Base>
+		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
-			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
 			<VerInfo_Locale>1031</VerInfo_Locale>
-			<DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;$(DCC_Namespace)</DCC_Namespace>
-			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+			<RuntimeOnlyPackage>true</RuntimeOnlyPackage>
+			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+			<DCC_DcpOutput>..\Bin</DCC_DcpOutput>
+			<DCC_BplOutput>$(BDS)\Projects\Bpl</DCC_BplOutput>
 			<DCC_Define>FullDebugModeInIDE;ClearLogFileOnStartup;$(DCC_Define)</DCC_Define>
 			<DCC_AssertionsAtRuntime>false</DCC_AssertionsAtRuntime>
 			<DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
 			<DCC_IOChecking>false</DCC_IOChecking>
 			<DCC_DebugInformation>false</DCC_DebugInformation>
 			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
-			<DesignOnlyPackage>false</DesignOnlyPackage>
-			<DCC_ImageBase>00400000</DCC_ImageBase>
-			<DCC_DependencyCheckOutputName>c:\program files\embarcadero\rad studio\7.0\Projects\Bpl\FastMM_D2010.bpl</DCC_DependencyCheckOutputName>
-			<RuntimeOnlyPackage>true</RuntimeOnlyPackage>
-			<DCC_BplOutput>$(BDS)\Projects\Bpl</DCC_BplOutput>
-			<DCC_Platform>x86</DCC_Platform>
-			<DCC_S>false</DCC_S>
-			<DCC_N>true</DCC_N>
-			<DCC_K>false</DCC_K>
 			<GenDll>true</GenDll>
-			<DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
-			<DCC_DcpOutput>..\Bin</DCC_DcpOutput>
-			<DCC_DcuOutput>..\Bin</DCC_DcuOutput>
+			<DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
 			<GenPackage>true</GenPackage>
-			<DCC_F>false</DCC_F>
+			<DCC_DcuOutput>..\Bin</DCC_DcuOutput>
 			<DCC_E>false</DCC_E>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Base_Win64)'!=''">
-			<Icon_MainIcon>FastMM_D2010_Icon.ico</Icon_MainIcon>
+			<DCC_N>false</DCC_N>
+			<DCC_S>false</DCC_S>
+			<DCC_F>false</DCC_F>
+			<DCC_K>false</DCC_K>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base_Win32)'!=''">
-			<Icon_MainIcon>FastMM_D2010_Icon.ico</Icon_MainIcon>
-			<DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
-			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
 			<VerInfo_Locale>1033</VerInfo_Locale>
-			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+			<DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1)'!=''">
-			<DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
+			<DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+			<DCC_Optimize>false</DCC_Optimize>
+			<DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
+			<DCC_DebugInfoInExe>true</DCC_DebugInfoInExe>
+			<DCC_RemoteDebug>true</DCC_RemoteDebug>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
+			<VerInfo_Locale>1033</VerInfo_Locale>
+			<DCC_RemoteDebug>false</DCC_RemoteDebug>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
-			<DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+			<DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
+			<DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
+			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
+			<DCC_DebugInformation>false</DCC_DebugInformation>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
+			<VerInfo_Locale>1033</VerInfo_Locale>
 		</PropertyGroup>
 		<ItemGroup>
 			<DelphiCompile Include="$(MainSource)">
@@ -85,19 +93,19 @@
 			<DCCReference Include="rtl.dcp"/>
 			<DCCReference Include="..\Source\FastMM4.pas"/>
 			<DCCReference Include="..\Source\FastMM4Messages.pas"/>
-			<BuildConfiguration Include="Debug">
+			<None Include="..\Source\FastMM4Options.inc"/>
+			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>
 			</BuildConfiguration>
 			<BuildConfiguration Include="Base">
 				<Key>Base</Key>
 			</BuildConfiguration>
-			<BuildConfiguration Include="Release">
+			<BuildConfiguration Include="Debug">
 				<Key>Cfg_1</Key>
 				<CfgParent>Base</CfgParent>
 			</BuildConfiguration>
 		</ItemGroup>
-		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')" Project="$(BDS)\Bin\CodeGear.Delphi.Targets"/>
 		<ProjectExtensions>
 			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
 			<Borland.ProjectType>Package</Borland.ProjectType>
@@ -106,11 +114,6 @@
 					<Source>
 						<Source Name="MainSource">FastMM_D2010.dpk</Source>
 					</Source>
-					<Parameters>
-						<Parameters Name="UseLauncher">False</Parameters>
-						<Parameters Name="LoadAllSymbols">True</Parameters>
-						<Parameters Name="LoadUnspecifiedSymbols">False</Parameters>
-					</Parameters>
 					<VersionInfo>
 						<VersionInfo Name="IncludeVerInfo">True</VersionInfo>
 						<VersionInfo Name="AutoIncBuild">False</VersionInfo>
@@ -138,7 +141,13 @@
 						<VersionInfoKeys Name="ProductVersion">1.0.0.0</VersionInfoKeys>
 						<VersionInfoKeys Name="Comments"/>
 					</VersionInfoKeys>
+					<Excluded_Packages>
+						<Excluded_Packages Name="$(BDSBIN)\dcloffice2k160.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDSBIN)\dclofficexp160.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\Projects\Bpl\DISQLite3.bpl">The Delphi Inspiration -- DISQLite3 Personal</Excluded_Packages>
+					</Excluded_Packages>
 				</Delphi.Personality>
+				<Deployment/>
 				<Platforms>
 					<Platform value="Win64">False</Platform>
 					<Platform value="OSX32">False</Platform>
@@ -147,5 +156,6 @@
 			</BorlandProject>
 			<ProjectFileVersion>12</ProjectFileVersion>
 		</ProjectExtensions>
-		<Import Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')" Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj"/>
+		<Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
+		<Import Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj" Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')"/>
 	</Project>

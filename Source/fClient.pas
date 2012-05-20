@@ -205,7 +205,7 @@ type
     property Database: TCDatabase read FDatabase;
     constructor Create(const ADatabase: TCDatabase; const AName: string = ''); reintroduce; virtual;
     function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; virtual; abstract;
-    function InitializeSource(): Boolean; virtual;
+    function Initialize(): Boolean; override;
   end;
 
   TCDBObjects = class(TCObjects)
@@ -695,6 +695,11 @@ type
     procedure SetSource(const ASource: string); override;
     function SQLGetSource(): string; override;
   public
+    procedure Assign(const Source: TCTable); override;
+    procedure Clear(); override;
+    constructor Create(const ADatabase: TCDatabase = nil; const AName: string = ''); override;
+    destructor Destroy(); override;
+    function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; overload; override;
     property Algorithm: TAlgorithm read FAlgorithm write FAlgorithm;
     property CheckOption: TCheckOption read FCheckOption write FCheckOption;
     property Comment: string read FComment write FComment;
@@ -702,11 +707,6 @@ type
     property Security: TCSecurity read FSecurity write FSecurity;
     property Stmt: string read FStmt write FStmt;
     property SynMemo: TComponent read FSynMemo write FSynMemo;
-    procedure Assign(const Source: TCTable); override;
-    procedure Clear(); override;
-    constructor Create(const ADatabase: TCDatabase = nil; const AName: string = ''); override;
-    destructor Destroy(); override;
-    function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; overload; override;
   end;
 
   TCTables = class(TCDBObjects)
@@ -2094,7 +2094,7 @@ begin
   FDatabase := ADatabase;
 end;
 
-function TCDBObject.InitializeSource(): Boolean;
+function TCDBObject.Initialize(): Boolean;
 begin
   Result := Database.InitializeSources(Self);
 end;
@@ -3728,7 +3728,7 @@ end;
 
 function TCTable.Initialize(): Boolean;
 begin
-  Result := Database.Initialize(Self);
+  Result := Database.InitializeSources(Self);
 end;
 
 function TCTable.Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean;
@@ -4978,7 +4978,7 @@ procedure TCView.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create View'));
 
-  Client.ExecuteEvent(ceUpdated, Self, Self, Database);
+  // Client.ExecuteEvent will be called from TCTables.BuildViewFields
 end;
 
 procedure TCView.SetSource(const ASource: string);
@@ -5150,25 +5150,30 @@ end;
 
 procedure TCTables.BuildViewFields(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean);
 var
-  Found: Boolean;
+  FirstField: Boolean;
   NewField: TCViewField;
   Parse: TSQLParse;
-  Update: Boolean;
   View: TCView;
 begin
-  Found := False; Update := False; View := nil;
+  View := nil; FirstField := True;
 
   if (not DataSet.IsEmpty()) then
     repeat
+      if (Database.ViewByName(DataSet.FieldByName('TABLE_NAME').AsString) <> View) then
+      begin
+        FirstField := True;
+        if (Assigned(View)) then
+          Client.ExecuteEvent(ceUpdated, View, View, Database);
+      end;
+
       View := Database.ViewByName(DataSet.FieldByName('TABLE_NAME').AsString);
 
-      if (Assigned(View) and (DataSet.FieldByName('COLUMN_NAME').AsString <> '')) then
+      if (Assigned(View)) then
       begin
-        if (not Found) then
+        if (FirstField) then
         begin
-          Update := View.Fields.Count > 0;
           View.Fields.Clear();
-          Found := True;
+          FirstField := False;
         end;
 
         NewField := TCViewField.Create(View.Fields);
@@ -5195,11 +5200,8 @@ begin
       end;
     until (not DataSet.FindNext());
 
-  if (Found) then
-    if ((DataSet.RecordCount = 1) and Update) then
-      Client.ExecuteEvent(ceUpdated, Self, View, Database)
-    else
-      Client.ExecuteEvent(ceBuild, Self, nil, Database);
+  if (Assigned(View)) then
+    Client.ExecuteEvent(ceUpdated, View, View, Database);
 end;
 
 procedure TCTables.Clear();
@@ -6996,7 +6998,7 @@ begin
   begin
     if (not TCDBObject(Param).ActualSource) then
       SQL := SQL + TCDBObject(Param).SQLGetSource();
-    if (not TCTable(Param).Actual) then
+    if ((Param is TCBaseTable) and not TCTable(Param).Actual) then
       SQL := SQL + Tables.SQLGetItems(TCTable(Param).Name);
   end
   else if (Param is TCTrigger) then
@@ -7021,6 +7023,7 @@ begin
   Result := SQL <> '';
   if (Result) then
     Client.SendSQL(SQL, Client.ClientResult);
+  Result := Result and Client.Asynchron;
 end;
 
 function TCDatabase.InitializeSources(const Param: TObject = nil): Boolean;
@@ -7042,7 +7045,11 @@ begin
   if (Param is TCDBObject) then
   begin
     if (not TCDBObject(Param).ActualSource) then
+    begin
       SQL := SQL + TCDBObject(Param).SQLGetSource();
+      if (Param is TCView) then
+        FetchViewFields := True;
+    end;
   end
   else if (Param is TList) then
   begin
@@ -7126,6 +7133,7 @@ begin
   Result := SQL <> '';
   if (Result) then
     Client.SendSQL(SQL, Client.ClientResult);
+  Result := Result and Client.Asynchron;
 end;
 
 function TCDatabase.OptimizeTables(const TableNames: array of string): Boolean;
@@ -11220,6 +11228,7 @@ begin
   Result := SQL <> '';
   if (Result) then
     SendSQL(SQL, ClientResult);
+  Result := Result and Asynchron;
 end;
 
 procedure TCClient.MonitorLog(const Sender: TObject; const Text: PChar; const Len: Integer; const ATraceType: TMySQLMonitor.TTraceType);

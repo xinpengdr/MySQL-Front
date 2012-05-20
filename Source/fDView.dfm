@@ -8,6 +8,7 @@ object DView: TDView
   ClientHeight = 377
   ClientWidth = 337
   Color = clBtnFace
+  DoubleBuffered = True
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -12
@@ -24,27 +25,16 @@ object DView: TDView
     377)
   PixelsPerInch = 106
   TextHeight = 13
-  object FBOk: TButton
-    Left = 167
-    Top = 344
-    Width = 75
-    Height = 25
-    Anchors = [akRight, akBottom]
-    Caption = 'FBOk'
-    Default = True
-    ModalResult = 1
-    TabOrder = 2
-  end
-  object FBCancel: TButton
-    Left = 255
-    Top = 344
-    Width = 75
-    Height = 25
-    Anchors = [akRight, akBottom]
-    Cancel = True
-    Caption = 'FBCancel'
-    ModalResult = 2
-    TabOrder = 3
+  object FSQLWait: TPanel
+    Left = 8
+    Top = 8
+    Width = 321
+    Height = 325
+    Cursor = crSQLWait
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    Caption = 'FSQLWait'
+    TabOrder = 0
   end
   object PageControl: TPageControl
     Left = 8
@@ -54,9 +44,13 @@ object DView: TDView
     ActivePage = TSBasics
     Anchors = [akLeft, akTop, akRight, akBottom]
     HotTrack = True
-    TabOrder = 0
+    TabOrder = 1
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         297)
@@ -115,7 +109,6 @@ object DView: TDView
           Height = 21
           Style = csDropDownList
           TabOrder = 1
-          OnChange = HideTSSource
           OnSelect = FAlgorithmSelect
         end
         object FStmt: TSynMemo
@@ -207,6 +200,10 @@ object DView: TDView
     object TSInformations: TTabSheet
       Caption = 'TSInformations'
       OnShow = TSInformationsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         297)
@@ -267,8 +264,61 @@ object DView: TDView
         end
       end
     end
+    object TSFields: TTabSheet
+      Caption = 'TSFields'
+      ImageIndex = 3
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
+      DesignSize = (
+        313
+        297)
+      object FFields: TListView
+        Left = 8
+        Top = 8
+        Width = 297
+        Height = 273
+        Anchors = [akLeft, akTop, akRight, akBottom]
+        Columns = <
+          item
+            AutoSize = True
+            Caption = 'Name'
+          end
+          item
+            AutoSize = True
+            Caption = 'Type'
+          end
+          item
+            AutoSize = True
+            Caption = 'NULL'
+          end
+          item
+            AutoSize = True
+            Caption = 'Default'
+          end
+          item
+            AutoSize = True
+            Caption = 'Extras'
+          end
+          item
+            AutoSize = True
+            Caption = 'Comment'
+          end>
+        ColumnClick = False
+        HideSelection = False
+        MultiSelect = True
+        ReadOnly = True
+        TabOrder = 0
+        ViewStyle = vsReport
+      end
+    end
     object TSSource: TTabSheet
       Caption = 'TSSource'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         297)
@@ -297,6 +347,7 @@ object DView: TDView
         RightEdgeColor = clWindow
         ScrollHintFormat = shfTopToBottom
         WantReturns = False
+        OnChange = FSourceChange
         OnStatusChange = FSourceStatusChange
       end
     end
@@ -308,8 +359,30 @@ object DView: TDView
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'FBHelp'
-    TabOrder = 1
+    TabOrder = 2
     OnClick = FBHelpClick
+  end
+  object FBOk: TButton
+    Left = 167
+    Top = 344
+    Width = 75
+    Height = 25
+    Anchors = [akRight, akBottom]
+    Caption = 'FBOk'
+    Default = True
+    ModalResult = 1
+    TabOrder = 3
+  end
+  object FBCancel: TButton
+    Left = 255
+    Top = 344
+    Width = 75
+    Height = 25
+    Anchors = [akRight, akBottom]
+    Cancel = True
+    Caption = 'FBCancel'
+    ModalResult = 2
+    TabOrder = 4
   end
   object MSource: TPopupMenu
     Left = 96

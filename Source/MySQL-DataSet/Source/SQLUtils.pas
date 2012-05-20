@@ -1526,7 +1526,7 @@ begin
     DatabaseName := ObjectName;
     ObjectName := SQLParseValue(Handle);
   end;
-  Result := (DatabaseName <> '') and (ObjectName <> '');
+  Result := (ObjectName <> '');
 end;
 
 function SQLParseValue(var Handle: TSQLParse; const TrimAfterValue: Boolean = True): string;
@@ -2369,7 +2369,7 @@ end;
 //  SQL: string;
 //  DDLStmt: TSQLDDLStmt;
 //begin
-//  SQL := 'DROP DATABASE `neuedatenbank`;'#$D#$A;
+//  SQL := 'CREATE PROCEDURE `NeueProzedur`(`Param` int(11))'#$D#$A'BEGIN'#$D#$A'END;';
 //  SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), 50500);
 end.
 

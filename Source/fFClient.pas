@@ -243,7 +243,6 @@ type
     mtDataBrowser: TMenuItem;
     mtDiagram: TMenuItem;
     MText: TPopupMenu;
-    mtObjectBrowser: TMenuItem;
     mtObjectIDE: TMenuItem;
     MToolBar: TPopupMenu;
     mtQueryBuilder: TMenuItem;
@@ -744,6 +743,7 @@ type
     procedure aFSaveExecute(Sender: TObject);
     procedure AfterConnect(Sender: TObject);
     procedure AfterExecuteSQL(Sender: TObject);
+    function ApplicationHelp(Command: Word; Data: THelpEventData; var CallHelp: Boolean): Boolean;
     procedure aViewExecute(Sender: TObject);
     procedure aVRefreshAllExecute(Sender: TObject);
     procedure aVRefreshExecute(Sender: TObject);
@@ -838,6 +838,7 @@ type
     procedure SetSelectedItem(const AItem: string);
     procedure SetSelectedTable(const ATableName: string);
     procedure SQLError(DataSet: TDataSet; E: EDatabaseError; var Action: TDataAction);
+    procedure SQLHelp();
     procedure StoreFListColumnWidths();
     procedure SynMemoApllyPreferences(const SynMemo: TSynMemo);
     procedure SynMemoPrintExecute(Sender: TObject);
@@ -884,7 +885,6 @@ type
     procedure aEFindExecute(Sender: TObject);
     procedure aEReplaceExecute(Sender: TObject);
     procedure aETransferExecute(Sender: TObject);
-    procedure aHIndexExecute(Sender: TObject);
     procedure CrashRescue();
     procedure MetadataProviderAfterConnect(Sender: TObject);
     procedure MoveToAddress(const ADiff: Integer);
@@ -1540,6 +1540,7 @@ var
   Empty: Boolean;
   I: Integer;
   NewActiveControl: TWinControl;
+  OldControl: TWinControl;
   Parse: TSQLParse;
   Sibling: TTreeNode;
   SQL: string;
@@ -1549,27 +1550,30 @@ begin
   begin
     LeftMousePressed := False;
 
-    if (Sender <> Self) then
-    begin
-      PContentChange(Sender);
-      PContentRefresh(Sender);
+    OldControl := Window.ActiveControl;
 
-      case (View) of
-        avObjectBrowser: NewActiveControl := FList;
-        avDataBrowser: NewActiveControl := FGrid;
-        avObjectIDE: NewActiveControl := SynMemo;
-        avQueryBuilder: NewActiveControl := FBuilderActiveWorkArea();
-        avSQLEditor: NewActiveControl := FSQLEditor;
-        avDiagram: NewActiveControl := Workbench;
-        else NewActiveControl := nil;
-      end;
+    PContentChange(Sender);
+    PContentRefresh(Sender);
 
-      Control := NewActiveControl;
-      while (Assigned(Control) and Control.Visible and Control.Enabled and Assigned(Control.Parent)) do
-        Control := Control.Parent;
-      if (Assigned(Control) and Control.Visible and Control.Enabled) then
-        Window.ActiveControl := NewActiveControl;
+    while (Assigned(OldControl) and OldControl.Visible and OldControl.Enabled and Assigned(OldControl.Parent)) do
+      OldControl := OldControl.Parent;
+
+    case (View) of
+      avObjectBrowser: NewActiveControl := FList;
+      avDataBrowser: NewActiveControl := FGrid;
+      avObjectIDE: NewActiveControl := SynMemo;
+      avQueryBuilder: NewActiveControl := FBuilderActiveWorkArea();
+      avSQLEditor: NewActiveControl := FSQLEditor;
+      avDiagram: NewActiveControl := Workbench;
+      else NewActiveControl := nil;
     end;
+
+    Control := NewActiveControl;
+    while (Assigned(Control) and Control.Visible and Control.Enabled and Assigned(Control.Parent)) do
+      Control := Control.Parent;
+
+    if (not Assigned(OldControl) or not OldControl.Visible or not OldControl.Enabled and (Assigned(Control) and Control.Visible and Control.Enabled)) then
+      Window.ActiveControl := NewActiveControl;
 
 
     Empty := not Assigned(SynMemo) or (SynMemo.Lines.Count <= 1) and (SynMemo.Text = ''); // Takes a lot of time
@@ -1598,7 +1602,6 @@ begin
 
     UsedView := View;
     case (View) of
-      avObjectBrowser: if (not (ttObjectBrowser in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttObjectBrowser); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
       avDataBrowser: if (not (ttDataBrowser in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttDataBrowser); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
       avObjectIDE: if (not (ttObjectIDE in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttObjectIDE); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
       avQueryBuilder: if (not (ttQueryBuilder in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttQueryBuilder); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
@@ -1703,13 +1706,14 @@ end;
 
 procedure TFClient.AddressChanging(const Sender: TObject; const NewAddress: String; var AllowChange: Boolean);
 var
+  NotFound: Boolean;
   Database: TCDatabase;
   DBObject: TCDBObject;
   I: Integer;
   S: string;
   URI: TUURI;
 begin
-  URI := TUURI.Create(NewAddress);
+  URI := TUURI.Create(NewAddress); NotFound := False;
 
   if (URI.Scheme <> 'mysql') then
     AllowChange := False
@@ -1736,47 +1740,55 @@ begin
     MessageBeep(MB_ICONERROR)
   else
   begin
-    repeat
-      AllowChange := True;
-      if (not Client.Actual) then
-        AllowChange := not Client.Initialize()
-      else if ((URI.Database = '') and (URI.Param['view'] = Null) and (URI.Param['system'] = Null)) then
+    AllowChange := not Client.Initialize();
+    if (AllowChange) then
+      if ((URI.Database = '') and (URI.Param['view'] = Null) and (URI.Param['system'] = Null)) then
       begin
         for I := 0 to Client.Databases.Count - 1 do
-          if (AllowChange and not Client.Databases[I].Actual) then
-            AllowChange := not Client.Databases[I].Initialize();
+          AllowChange := AllowChange and not Client.Databases[I].Initialize();
       end
       else if (URI.Database <> '') then
       begin
         Database := Client.DatabaseByName(URI.Database);
         if (not Assigned(Database)) then
-          begin AllowChange := False; Wanted.Clear(); break; end
-        else if (not Database.Actual) then
-          AllowChange := not Database.Initialize()
-        else if ((URI.Param['view'] = 'editor') and not Database.ActualSources) then
-          AllowChange := not Database.InitializeSources()
+          NotFound := True
         else
         begin
-          if (URI.Table <> '') then
-            DBObject := Database.TableByName(URI.Table)
-          else if ((URI.Param['objecttype'] = 'procedure') and (URI.Param['object'] <> Null)) then
-            DBObject := Database.ProcedureByName(URI.Param['object'])
-          else if ((URI.Param['objecttype'] = 'function') and (URI.Param['object'] <> Null)) then
-            DBObject := Database.FunctionByName(URI.Param['object'])
-          else if ((URI.Param['objecttype'] = 'trigger') and (URI.Param['object'] <> Null)) then
-            DBObject := Database.EventByName(URI.Param['object'])
-          else if ((URI.Param['objecttype'] = 'event') and (URI.Param['object'] <> Null)) then
-            DBObject := Database.EventByName(URI.Param['object'])
-          else
-            DBObject := nil;
+          AllowChange := not Database.Initialize();
+          if (AllowChange) then
+            if (URI.Param['view'] = 'editor') then
+              AllowChange := not Database.InitializeSources()
+            else
+            begin
+              if (URI.Table <> '') then
+                DBObject := Database.TableByName(URI.Table)
+              else if ((URI.Param['objecttype'] = 'procedure') and (URI.Param['object'] <> Null)) then
+                DBObject := Database.ProcedureByName(URI.Param['object'])
+              else if ((URI.Param['objecttype'] = 'function') and (URI.Param['object'] <> Null)) then
+                DBObject := Database.FunctionByName(URI.Param['object'])
+              else if ((URI.Param['objecttype'] = 'trigger') and (URI.Param['object'] <> Null)) then
+                DBObject := Database.EventByName(URI.Param['object'])
+              else if ((URI.Param['objecttype'] = 'event') and (URI.Param['object'] <> Null)) then
+                DBObject := Database.EventByName(URI.Param['object'])
+              else
+                DBObject := nil;
 
-          if (Assigned(DBObject) and not DBObject.ActualSource) then
-            AllowChange := not DBObject.InitializeSource();
+              if (Assigned(DBObject)) then
+                AllowChange := not DBObject.Initialize()
+              else if ((URI.Table = '') and (URI.Param['objecttype'] = Null)) then
+                AllowChange := True
+              else
+                NotFound := True;
+            end;
         end;
       end;
-      if (Client.Asynchron and not AllowChange) then
-        Wanted.Address := NewAddress;
-    until (Client.Asynchron or AllowChange);
+    if (NotFound) then
+    begin
+      AllowChange := False;
+      Wanted.Clear();
+    end
+    else if (not AllowChange and Client.Asynchron) then
+      Wanted.Address := NewAddress;
   end;
 
   URI.Free();
@@ -2733,11 +2745,8 @@ begin
                 TableNames[Length(TableNames) - 1] := FList.Items[I].Caption;
               end;
 
-            if ((Sender is TAction) and not Database.Actual) then
-            begin
-              Wanted.Action := TAction(Sender);
-              Database.Initialize();
-            end
+            if ((Sender is TAction) and Database.Initialize()) then
+              Wanted.Action := TAction(Sender)
             else
               for I := 0 to FList.Items.Count - 1 do
                 if (FList.Items[I].Selected) then
@@ -3211,71 +3220,6 @@ begin
     Wanted.Execute();
 end;
 
-procedure TFClient.aHIndexExecute(Sender: TObject);
-var
-  Cancel: Boolean;
-  Control: TWinControl;
-  DataSet: TMySQLQuery;
-begin
-  Wanted.Clear();
-
-  if (not (Window.ActiveControl is TSynMemo) or (Client.ServerVersion < 40100)) then
-  begin
-    Control := Window.ActiveControl;
-    if (not Assigned(Control)) then
-      Application.HelpCommand(HELP_CONTENTS, 0)
-    else
-    begin
-      while ((Control.HelpContext = 0) and Assigned(Control.Parent)) do Control := Control.Parent;
-      Application.HelpCommand(HELP_CONTEXT, Control.HelpContext);
-    end;
-  end
-  else
-  begin
-    DataSet := TMySQLQuery.Create(Self);
-    DataSet.Connection := Client;
-    if (SynMemo.SelText <> '') then
-      DataSet.CommandText := 'HELP ' + SQLEscape(SynMemo.SelText)
-    else if (SynMemo.WordAtCursor <> '') then
-      DataSet.CommandText := 'HELP ' + SQLEscape(SynMemo.WordAtCursor)
-    else
-      DataSet.CommandText := 'HELP ' + SQLEscape('CONTENTS');
-    DataSet.Open();
-
-    if (not DataSet.Active or DataSet.IsEmpty() or not Assigned(DataSet.FindField('name'))) then
-      MessageBeep(MB_ICONERROR)
-    else
-    begin
-      Cancel := False;
-      while (not Cancel and not Assigned(DataSet.FindField('description')) and not DataSet.IsEmpty()) do
-      begin
-        repeat
-          SetLength(DSelection.Values, Length(DSelection.Values) + 1);
-          DSelection.Values[Length(DSelection.Values) - 1] := DataSet.FieldByName('name').AsString;
-        until (not DataSet.FindNext());
-        Cancel := not DSelection.Execute();
-        if (not Cancel) then
-        begin
-          DataSet.Close();
-          DataSet.CommandText := 'HELP ' + SQLEscape(DSelection.Selected);
-          DataSet.Open();
-        end;
-      end;
-
-      if (Assigned(DataSet.FindField('description'))) then
-      begin
-        DSQLHelp.Title := DataSet.FieldByName('name').AsString;
-        DSQLHelp.Description := Trim(DataSet.FieldByName('description').AsString);
-        DSQLHelp.Example := Trim(DataSet.FieldByName('example').AsString);
-        DSQLHelp.ManualURL := Client.Account.ManualURL;
-        DSQLHelp.Refresh();
-      end;
-    end;
-
-    DataSet.Free();
-  end;
-end;
-
 procedure TFClient.aHRunClick(Sender: TObject);
 var
   SQL: string;
@@ -3371,6 +3315,17 @@ begin
     if (Assigned(FBookmarks.Selected)) then
       ShellExecute(Application.Handle, 'open', PChar(TFileName(Application.ExeName)), PChar(string(Client.Account.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption).URI)), '', SW_SHOW);
   end;
+end;
+
+function TFClient.ApplicationHelp(Command: Word; Data: THelpEventData; var CallHelp: Boolean): Boolean;
+begin
+  if ((Window.ActiveControl = SynMemo) and (Client.ServerVersion >= 40100)) then
+  begin
+    CallHelp := False;
+    SQLHelp();
+  end;
+
+  Result := True;
 end;
 
 procedure TFClient.aPResultExecute(Sender: TObject);
@@ -3472,7 +3427,7 @@ begin
   else
     NewView := View;
 
-  AllowChange := NewView <> View;
+  AllowChange := True;
   if (AllowChange and Assigned(FGrid.DataSource.DataSet) and FGrid.DataSource.DataSet.Active) then
     try
       if ((Window.ActiveControl = FText) or (Window.ActiveControl = FRTF) or (Window.ActiveControl = FHexEditor)) then
@@ -3482,16 +3437,25 @@ begin
       AllowChange := False;
     end;
 
+  tbObjectBrowser.Down := MainAction('aVObjectBrowser').Checked;
+  tbDataBrowser.Down := MainAction('aVDataBrowser').Checked;
+  tbObjectIDE.Down := MainAction('aVObjectIDE').Checked;
+  tbQueryBuilder.Down := MainAction('aVQueryBuilder').Checked;
+  tbSQLEditor.Down := MainAction('aVSQLEditor').Checked;
+  tbDiagram.Down := MainAction('aVDiagram').Checked;
+
   if (AllowChange) then
-    View := NewView
-  else
   begin
-    tbObjectBrowser.Down := MainAction('aVObjectBrowser').Checked;
-    tbDataBrowser.Down := MainAction('aVDataBrowser').Checked;
-    tbObjectIDE.Down := MainAction('aVObjectIDE').Checked;
-    tbQueryBuilder.Down := MainAction('aVQueryBuilder').Checked;
-    tbSQLEditor.Down := MainAction('aVSQLEditor').Checked;
-    tbDiagram.Down := MainAction('aVDiagram').Checked;
+    View := NewView;
+
+    case (View) of
+      avObjectBrowser: if (PList.Visible) then Window.ActiveControl := FList;
+      avDataBrowser: if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
+      avObjectIDE: if (PSQLEditor.Visible and Assigned(SynMemo)) then Window.ActiveControl := SynMemo;
+      avQueryBuilder: if (PBuilder.Visible and Assigned(FBuilderActiveWorkArea())) then Window.ActiveControl := FBuilderActiveWorkArea();
+      avSQLEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditor;
+      avDiagram: if (PWorkbench.Visible) then Window.ActiveControl := Workbench;
+    end;
   end;
 end;
 
@@ -3930,14 +3894,12 @@ begin
   FSQLHistory.Font.Size := Preferences.SQLFontSize;
   FSQLHistory.Font.Charset := Preferences.SQLFontCharset;
 
-  mtObjectBrowser.Caption := tbObjectBrowser.Caption;
   mtDataBrowser.Caption := tbDataBrowser.Caption;
   mtObjectIDE.Caption := tbObjectIDE.Caption;
   mtQueryBuilder.Caption := tbQueryBuilder.Caption;
   mtSQLEditor.Caption := tbSQLEditor.Caption;
   mtDiagram.Caption := tbDiagram.Caption;
 
-  tbObjectBrowser.Visible := ttObjectBrowser in Preferences.ToolbarTabs;
   tbDataBrowser.Visible := ttDataBrowser in Preferences.ToolbarTabs;
   tbObjectIDE.Visible := ttObjectIDE in Preferences.ToolbarTabs;
   tbQueryBuilder.Visible := ttQueryBuilder in Preferences.ToolbarTabs;
@@ -4192,6 +4154,8 @@ begin
   FormatSettings.DateSeparator := Client.FormatSettings.DateSeparator;
   FormatSettings.TimeSeparator := Client.FormatSettings.TimeSeparator;
 
+  Application.OnHelp := ApplicationHelp;
+
   Client.BeforeConnect := BeforeConnect;
   Client.AfterConnect := AfterConnect;
   Client.BeforeExecuteSQL := BeforeExecuteSQL;
@@ -4338,6 +4302,8 @@ begin
 
   ActiveControlOnDeactivate := Window.ActiveControl;
 
+  Application.OnHelp := nil;
+
   MainAction('aSAddress').Enabled := False;
   MainAction('aVObjectBrowser').Enabled := False;
   MainAction('aVDataBrowser').Enabled := False;
@@ -4460,14 +4426,14 @@ begin
     else if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
   end
   else
-  begin
-    if ((View = avObjectBrowser) and PList.Visible) then Window.ActiveControl := FList
-    else if ((View = avDataBrowser) and PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid
-    else if ((View = avObjectIDE) and PSQLEditor.Visible and Assigned(SynMemo)) then Window.ActiveControl := SynMemo
-    else if ((View = avQueryBuilder) and PBuilder.Visible and Assigned(FBuilderActiveWorkArea())) then Window.ActiveControl := FBuilderActiveWorkArea()
-    else if ((View = avSQLEditor) and PSQLEditor.Visible) then Window.ActiveControl := FSQLEditor
-    else if ((View = avDiagram) and PWorkbench.Visible) then Window.ActiveControl := Workbench;
-  end;
+    case (View) of
+      avObjectBrowser: if (PList.Visible) then Window.ActiveControl := FList;
+      avDataBrowser: if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
+      avObjectIDE: if (PSQLEditor.Visible and Assigned(SynMemo)) then Window.ActiveControl := SynMemo;
+      avQueryBuilder: if (PBuilder.Visible and Assigned(FBuilderActiveWorkArea())) then Window.ActiveControl := FBuilderActiveWorkArea();
+      avSQLEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditor;
+      avDiagram: if (PWorkbench.Visible) then Window.ActiveControl := Workbench;
+    end;
 end;
 
 procedure TFClient.CMRemoveWForeignKey(var Message: TMessage);
@@ -8298,16 +8264,11 @@ begin
   if (Node.HasChildren) then
   begin
     case (Node.ImageIndex) of
-      iiServer:
-        if (not Client.Actual) then
-          AllowExpansion := not Client.Initialize();
       iiDatabase,
       iiSystemDatabase:
         begin
           Database := Client.DatabaseByName(Node.Text);
-
-          if (not Database.Actual) then
-            AllowExpansion := not Database.Initialize();
+          AllowExpansion := not Database.Initialize();
         end;
       iiBaseTable,
       iiSystemView,
@@ -8315,9 +8276,7 @@ begin
         begin
           Database := Client.DatabaseByName(Node.Parent.Text);
           Table := Database.TableByName(Node.Text);
-
-          if (not Table.ActualSource) then
-            AllowExpansion := not Table.InitializeSource();
+          AllowExpansion := not Table.Initialize();
         end;
     end;
 
@@ -8363,7 +8322,7 @@ begin
     Node.ImageIndex := iiServer;
   end;
 
-  if (Event.Sender is TCClient) then
+  if (Event.Sender is TCDatabases) then
   begin
     Node := FNavigator.Items.getFirstNode();
 
@@ -8379,10 +8338,6 @@ begin
       FNavigator.Items.AddChild(Node, Preferences.LoadStr(22)).ImageIndex := iiVariables;
       Node.Expand(False);
     end;
-  end
-  else if (Event.Sender is TCDatabases) then
-  begin
-    Node := FNavigator.Items.getFirstNode();
 
     if (Event.EventType in [ceBuild, ceDroped]) then
     begin
@@ -9912,7 +9867,7 @@ begin
   begin
     Table := Database.BaseTableByName(TWTable(Control).Caption);
     if (Assigned(Table)) then
-      Table.InitializeSource();
+      Table.Initialize();
   end
   else if (Control is TWForeignKey) then
   begin
@@ -9936,7 +9891,7 @@ begin
           ForeignKey := Table.ForeignKeyByName(TWForeignKey(Control).Caption);
           ParentTable := Client.DatabaseByName(ForeignKey.Parent.DatabaseName).BaseTableByName(ForeignKey.Parent.TableName);
           if (Assigned(ForeignKey)) then
-            ParentTable.InitializeSource();
+            ParentTable.Initialize();
         end
         else
         begin
@@ -10899,7 +10854,6 @@ var
   Checked: Integer;
   I: Integer;
 begin
-  mtObjectBrowser.Checked := ttObjectBrowser in Preferences.ToolbarTabs;
   mtDataBrowser.Checked := ttDataBrowser in Preferences.ToolbarTabs;
   mtObjectIDE.Checked := ttObjectIDE in Preferences.ToolbarTabs;
   mtQueryBuilder.Checked := ttQueryBuilder in Preferences.ToolbarTabs;
@@ -13057,6 +13011,54 @@ begin
   end;
 end;
 
+procedure TFClient.SQLHelp();
+var
+  Cancel: Boolean;
+  DataSet: TMySQLQuery;
+begin
+  DataSet := TMySQLQuery.Create(Self);
+  DataSet.Connection := Client;
+  if (SynMemo.SelText <> '') then
+    DataSet.CommandText := 'HELP ' + SQLEscape(SynMemo.SelText)
+  else if (SynMemo.WordAtCursor <> '') then
+    DataSet.CommandText := 'HELP ' + SQLEscape(SynMemo.WordAtCursor)
+  else
+    DataSet.CommandText := 'HELP ' + SQLEscape('CONTENTS');
+  DataSet.Open();
+
+  if (not DataSet.Active or DataSet.IsEmpty() or not Assigned(DataSet.FindField('name'))) then
+    MessageBeep(MB_ICONERROR)
+  else
+  begin
+    Cancel := False;
+    while (not Cancel and not Assigned(DataSet.FindField('description')) and not DataSet.IsEmpty()) do
+    begin
+      repeat
+        SetLength(DSelection.Values, Length(DSelection.Values) + 1);
+        DSelection.Values[Length(DSelection.Values) - 1] := DataSet.FieldByName('name').AsString;
+      until (not DataSet.FindNext());
+      Cancel := not DSelection.Execute();
+      if (not Cancel) then
+      begin
+        DataSet.Close();
+        DataSet.CommandText := 'HELP ' + SQLEscape(DSelection.Selected);
+        DataSet.Open();
+      end;
+    end;
+
+    if (Assigned(DataSet.FindField('description'))) then
+    begin
+      DSQLHelp.Title := DataSet.FieldByName('name').AsString;
+      DSQLHelp.Description := Trim(DataSet.FieldByName('description').AsString);
+      DSQLHelp.Example := Trim(DataSet.FieldByName('example').AsString);
+      DSQLHelp.ManualURL := Client.Account.ManualURL;
+      DSQLHelp.Refresh();
+    end;
+  end;
+
+  DataSet.Free();
+end;
+
 procedure TFClient.SResultMoved(Sender: TObject);
 begin
   if (SBResult.Visible and (SBResult.Align = alBottom)) then
@@ -13446,11 +13448,6 @@ procedure TFClient.ToolBarTabsClick(Sender: TObject);
 begin
   Wanted.Clear();
 
-  if (Sender = mtObjectBrowser) then
-    if (mtObjectBrowser.Checked) then
-      Exclude(Preferences.ToolbarTabs, ttObjectBrowser)
-    else
-      Include(Preferences.ToolbarTabs, ttObjectBrowser);
   if (Sender = mtDataBrowser) then
     if (mtDataBrowser.Checked) then
       Exclude(Preferences.ToolbarTabs, ttDataBrowser)

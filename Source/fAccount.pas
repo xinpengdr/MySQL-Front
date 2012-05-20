@@ -1500,32 +1500,18 @@ begin
 end;
 
 function TSAccounts.GetXML(): IXMLNode;
-var
-  I: Integer;
 begin
   if (not Assigned(FXMLDocument)) then
   begin
     if (FileExists(Filename)) then
     begin
       FXMLDocument := LoadXMLDocument(Filename);
-
-      if (VersionStrToVersion(FXMLDocument.DocumentElement.Attributes['version']) < 10003) then
-      begin
-        for I := 0 to FXMLDocument.DocumentElement.ChildNodes.Count - 1 do
-          if ((FXMLDocument.DocumentElement.ChildNodes[I].NodeName = 'account')
-            and Assigned(XMLNode(FXMLDocument.DocumentElement.ChildNodes[I], 'connection/library/type'))
-            and (UpperCase(XMLNode(FXMLDocument.DocumentElement.ChildNodes[I], 'connection/library/type').Text) = 'HTTPTUNNEL')
-            and (LowerCase(XMLNode(FXMLDocument.DocumentElement.ChildNodes[I], 'connection/host').Text) = LOCAL_HOST)) then
-          XMLNode(FXMLDocument.DocumentElement.ChildNodes[I], 'iconfetched').Text := BoolToStr(False, True);
-
-        FXMLDocument.DocumentElement.Attributes['version'] := '1.0.3';
-      end;
     end
     else
     begin
       FXMLDocument := NewXMLDocument();
       FXMLDocument.Encoding := 'utf-8';
-      FXMLDocument.Node.AddChild('accounts').Attributes['version'] := '1.0.3';
+      FXMLDocument.Node.AddChild('accounts').Attributes['version'] := '1.1.0';
     end;
 
     FXMLDocument.Options := FXMLDocument.Options - [doAttrNull, doNodeAutoCreate];

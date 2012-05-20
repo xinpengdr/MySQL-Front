@@ -306,7 +306,7 @@ type
 
   TPPreferences = class(TRegistry)
   type
-    TToolbarTabs = set of (ttObjectBrowser, ttDataBrowser, ttObjectIDE, ttQueryBuilder, ttSQLEditor, ttDiagram);
+    TToolbarTabs = set of (ttDataBrowser, ttObjectIDE, ttQueryBuilder, ttSQLEditor, ttDiagram);
   private
     FLanguage: TPLanguage;
     FLargeImages: TImageList;
@@ -1389,7 +1389,7 @@ begin
   LanguageFilename := 'English.ini';
   SkinFilename := 'Gio_medium.ini';
   TabsVisible := False;
-  ToolbarTabs := [ttObjectBrowser, ttDataBrowser, ttSQLEditor];
+  ToolbarTabs := [ttDataBrowser, ttSQLEditor];
   UpdateCheck := utNever;
   UpdateChecked := Now();
 
@@ -1400,6 +1400,10 @@ begin
   Path := IncludeTrailingPathDelimiter(PChar(@Foldername));
   if ((FileExists(ExtractFilePath(Application.ExeName) + '\Desktop.xml')) or (SHGetFolderPath(Application.Handle, CSIDL_APPDATA, 0, 0, @Foldername) <> S_OK)) then
     UserPath := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName))
+  {$IFDEF Debug}
+  else if (SysUtils.LoadStr(1002) = '') then
+    UserPath := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(PChar(@Foldername)) + 'MySQL-Front')
+  {$ENDIF}
   else
     UserPath := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(PChar(@Foldername)) + SysUtils.LoadStr(1002));
 
@@ -1606,6 +1610,14 @@ begin
 
           FXMLDocument.DocumentElement.Attributes['version'] := '1.0.2';
         end;
+
+        if (VersionStrToVersion(FXMLDocument.DocumentElement.Attributes['version']) < 10100)  then
+        begin
+          FXMLDocument.DocumentElement.ChildNodes.Delete('session');
+          FXMLDocument.DocumentElement.ChildNodes.Delete('sessions');
+
+          FXMLDocument.DocumentElement.Attributes['version'] := '1.1.0';
+        end;
       except
         FXMLDocument := nil;
       end;
@@ -1614,7 +1626,7 @@ begin
     begin
       FXMLDocument := NewXMLDocument();
       FXMLDocument.Encoding := 'utf-8';
-      FXMLDocument.Node.AddChild('desktop').Attributes['version'] := '1.0.2';
+      FXMLDocument.Node.AddChild('desktop').Attributes['version'] := '1.1.0';
     end;
 
     FXMLDocument.Options := FXMLDocument.Options - [doAttrNull, doNodeAutoCreate];
@@ -1633,6 +1645,8 @@ begin
   {$IFDEF Debug}
     if (not FileExists(Result)) then
       Result := IncludeTrailingPathDelimiter('..\Skins\Gio\') + FSkinIniFile.ReadString('Icons', IntToStr(Index), '');
+    if (not FileExists(Result)) then
+      Result := '..\Images\Blank.ico';
   {$ENDIF}
 end;
 
@@ -1707,17 +1721,15 @@ begin
   if (Assigned(XMLNode(XML, 'log/dbresult'))) then TryStrToBool(XMLNode(XML, 'log/dbresult').Attributes['visible'], LogResult);
   if (Assigned(XMLNode(XML, 'log/time'))) then TryStrToBool(XMLNode(XML, 'log/time').Attributes['visible'], LogTime);
   if (Assigned(XMLNode(XML, 'windowstate'))) then TryStrToWindowState(XMLNode(XML, 'windowstate').Text, WindowState);
-  if (Assigned(XMLNode(XML, 'account/toolbar/objectbrowser')) and TryStrToBool(XMLNode(XML, 'account/toolbar/objectbrowser').Attributes['visible'], Visible)) then
-    if (Visible) then ToolbarTabs := ToolbarTabs + [ttObjectBrowser] else ToolbarTabs := ToolbarTabs - [ttObjectBrowser];
-  if (Assigned(XMLNode(XML, 'account/toolbar/databrowser')) and TryStrToBool(XMLNode(XML, 'account/toolbar/databrowser').Attributes['visible'], Visible)) then
+  if (Assigned(XMLNode(XML, 'toolbar/browser')) and TryStrToBool(XMLNode(XML, 'toolbar/browser').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttDataBrowser] else ToolbarTabs := ToolbarTabs - [ttDataBrowser];
-  if (Assigned(XMLNode(XML, 'account/toolbar/objectide')) and TryStrToBool(XMLNode(XML, 'account/toolbar/objectide').Attributes['visible'], Visible)) then
+  if (Assigned(XMLNode(XML, 'toolbar/ide')) and TryStrToBool(XMLNode(XML, 'toolbar/ide').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttObjectIDE] else ToolbarTabs := ToolbarTabs - [ttObjectIDE];
-  if (Assigned(XMLNode(XML, 'account/toolbar/querybuilder')) and TryStrToBool(XMLNode(XML, 'account/toolbar/querybuilder').Attributes['visible'], Visible)) then
+  if (Assigned(XMLNode(XML, 'toolbar/builder')) and TryStrToBool(XMLNode(XML, 'toolbar/builder').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttQueryBuilder] else ToolbarTabs := ToolbarTabs - [ttQueryBuilder];
-  if (Assigned(XMLNode(XML, 'account/toolbar/sqleditor')) and TryStrToBool(XMLNode(XML, 'account/toolbar/sqleditor').Attributes['visible'], Visible)) then
+  if (Assigned(XMLNode(XML, 'toolbar/editor')) and TryStrToBool(XMLNode(XML, 'toolbar/editor').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttSQLEditor] else ToolbarTabs := ToolbarTabs - [ttSQLEditor];
-  if (Assigned(XMLNode(XML, 'account/toolbar/diagram')) and TryStrToBool(XMLNode(XML, 'account/toolbar/diagram').Attributes['visible'], Visible)) then
+  if (Assigned(XMLNode(XML, 'toolbar/diagram')) and TryStrToBool(XMLNode(XML, 'toolbar/diagram').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttDiagram] else ToolbarTabs := ToolbarTabs - [ttDiagram];
   if (Assigned(XMLNode(XML, 'skin/file'))) then SkinFilename := ExtractFileName(XMLNode(XML, 'skin/file').Text);
   if (Assigned(XMLNode(XML, 'sql/font/charset'))) then TryStrToInt(XMLNode(XML, 'sql/font/charset').Text, SQLFontCharset);
@@ -1858,7 +1870,7 @@ begin
       else if (FindResource(HInstance, MAKEINTRESOURCE(10000 + I), RT_GROUP_ICON) > 0) then
         ImageList_AddIcon(FLargeImages.Handle, LoadImage(hInstance, MAKEINTRESOURCE(10000 + I), IMAGE_ICON, FLargeImages.Height, FLargeImages.Width, LR_DEFAULTCOLOR))
       else
-        ImageList_AddIcon(FLargeImages.Handle, ImageList_GetIcon(FSmallImages.Handle, 0, 0));
+        ImageList_AddIcon(FLargeImages.Handle, ImageList_GetIcon(FSmallImages.Handle, I, 0));
   end;
 end;
 
@@ -1978,12 +1990,11 @@ begin
   XMLNode(XML, 'log/time').Attributes['visible'] := LogTime;
   if (WindowState in [wsNormal, wsMaximized	]) then
     XMLNode(XML, 'windowstate').Text := WindowStateToStr(WindowState);
-  XMLNode(XML, 'account/toolbar/objectbrowser').Attributes['visible'] := ttObjectBrowser in ToolbarTabs;
-  XMLNode(XML, 'account/toolbar/databrowser').Attributes['visible'] := ttDataBrowser in ToolbarTabs;
-  XMLNode(XML, 'account/toolbar/objectide').Attributes['visible'] := ttObjectIDE in ToolbarTabs;
-  XMLNode(XML, 'account/toolbar/querybuilder').Attributes['visible'] := ttQueryBuilder in ToolbarTabs;
-  XMLNode(XML, 'account/toolbar/sqleditor').Attributes['visible'] := ttSQLEditor in ToolbarTabs;
-  XMLNode(XML, 'account/toolbar/diagram').Attributes['visible'] := ttDiagram in ToolbarTabs;
+  XMLNode(XML, 'toolbar/browser').Attributes['visible'] := ttDataBrowser in ToolbarTabs;
+  XMLNode(XML, 'toolbar/ide').Attributes['visible'] := ttObjectIDE in ToolbarTabs;
+  XMLNode(XML, 'toolbar/builder').Attributes['visible'] := ttQueryBuilder in ToolbarTabs;
+  XMLNode(XML, 'toolbar/editor').Attributes['visible'] := ttSQLEditor in ToolbarTabs;
+  XMLNode(XML, 'toolbar/diagram').Attributes['visible'] := ttDiagram in ToolbarTabs;
   XMLNode(XML, 'skin/file').Text := ExtractFileName(SkinFilename);
   XMLNode(XML, 'sql/font/charset').Text := IntToStr(SQLFontCharset);
   XMLNode(XML, 'sql/font/color').Text := ColorToString(SQLFontColor);

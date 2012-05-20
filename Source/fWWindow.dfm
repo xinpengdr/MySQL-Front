@@ -1,7 +1,7 @@
 object WWindow: TWWindow
   Left = 387
   Top = 161
-  HelpType = htKeyword
+  HelpType = htContext
   Caption = 'WWindow'
   ClientHeight = 460
   ClientWidth = 691
@@ -27,20 +27,18 @@ object WWindow: TWWindow
   TextHeight = 14
   object PWorkSpace: TPanel_Ext
     Left = 0
-    Top = 124
+    Top = 121
     Width = 691
-    Height = 315
+    Height = 318
     Align = alClient
     BevelOuter = bvNone
     Color = clAppWorkSpace
     ParentBackground = False
     TabOrder = 5
-    ExplicitTop = 121
-    ExplicitHeight = 318
   end
   object TabControl: TTabControl
     Left = 0
-    Top = 96
+    Top = 93
     Width = 691
     Height = 28
     Align = alTop
@@ -70,7 +68,7 @@ object WWindow: TWWindow
     Left = 0
     Top = 64
     Width = 691
-    Height = 32
+    Height = 29
     Align = alTop
     AutoSize = True
     BevelOuter = bvNone
@@ -81,7 +79,6 @@ object WWindow: TWWindow
       Left = 0
       Top = 0
       Width = 691
-      Height = 29
       AutoSize = True
       BorderWidth = 2
       EdgeBorders = [ebBottom]
@@ -101,7 +98,7 @@ object WWindow: TWWindow
         Style = tbsDropDown
       end
       object tbNext: TToolButton
-        Left = 36
+        Left = 38
         Top = 0
         Action = aVNext
         DropdownMenu = MNext
@@ -110,14 +107,14 @@ object WWindow: TWWindow
         Style = tbsDropDown
       end
       object ToolButton26: TToolButton
-        Left = 72
+        Left = 76
         Top = 0
         Width = 8
         Caption = 'ToolButton26'
         Style = tbsSeparator
       end
       object FAddress: TComboBox_Ext
-        Left = 80
+        Left = 84
         Top = 0
         Width = 457
         Height = 22
@@ -129,7 +126,7 @@ object WWindow: TWWindow
         OnSelect = FAddressSelect
       end
       object FAddressApply: TToolButton
-        Left = 537
+        Left = 541
         Top = 0
         Action = aVAddress
         ImageIndex = 21
@@ -1337,6 +1334,7 @@ object WWindow: TWWindow
       Caption = 'aHIndex'
       HelpContext = 1069
       HelpType = htContext
+      ShortCut = 112
       OnExecute = aHIndexExecute
     end
     object aHManual: TAction

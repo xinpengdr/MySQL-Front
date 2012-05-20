@@ -5,8 +5,7 @@ interface {********************************************************************}
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, ActnList, ComCtrls, DBActns, ExtCtrls, ImgList, Menus, StdActns,
-  ActnCtrls, StdCtrls, ToolWin,
-  HtmlHlp,
+  ActnCtrls, StdCtrls, ToolWin, HtmlHelpViewer,
   {$IFDEF EurekaLog}
   ExceptionLog,
   {$ENDIF}
@@ -458,8 +457,6 @@ type
     EurekaLog: TEurekaLog;
     {$ENDIF}
     FAddressDroppedDown: Boolean;
-    HelpFile: TFileName;
-    HtmlHelpCookie: DWord;
     MouseDownPoint: TPoint;
     Param: string; // erforderlich für PostMessage
     PreviousForm: TForm;
@@ -502,11 +499,9 @@ type
     procedure CMUpdateToolbar(var Message: TCMUpdateToolBar); message CM_UPDATETOOLBAR;
     procedure WMCopyData(var Msg: TWMCopyData); message WM_COPYDATA;
     procedure WMDrawItem(var Message: TWMDrawItem); message WM_DRAWITEM;
-    procedure WMHelp(var Msg: TWMHelp); message WM_HELP;
     property ActiveTab: TFClient read GetActiveTab write SetActiveTab;
   protected
     procedure ApplicationException(Sender: TObject; E: Exception);
-    function ApplicationHelp(Command: Word; Data: THelpEventData; var CallHelp: Boolean): Boolean;
     procedure CreateParams(var Params: TCreateParams); override;
   public
     destructor Destroy(); override;
@@ -605,10 +600,7 @@ end;
 
 procedure TWWindow.aHIndexExecute(Sender: TObject);
 begin
-  if (not Assigned(ActiveTab)) then
-    Application.HelpCommand(HELP_FINDER, 0)
-  else
-    ActiveTab.aHIndexExecute(Sender);
+  Application.HelpCommand(HELP_FINDER, 0);
 end;
 
 procedure TWWindow.aHInfoExecute(Sender: TObject);
@@ -683,33 +675,6 @@ begin
   end;
 end;
 
-function TWWindow.ApplicationHelp(Command: Word; Data: THelpEventData; var CallHelp: Boolean): Boolean;
-var
-  HTMLCommand: Word;
-begin
-  CallHelp := False;
-
-  if (HtmlHelpCookie = 0) then
-    HtmlHelp(Application.Handle, nil, HH_INITIALIZE, DWord(@HtmlHelpCookie));
-
-  case (Command) of
-    HELP_CONTENTS: begin HTMLCommand := HH_HELP_CONTEXT; Data := 1124; end;
-    HELP_CONTEXT: HTMLCommand := HH_HELP_CONTEXT;
-    HELP_CONTEXTPOPUP: HTMLCommand := HH_HELP_CONTEXT;
-    HELP_FINDER: begin HTMLCommand := HH_DISPLAY_TOPIC; Data := 0; end;
-    HELP_KEY: HTMLCommand := HH_DISPLAY_INDEX;
-    HELP_QUIT: begin HTMLCommand := HH_CLOSE_ALL; Data := 0; end;
-    else begin HTMLCommand := HH_DISPLAY_TOPIC; Data := 0; end;
-  end;
-
-  if ((HTMLCommand = HH_HELP_CONTEXT) and (Data = 0)) then
-    Data := 1124;
-
-  Result := HtmlHelp(GetActiveWindow(), PChar(HelpFile), HTMLCommand, Data) > 0;
-  if (not Result) then
-    MsgBox(Preferences.LoadStr(523, HelpFile), Preferences.LoadStr(45), MB_OK + MB_ICONERROR)
-end;
-
 procedure TWWindow.ApplicationMessage(var Msg: TMsg; var Handled: Boolean);
 var
   NewTabIndex: Integer;
@@ -753,9 +718,6 @@ begin
     ActiveTab.FGrid.Perform(Msg.message, Msg.wParam, Msg.lParam);
     Handled := True;
   end;
-
-  if (not Handled and not ((WM_KEYFIRST <= Msg.Message) and (Msg.Message <= WM_KEYLAST)) and (HtmlHelpCookie > 0)) then
-    HtmlHelp(0, nil, HH_PRETRANSLATEMESSAGE, DWord(@Msg));
 end;
 
 procedure TWWindow.ApplicationModalBegin(Sender: TObject);
@@ -1514,12 +1476,6 @@ end;
 
 destructor TWWindow.Destroy();
 begin
-  if (HtmlHelpCookie <> 0) then
-  begin
-    HtmlHelp(0, nil, HH_CLOSE_ALL, 0);
-    HtmlHelp(0, nil, HH_UNINITIALIZE, DWord(@HtmlHelpCookie));
-  end;
-
   FreeAndNil(CloseButton);
   FreeAndNil(Tabs);
   FreeAndNil(Accounts);
@@ -1638,14 +1594,13 @@ begin
   UniqueTabNameCounter := 0;
   MouseDownPoint := Point(-1, -1);
   UpdateAvailable := False;
-  HtmlHelpCookie := 0;
 
   HelpFile := ExtractFilePath(Application.ExeName) + Copy(ExtractFileName(Application.ExeName), 1, Length(ExtractFileName(Application.ExeName)) - 4) + '.chm';
 
   MySQLDB.MySQLConnectionOnSynchronize := MySQLConnectionOnSynchronize;
 
+  Application.OnHelp := OnHelp;
   Application.OnException := ApplicationException;
-  Application.OnHelp := ApplicationHelp;
   Application.OnMessage := ApplicationMessage;
   Application.OnModalBegin := ApplicationModalBegin;
   Application.OnModalEnd := ApplicationModalEnd;
@@ -2416,14 +2371,6 @@ begin
     Control.Perform(Message.Msg + CN_BASE, TMessage(Message).WParam, TMessage(Message).LParam)
   else
     inherited;
-end;
-
-procedure TWWindow.WMHelp(var Msg: TWMHelp);
-begin
-  if (Msg.HelpInfo^.iContextType = HELPINFO_MENUITEM) then
-    inherited
-  else
-    aHIndexExecute(nil);
 end;
 
 end.
