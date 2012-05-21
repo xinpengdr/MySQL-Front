@@ -1816,9 +1816,9 @@ begin
       else if (Len > 0) then Inc(FilePos, WideCharToMultiByte(CodePage, 0, PChar(@FileContent.Str[Index]), Len, nil, 0, nil, nil));
     end;
 
-    SetCharacterSet := SQLParseCLStmt(CLStmt, @FileContent.Str[Index - 1], Length(FileContent.Str), Client.ServerVersion) and (CLStmt.CommandType in [ctSetNames, ctSetCharacterSet]);
+    SetCharacterSet := SQLParseCLStmt(CLStmt, @FileContent.Str[Index], Length(FileContent.Str), Client.ServerVersion) and (CLStmt.CommandType in [ctSetNames, ctSetCharacterSet]);
 
-    if ((Index > 1) and (SetCharacterSet or not Client.MultiStatements or (Index - 1 + Len >= SQLPacketSize))) then
+    if ((Index > 1) and (SetCharacterSet or (Index - 1 + Len >= SQLPacketSize))) then
     begin
       if (Assigned(Text)) then
         Text^ := Text^ + Copy(FileContent.Str, 1, Index - 1)

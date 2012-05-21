@@ -43,7 +43,7 @@ type
 
 function BitStringToInt(const BitString: string): UInt64;
 function IntToBitString(const Value: UInt64; const Width: Integer = 1): string;
-function SQLCreateParse(out Handle: TSQLParse; const SQL: PChar; const Len: Integer; const Version: Integer): Boolean;
+function SQLCreateParse(out Handle: TSQLParse; const SQL: PChar; const Len: Integer; const Version: Integer; const InCondCode: Boolean = False): Boolean;
 function SQLEscape(const Value: string; const ODBCEncoding: Boolean): string; overload;
 function SQLEscape(const Value: string; const Quoter: Char = ''''): string; overload;
 function SQLEscape(const Value: PAnsiChar; const Length: Integer; const ODBCEncoding: Boolean): string; overload;
@@ -200,7 +200,7 @@ label
   EnclosedComment,
   Version, VersionL, VersionE,
   EnclosedCommentL, EnclosedCommentLE, EnclosedCommentE,
-  CommendEnd,
+  CondCodeEnd,
   Finish;
 asm
         PUSH EBX
@@ -234,7 +234,7 @@ asm
         TEST EDX,$80000000               // Are we inside cond. MySQL code?
         JZ Finish                        // No!
         CMP DWORD PTR [ESI],$002F002A    // End of "*/" comment in SQL?
-        JE CommendEnd                    // Yes!
+        JE CondCodeEnd                    // Yes!
         JMP Finish
 
       // -------------------
@@ -344,7 +344,7 @@ asm
 
       // -------------------
 
-      CommendEnd:
+      CondCodeEnd:
         TEST EDX,$80000000               // Are we inside cond. MySQL code?
         JZ Finish                        // No!
         MOV EBX,True                     // Empty characters found!
@@ -372,7 +372,7 @@ procedure CompareKeyword();
 label
   CharactersL, Characters2, CharactersLE,
   KeywordSpace,
-  KeywordTerminated, KeywordTerminatedL,
+  KeywordTerminated, KeywordTerminatedL, KeywordTerminatedE,
   KeywordNotFound,
   KeywordFound,
   Finish;
@@ -419,11 +419,18 @@ asm
         MOV EDI,[Terminators]            // Terminating characters
       KeywordTerminatedL:
         CMP WORD PTR [EDI],0             // All terminators checked?
-        JE KeywordNotFound               // Yes!
+        JE KeywordTerminatedE            // Yes!
         CMP DX,[EDI]                     // Charcter in SQL = Terminator?
         JE KeywordFound                  // Yes!
         ADD EDI,2                        // Next terminator
         JMP KeywordTerminatedL
+      KeywordTerminatedE:
+        TEST EDX,$80000000               // Are we inside cond. MySQL code?
+        JZ KeywordNotFound               // No!
+        CMP ECX,2                        // End of SQL?
+        JB KeywordNotFound               // Yes!
+        CMP DWORD PTR [ESI],$002F002A    // End of "*/" comment in SQL?
+        JE KeywordFound                  // Yes!
 
       // -------------------
 
@@ -597,7 +604,7 @@ begin
   while ((Result[1] = '0') and (Length(Result) > Width)) do Delete(Result, 1, 1);
 end;
 
-function SQLCreateParse(out Handle: TSQLParse; const SQL: PChar; const Len: Integer; const Version: Integer): Boolean;
+function SQLCreateParse(out Handle: TSQLParse; const SQL: PChar; const Len: Integer; const Version: Integer; const InCondCode: Boolean = False): Boolean;
 begin
   Result := True;
   if (Result) then
@@ -606,6 +613,8 @@ begin
     Handle.Len := Len;
     Handle.EDX := Version;
     Handle.Start := Handle.Pos;
+    if (InCondCode) then
+      Handle.EDX := Handle.EDX or $80000000;
   end;
 end;
 
@@ -880,8 +889,9 @@ function SQLParseCallStmt(const SQL: PChar; const Len: Integer; out ProcedureNam
 label
   Priority, Ignore, Into2,
   Found,
-  Finish;
+  Finish, FinishE;
 var
+  InCondCode: Boolean;
   Index: Integer;
   Parse: TSQLParse;
 begin
@@ -925,13 +935,19 @@ begin
       SHR ECX,1                        // 2 Bytes = 1 character
       MOV Index,ECX
 
+      MOV InCondCode,False
+      TEST EDX,$80000000               // Are we inside cond. MySQL code?
+      JZ FinishE                       // No!
+      MOV InCondCode,True
+
+    FinishE:
       POP EBX
       POP EDI
       POP ESI
       POP ES
   end;
 
-  if (Result and SQLCreateParse(Parse, PChar(@SQL[Index]), Len - Index, Version)) then
+  if (Result and SQLCreateParse(Parse, PChar(@SQL[Index]), Len - Index, Version, InCondCode)) then
     ProcedureName := SQLParseValue(Parse);
 end;
 
@@ -979,8 +995,9 @@ function SQLParseCLStmt(out CLStmt: TSQLCLStmt; const SQL: PChar; const Len: Int
 label
   Commands, SetNames, SetCharacterSet, Use,
   Found, FoundL, FoundE,
-  Finish;
+  Finish, FinishE;
 var
+  InCondCode: Boolean;
   Index: Integer;
   Parse: TSQLParse;
 begin
@@ -1044,13 +1061,19 @@ begin
       // -------------------
 
       Finish:
+        MOV InCondCode,False
+        TEST EDX,$80000000               // Are we inside cond. MySQL code?
+        JZ FinishE                       // No!
+        MOV InCondCode,True
+
+      FinishE:
         POP EBX
         POP EDI
         POP ESI
         POP ES
     end;
 
-  if (not Result or not SQLCreateParse(Parse, PChar(@SQL[Index]), Len - Index, Version)) then
+  if (not Result or not SQLCreateParse(Parse, PChar(@SQL[Index]), Len - Index, Version, InCondCode)) then
     CLStmt.ObjectName := ''
   else
     CLStmt.ObjectName := SQLParseValue(Parse);
@@ -1067,8 +1090,9 @@ label
   Name,
   Found,
   RenameL, RenameLE, RenameC, RenameE,
-  Finish;
+  Finish, Finish2;
 var
+  InCondCode: Boolean;
   Index: Integer;
   IndexNewObjectName: Integer;
   Parse: TSQLParse;
@@ -1315,15 +1339,22 @@ begin
       SHR ECX,1                        // 2 Bytes = 1 character
       MOV Index,ECX
 
+      MOV InCondCode,False
+      TEST EDX,$80000000               // Are we inside cond. MySQL code?
+      JZ Finish2                       // No!
+      MOV InCondCode,True
+
+    Finish2:
       POP EBX
       POP EDI
       POP ESI
       POP ES
   end;
 
-  if (Result and SQLCreateParse(Parse, PChar(@SQL[Index]), Len - Index, Version)) then
+  if (Result and SQLCreateParse(Parse, PChar(@SQL[Index]), Len - Index, Version, InCondCode)) then
   begin
-    if (DDLStmt.DefinitionType = dtDrop) then SQLParseKeyword(Parse, 'IF EXISTS');
+    SQLParseKeyword(Parse, 'IF EXISTS');
+    SQLParseKeyword(Parse, 'IF NOT EXISTS');
     DDLStmt.DatabaseName := '';
     if (DDLStmt.ObjectType = otDatabase) then
       DDLStmt.ObjectName := SQLParseValue(Parse)
@@ -1344,8 +1375,9 @@ label
   Priority, Ignore, Into2,
   Found,
   From,
-  Finish;
+  Finish, FinishE;
 var
+  InCondCode: Boolean;
   Index: Integer;
   Parse: TSQLParse;
   TableName: string;
@@ -1446,13 +1478,19 @@ begin
       SHR ECX,1                        // 2 Bytes = 1 character
       MOV Index,ECX
 
+      MOV InCondCode,False
+      TEST EDX,$80000000               // Are we inside cond. MySQL code?
+      JZ FinishE                       // No!
+      MOV InCondCode,True
+    FinishE:
+
       POP EBX
       POP EDI
       POP ESI
       POP ES
   end;
 
-  if (Result and SQLCreateParse(Parse, PChar(@SQL[Index]), Len - Index, Version)) then
+  if (Result and SQLCreateParse(Parse, PChar(@SQL[Index]), Len - Index, Version, InCondCode)) then
     repeat
       TableName := SQLParseValue(Parse);
       if (TableName <> '') then
@@ -2369,7 +2407,7 @@ end;
 //  SQL: string;
 //  DDLStmt: TSQLDDLStmt;
 //begin
-//  SQL := 'CREATE PROCEDURE `NeueProzedur`(`Param` int(11))'#$D#$A'BEGIN'#$D#$A'END;';
+//  SQL := 'CREATE DATABASE /*!32312 IF NOT EXISTS*/ `db1087474-phpBB3` /*!40100 DEFAULT CHARACTER SET utf8 */;';
 //  SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), 50500);
 end.
 

@@ -1413,14 +1413,21 @@ type
 
   TCClient = class(TMySQLConnection)
   type
-    TEventType = (ceBuild, ceUpdated, ceCreated, ceDroped, ceInitialize, ceBeforeExecuteSQL, ceBeforeCancel, ceBeforeClose, ceBeforeOpen, ceAfterOpen, ceAfterReceivingRecords, ceBeforeReceivingRecords, ceBeforeScroll, ceAfterExecuteSQL, ceAfterScroll, ceAfterCancel, ceAfterClose, ceAfterPost, ceBeforePost, ceMonitor);
+    TEventType = (ceBuild, ceUpdated, ceCreated, ceDroped, ceAltered, ceInitialize, ceBeforeExecuteSQL, ceBeforeCancel, ceBeforeClose, ceBeforeOpen, ceAfterOpen, ceAfterReceivingRecords, ceBeforeReceivingRecords, ceBeforeScroll, ceAfterExecuteSQL, ceAfterScroll, ceAfterCancel, ceAfterClose, ceAfterPost, ceBeforePost, ceMonitor);
     TInitialize = function (): Boolean of object;
-    TEvent = record
-      EventType: TEventType;
-      Sender: TObject;
-      CItem: TCItem;
-      Database: TCDatabase;
-      Initialize: TInitialize;
+    TEvent = class
+    protected
+      FEventType: TEventType;
+      FSender: TObject;
+      FCItem: TCItem;
+      FDatabase: TCDatabase;
+      FInitialize: TInitialize;
+    public
+      property EventType: TEventType read FEventType;
+      property Sender: TObject read FSender;
+      property CItem: TCItem read FCItem;
+      property Database: TCDatabase read FDatabase;
+      property Initialize: TInitialize read FInitialize;
     end;
     TEventProc = procedure (const AEvent: TEvent) of object;
   private
@@ -8163,13 +8170,12 @@ end;
 procedure TCDatabases.Delete(const AObject: TCObject);
 var
   I: Integer;
+  Index: Integer;
   J: Integer;
   Names: TCSVStrings;
 begin
   Assert(AObject is TCDatabase);
 
-
-  Client.ExecuteEvent(ceDroped, Self, AObject);
 
   DesktopXML.ChildNodes.Remove(TCDatabase(AObject).DesktopXML);
 
@@ -8192,7 +8198,13 @@ begin
     end;
   end;
 
-  inherited;
+  Index := IndexOf(AObject);
+  if (Index >= 0) then
+    Delete(Index);
+
+  Client.ExecuteEvent(ceDroped, Self, AObject);
+
+  AObject.Free();
 end;
 
 function TCDatabases.GetCount(): Integer;
@@ -10269,20 +10281,21 @@ begin
         Result := Collations.Build(DataSet, False)
       else if (SQLParseKeyword(Parse, 'CREATE')) then
       begin
-        if (SQLParseKeyword(Parse, 'DATABASE')) then
-          DatabaseByName(SQLParseValue(Parse)).SetSource(DataSet)
-        else if (SQLParseKeyword(Parse, 'EVENT')) then
-          begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).EventByName(Name).SetSource(DataSet); end
-        else if (SQLParseKeyword(Parse, 'FUNCTION')) then
-          begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).FunctionByName(Name).SetSource(DataSet); end
-        else if (SQLParseKeyword(Parse, 'PROCEDURE')) then
-          begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).ProcedureByName(Name).SetSource(DataSet); end
-        else if (SQLParseKeyword(Parse, 'TABLE')) then
-          begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).TableByName(Name).SetSource(DataSet); end
-        else if (SQLParseKeyword(Parse, 'TRIGGER')) then
-          begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).TriggerByName(Name).SetSource(DataSet); end
-        else if (SQLParseKeyword(Parse, 'VIEW')) then
-          begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).TableByName(Name).SetSource(DataSet); end;
+        if (Connection.ErrorCode = 0) then
+          if (SQLParseKeyword(Parse, 'DATABASE')) then
+            DatabaseByName(SQLParseValue(Parse)).SetSource(DataSet)
+          else if (SQLParseKeyword(Parse, 'EVENT')) then
+            begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).EventByName(Name).SetSource(DataSet); end
+          else if (SQLParseKeyword(Parse, 'FUNCTION')) then
+            begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).FunctionByName(Name).SetSource(DataSet); end
+          else if (SQLParseKeyword(Parse, 'PROCEDURE')) then
+            begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).ProcedureByName(Name).SetSource(DataSet); end
+          else if (SQLParseKeyword(Parse, 'TABLE')) then
+            begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).TableByName(Name).SetSource(DataSet); end
+          else if (SQLParseKeyword(Parse, 'TRIGGER')) then
+            begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).TriggerByName(Name).SetSource(DataSet); end
+          else if (SQLParseKeyword(Parse, 'VIEW')) then
+            begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).TableByName(Name).SetSource(DataSet); end;
       end
       else if (SQLParseKeyword(Parse, 'DATABASES')) then
         Result := Databases.Build(DataSet, False)
@@ -10796,39 +10809,51 @@ procedure TCClient.ExecuteEvent(const EventType: TEventType);
 var
   Event: TEvent;
 begin
-  Event.EventType := EventType;
-  Event.Sender := nil;
-  Event.CItem := nil;
-  Event.Database := nil;
-  Event.Initialize := nil;
+  Event := TEvent.Create();
+
+  Event.FEventType := EventType;
+  Event.FSender := nil;
+  Event.FCItem := nil;
+  Event.FDatabase := nil;
+  Event.FInitialize := nil;
 
   DoExecuteEvent(Event);
+
+  Event.Free();
 end;
 
 procedure TCClient.ExecuteEvent(const EventType: TEventType; const Sender: TObject; const CItem: TCItem;  const Database: TCDatabase = nil);
 var
   Event: TEvent;
 begin
-  Event.EventType := EventType;
-  Event.Sender := Sender;
-  Event.CItem := CItem;
-  Event.Database := Database;
-  Event.Initialize := nil;
+  Event := TEvent.Create();
+
+  Event.FEventType := EventType;
+  Event.FSender := Sender;
+  Event.FCItem := CItem;
+  Event.FDatabase := Database;
+  Event.FInitialize := nil;
 
   DoExecuteEvent(Event);
+
+  Event.Free;
 end;
 
 procedure TCClient.ExecuteEvent(const Initialize: TInitialize);
 var
   Event: TEvent;
 begin
-  Event.EventType := ceInitialize;
-  Event.Sender := nil;
-  Event.Database := nil;
-  Event.CItem := nil;
-  Event.Initialize := Initialize;
+  Event := TEvent.Create();
+
+  Event.FEventType := ceInitialize;
+  Event.FSender := nil;
+  Event.FDatabase := nil;
+  Event.FCItem := nil;
+  Event.FInitialize := Initialize;
 
   DoExecuteEvent(Event);
+
+  Event.Free();
 end;
 
 function TCClient.FieldTypeByCaption(const Caption: string): TCFieldType;
@@ -11323,7 +11348,7 @@ begin
                     end;
 
                     Table.Clear();
-                    ExecuteEvent(Table.Initialize);
+                    ExecuteEvent(ceAltered, Database.Tables, Table, Database);
                   end;
                 end;
               dtDrop:

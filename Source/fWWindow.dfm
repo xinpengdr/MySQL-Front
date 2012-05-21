@@ -1,7 +1,6 @@
 object WWindow: TWWindow
   Left = 387
   Top = 161
-  HelpType = htContext
   Caption = 'WWindow'
   ClientHeight = 460
   ClientWidth = 691
@@ -79,6 +78,7 @@ object WWindow: TWWindow
       Left = 0
       Top = 0
       Width = 691
+      Height = 29
       AutoSize = True
       BorderWidth = 2
       EdgeBorders = [ebBottom]

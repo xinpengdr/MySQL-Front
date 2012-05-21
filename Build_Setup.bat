@@ -11,7 +11,7 @@ SET BuildBRCC=%ProgramFiles(x86)%\Embarcadero\RAD Studio\9.0\bin\brcc32.exe
 SET BuildCompiler=%ProgramFiles(x86)%\Embarcadero\RAD Studio\9.0\bin\dcc32.exe
 SET BuildEurekaLog=%ProgramFiles(x86)%\Embarcadero\RAD Studio\9.0\bin\ecc32.exe
 SET BuildUPX=%ProgramFiles(x86)%\UPX\UPX.exe
-SET BuildHelpMan=%ProgramFiles(x86)%\HelpMan3\HelpMan.exe
+SET BuildHelpMan=%ProgramFiles(x86)%\HelpandManual4\HelpMan.exe
 SET BuildInnoSetup=%ProgramFiles(x86)%\Inno Setup 5\iscc.exe
 
 SET BuildRootPath=%CD%
@@ -77,7 +77,7 @@ if Errorlevel 1 goto Error
 "%BuildAWK%" -f "%BuildTempPath%\Build_Setup.awk" "%BuildManualPath%\MySQLFront.hmv" > "%BuildTempPath%\MySQLFront.hmv"
 if Errorlevel 1 goto Error
 
-"%BuildHelpMan%" "%BuildManualPath%\MySQLFront.hm3" /chm="%BuildTempPath%\%BuildName%.chm" /V="%BuildTempPath%\MySQLFront.hmv" /L="%BuildTempPath%\MySQLFront.log"
+"%BuildHelpMan%" "%BuildManualPath%\MySQLFront.hmx" /chm="%BuildTempPath%\%BuildName%.chm" /V="%BuildTempPath%\MySQLFront.hmv" /L="%BuildTempPath%\MySQLFront.log"
 if Errorlevel 1 goto Error
 
 "%BuildAWK%" -f "%BuildTempPath%\Build_Setup.awk" "%BuildSetupPath%\pad_file.xml" > "%BuildTempPath%\pad_file.xml"

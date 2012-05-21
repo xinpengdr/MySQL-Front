@@ -508,7 +508,6 @@ type
     procedure FListColumnClick(Sender: TObject; Column: TListColumn);
     procedure FListCompare(Sender: TObject; Item1: TListItem;
       Item2: TListItem; Data: Integer; var Compare: Integer);
-    procedure FListData(Sender: TObject; Item: TListItem);
     procedure FListDragOver(Sender, Source: TObject; X, Y: Integer;
       State: TDragState; var Accept: Boolean);
     procedure FListEdited(Sender: TObject; Item: TListItem;
@@ -752,7 +751,7 @@ type
     procedure BeforeConnect(Sender: TObject);
     procedure BeforeExecuteSQL(Sender: TObject);
     procedure BeginEditLabel(Sender: TObject);
-    procedure ClientRefresh(const Event: TCClient.TEvent);
+    procedure ClientRefresh(Sender: TObject);
     function ContentWidthIndexFromImageIndex(AImageIndex: Integer): Integer;
     function Dragging(const Sender: TObject): Boolean;
     procedure EndEditLabel(Sender: TObject);
@@ -773,8 +772,8 @@ type
     procedure FListEmptyExecute(Sender: TObject);
     procedure FListRefresh(Sender: TObject);
     procedure FNavigatorEmptyExecute(Sender: TObject);
-    procedure FNavigatorRefresh(const Event: TCClient.TEvent);
-    procedure FormClientEvent(const Event: TCClient.TEvent);
+    procedure FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
+    procedure FormClientEvent(const ClientEvent: TCClient.TEvent);
     procedure FormAccountEvent(const ClassType: TClass);
     procedure FRTFShow(Sender: TObject);
     procedure FSQLHistoryRefresh(Sender: TObject);
@@ -1573,7 +1572,11 @@ begin
       Control := Control.Parent;
 
     if (not Assigned(OldControl) or not OldControl.Visible or not OldControl.Enabled and (Assigned(Control) and Control.Visible and Control.Enabled)) then
+try
       Window.ActiveControl := NewActiveControl;
+except
+  Write;
+end;
 
 
     Empty := not Assigned(SynMemo) or (SynMemo.Lines.Count <= 1) and (SynMemo.Text = ''); // Takes a lot of time
@@ -3679,20 +3682,26 @@ begin
   end;
 end;
 
-procedure TFClient.ClientRefresh(const Event: TCClient.TEvent);
+procedure TFClient.ClientRefresh(Sender: TObject);
 var
   Control: TWinControl;
+  Event: TCClient.TEvent;
   OldAddress: string;
   TempActiveControl: TWinControl;
   TempSelectedItem: string;
   WTable: TWTable;
 begin
+  if (Sender is TCClient.TEvent) then
+    Event := TCClient.TEvent(Sender)
+  else
+    Event := nil;
+
   LeftMousePressed := False;
 
   TempActiveControl := Window.ActiveControl;
   TempSelectedItem := SelectedItem;
 
-  if (not Assigned(Event.CItem)) then
+  if (Assigned(Event) and not Assigned(Event.CItem)) then
   begin
     Client.SQLEditorResult.Clear();
     Client.QueryBuilderResult.Clear();
@@ -3708,7 +3717,7 @@ begin
   else if (Assigned(FNavigator.Selected)) then
   begin
     FNavigatorMenuNode := FNavigator.Selected;
-    PContentRefresh(Event.Sender);
+    PContentRefresh(Sender);
   end;
 
   if (PContent.Visible and Assigned(TempActiveControl) and TempActiveControl.Visible) then
@@ -3723,7 +3732,7 @@ begin
   if (Assigned(Workbench)) then
     Workbench.Refresh();
 
-  if ((Event.EventType = ceCreated) and Assigned(Event.Database) and (SelectedDatabase = Event.Database.Name)) then
+  if (Assigned(Event) and (Event.EventType = ceCreated) and Assigned(Event.Database) and (SelectedDatabase = Event.Database.Name)) then
     case (View) of
       avDiagram:
         if (Event.CItem is TCBaseTable) then
@@ -3740,7 +3749,7 @@ begin
         end;
     end;
 
-  if ((Event.EventType = ceCreated) and (Event.CItem is TCDBObject)) then
+  if (Assigned(Event) and (Event.EventType = ceCreated) and (Event.CItem is TCDBObject)) then
     Wanted.Initialize := TCDBObject(Event.CItem).Initialize;
 end;
 
@@ -3908,14 +3917,7 @@ begin
 
 
   if (not (tsLoading in FrameState)) then
-  begin
-    Event.EventType := ceBuild;
-    Event.Sender := Client;
-    Event.CItem := nil;
-    Event.Database := nil;
-    Event.Initialize := Client.Initialize;
-    ClientRefresh(Event);
-  end;
+    ClientRefresh(nil);
 
   acQBLanguageManager.CurrentLanguageIndex := -1;
   for I := 0 to acQBLanguageManager.LanguagesCount - 1 do
@@ -4349,10 +4351,7 @@ begin
   if (MainAction('aVSQLLog').Checked) then
   begin
     Text := Client.SQLMonitor.CacheText;
-    try
-      SendMessage(FLog.Handle, WM_SETTEXT, 0, LPARAM(PChar(Text)));
-    except
-    end;
+    SendMessage(FLog.Handle, WM_SETTEXT, 0, LPARAM(PChar(Text)));
 
     PLogResize(nil);
   end;
@@ -6705,455 +6704,6 @@ begin
   end;
 end;
 
-procedure TFClient.FListData(Sender: TObject; Item: TListItem);
-var
-  BaseTable: TCBaseTable;
-  BaseTableField: TCBaseTableField;
-  Database: TCDatabase;
-  Event: TCEvent;
-  FieldNames: string;
-  ForeignKey: TCForeignKey;
-  Host: TCHost;
-  I: Integer;
-  J: Integer;
-  Index: TCIndex;
-  Process: TCProcess;
-  Routine: TCRoutine;
-  S: string;
-  S2: string;
-  Status: TCStatus;
-  Table: TCTable;
-  Trigger: TCTrigger;
-  User: TCUser;
-  Variable: TCVariable;
-  View: TCView;
-  ViewField: TCViewField;
-begin
-  if (Assigned(FNavigator.Selected)) then
-    case (FNavigator.Selected.ImageIndex) of
-      iiServer:
-        begin
-          if (Item.Index < Client.Databases.Count) then
-          begin
-            Database := Client.Databases[Item.Index];
-
-            Item.GroupId := iiDatabase;
-            if (Database is TCSystemDatabase) then
-              Item.ImageIndex := iiSystemDatabase
-            else
-              Item.ImageIndex := iiDatabase;
-            Item.Caption := Database.Name;
-
-            if (not Database.Actual) then
-              Item.SubItems.Add('')
-            else
-              Item.SubItems.Add(FormatFloat('#,##0', Database.Count, LocaleFormatSettings));
-            Item.SubItems.Add(SizeToStr(Database.Size));
-            if (Database is TCSystemDatabase) then
-              Item.SubItems.Add('')
-            else if (Database.Created = 0) then
-              Item.SubItems.Add('???')
-            else
-              Item.SubItems.Add(SysUtils.DateToStr(Database.Created, LocaleFormatSettings));
-            if (Database.DefaultCharset = Client.DefaultCharset) then
-              S := ''
-            else
-              S := Database.DefaultCharset;
-            if ((Database.Collation <> '') and (Database.Collation <> Client.Collation)) then
-            begin
-              if (S <> '') then S := S + ', ';
-              S := S + Database.Collation;
-            end;
-            if (Database is TCSystemDatabase) then
-              Item.SubItems.Add('')
-            else
-              Item.SubItems.Add(S);
-          end;
-
-          case (FNavigator.Selected.Item[Item.Index].ImageIndex) of
-            iiHosts:
-              begin
-                Item.GroupID := 0;
-                Item.Caption := Preferences.LoadStr(335);
-                Item.ImageIndex := iiHosts;
-                if (Client.Hosts.Actual) then
-                  Item.SubItems.Add(FormatFloat('#,##0', Client.Hosts.Count, LocaleFormatSettings));
-              end;
-            iiProcesses:
-              begin
-                Item.GroupID := 0;
-                Item.ImageIndex := iiProcesses;
-                Item.Caption := Preferences.LoadStr(24);
-                if (Client.Processes.Actual) then
-                  Item.SubItems.Add(FormatFloat('#,##0', Client.Processes.Count, LocaleFormatSettings));
-              end;
-            iiStati:
-              begin
-                Item.GroupID := 0;
-                Item.ImageIndex := iiStati;
-                Item.Caption := Preferences.LoadStr(23);
-                if (Client.Stati.Actual) then
-                  Item.SubItems.Add(FormatFloat('#,##0', Client.Stati.Count, LocaleFormatSettings));
-              end;
-            iiUsers:
-              begin
-                Item.GroupID := 0;
-                Item.ImageIndex := iiUsers;
-                Item.Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
-                if (Client.Users.Actual) then
-                  if (Client.Users.Count >= 0) then
-                    Item.SubItems.Add(FormatFloat('#,##0', Client.Users.Count, LocaleFormatSettings))
-                  else
-                    Item.SubItems.Add('???');
-              end;
-            iiVariables:
-              begin
-                Item.GroupID := 0;
-                Item.ImageIndex := iiVariables;
-                Item.Caption := Preferences.LoadStr(22);
-                if (Client.Variables.Actual) then
-                  Item.SubItems.Add(FormatFloat('#,##0', Client.Variables.Count, LocaleFormatSettings));
-              end;
-          end;
-        end;
-      iiDatabase,
-      iiSystemDatabase:
-        begin
-          Database := Client.Databases[FNavigator.Selected.Index];
-
-          if (Item.Index < Database.Tables.Count) then
-          begin
-            Table := Database.Tables[Item.Index];
-
-            Item.GroupID := iiTable;
-            if (Table is TCSystemView) then
-              Item.ImageIndex := iiSystemView
-            else if (Table is TCBaseTable) then
-              Item.ImageIndex := iiBaseTable
-            else
-              Item.ImageIndex := iiView;
-            Item.Caption := Table.Name;
-
-            if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Engine)) then
-              Item.SubItems.Add(TCBaseTable(Table).Engine.Name)
-            else if ((Table is TCView)) then
-              Item.SubItems.Add(ReplaceStr(Preferences.LoadStr(738), '&', ''))
-            else
-              Item.SubItems.Add('???');
-
-            if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
-              Item.SubItems.Add('')
-            else if ((Table is TCBaseTable) and (TCBaseTable(Table).Rows < 0)) then
-              Item.SubItems.Add('???')
-            else if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Engine) and (UpperCase(TCBaseTable(Table).Engine.Name) = 'INNODB')) then
-              Item.SubItems.Add('~' + FormatFloat('#,##0', TCBaseTable(Table).Rows, LocaleFormatSettings))
-            else if ((Table is TCBaseTable)) then
-              Item.SubItems.Add(FormatFloat('#,##0', TCBaseTable(Table).Rows, LocaleFormatSettings))
-            else
-              Item.SubItems.Add('');
-
-            if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
-              Item.SubItems.Add('')
-            else if ((Table is TCBaseTable) and (TCBaseTable(Table).DataSize + TCBaseTable(Table).IndexSize < 0)) then
-              Item.SubItems.Add('???')
-            else if ((Table is TCBaseTable)) then
-              Item.SubItems.Add(SizeToStr(TCBaseTable(Table).DataSize + TCBaseTable(Table).IndexSize + 1))
-            else if ((Table is TCView) and TCView(Table).ActualSource) then
-              Item.SubItems.Add(SizeToStr(Length(TCView(Table).Source)))
-            else
-              Item.SubItems.Add('');
-
-            if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
-              Item.SubItems.Add('')
-            else if ((Table is TCBaseTable) and (TCBaseTable(Table).Updated <= 0)) then
-              Item.SubItems.Add('???')
-            else if ((Table is TCBaseTable)) then
-              Item.SubItems.Add(SysUtils.DateTimeToStr(TCBaseTable(Table).Updated, LocaleFormatSettings))
-            else
-              Item.SubItems.Add('');
-
-            S := '';
-            if ((Table is TCBaseTable) and (TCBaseTable(Table).DefaultCharset <> '') and (TCBaseTable(Table).DefaultCharset <> TCBaseTable(Table).Database.DefaultCharset)) then
-              S := S + TCBaseTable(Table).DefaultCharset;
-            if ((Table is TCBaseTable) and (TCBaseTable(Table).Collation <> '') and (TCBaseTable(Table).Collation <> TCBaseTable(Table).Database.Collation)) then
-            begin
-              if (S <> '') then S := S + ', ';
-              S := S + TCBaseTable(Table).Collation;
-            end;
-            Item.SubItems.Add(S);
-
-            if ((Table is TCBaseTable)) then
-              Item.SubItems.Add(TCBaseTable(Table).Comment)
-            else
-              Item.SubItems.Add(TCView(Table).Comment);
-          end
-          else if (Assigned(Database.Routines) and (Item.Index < Database.Tables.Count + Database.Routines.Count)) then
-          begin
-            Routine := Database.Routines[Item.Index - Database.Tables.Count];
-
-            Item.GroupID := iiProcedure;
-            if (Routine is TCProcedure) then
-              Item.ImageIndex := iiProcedure
-            else if (Routine is TCFunction) then
-              Item.ImageIndex := iiFunction;
-            Item.Caption := Routine.Name;
-
-            case (Routine.RoutineType) of
-              rtProcedure: Item.SubItems.Add('Procedure');
-              rtFunction: Item.SubItems.Add('Function');
-            end;
-            Item.SubItems.Add('');
-
-            if (not Routine.ActualSource) then
-              Item.SubItems.Add('')
-            else
-              Item.SubItems.Add(SizeToStr(Length(Routine.Source)));
-            if (Routine.Modified = 0) then
-              Item.SubItems.Add('???')
-            else
-              Item.SubItems.Add(SysUtils.DateTimeToStr(Routine.Modified, LocaleFormatSettings));
-            if (not Assigned(Routine.FunctionResult) or (Routine.FunctionResult.Charset = '') or (Routine.FunctionResult.Charset = Database.DefaultCharset)) then
-              Item.SubItems.Add('')
-            else
-              Item.SubItems.Add(Routine.FunctionResult.Charset);
-            Item.SubItems.Add(Routine.Comment);
-          end
-          else if (Assigned(Database.Routines) and Assigned(Database.Events) and (Item.Index < Database.Tables.Count + Database.Routines.Count + Database.Events.Count)) then
-          begin
-            Event := Database.Events[Item.Index - Database.Tables.Count - Database.Routines.Count];
-
-            Item.GroupID := iiEvent;
-            Item.ImageIndex := iiEvent;
-            Item.Caption := Event.Name;
-            Item.SubItems.Add('Event');
-            Item.SubItems.Add('');
-            if (not Event.ActualSource) then
-              Item.SubItems.Add('')
-            else
-              Item.SubItems.Add(SizeToStr(Length(Event.Source)));
-            if (Event.Updated = 0) then
-              Item.SubItems.Add('???')
-            else
-              Item.SubItems.Add(SysUtils.DateTimeToStr(Event.Updated, LocaleFormatSettings));
-            Item.SubItems.Add('');
-            Item.SubItems.Add(Event.Comment);
-          end;
-        end;
-      iiBaseTable,
-      iiSystemView:
-        begin
-          Database := Client.Databases[FNavigator.Selected.Parent.Index];
-          BaseTable := Database.BaseTableByName(FNavigator.Selected.Text);
-
-          if (Assigned(BaseTable)) then
-            if (Item.Index < BaseTable.Indices.Count) then
-            begin
-              Index := BaseTable.Indices[Item.Index];
-
-              Item.GroupID := iiIndex;
-              Item.ImageIndex := iiIndex;
-              Item.Caption := Index.Caption;
-
-              FieldNames := '';
-              for I := 0 to Index.Columns.Count - 1 do
-              begin
-                if (FieldNames <> '') then FieldNames := FieldNames + ',';
-                FieldNames := FieldNames + Index.Columns[I].Field.Name;
-                if (Index.Columns.Column[I].Length > 0) then
-                  FieldNames := FieldNames + '(' + IntToStr(Index.Columns[I].Length) + ')';
-              end;
-              Item.SubItems.Add(FieldNames);
-              Item.SubItems.Add('');
-              Item.SubItems.Add('');
-              if (Index.Unique) then
-                Item.SubItems.Add('unique')
-              else if (Index.Fulltext) then
-                Item.SubItems.Add('fulltext')
-              else
-                Item.SubItems.Add('');
-              if (Client.ServerVersion >= 40100) then
-                Item.SubItems.Add('');
-            end
-            else if (Item.Index < BaseTable.Indices.Count + BaseTable.Fields.Count) then
-            begin
-              BaseTableField := TCBaseTableField(BaseTable.Fields[Item.Index - BaseTable.Indices.Count]);
-
-              Item.GroupID := iiField;
-              if (BaseTable is TCSystemView) then
-                Item.ImageIndex := iiSystemViewField
-              else
-                Item.ImageIndex := iiField;
-              Item.Caption := BaseTableField.Name;
-
-              Item.SubItems.Add(BaseTableField.DBTypeStr());
-
-              if (BaseTableField.NullAllowed) then
-                Item.SubItems.Add(Preferences.LoadStr(74))
-              else
-                Item.SubItems.Add(Preferences.LoadStr(75));
-              if (BaseTableField.AutoIncrement) then
-                Item.SubItems.Add('<auto_increment>')
-              else if (BaseTableField.Default = 'NULL') then
-                Item.SubItems.Add('<' + Preferences.LoadStr(71) + '>')
-              else if (BaseTableField.Default = 'CURRENT_TIMESTAMP') then
-                Item.SubItems.Add('<INSERT-TimeStamp>')
-              else
-                Item.SubItems.Add(BaseTableField.UnescapeValue(BaseTableField.Default));
-              S := '';
-              if (BaseTableField.FieldType in TextFieldTypes) then
-              begin
-                if ((BaseTableField.Charset <> '') and (BaseTableField.Charset <> BaseTable.DefaultCharset)) then
-                  S := S + BaseTableField.Charset;
-                if ((BaseTableField.Collation <> '') and (BaseTableField.Collation <> BaseTable.Collation)) then
-                begin
-                  if (S <> '') then S := S + ', ';
-                  S := S + BaseTableField.Collation;
-                end;
-              end;
-              Item.SubItems.Add(S);
-              if (Client.ServerVersion >= 40100) then
-                Item.SubItems.Add(BaseTableField.Comment);
-            end
-            else if (Assigned(BaseTable.ForeignKeys) and (Item.Index < BaseTable.Indices.Count + BaseTable.Fields.Count + BaseTable.ForeignKeys.Count)) then
-            begin
-              ForeignKey := BaseTable.ForeignKeys[Item.Index - BaseTable.Indices.Count - BaseTable.Fields.Count];
-
-              Item.GroupID := iiForeignKey;
-              Item.ImageIndex := iiForeignKey;
-              Item.Caption := ForeignKey.Name;
-
-              Item.SubItems.Add(ForeignKey.DBTypeStr());
-              Item.SubItems.Add('');
-              Item.SubItems.Add('');
-
-              S := '';
-              if (ForeignKey.OnDelete = dtCascade) then S := 'cascade on delete';
-              if (ForeignKey.OnDelete = dtSetNull) then S := 'set NULL on delete';
-              if (ForeignKey.OnDelete = dtSetDefault) then S := 'set default on delete';
-              if (ForeignKey.OnDelete = dtNoAction) then S := 'no action on delete';
-              S2 := '';
-              if (ForeignKey.OnUpdate = utCascade) then S2 := 'cascade on update';
-              if (ForeignKey.OnUpdate = utSetNull) then S2 := 'set NULL on update';
-              if (ForeignKey.OnUpdate = utSetDefault) then S2 := 'set default on update';
-              if (ForeignKey.OnUpdate = utNoAction) then S2 := 'no action on update';
-              if (S <> '') and (S2 <> '') then S := S + ', ';
-              S := S + S2;
-              Item.SubItems.Add(S);
-
-              if (Client.ServerVersion >= 40100) then
-                Item.SubItems.Add('');
-            end
-            else if (Assigned(Database.Triggers)) then
-            begin
-              I := 0; J := 0;
-              while ((I < Database.Triggers.Count) and (J < Item.Index - BaseTable.Indices.Count - BaseTable.Fields.Count - BaseTable.ForeignKeys.Count)) do
-              begin
-                if (Database.Triggers[I].Table = BaseTable) then
-                  Inc(J);
-                Inc(I);
-              end;
-
-              if (I < Database.Triggers.Count) then
-              begin
-                Trigger := Database.Triggers[I];
-
-                Item.GroupID := iiTrigger;
-                Item.ImageIndex := iiTrigger;
-                Item.Caption := Trigger.Name;
-
-                S := '';
-                case (Trigger.Timing) of
-                  ttBefore: S := S + 'before ';
-                  ttAfter: S := S + 'after ';
-                end;
-                case (Trigger.Event) of
-                  teInsert: S := S + 'insert ';
-                  teUpdate: S := S + 'update ';
-                  teDelete: S := S + 'delete ';
-                end;
-                Item.SubItems.Add(S);
-              end;
-            end;
-        end;
-      iiView:
-        begin
-          Database := Client.Databases[FNavigator.Selected.Parent.Index];
-          View := Database.ViewByName(FNavigator.Selected.Text);
-          ViewField := TCViewField(View.Fields[Item.Index]);
-
-          Item.GroupID := iiField;
-          Item.ImageIndex := iiViewField;
-          Item.Caption := ViewField.Name;
-          if (ViewField.FieldType <> mfUnknown) then
-          begin
-            Item.SubItems.Add(ViewField.DBTypeStr());
-            if (ViewField.NullAllowed) then
-              Item.SubItems.Add(Preferences.LoadStr(74))
-            else
-              Item.SubItems.Add(Preferences.LoadStr(75));
-            if (ViewField.AutoIncrement) then
-              Item.SubItems.Add('<auto_increment>')
-            else
-              Item.SubItems.Add(ViewField.Default);
-            if (ViewField.Charset <> Client.DatabaseByName(SelectedDatabase).DefaultCharset) then
-              Item.SubItems.Add(ViewField.Charset);
-          end;
-        end;
-      iiHosts:
-        begin
-          Host := Client.Hosts[Item.Index];
-
-          Item.GroupID := iiHost;
-          Item.ImageIndex := iiHost;
-          Item.Caption := Host.Caption;
-        end;
-      iiProcesses:
-        begin
-          Process := Client.Processes[Item.Index];
-
-          Item.GroupID := iiProcess;
-          Item.ImageIndex := iiProcess;
-          Item.Caption := IntToStr(Process.Id);
-          Item.SubItems.Add(Process.UserName);
-          Item.SubItems.Add(Process.Host);
-          Item.SubItems.Add(Process.DatabaseName);
-          Item.SubItems.Add(Process.Command);
-          Item.SubItems.Add(SQLStmtToCaption(Process.SQL, 30));
-          if (Process.Time = 0) then
-            Item.SubItems.Add('???')
-          else
-            Item.SubItems.Add(ExecutionTimeToStr(Process.Time));
-          Item.SubItems.Add(Process.State);
-        end;
-      iiStati:
-        begin
-          Status := Client.Stati[Item.Index];
-
-          Item.GroupID := iiStatus;
-          Item.ImageIndex := iiStatus;
-          Item.Caption := Status.Name;
-          Item.SubItems.Add(Status.Value);
-        end;
-      iiUsers:
-        begin
-          User := Client.Users[Item.Index];
-
-          Item.GroupID := iiUser;
-          Item.ImageIndex := iiUser;
-          Item.Caption := User.Caption;
-        end;
-      iiVariables:
-        begin
-          Variable := Client.Variables[Item.Index];
-
-          Item.GroupID := iiVariable;
-          Item.ImageIndex := iiVariable;
-          Item.Caption := Variable.Name;
-          Item.SubItems.Add(Variable.Value);
-        end;
-    end;
-end;
-
 procedure TFClient.FListDragOver(Sender, Source: TObject; X, Y: Integer;
   State: TDragState; var Accept: Boolean);
 var
@@ -7352,9 +6902,22 @@ end;
 
 procedure TFClient.FListRefresh(Sender: TObject);
 
+  function GroupByImageIndex(const ImageIndex: Integer): TListGroup;
+  var
+    I: Integer;
+  begin
+    Result := nil;
+
+    for I := 0 to FList.Groups.Count - 1 do
+      if (FList.Groups[I].GroupID = ImageIndex) then
+        Result := FList.Groups[I];
+  end;
+
   procedure SetFListColumnWidths();
   var
-    I, Index, ContentWidth: Integer;
+    ContentWidth: Integer;
+    I: Integer;
+    Index: Integer;
   begin
     Index := ContentWidthIndexFromImageIndex(SelectedImageIndex);
     if ((0 <= Index) and (Index < Length(Client.Account.Desktop.ContentWidths))) then
@@ -7370,15 +6933,31 @@ procedure TFClient.FListRefresh(Sender: TObject);
 
 var
   BaseTable: TCBaseTable;
+  BaseTableField: TCBaseTableField;
   ChangingEvent: TLVChangingEvent;
   Count: Integer;
   Database: TCDatabase;
+  Event: TCEvent;
+  FieldNames: string;
+  ForeignKey: TCForeignKey;
   Group: TListGroup;
+  Host: TCHost;
   I: Integer;
+  Index: TCIndex;
+  Item: TListItem;
+  J: Integer;
   LVItem: TLVItem;
+  Process: TCProcess;
+  Routine: TCRoutine;
   S: string;
   S2: string;
+  Status: TCStatus;
+  Table: TCTable;
+  Trigger: TCTrigger;
+  User: TCUser;
+  Variable: TCVariable;
   View: TCView;
+  ViewField: TCViewField;
 begin
   if (FList.Columns.Count > 0) then
     StoreFListColumnWidths();
@@ -7389,15 +6968,13 @@ begin
   FList.OnChanging := nil;
   FList.Items.Clear();
 
-  if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
-  begin
-    FList.Columns.BeginUpdate();
-    FList.Columns.Clear();
-    FList.Groups.Clear();
-
-    case (FNavigator.Selected.ImageIndex) of
-      iiServer:
+  case (SelectedImageIndex) of
+    iiServer:
+      begin
+        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
         begin
+          FList.Columns.BeginUpdate();
+          FList.Columns.Clear();
           FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(38), '&', '');
           FList.Columns.Add().Caption := Preferences.LoadStr(76);
           FList.Columns.Add().Caption := Preferences.LoadStr(67);
@@ -7406,20 +6983,119 @@ begin
           SetFListColumnWidths();
           FList.Columns[1].Alignment := taRightJustify;
           FList.Columns[2].Alignment := taRightJustify;
+          FList.Columns.EndUpdate();
 
+          FList.Groups.Clear();
+          FList.Groups.BeginUpdate();
           Group := FList.Groups.Add();
           Group.GroupID := iiDatabase;
-          Group.Header := ReplaceStr(Preferences.LoadStr(265) + ' (' + IntToStr(Client.Databases.Count) + ')', '&', '');
-
           Group := FList.Groups.Add();
           Group.GroupID := 0;
           Group.Header := ReplaceStr(Preferences.LoadStr(12), '&', '');
+          FList.Groups.EndUpdate();
         end;
-      iiDatabase,
-      iiSystemDatabase:
-        begin
-          Database := Client.DatabaseByName(FNavigator.Selected.Text);
 
+        for I := 0 to Client.Databases.Count - 1 do
+        begin
+          Database := Client.Databases[I];
+          Item := FList.Items.Add();
+          Item.Data := Database;
+          Item.GroupId := iiDatabase;
+          if (Database is TCSystemDatabase) then
+            Item.ImageIndex := iiSystemDatabase
+          else
+            Item.ImageIndex := iiDatabase;
+          Item.Caption := Database.Name;
+
+          if (not Database.Actual) then
+            Item.SubItems.Add('')
+          else
+            Item.SubItems.Add(FormatFloat('#,##0', Database.Count, LocaleFormatSettings));
+          Item.SubItems.Add(SizeToStr(Database.Size));
+          if (Database is TCSystemDatabase) then
+            Item.SubItems.Add('')
+          else if (Database.Created = 0) then
+            Item.SubItems.Add('???')
+          else
+            Item.SubItems.Add(SysUtils.DateToStr(Database.Created, LocaleFormatSettings));
+          if (Database.DefaultCharset = Client.DefaultCharset) then
+            S := ''
+          else
+            S := Database.DefaultCharset;
+          if ((Database.Collation <> '') and (Database.Collation <> Client.Collation)) then
+          begin
+            if (S <> '') then S := S + ', ';
+            S := S + Database.Collation;
+          end;
+          if (Database is TCSystemDatabase) then
+            Item.SubItems.Add('')
+          else
+            Item.SubItems.Add(S);
+        end;
+        GroupByImageIndex(iiDatabase).Header := ReplaceStr(Preferences.LoadStr(265) + ' (' + IntToStr(Client.Databases.Count) + ')', '&', '');
+
+        if (Assigned(Client.Hosts)) then
+        begin
+          Item := FList.Items.Add();
+          Item.GroupID := 0;
+          Item.Caption := Preferences.LoadStr(335);
+          Item.ImageIndex := iiHosts;
+          if (Client.Hosts.Actual) then
+            Item.SubItems.Add(FormatFloat('#,##0', Client.Hosts.Count, LocaleFormatSettings));
+        end;
+
+        if (Assigned(Client.Processes)) then
+        begin
+          Item := FList.Items.Add();
+          Item.GroupID := 0;
+          Item.ImageIndex := iiProcesses;
+          Item.Caption := Preferences.LoadStr(24);
+          if (Client.Processes.Actual) then
+            Item.SubItems.Add(FormatFloat('#,##0', Client.Processes.Count, LocaleFormatSettings));
+        end;
+
+        if (Assigned(Client.Stati)) then
+        begin
+          Item := FList.Items.Add();
+          Item.GroupID := 0;
+          Item.ImageIndex := iiStati;
+          Item.Caption := Preferences.LoadStr(23);
+          if (Client.Stati.Actual) then
+            Item.SubItems.Add(FormatFloat('#,##0', Client.Stati.Count, LocaleFormatSettings));
+        end;
+
+        if (Assigned(Client.Users)) then
+        begin
+          Item := FList.Items.Add();
+          Item.GroupID := 0;
+          Item.ImageIndex := iiUsers;
+          Item.Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
+          if (Client.Users.Actual) then
+            if (Client.Users.Count >= 0) then
+              Item.SubItems.Add(FormatFloat('#,##0', Client.Users.Count, LocaleFormatSettings))
+            else
+              Item.SubItems.Add('???');
+        end;
+
+        if (Assigned(Client.Variables)) then
+        begin
+          Item := FList.Items.Add();
+          Item.GroupID := 0;
+          Item.ImageIndex := iiVariables;
+          Item.Caption := Preferences.LoadStr(22);
+          if (Client.Variables.Actual) then
+            Item.SubItems.Add(FormatFloat('#,##0', Client.Variables.Count, LocaleFormatSettings));
+        end;
+      end;
+    iiDatabase,
+    iiSystemDatabase:
+      begin
+        Database := Client.DatabaseByName(FNavigator.Selected.Text);
+
+        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
+        begin
+          FList.Columns.BeginUpdate();
+          FList.Columns.Clear();
           FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
           FList.Columns.Add().Caption := Preferences.LoadStr(69);
           FList.Columns.Add().Caption := Preferences.LoadStr(66);
@@ -7432,34 +7108,173 @@ begin
             FList.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
           FList.Columns[2].Alignment := taRightJustify;
           FList.Columns[3].Alignment := taRightJustify;
+          FList.Columns.EndUpdate();
 
+          FList.Groups.Clear();
+          FList.Groups.BeginUpdate();
           Group := FList.Groups.Add();
           Group.GroupID := iiTable;
-          S := ReplaceStr(Preferences.LoadStr(234), '&', '');
-          if (Client.ServerVersion >= 50001) then
-            S := S + ' + ' + ReplaceStr(Preferences.LoadStr(873), '&', '');
-          Group.Header := S + ' (' + IntToStr(Database.Tables.Count) + ')';
-
           if (Assigned(Database.Routines)) then
           begin
             Group := FList.Groups.Add();
             Group.GroupID := iiProcedure;
-            Group.Header := ReplaceStr(Preferences.LoadStr(874) + ' + ' + Preferences.LoadStr(875), '&', '') + ' (' + IntToStr(Database.Routines.Count) + ')';
           end;
-
           if (Assigned(Database.Events)) then
           begin
             Group := FList.Groups.Add();
             Group.GroupID := iiEvent;
-            Group.Header := ReplaceStr(Preferences.LoadStr(876), '&', '') + ' (' + IntToStr(Database.Events.Count) + ')';
           end;
+          FList.Groups.EndUpdate();
         end;
-      iiBaseTable,
-      iiSystemView:
-        begin
-          Database := Client.DatabaseByName(FNavigator.Selected.Parent.Text);
-          BaseTable := Database.BaseTableByName(FNavigator.Selected.Text);
 
+        for I := 0 to Database.Tables.Count - 1 do
+        begin
+          Table := Database.Tables[I];
+
+          Item := FList.Items.Add();
+          Item.Data := Table;
+          Item.GroupID := iiTable;
+          if (Table is TCSystemView) then
+            Item.ImageIndex := iiSystemView
+          else if (Table is TCBaseTable) then
+            Item.ImageIndex := iiBaseTable
+          else
+            Item.ImageIndex := iiView;
+          Item.Caption := Table.Name;
+
+          if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Engine)) then
+            Item.SubItems.Add(TCBaseTable(Table).Engine.Name)
+          else if ((Table is TCView)) then
+            Item.SubItems.Add(ReplaceStr(Preferences.LoadStr(738), '&', ''))
+          else
+            Item.SubItems.Add('???');
+
+          if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
+            Item.SubItems.Add('')
+          else if ((Table is TCBaseTable) and (TCBaseTable(Table).Rows < 0)) then
+            Item.SubItems.Add('???')
+          else if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Engine) and (UpperCase(TCBaseTable(Table).Engine.Name) = 'INNODB')) then
+            Item.SubItems.Add('~' + FormatFloat('#,##0', TCBaseTable(Table).Rows, LocaleFormatSettings))
+          else if ((Table is TCBaseTable)) then
+            Item.SubItems.Add(FormatFloat('#,##0', TCBaseTable(Table).Rows, LocaleFormatSettings))
+          else
+            Item.SubItems.Add('');
+
+          if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
+            Item.SubItems.Add('')
+          else if ((Table is TCBaseTable) and (TCBaseTable(Table).DataSize + TCBaseTable(Table).IndexSize < 0)) then
+            Item.SubItems.Add('???')
+          else if ((Table is TCBaseTable)) then
+            Item.SubItems.Add(SizeToStr(TCBaseTable(Table).DataSize + TCBaseTable(Table).IndexSize + 1))
+          else if ((Table is TCView) and TCView(Table).ActualSource) then
+            Item.SubItems.Add(SizeToStr(Length(TCView(Table).Source)))
+          else
+            Item.SubItems.Add('');
+
+          if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
+            Item.SubItems.Add('')
+          else if ((Table is TCBaseTable) and (TCBaseTable(Table).Updated <= 0)) then
+            Item.SubItems.Add('???')
+          else if ((Table is TCBaseTable)) then
+            Item.SubItems.Add(SysUtils.DateTimeToStr(TCBaseTable(Table).Updated, LocaleFormatSettings))
+          else
+            Item.SubItems.Add('');
+
+          S := '';
+          if ((Table is TCBaseTable) and (TCBaseTable(Table).DefaultCharset <> '') and (TCBaseTable(Table).DefaultCharset <> TCBaseTable(Table).Database.DefaultCharset)) then
+            S := S + TCBaseTable(Table).DefaultCharset;
+          if ((Table is TCBaseTable) and (TCBaseTable(Table).Collation <> '') and (TCBaseTable(Table).Collation <> TCBaseTable(Table).Database.Collation)) then
+          begin
+            if (S <> '') then S := S + ', ';
+            S := S + TCBaseTable(Table).Collation;
+          end;
+          Item.SubItems.Add(S);
+
+          if ((Table is TCBaseTable)) then
+            Item.SubItems.Add(TCBaseTable(Table).Comment)
+          else
+            Item.SubItems.Add(TCView(Table).Comment);
+        end;
+        S := ReplaceStr(Preferences.LoadStr(234), '&', '');
+        if (Client.ServerVersion >= 50001) then
+          S := S + ' + ' + ReplaceStr(Preferences.LoadStr(873), '&', '');
+        GroupByImageIndex(iiTable).Header := S + ' (' + IntToStr(Database.Tables.Count) + ')';
+
+        if (Assigned(Database.Routines)) then
+        begin
+          for I := 0 to Database.Routines.Count - 1 do
+          begin
+            Routine := Database.Routines[I];
+
+            Item := FList.Items.Add();
+            Item.Data := Routine;
+            Item.GroupID := iiProcedure;
+            if (Routine is TCProcedure) then
+              Item.ImageIndex := iiProcedure
+            else if (Routine is TCFunction) then
+              Item.ImageIndex := iiFunction;
+            Item.Caption := Routine.Name;
+
+            case (Routine.RoutineType) of
+              rtProcedure: Item.SubItems.Add('Procedure');
+              rtFunction: Item.SubItems.Add('Function');
+            end;
+            Item.SubItems.Add('');
+
+            if (not Routine.ActualSource) then
+              Item.SubItems.Add('')
+            else
+              Item.SubItems.Add(SizeToStr(Length(Routine.Source)));
+            if (Routine.Modified = 0) then
+              Item.SubItems.Add('???')
+            else
+              Item.SubItems.Add(SysUtils.DateTimeToStr(Routine.Modified, LocaleFormatSettings));
+            if (not Assigned(Routine.FunctionResult) or (Routine.FunctionResult.Charset = '') or (Routine.FunctionResult.Charset = Database.DefaultCharset)) then
+              Item.SubItems.Add('')
+            else
+              Item.SubItems.Add(Routine.FunctionResult.Charset);
+            Item.SubItems.Add(Routine.Comment);
+          end;
+          GroupByImageIndex(iiProcedure).Header := ReplaceStr(Preferences.LoadStr(874) + ' + ' + Preferences.LoadStr(875), '&', '') + ' (' + IntToStr(Database.Routines.Count) + ')';
+        end;
+
+        if (Assigned(Database.Events)) then
+        begin
+          for I := 0 to Database.Events.Count - 1 do
+          begin
+            Event := Database.Events[I];
+
+            Item := FList.Items.Add();
+            Item.Data := Event;
+            Item.GroupID := iiEvent;
+            Item.ImageIndex := iiEvent;
+            Item.Caption := Event.Name;
+            Item.SubItems.Add('Event');
+            Item.SubItems.Add('');
+            if (not Event.ActualSource) then
+              Item.SubItems.Add('')
+            else
+              Item.SubItems.Add(SizeToStr(Length(Event.Source)));
+            if (Event.Updated = 0) then
+              Item.SubItems.Add('???')
+            else
+              Item.SubItems.Add(SysUtils.DateTimeToStr(Event.Updated, LocaleFormatSettings));
+            Item.SubItems.Add('');
+            Item.SubItems.Add(Event.Comment);
+          end;
+          GroupByImageIndex(iiEvent).Header := ReplaceStr(Preferences.LoadStr(876), '&', '') + ' (' + IntToStr(Database.Events.Count) + ')';
+        end;
+      end;
+    iiBaseTable,
+    iiSystemView:
+      begin
+        Database := Client.DatabaseByName(FNavigator.Selected.Parent.Text);
+        BaseTable := Database.BaseTableByName(FNavigator.Selected.Text);
+
+        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
+        begin
+          FList.Columns.BeginUpdate();
+          FList.Columns.Clear();
           FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
           FList.Columns.Add().Caption := Preferences.LoadStr(69);
           FList.Columns.Add().Caption := Preferences.LoadStr(71);
@@ -7470,38 +7285,179 @@ begin
           SetFListColumnWidths();
           if (FList.Column[1].Width > 2 * Preferences.GridMaxColumnWidth) then
             FList.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
+          FList.Columns.EndUpdate();
 
+          FList.Groups.Clear();
+          FList.Groups.BeginUpdate();
           Group := FList.Groups.Add();
           Group.GroupID := iiIndex;
-          Group.Header := ReplaceStr(Preferences.LoadStr(458), '&', '') + ' (' + IntToStr(BaseTable.Indices.Count) + ')';
-
           Group := FList.Groups.Add();
           Group.GroupID := iiField;
-          Group.Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(BaseTable.Fields.Count) + ')';
-
           if (Assigned(BaseTable.ForeignKeys)) then
           begin
             Group := FList.Groups.Add();
             Group.GroupID := iiForeignKey;
-            Group.Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(BaseTable.ForeignKeys.Count) + ')';
           end;
-
           if (Assigned(Database.Triggers)) then
           begin
-            Count := 0;
-            for I := 0 to Database.Triggers.Count - 1 do
-              if (Database.Triggers[I].Table = BaseTable) then
-                Inc(Count);
             Group := FList.Groups.Add();
             Group.GroupID := iiTrigger;
-            Group.Header := ReplaceStr(Preferences.LoadStr(797), '&', '') + ' (' + IntToStr(Count) + ')';
           end;
+          FList.Groups.EndUpdate();
         end;
-      iiView:
-        begin
-          Database := Client.DatabaseByName(FNavigator.Selected.Parent.Text);
-          View := Database.ViewByName(FNavigator.Selected.Text);
 
+        for I := 0 to BaseTable.Indices.Count - 1 do
+        begin
+          Index := BaseTable.Indices[I];
+
+          Item := FList.Items.Add();
+          Item.Data := Index;
+          Item.GroupID := iiIndex;
+          Item.ImageIndex := iiIndex;
+          Item.Caption := Index.Caption;
+
+          FieldNames := '';
+          for J := 0 to Index.Columns.Count - 1 do
+          begin
+            if (FieldNames <> '') then FieldNames := FieldNames + ',';
+            FieldNames := FieldNames + Index.Columns[J].Field.Name;
+            if (Index.Columns.Column[J].Length > 0) then
+              FieldNames := FieldNames + '(' + IntToStr(Index.Columns[J].Length) + ')';
+          end;
+          Item.SubItems.Add(FieldNames);
+          Item.SubItems.Add('');
+          Item.SubItems.Add('');
+          if (Index.Unique) then
+            Item.SubItems.Add('unique')
+          else if (Index.Fulltext) then
+            Item.SubItems.Add('fulltext')
+          else
+            Item.SubItems.Add('');
+          if (Client.ServerVersion >= 40100) then
+            Item.SubItems.Add('');
+        end;
+        GroupByImageIndex(iiIndex).Header := ReplaceStr(Preferences.LoadStr(458), '&', '') + ' (' + IntToStr(BaseTable.Indices.Count) + ')';
+
+        for I := 0 to BaseTable.Fields.Count - 1 do
+        begin
+          BaseTableField := TCBaseTableField(BaseTable.Fields[I]);
+
+          Item := FList.Items.Add();
+          Item.Data := BaseTableField;
+          Item.GroupID := iiField;
+          if (BaseTable is TCSystemView) then
+            Item.ImageIndex := iiSystemViewField
+          else
+            Item.ImageIndex := iiField;
+          Item.Caption := BaseTableField.Name;
+
+          Item.SubItems.Add(BaseTableField.DBTypeStr());
+
+          if (BaseTableField.NullAllowed) then
+            Item.SubItems.Add(Preferences.LoadStr(74))
+          else
+            Item.SubItems.Add(Preferences.LoadStr(75));
+          if (BaseTableField.AutoIncrement) then
+            Item.SubItems.Add('<auto_increment>')
+          else if (BaseTableField.Default = 'NULL') then
+            Item.SubItems.Add('<' + Preferences.LoadStr(71) + '>')
+          else if (BaseTableField.Default = 'CURRENT_TIMESTAMP') then
+            Item.SubItems.Add('<INSERT-TimeStamp>')
+          else
+            Item.SubItems.Add(BaseTableField.UnescapeValue(BaseTableField.Default));
+          S := '';
+          if (BaseTableField.FieldType in TextFieldTypes) then
+          begin
+            if ((BaseTableField.Charset <> '') and (BaseTableField.Charset <> BaseTable.DefaultCharset)) then
+              S := S + BaseTableField.Charset;
+            if ((BaseTableField.Collation <> '') and (BaseTableField.Collation <> BaseTable.Collation)) then
+            begin
+              if (S <> '') then S := S + ', ';
+              S := S + BaseTableField.Collation;
+            end;
+          end;
+          Item.SubItems.Add(S);
+          if (Client.ServerVersion >= 40100) then
+            Item.SubItems.Add(BaseTableField.Comment);
+        end;
+        GroupByImageIndex(iiField).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(BaseTable.Fields.Count) + ')';
+
+        if (Assigned(BaseTable.ForeignKeys)) then
+        begin
+          for I := 0 to BaseTable.ForeignKeys.Count - 1 do
+          begin
+            ForeignKey := BaseTable.ForeignKeys[I];
+
+            Item := FList.Items.Add();
+            Item.Data := ForeignKey;
+            Item.GroupID := iiForeignKey;
+            Item.ImageIndex := iiForeignKey;
+            Item.Caption := ForeignKey.Name;
+
+            Item.SubItems.Add(ForeignKey.DBTypeStr());
+            Item.SubItems.Add('');
+            Item.SubItems.Add('');
+
+            S := '';
+            if (ForeignKey.OnDelete = dtCascade) then S := 'cascade on delete';
+            if (ForeignKey.OnDelete = dtSetNull) then S := 'set NULL on delete';
+            if (ForeignKey.OnDelete = dtSetDefault) then S := 'set default on delete';
+            if (ForeignKey.OnDelete = dtNoAction) then S := 'no action on delete';
+            S2 := '';
+            if (ForeignKey.OnUpdate = utCascade) then S2 := 'cascade on update';
+            if (ForeignKey.OnUpdate = utSetNull) then S2 := 'set NULL on update';
+            if (ForeignKey.OnUpdate = utSetDefault) then S2 := 'set default on update';
+            if (ForeignKey.OnUpdate = utNoAction) then S2 := 'no action on update';
+            if (S <> '') and (S2 <> '') then S := S + ', ';
+            S := S + S2;
+            Item.SubItems.Add(S);
+
+            if (Client.ServerVersion >= 40100) then
+              Item.SubItems.Add('');
+          end;
+          GroupByImageIndex(iiForeignKey).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(BaseTable.ForeignKeys.Count) + ')';
+        end;
+
+        if (Assigned(BaseTable.Database.Triggers)) then
+        begin
+          Count := 0;
+          for I := 0 to Database.Triggers.Count - 1 do
+            if (Database.Triggers[I].Table = BaseTable) then
+            begin
+              Trigger := Database.Triggers[I];
+
+              Item := FList.Items.Add();
+              Item.Data := Trigger;
+              Item.GroupID := iiTrigger;
+              Item.ImageIndex := iiTrigger;
+              Item.Caption := Trigger.Name;
+
+              S := '';
+              case (Trigger.Timing) of
+                ttBefore: S := S + 'before ';
+                ttAfter: S := S + 'after ';
+              end;
+              case (Trigger.Event) of
+                teInsert: S := S + 'insert ';
+                teUpdate: S := S + 'update ';
+                teDelete: S := S + 'delete ';
+              end;
+              Item.SubItems.Add(S);
+
+              Inc(Count);
+            end;
+          GroupByImageIndex(iiTrigger).Header := ReplaceStr(Preferences.LoadStr(797), '&', '') + ' (' + IntToStr(Count) + ')';
+        end;
+      end;
+    iiView:
+      begin
+        Database := Client.DatabaseByName(FNavigator.Selected.Parent.Text);
+        View := Database.ViewByName(FNavigator.Selected.Text);
+
+        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
+        begin
+          FList.Columns.BeginUpdate();
+          FList.Columns.Clear();
           FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
           FList.Columns.Add().Caption := Preferences.LoadStr(69);
           FList.Columns.Add().Caption := Preferences.LoadStr(71);
@@ -7510,22 +7466,76 @@ begin
           SetFListColumnWidths();
           if (FList.Column[1].Width > 2 * Preferences.GridMaxColumnWidth) then
             FList.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
+          FList.Columns.EndUpdate();
 
+          FList.Groups.Clear();
+          FList.Groups.BeginUpdate();
           Group := FList.Groups.Add();
-          Group.GroupID := iiField;
-          Group.Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(View.Fields.Count) + ')';
+          Group.GroupID := iiViewField;
+          FList.Groups.EndUpdate();
         end;
-      iiHosts:
+
+        for I := 0 to View.Fields.Count - 1 do
         begin
+          ViewField := TCViewField(View.Fields[I]);
+
+          Item := FList.Items.Add();
+          Item.Data := ViewField;
+          Item.GroupID := iiField;
+          Item.ImageIndex := iiViewField;
+          Item.Caption := ViewField.Name;
+          if (ViewField.FieldType <> mfUnknown) then
+          begin
+            Item.SubItems.Add(ViewField.DBTypeStr());
+            if (ViewField.NullAllowed) then
+              Item.SubItems.Add(Preferences.LoadStr(74))
+            else
+              Item.SubItems.Add(Preferences.LoadStr(75));
+            if (ViewField.AutoIncrement) then
+              Item.SubItems.Add('<auto_increment>')
+            else
+              Item.SubItems.Add(ViewField.Default);
+            if (ViewField.Charset <> Client.DatabaseByName(SelectedDatabase).DefaultCharset) then
+              Item.SubItems.Add(ViewField.Charset);
+          end;
+        end;
+        GroupByImageIndex(iiViewField).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(View.Fields.Count) + ')';
+      end;
+    iiHosts:
+      begin
+        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
+        begin
+          FList.Columns.BeginUpdate();
+          FList.Columns.Clear();
           FList.Columns.Add().Caption := Preferences.LoadStr(335);
           SetFListColumnWidths();
+          FList.Columns.EndUpdate();
 
+          FList.Groups.Clear();
+          FList.Groups.BeginUpdate();
           Group := FList.Groups.Add();
           Group.GroupID := iiHost;
-          Group.Header := ReplaceStr(Preferences.LoadStr(335), '&', '') + ' (' + IntToStr(Client.Hosts.Count) + ')';
+          FList.Groups.EndUpdate();
         end;
-      iiProcesses:
+
+        for I := 0 to Client.Hosts.Count - 1 do
         begin
+          Host := Client.Hosts[I];
+
+          Item := FList.Items.Add();
+          Item.Data := Host;
+          Item.GroupID := iiHost;
+          Item.ImageIndex := iiHost;
+          Item.Caption := Host.Caption;
+        end;
+        GroupByImageIndex(iiHost).Header := ReplaceStr(Preferences.LoadStr(335), '&', '') + ' (' + IntToStr(Client.Hosts.Count) + ')';
+      end;
+    iiProcesses:
+      begin
+        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
+        begin
+          FList.Columns.BeginUpdate();
+          FList.Columns.Clear();
           FList.Columns.Add().Caption := Preferences.LoadStr(269);
           FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
           FList.Columns.Add().Caption := Preferences.LoadStr(271);
@@ -7535,43 +7545,128 @@ begin
           FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(661), '&', '');
           FList.Columns.Add().Caption := Preferences.LoadStr(276);
           SetFListColumnWidths();
+          FList.Columns.EndUpdate();
 
+          FList.Groups.Clear();
+          FList.Groups.BeginUpdate();
           Group := FList.Groups.Add();
           Group.GroupID := iiProcess;
-          Group.Header := ReplaceStr(Preferences.LoadStr(24), '&', '') + ' (' + IntToStr(Client.Processes.Count) + ')';
+          FList.Groups.EndUpdate();
         end;
-      iiStati:
+
+        for I := 0 to Client.Processes.Count - 1 do
         begin
+          Process := Client.Processes[I];
+
+          Item := FList.Items.Add();
+          Item.Data := Process;
+          Item.GroupID := iiProcess;
+          Item.ImageIndex := iiProcess;
+          Item.Caption := IntToStr(Process.Id);
+          Item.SubItems.Add(Process.UserName);
+          Item.SubItems.Add(Process.Host);
+          Item.SubItems.Add(Process.DatabaseName);
+          Item.SubItems.Add(Process.Command);
+          Item.SubItems.Add(SQLStmtToCaption(Process.SQL, 30));
+          if (Process.Time = 0) then
+            Item.SubItems.Add('???')
+          else
+            Item.SubItems.Add(ExecutionTimeToStr(Process.Time));
+          Item.SubItems.Add(Process.State);
+        end;
+        GroupByImageIndex(iiProcess).Header := ReplaceStr(Preferences.LoadStr(24), '&', '') + ' (' + IntToStr(Client.Processes.Count) + ')';
+      end;
+    iiStati:
+      begin
+        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
+        begin
+          FList.Columns.BeginUpdate();
+          FList.Columns.Clear();
           FList.Columns.Add().Caption := Preferences.LoadStr(267);
           FList.Columns.Add().Caption := Preferences.LoadStr(268);
           SetFListColumnWidths();
+          FList.Columns.EndUpdate();
 
+          FList.Groups.Clear();
+          FList.Groups.BeginUpdate();
           Group := FList.Groups.Add();
           Group.GroupID := iiStatus;
-          Group.Header := ReplaceStr(Preferences.LoadStr(23), '&', '') + ' (' + IntToStr(Client.Stati.Count) + ')';
+          FList.Groups.EndUpdate();
         end;
-      iiUsers:
+
+        for I := 0 to Client.Stati.Count - 1 do
         begin
+          Status := Client.Stati[I];
+
+          Item := FList.Items.Add();
+          Item.Data := Status;
+          Item.GroupID := iiStatus;
+          Item.ImageIndex := iiStatus;
+          Item.Caption := Status.Name;
+          Item.SubItems.Add(Status.Value);
+        end;
+        GroupByImageIndex(iiStatus).Header := ReplaceStr(Preferences.LoadStr(23), '&', '') + ' (' + IntToStr(Client.Stati.Count) + ')';
+      end;
+    iiUsers:
+      begin
+        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
+        begin
+          FList.Columns.BeginUpdate();
+          FList.Columns.Clear();
           FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
           SetFListColumnWidths();
+          FList.Columns.EndUpdate();
 
+          FList.Groups.Clear();
+          FList.Groups.BeginUpdate();
           Group := FList.Groups.Add();
           Group.GroupID := iiUser;
-          Group.Header := ReplaceStr(Preferences.LoadStr(561), '&', '') + ' (' + IntToStr(Client.Users.Count) + ')';
+          FList.Groups.EndUpdate();
         end;
-      iiVariables:
+
+        for I := 0 to Client.Users.Count - 1 do
         begin
+          User := Client.Users[I];
+
+          Item := FList.Items.Add();
+          Item.Data := User;
+          Item.GroupID := iiUser;
+          Item.ImageIndex := iiUser;
+          Item.Caption := User.Caption;
+        end;
+        GroupByImageIndex(iiUser).Header := ReplaceStr(Preferences.LoadStr(561), '&', '') + ' (' + IntToStr(Client.Users.Count) + ')';
+      end;
+    iiVariables:
+      begin
+        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
+        begin
+          FList.Columns.BeginUpdate();
+          FList.Columns.Clear();
           FList.Columns.Add().Caption := Preferences.LoadStr(267);
           FList.Columns.Add().Caption := Preferences.LoadStr(268);
           SetFListColumnWidths();
+          FList.Columns.EndUpdate();
 
+          FList.Groups.Clear();
+          FList.Groups.BeginUpdate();
           Group := FList.Groups.Add();
           Group.GroupID := iiVariable;
-          Group.Header := ReplaceStr(Preferences.LoadStr(22), '&', '') + ' (' + IntToStr(Client.Variables.Count) + ')';
+          FList.Groups.EndUpdate();
         end;
-    end;
 
-    FList.Columns.EndUpdate();
+        for I := 0 to Client.Variables.Count - 1 do
+        begin
+          Variable := Client.Variables[I];
+
+          Item := FList.Items.Add();
+          Item.Data := Variable;
+          Item.GroupID := iiVariable;
+          Item.ImageIndex := iiVariable;
+          Item.Caption := Variable.Name;
+          Item.SubItems.Add(Variable.Value);
+        end;
+        GroupByImageIndex(iiVariable).Header := ReplaceStr(Preferences.LoadStr(22), '&', '') + ' (' + IntToStr(Client.Variables.Count) + ')';
+      end;
   end;
 
   case (FNavigator.Selected.ImageIndex) of
@@ -7583,20 +7678,10 @@ begin
     else Count := FNavigator.Selected.Count;
   end;
 
-  if (FList.OwnerData) then
-    FList.Items.Count := Count
-  else
-  begin
-    for I := 0 to Count - 1 do
-    begin
-      FList.AddItem('', nil);
-      FListData(Sender, FList.Items[I]);
-    end;
-    if (not (FNavigator.Selected.ImageIndex in [iiDatabase, iiSystemDatabase]) and (Count > 0)) then
-      FList.ItemFocused := FList.Items[0];
-    if ((Window.ActiveControl = FList) and Assigned(FList.OnSelectItem)) then
-      FList.OnSelectItem(Sender, FList.Selected, Assigned(FList.Selected));
-  end;
+  if (not (FNavigator.Selected.ImageIndex in [iiDatabase, iiSystemDatabase]) and (Count > 0)) then
+    FList.ItemFocused := FList.Items[0];
+  if ((Window.ActiveControl = FList) and Assigned(FList.OnSelectItem)) then
+    FList.OnSelectItem(Sender, FList.Selected, Assigned(FList.Selected));
 
   if (FNavigator.Selected.ImageIndex in [iiHosts, iiStati, iiUsers, iiVariables]) then
     for I := 0 to FList.Columns.Count - 1 do
@@ -8302,7 +8387,7 @@ begin
   if (Key = #3) then Key := #0; // Why is threre a Beep on <Ctrl+C> without this?
 end;
 
-procedure TFClient.FNavigatorRefresh(const Event: TCClient.TEvent);
+procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
 var
   Child: TTreeNode;
   Database: TCDatabase;
@@ -8322,7 +8407,19 @@ begin
     Node.ImageIndex := iiServer;
   end;
 
-  if (Event.Sender is TCDatabases) then
+  if (not Assigned(ClientEvent)) then
+  begin
+    Node := FNavigator.Items.getFirstNode();
+    for I := 0 to Node.Count - 1 do
+      case (Node.Item[I].ImageIndex) of
+        iiHosts: Node.Text := Preferences.LoadStr(335);
+        iiProcesses: Node.Text := Preferences.LoadStr(24);
+        iiStati: Node.Text := Preferences.LoadStr(23);
+        iiUsers: Node.Text := ReplaceStr(Preferences.LoadStr(561), '&', '');
+        iiVariables: Node.Text := Preferences.LoadStr(22);
+      end;
+  end
+  else if (ClientEvent.Sender is TCDatabases) then
   begin
     Node := FNavigator.Items.getFirstNode();
 
@@ -8339,18 +8436,18 @@ begin
       Node.Expand(False);
     end;
 
-    if (Event.EventType in [ceBuild, ceDroped]) then
+    if (ClientEvent.EventType in [ceBuild, ceDroped]) then
     begin
       Child := Node.getFirstChild();
       while (Assigned(Child) and (Child.ImageIndex in [iiDatabase, iiSystemDatabase])) do
       begin
         Sibling := Child.getNextSibling();
-        if (not Assigned(Client.DatabaseByName(Child.Text)) or (Event.EventType = ceDroped) and (Event.CItem = Client.DatabaseByName(Child.Text))) then
+        if (not Assigned(Client.DatabaseByName(Child.Text)) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Client.DatabaseByName(Child.Text))) then
           Child.Delete();
         Child := Sibling;
       end;
     end;
-    if (Event.EventType in [ceBuild, ceCreated]) then
+    if (ClientEvent.EventType in [ceBuild, ceCreated]) then
     begin
       for I := 0 to Client.Databases.Count - 1 do
       begin
@@ -8381,9 +8478,9 @@ begin
 
     Node.HasChildren := Node.Count > 0;
   end
-  else if ((Event.Sender is TCTables) or (Event.Sender is TCRoutines) or (Event.Sender is TCEvents)) then
+  else if ((ClientEvent.Sender is TCTables) or (ClientEvent.Sender is TCRoutines) or (ClientEvent.Sender is TCEvents)) then
   begin
-    Database := TCDBObjects(Event.Sender).Database;
+    Database := TCDBObjects(ClientEvent.Sender).Database;
 
     Node := FNavigator.Items.getFirstNode().getFirstChild();
     while (Assigned(Node) and (Node.ImageIndex in [iiDatabase, iiSystemDatabase]) and (Node.Text <> Database.Name)) do
@@ -8391,20 +8488,20 @@ begin
 
     if (Assigned(Node)) then
     begin
-      if (Event.Sender is TCTables) then
+      if (ClientEvent.Sender is TCTables) then
       begin
-        if (Event.EventType in [ceBuild, ceDroped]) then
+        if (ClientEvent.EventType in [ceBuild, ceDroped]) then
         begin
           Child := Node.getFirstChild();
           while (Assigned(Child) and (Child.ImageIndex in [iiBaseTable, iiSystemView, iiView])) do
           begin
             Sibling := Child.getNextSibling();
-            if (not Assigned(Database.TableByName(Child.Text)) or (Event.EventType = ceDroped) and (Event.CItem = Database.TableByName(Child.Text))) then
+            if (not Assigned(Database.TableByName(Child.Text)) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Database.TableByName(Child.Text))) then
               Child.Delete();
             Child := Sibling;
           end;
         end;
-        if (Event.EventType in [ceBuild, ceCreated]) then
+        if (ClientEvent.EventType in [ceBuild, ceCreated]) then
           for I := 0 to Database.Tables.Count - 1 do
           begin
             Child := Node.getFirstChild();
@@ -8428,9 +8525,9 @@ begin
             end;
           end;
       end
-      else if (Event.Sender is TCRoutines) then
+      else if (ClientEvent.Sender is TCRoutines) then
       begin
-        if (Event.EventType in [ceBuild, ceDroped]) then
+        if (ClientEvent.EventType in [ceBuild, ceDroped]) then
         begin
           Child := Node.getFirstChild();
           while (Assigned(Child) and (Child.ImageIndex in [iiBaseTable, iiSystemView, iiView])) do
@@ -8438,13 +8535,13 @@ begin
           while (Assigned(Child) and (Child.ImageIndex in [iiProcedure, iiFunction])) do
           begin
             Sibling := Child.getNextSibling();
-            if ((Child.ImageIndex = iiProcedure) and (not Assigned(Database.ProcedureByName(Child.Text)) or (Event.EventType = ceDroped) and (Event.CItem = Database.ProcedureByName(Child.Text)))
-              or (Child.ImageIndex = iiFunction) and (not Assigned(Database.FunctionByName(Child.Text)) or (Event.EventType = ceDroped) and (Event.CItem = Database.FunctionByName(Child.Text)))) then
+            if ((Child.ImageIndex = iiProcedure) and (not Assigned(Database.ProcedureByName(Child.Text)) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Database.ProcedureByName(Child.Text)))
+              or (Child.ImageIndex = iiFunction) and (not Assigned(Database.FunctionByName(Child.Text)) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Database.FunctionByName(Child.Text)))) then
               Child.Delete();
             Child := Sibling;
           end;
         end;
-        if (Event.EventType in [ceBuild, ceCreated]) then
+        if (ClientEvent.EventType in [ceBuild, ceCreated]) then
           for I := 0 to Database.Routines.Count - 1 do
           begin
             Child := Node.getFirstChild();
@@ -8465,9 +8562,9 @@ begin
                 Child.ImageIndex := iiFunction;
           end;
       end
-      else if (Event.Sender is TCEvents) then
+      else if (ClientEvent.Sender is TCEvents) then
       begin
-        if (Event.EventType in [ceBuild, ceDroped]) then
+        if (ClientEvent.EventType in [ceBuild, ceDroped]) then
         begin
           Child := Node.getFirstChild();
           while (Assigned(Child) and (Child.ImageIndex in [iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction])) do
@@ -8475,12 +8572,12 @@ begin
           while (Assigned(Child) and (Child.ImageIndex in [iiEvent])) do
           begin
             Sibling := Child.getNextSibling();
-            if (not Assigned(Database.EventByName(Child.Text)) or (Event.EventType = ceDroped) and (Event.CItem = Database.EventByName(Child.Text))) then
+            if (not Assigned(Database.EventByName(Child.Text)) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Database.EventByName(Child.Text))) then
               Child.Delete();
             Child := Sibling;
           end;
         end;
-        if (Event.EventType in [ceBuild, ceCreated]) then
+        if (ClientEvent.EventType in [ceBuild, ceCreated]) then
           for I := 0 to Database.Events.Count - 1 do
           begin
             Child := Node.getFirstChild();
@@ -8505,9 +8602,9 @@ begin
         or (Assigned(Database.Events) and ((Database.Events.Count > 0) or not Database.Events.Actual));
     end;
   end
-  else if (Event.Sender is TCTriggers) then
+  else if (ClientEvent.Sender is TCTriggers) then
   begin
-    Database := TCTriggers(Event.Sender).Database;
+    Database := TCTriggers(ClientEvent.Sender).Database;
 
     DatabaseNode := FNavigator.Items.getFirstNode().getFirstChild();
     while (Assigned(DatabaseNode) and (DatabaseNode.ImageIndex in [iiDatabase, iiSystemDatabase]) and (DatabaseNode.Text <> Database.Name)) do
@@ -8524,7 +8621,7 @@ begin
 
         if (Assigned(Table) and (Table is TCBaseTable)) then
         begin
-          if (Event.EventType in [ceBuild, ceDroped]) then
+          if (ClientEvent.EventType in [ceBuild, ceDroped]) then
           begin
             Child := Node.getFirstChild();
             while (Assigned(Child) and not (Child.ImageIndex in [iiTrigger])) do
@@ -8538,7 +8635,7 @@ begin
             end;
           end;
 
-          if (Event.EventType in [ceBuild, ceUpdated, ceCreated]) then
+          if (ClientEvent.EventType in [ceBuild, ceUpdated, ceCreated]) then
             for I := 0 to Database.Triggers.Count - 1 do
               if (Database.Triggers[I].Table = Table) then
               begin
@@ -8562,10 +8659,10 @@ begin
       end;
     end;
   end
-  else if (Event.Sender is TCTable) then
+  else if (ClientEvent.Sender is TCTable) then
   begin
-    Database := TCTable(Event.Sender).Database;
-    Table := TCTable(Event.Sender);
+    Database := TCTable(ClientEvent.Sender).Database;
+    Table := TCTable(ClientEvent.Sender);
 
     Node := FNavigator.Items.getFirstNode().getFirstChild();
     while (Assigned(Node) and (Node.ImageIndex in [iiDatabase, iiSystemDatabase]) and (Node.Text <> Database.Name)) do
@@ -8582,7 +8679,7 @@ begin
         Node.DeleteChildren();
         Node.HasChildren := True;
 
-        if (Event.Sender is TCBaseTable) then
+        if (ClientEvent.Sender is TCBaseTable) then
         begin
           for I := 0 to TCBaseTable(Table).Indices.Count - 1 do
           begin
@@ -8610,7 +8707,7 @@ begin
                 Child.ImageIndex := iiTrigger;
               end;
         end
-        else if (Event.Sender is TCView) then
+        else if (ClientEvent.Sender is TCView) then
           for I := 0 to Table.Fields.Count - 1 do
           begin
             Child := FNavigator.Items.AddChild(Node, Table.Fields[I].Name);
@@ -8777,29 +8874,29 @@ begin
   end;
 end;
 
-procedure TFClient.FormClientEvent(const Event: TCClient.TEvent);
+procedure TFClient.FormClientEvent(const ClientEvent: TCClient.TEvent);
 var
   Database: TCDatabase;
   Table: TCTable;
 begin
   if (not (csDestroying in ComponentState)) then
-    case (Event.EventType) of
+    case (ClientEvent.EventType) of
       ceBuild,
       ceUpdated,
       ceCreated,
       ceDroped:
-        ClientRefresh(Event);
+        ClientRefresh(ClientEvent);
       ceInitialize:
-        Wanted.Initialize := Event.Initialize;
+        Wanted.Initialize := ClientEvent.Initialize;
       ceMonitor:
-        PostMessage(Handle, CM_POST_MONITOR, 0, 0)
+        Perform(CM_POST_MONITOR, 0, 0)
       else
         begin
           Database := Client.DatabaseByName(SelectedDatabase);
           if (Assigned(Database) and (SelectedTable <> '')) then
           begin
             Table := Database.TableByName(SelectedTable);
-            case (Event.EventType) of
+            case (ClientEvent.EventType) of
               ceBeforeCancel: DataSetBeforeCancel(Table.DataSet);
               ceBeforeReceivingRecords: DataSetBeforeReceivingRecords(Table.DataSet);
               ceBeforePost: DataSetBeforePost(Table.DataSet);
@@ -12365,7 +12462,7 @@ begin
     end
     else
     begin
-      if ((Client.ExecutedStmts = 1) and Assigned(Client.Account.HistoryXML)) then
+      if ((Length(ResultSet.RawDataSets) = 1) and Assigned(Client.Account.HistoryXML)) then
       begin
         XML := Client.Account.HistoryXML.AddChild('sql');
         if ((ResultSet.Count = 0) or (ResultSet.RawDataSets[0].FieldCount = 0)) then
@@ -12557,7 +12654,7 @@ begin
     end;
   end
   else if ((View = avObjectIDE) and (SelectedImageIndex = iiEvent)) then
-    Client.SendSQL(SQL, ResultSetEvent);
+    Client.SendSQL(SQL);
 end;
 
 procedure TFClient.SetView(const AView: TView);
