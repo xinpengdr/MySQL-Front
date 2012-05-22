@@ -913,7 +913,7 @@ begin
           end;
         end;
 
-        Tab := TFClient.CreateTab(Self, PWorkSpace, Client, Message.Param, Account.ImageIndex);
+        Tab := TFClient.Create(Self, PWorkSpace, Client, Message.Param, Account.ImageIndex);
 
         if (not Assigned(Tab) and (Tabs.Count = 0)) then
         begin

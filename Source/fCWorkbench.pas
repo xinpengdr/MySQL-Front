@@ -25,11 +25,11 @@ type
   private
     FWorkbench: TWWorkbench;
   public
-    property Workbench: TWWorkbench read FWorkbench;
     procedure Clear(); override;
     constructor Create(const AWorkbench: TWWorkbench); virtual;
     procedure Delete(Index: Integer); virtual;
     destructor Destroy(); override;
+    property Workbench: TWWorkbench read FWorkbench;
   end;
 
   TWControl = class(TGraphicControl)
@@ -56,13 +56,13 @@ type
     procedure SaveToXML(const XML: IXMLNode); virtual;
     procedure SetSelected(ASelected: Boolean); virtual;
   public
-    property Coord: TPoint read FCoord;
-    property Selected: Boolean read FSelected write SetSelected;
-    property Workbench: TWWorkbench read FWorkbench;
     constructor Create(const AWorkbench: TWWorkbench); reintroduce; virtual;
     destructor Destroy(); override;
     procedure DragDrop(Source: TObject; X, Y: Integer); override;
     procedure Move(const Sender: TWControl; const Shift: TShiftState; NewCoord: TPoint); virtual;
+    property Coord: TPoint read FCoord;
+    property Selected: Boolean read FSelected write SetSelected;
+    property Workbench: TWWorkbench read FWorkbench;
   end;
 
   TWAreaResizeMode = (rmNone, rmCreate, rmNW, rmN, rmNE, rmE, rmSE, rmS, rmSW, rmW);
@@ -74,17 +74,17 @@ type
     FResizeMode: TWAreaResizeMode;
     function GetArea(): TRect;
   protected
-    property MouseDownSize: TSize read FMouseDownSize;
-    property ResizeMode: TWAreaResizeMode read FResizeMode;
     procedure ApplyCoord(); override;
     procedure ChangeSize(const Sender: TWControl; const Shift: TShiftState; X, Y: Integer); virtual;
     function GetSize(): TSize; virtual;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    property MouseDownSize: TSize read FMouseDownSize;
+    property ResizeMode: TWAreaResizeMode read FResizeMode;
   public
+    constructor Create(const AWorkbench: TWWorkbench); override;
     property Area: TRect read GetArea;
     property Size: TSize read GetSize;
-    constructor Create(const AWorkbench: TWWorkbench); override;
   end;
 
   TWPointMoveState = (msNormal, msFixed, msAutomatic);
@@ -101,15 +101,15 @@ type
     ControlB: TWControl;
     Center: TPoint;
     MoveState: TWPointMoveState;
-    property LastPoint: TWPoint read GetLastPoint;
-    property LineA: TWLine read GetLineA write SetLineA;
-    property LineB: TWLine read GetLineB write SetLineB;
     procedure ApplyCoord(); override;
     function ControlAlign(const Control: TWControl): TAlign; virtual;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TPoint); override;
     procedure PaintTo(const Canvas: TCanvas; const X, Y: Integer); override;
     procedure SetSelected(ASelected: Boolean); override;
+    property LastPoint: TWPoint read GetLastPoint;
+    property LineA: TWLine read GetLineA write SetLineA;
+    property LineB: TWLine read GetLineB write SetLineB;
   public
     constructor Create(const AWorkbench: TWWorkbench; const ACoord: TPoint; const PreviousPoint: TWPoint = nil); reintroduce; virtual;
     destructor Destroy(); override;
@@ -127,14 +127,14 @@ type
     procedure SetPointA(APointA: TWPoint);
     procedure SetPointB(APointB: TWPoint);
   protected
-    property Length: Integer read GetLength;
-    property Orientation: TWLineOrientation read GetOrientation;
-    property PointA: TWPoint read FPointA write SetPointA;
-    property PointB: TWPoint read FPointB write SetPointB;
     procedure ApplyCoord(); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure PaintTo(const Canvas: TCanvas; const X, Y: Integer); override;
     procedure SetSelected(ASelected: Boolean); override;
+    property Length: Integer read GetLength;
+    property Orientation: TWLineOrientation read GetOrientation;
+    property PointA: TWPoint read FPointA write SetPointA;
+    property PointB: TWPoint read FPointB write SetPointB;
   public
     constructor Create(const AWorkbench: TWWorkbench; const APointA, APointB: TWPoint); reintroduce; virtual;
     destructor Destroy(); override;
@@ -153,9 +153,6 @@ type
     procedure SetCaption(const ACaption: string);
     procedure SetFocused(AFocused: Boolean);
   protected
-    property ForeignKeyPoint[Index: Integer]: TWForeignKeyPoint read GetForeignKeyPoint;
-    property ForeignKeyPointCount: Integer read GetForeignKeyPointCount;
-    property Table: TCBaseTable read GetTable;
     procedure ApplyCoord(); override;
     function CanAutoSize(var NewWidth, NewHeight: Integer): Boolean; override;
     procedure ClearCache(); virtual;
@@ -168,11 +165,14 @@ type
     procedure PaintTo(const Canvas: TCanvas; const X, Y: Integer); override;
     procedure RegisterForeignKeyPoint(const AForeignKeyPoint: TWForeignKeyPoint); virtual;
     procedure ReleaseForeignKeyPoint(const AForeignKeyPoint: TWForeignKeyPoint); virtual;
+    property ForeignKeyPoint[Index: Integer]: TWForeignKeyPoint read GetForeignKeyPoint;
+    property ForeignKeyPointCount: Integer read GetForeignKeyPointCount;
+    property Table: TCBaseTable read GetTable;
   public
-    property Focused: Boolean read FFocused write SetFocused;
-    property Index: Integer read GetIndex;
     constructor Create(const ATables: TWTables); reintroduce; virtual;
     destructor Destroy(); override;
+    property Focused: Boolean read FFocused write SetFocused;
+    property Index: Integer read GetIndex;
   published
     property Caption: string read GetCaption write SetCaption;
   end;
@@ -199,17 +199,17 @@ type
     procedure SetTableA(ATableA: TWTable);
     procedure SetTableB(ATableB: TWTable);
   protected
-    property Index: Integer read GetIndex;
-    property TableA: TWTable read GetTableA write SetTableA;
-    property TableB: TWTable read GetTableB write SetTableB;
     procedure ApplyCoord(); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TPoint); override;
     procedure PaintTo(const Canvas: TCanvas; const X, Y: Integer); override;
+    property Index: Integer read GetIndex;
+    property TableA: TWTable read GetTableA write SetTableA;
+    property TableB: TWTable read GetTableB write SetTableB;
   public
-    property ForeignKey: TWForeignKey read GetForeignKey;
     constructor Create(const AWorkbench: TWWorkbench; const ACoord: TPoint; const PreviousPoint: TWPoint = nil); reintroduce; virtual;
     destructor Destroy(); override;
+    property ForeignKey: TWForeignKey read GetForeignKey;
   end;
 
   TWForeignKeyLine = class(TWLine)
@@ -233,18 +233,18 @@ type
     procedure SetForeignKeySelected(AForeignKeySelected: Boolean);
     procedure SetTable(Index: Integer; ATable: TWTable);
   protected
-    property Points[Index: Integer]: TWForeignKeyPoint read GetPoint;
     procedure Cleanup(const Sender: TWControl); virtual;
     procedure LoadFromXML(const XML: IXMLNode); override;
     procedure SaveToXML(const XML: IXMLNode); override;
+    property Points[Index: Integer]: TWForeignKeyPoint read GetPoint;
   public
+    destructor Destroy(); override;
     property Caption: string read FCaption write SetCaption;
     property ChildTable: TWTable index 0 read GetTable write SetTable;
     property ForeignKeySelected: Boolean read GetForeignKeySelected write SetForeignKeySelected;
     property IsLine: Boolean read GetIsLine;
     property ParentTable: TWTable index 1 read GetTable write SetTable;
     property PointCount: Integer read GetPointCount;
-    destructor Destroy(); override;
   end;
 
   TWForeignKeys = class(TWObjects)

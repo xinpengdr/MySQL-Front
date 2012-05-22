@@ -2414,7 +2414,8 @@ begin
 
   SynchroThread.State := ssReady;
 
-  SendConnectEvent(True);
+  if (Connected) then
+    SendConnectEvent(True);
   if Assigned(AfterConnect) then AfterConnect(Self);
 end;
 
@@ -2906,7 +2907,7 @@ begin
   end;
 
   if (Result = 0) then
-    raise ERangeError.Create(SInvalidCodePage);
+    raise ERangeError.CreateFmt(SInvalidCodePage + ' (%s)', [Charset]);
 end;
 
 function TMySQLConnection.CharsetToCodePage(const Charset: Byte): Cardinal;
@@ -2930,7 +2931,7 @@ begin
         Found := True;
       end;
     if (not Found) then
-      raise ERangeError.Create(SInvalidCodePage);
+      raise ERangeError.CreateFmt(SInvalidCodePage + ' (%d)', [Charset]);
   end;
 end;
 

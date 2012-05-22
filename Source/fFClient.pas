@@ -877,7 +877,7 @@ type
     Client: TCClient;
     StatusBar: TStatusBar;
     ToolBarData: TToolBarData;
-    constructor CreateTab(const AOwner: TComponent; const AParent: TWinControl; const AClient: TCClient; const AParam: string; const IconIndex: Integer); overload;
+    constructor Create(const AOwner: TComponent; const AParent: TWinControl; const AClient: TCClient; const AParam: string; const IconIndex: Integer); reintroduce;
     destructor Destroy(); override;
     procedure AddressChanging(const Sender: TObject; const NewAddress: String; var AllowChange: Boolean);
     function AddressToCaption(const AAddress: string): string;
@@ -1693,8 +1693,6 @@ end;
       TreeViewExpanded(FNavigator, FNavigator.Selected);
     end;
 
-    FNavigatorMenuNode := FNavigator.Selected;
-
     LastFNavigatorSelected := NavigatorNodeToAddress(FNavigator.Selected);
     if (SelectedDatabase <> '') then
       LastSelectedDatabase := SelectedDatabase;
@@ -1720,7 +1718,7 @@ begin
 
   if (URI.Scheme <> 'mysql') then
     AllowChange := False
-  else if (lstrcmpi(PChar(URI.Host), PChar(Client.Account.Connection.Host)) <> 0) then
+  else if ((lstrcmpi(PChar(URI.Host), PChar(Client.Account.Connection.Host)) <> 0) and ((lstrcmpi(PChar(URI.Host), LOCAL_HOST) <> 0) or (lstrcmpi(LOCAL_HOST_NAMEDPIPE, PChar(Client.Account.Connection.Host)) <> 0))) then
     AllowChange := False
   else if (URI.Port <> Client.Account.Connection.Port) then
     AllowChange := False
@@ -1864,7 +1862,7 @@ begin
 
   if (URI.Scheme <> 'mysql') then
     Result := nil
-  else if (lstrcmpi(PChar(URI.Host), PChar(Client.Account.Connection.Host)) <> 0) then
+  else if ((lstrcmpi(PChar(URI.Host), PChar(Client.Account.Connection.Host)) <> 0) and ((lstrcmpi(PChar(URI.Host), LOCAL_HOST) <> 0) or (lstrcmpi(LOCAL_HOST_NAMEDPIPE, PChar(Client.Account.Connection.Host)) <> 0))) then
     Result := nil
   else if (URI.Port <> Client.Account.Connection.Port) then
     Result := nil
@@ -2710,9 +2708,12 @@ begin
   else if (Window.ActiveControl = Workbench) then
   begin
     Database := Client.DatabaseByName(SelectedDatabase);
-    for I := 0 to Workbench.Tables.Count - 1 do
-      if (not Assigned(Workbench.Selected) or Workbench.Tables[I].Selected) then
-        DExport.DBObjects.Add(Database.TableByName(Workbench.Tables[I].Caption));
+    if (Database.Initialize(Database.Tables)) then
+      Wanted.Action := TAction(Sender)
+    else
+      for I := 0 to Workbench.Tables.Count - 1 do
+        if (not Assigned(Workbench.Selected) or Workbench.Tables[I].Selected) then
+          DExport.DBObjects.Add(Database.TableByName(Workbench.Tables[I].Caption));
   end
   else if ((Window.ActiveControl = FList) and (FList.SelCount > 0)) then
   begin
@@ -2722,7 +2723,9 @@ begin
           if (FList.Items[I].Selected) then
           begin
             Database := Client.DatabaseByName(FList.Items[I].Caption);
-            if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
+            if (Database.Initialize()) then
+              Wanted.Action := TAction(Sender)
+            else if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
             begin
               for J := 0 to Database.Tables.Count - 1 do
                 DExport.DBObjects.Add(Database.Tables[J]);
@@ -2738,7 +2741,9 @@ begin
       iiDatabase:
         begin
           Database := Client.DatabaseByName(SelectedDatabase);
-          if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
+          if (Database.Initialize()) then
+            Wanted.Action := TAction(Sender)
+          else if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
           begin
             SetLength(TableNames, 0);
             for I := 0 to FList.Items.Count - 1 do
@@ -2776,7 +2781,9 @@ begin
       iiBaseTable:
         begin
           Database := Client.DatabaseByName(SelectedDatabase);
-          if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
+          if (Database.Initialize(Database.Triggers)) then
+            Wanted.Action := TAction(Sender)
+          else if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
             for I := 0 to FList.Items.Count - 1 do
               if (FList.Items[I].Selected and (FList.Items[I].ImageIndex = iiTrigger) and Assigned(Database.TriggerByName(FList.Items[I].Caption))) then
                 DExport.DBObjects.Add(Database.TriggerByName(FList.Items[I].Caption));
@@ -2787,35 +2794,51 @@ begin
   begin
     Database := TCDatabase(FocusedCItem);
     if (not (Database is TCSystemDatabase)) then
-    begin
-      for J := 0 to Database.Tables.Count - 1 do
-        DExport.DBObjects.Add(Database.Tables[J]);
-      if (Assigned(Database.Routines)) then
-        for J := 0 to Database.Routines.Count - 1 do
-          DExport.DBObjects.Add(Database.Routines[J]);
-      if (Assigned(Database.Triggers)) then
-        for J := 0 to Database.Triggers.Count - 1 do
-          DExport.DBObjects.Add(Database.Triggers[J]);
-    end;
+      if (Database.Initialize()) then
+        Wanted.Action := TAction(Sender)
+      else
+      begin
+        for J := 0 to Database.Tables.Count - 1 do
+          DExport.DBObjects.Add(Database.Tables[J]);
+        if (Assigned(Database.Routines)) then
+          for J := 0 to Database.Routines.Count - 1 do
+            DExport.DBObjects.Add(Database.Routines[J]);
+        if (Assigned(Database.Triggers)) then
+          for J := 0 to Database.Triggers.Count - 1 do
+            DExport.DBObjects.Add(Database.Triggers[J]);
+      end;
   end
   else if (FocusedCItem is TCBaseTable) then
   begin
     Table := TCBaseTable(FocusedCItem);
     Database := Table.Database;
-    DExport.DBObjects.Add(Table);
+    if (Table.Initialize() or Assigned(Database.Triggers) and Database.Initialize(Database.Triggers)) then
+      Wanted.Action := TAction(Sender)
+    else
+    begin
+      DExport.DBObjects.Add(Table);
 
-    if (Assigned(Database.Triggers)) then
-      for J := 0 to Database.Triggers.Count - 1 do
-        if (Database.Triggers[J].Table = Table) then
-          DExport.DBObjects.Add(Database.Triggers[J]);
+      if (Assigned(Database.Triggers)) then
+        for J := 0 to Database.Triggers.Count - 1 do
+          if (Database.Triggers[J].Table = Table) then
+            DExport.DBObjects.Add(Database.Triggers[J]);
+    end;
   end
   else if (FocusedCItem is TCDBObject) then
   begin
     Database := TCDBObject(FocusedCItem).Database;
-    DExport.DBObjects.Add(FocusedCItem);
+    if (Database.Initialize()) then
+      Wanted.Action := TAction(Sender)
+    else
+      DExport.DBObjects.Add(FocusedCItem);
   end
-  else if (Assigned(FocusedCItem)) then
-    DExport.DBObjects.Add(FocusedCItem)
+  else if (Assigned(FocusedCItem) and (FocusedCItem is TCDBObject)) then
+  begin
+    if (TCDBObject(FocusedCItem).Initialize()) then
+      Wanted.Action := TAction(Sender)
+    else
+      DExport.DBObjects.Add(FocusedCItem);
+  end
   else
   begin
     Initialized := False;
@@ -3715,10 +3738,7 @@ begin
   if ((OldAddress <> '') and (Address <> OldAddress)) then
     Wanted.Address := OldAddress
   else if (Assigned(FNavigator.Selected)) then
-  begin
-    FNavigatorMenuNode := FNavigator.Selected;
     PContentRefresh(Sender);
-  end;
 
   if (PContent.Visible and Assigned(TempActiveControl) and TempActiveControl.Visible) then
   begin
@@ -4629,7 +4649,7 @@ begin
     and not (WS_THICKFRAME or WS_SYSMENU or WS_DLGFRAME or WS_BORDER);
 end;
 
-constructor TFClient.CreateTab(const AOwner: TComponent; const AParent: TWinControl; const AClient: TCClient; const AParam: string; const IconIndex: Integer);
+constructor TFClient.Create(const AOwner: TComponent; const AParent: TWinControl; const AClient: TCClient; const AParam: string; const IconIndex: Integer);
 var
   I: Integer;
   NonClientMetrics: TNonClientMetrics;
@@ -4851,11 +4871,8 @@ begin
   IgnoreFGridTitleClick := False;
   SelectedItem := '';
 
-  if (Assigned(AClient)) then
-  begin
-    AClient.RegisterEventProc(FormClientEvent);
-    AClient.Account.RegisterDesktop(Self, FormAccountEvent);
-  end;
+  Client.RegisterEventProc(FormClientEvent);
+  Client.Account.RegisterDesktop(Self, FormAccountEvent);
 
   Wanted := TWanted.Create(Self);
 
@@ -7037,6 +7054,7 @@ begin
         if (Assigned(Client.Hosts)) then
         begin
           Item := FList.Items.Add();
+          Item.Data := Client.Hosts;
           Item.GroupID := 0;
           Item.Caption := Preferences.LoadStr(335);
           Item.ImageIndex := iiHosts;
@@ -7047,6 +7065,7 @@ begin
         if (Assigned(Client.Processes)) then
         begin
           Item := FList.Items.Add();
+          Item.Data := Client.Processes;
           Item.GroupID := 0;
           Item.ImageIndex := iiProcesses;
           Item.Caption := Preferences.LoadStr(24);
@@ -7057,6 +7076,7 @@ begin
         if (Assigned(Client.Stati)) then
         begin
           Item := FList.Items.Add();
+          Item.Data := Client.Stati;
           Item.GroupID := 0;
           Item.ImageIndex := iiStati;
           Item.Caption := Preferences.LoadStr(23);
@@ -7067,6 +7087,7 @@ begin
         if (Assigned(Client.Users)) then
         begin
           Item := FList.Items.Add();
+          Item.Data := Client.Users;
           Item.GroupID := 0;
           Item.ImageIndex := iiUsers;
           Item.Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
@@ -7080,6 +7101,7 @@ begin
         if (Assigned(Client.Variables)) then
         begin
           Item := FList.Items.Add();
+          Item.Data := Client.Variables;
           Item.GroupID := 0;
           Item.ImageIndex := iiVariables;
           Item.Caption := Preferences.LoadStr(22);
@@ -7669,44 +7691,37 @@ begin
       end;
   end;
 
-  case (FNavigator.Selected.ImageIndex) of
-    iiHosts: Count := Client.Hosts.Count;
-    iiProcesses: Count := Client.Processes.Count;
-    iiStati: Count := Client.Stati.Count;
-    iiUsers: Count := Client.Users.Count;
-    iiVariables: Count := Client.Variables.Count;
-    else Count := FNavigator.Selected.Count;
-  end;
-
-  if (not (FNavigator.Selected.ImageIndex in [iiDatabase, iiSystemDatabase]) and (Count > 0)) then
+  if (not Assigned(FList.ItemFocused) and (FList.Items.Count > 0)) then
     FList.ItemFocused := FList.Items[0];
   if ((Window.ActiveControl = FList) and Assigned(FList.OnSelectItem)) then
     FList.OnSelectItem(Sender, FList.Selected, Assigned(FList.Selected));
 
-  if (FNavigator.Selected.ImageIndex in [iiHosts, iiStati, iiUsers, iiVariables]) then
-    for I := 0 to FList.Columns.Count - 1 do
-      if (Count = 0) then
-        FList.Columns[I].Width := ColumnHeaderWidth
-      else
-        FList.Columns[I].Width := ColumnTextWidth
-  else if (FNavigator.Selected.ImageIndex in [iiProcesses]) then
-    for I := 0 to FList.Columns.Count - 1 do
-      if (I = 5) then
-        FList.Columns[I].Width := Preferences.GridMaxColumnWidth
-      else
-        FList.Columns[I].Width := ColumnTextWidth;
+  if (Assigned(FNavigator.Selected)) then
+    if (FNavigator.Selected.ImageIndex in [iiHosts, iiStati, iiUsers, iiVariables]) then
+      for I := 0 to FList.Columns.Count - 1 do
+        if (FList.Items.Count = 0) then
+          FList.Columns[I].Width := ColumnHeaderWidth
+        else
+          FList.Columns[I].Width := ColumnTextWidth
+    else if (FNavigator.Selected.ImageIndex in [iiProcesses]) then
+      for I := 0 to FList.Columns.Count - 1 do
+        if (I = 5) then
+          FList.Columns[I].Width := Preferences.GridMaxColumnWidth
+        else
+          FList.Columns[I].Width := ColumnTextWidth;
 
   FList.Items.EndUpdate();
   FList.EnableAlign();
   FList.OnChanging := ChangingEvent;
 
-  if (FNavigator.Selected.ImageIndex >= 0) then
+  if (Assigned(FNavigator.Selected) and (FNavigator.Selected.ImageIndex >= 0)) then
   begin
     if ((SelectedImageIndex >= 0) and (ContentWidthIndexFromImageIndex(SelectedImageIndex) < FList.Columns.Count)) then
       FListColumnClick(nil, FList.Column[FListSortColumn[ContentWidthIndexFromImageIndex(SelectedImageIndex)].Index]);
   end;
 
-  LastSelectedImageIndex := FNavigator.Selected.ImageIndex;
+  if (Assigned(FNavigator.Selected)) then
+    LastSelectedImageIndex := FNavigator.Selected.ImageIndex;
 end;
 
 procedure TFClient.FListSelectItem(Sender: TObject; Item: TListItem;
@@ -8096,13 +8111,13 @@ begin
     FNavigatorMenuNode := Node;
 
     KillTimer(Handle, tiNavigator);
-//    if (not UseNavigatorTimer) then
+    if (not UseNavigatorTimer) then
       FNavigatorChange2(Sender, Node)
-//    else
-//    begin
-//      SetTimer(Self.Handle, tiNavigator, 500, nil);
-//      UseNavigatorTimer := False;
-//    end;
+    else
+    begin
+      SetTimer(Self.Handle, tiNavigator, 500, nil);
+      UseNavigatorTimer := False;
+    end;
   end;
 end;
 
@@ -8403,6 +8418,7 @@ begin
   if (FNavigator.Items.Count = 0) then
   begin
     Node := FNavigator.Items.Add(nil, Client.Caption);
+    Node.Data := Client;
     Node.HasChildren := True;
     Node.ImageIndex := iiServer;
   end;
@@ -8426,13 +8442,29 @@ begin
     if (Node.Count = 0) then
     begin
       if (Assigned(Client.Hosts)) then
-        FNavigator.Items.AddChild(Node, Preferences.LoadStr(335)).ImageIndex := iiHosts;
+      begin
+        Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(335));
+        Child.Data := Client.Hosts;
+        Child.ImageIndex := iiHosts;
+      end;
       if (Assigned(Client.Processes)) then
-        FNavigator.Items.AddChild(Node, Preferences.LoadStr(24)).ImageIndex := iiProcesses;
-      FNavigator.Items.AddChild(Node, Preferences.LoadStr(23)).ImageIndex := iiStati;
+      begin
+        Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(24));
+        Child.Data := Client.Processes;
+        Child.ImageIndex := iiProcesses
+      end;
+      Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(23));
+      Child.Data := Client.Stati;
+      Child.ImageIndex := iiStati;
       if (Assigned(Client.Users)) then
-        FNavigator.Items.AddChild(Node, ReplaceStr(Preferences.LoadStr(561), '&', '')).ImageIndex := iiUsers;
-      FNavigator.Items.AddChild(Node, Preferences.LoadStr(22)).ImageIndex := iiVariables;
+      begin
+        Child := FNavigator.Items.AddChild(Node, ReplaceStr(Preferences.LoadStr(561), '&', ''));
+        Child.Data := Client.Users;
+        Child.ImageIndex := iiUsers;
+      end;
+      Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(22));
+      Child.Data := Client.Variables;
+      Child.ImageIndex := iiVariables;
       Node.Expand(False);
     end;
 
@@ -8455,9 +8487,15 @@ begin
         while (Assigned(Child) and (Child.ImageIndex in [iiDatabase, iiSystemDatabase]) and (Client.TableNameCmp(Client.Databases[I].Name, Child.Text) > 0)) do
           Child := Child.getNextSibling();
         if (not Assigned(Child)) then
-          Child := FNavigator.Items.AddChild(Node, Client.Databases[I].Name)
+        begin
+          Child := FNavigator.Items.AddChild(Node, Client.Databases[I].Name);
+          Child.Data := Client.Databases[I];
+        end
         else if (not (Child.ImageIndex in [iiDatabase, iiSystemDatabase]) or (Client.TableNameCmp(Client.Databases[I].Name, Child.Text) < 0)) then
-          Child := FNavigator.Items.Insert(Child, Client.Databases[I].Name)
+        begin
+          Child := FNavigator.Items.Insert(Child, Client.Databases[I].Name);
+          Child.Data := Client.Databases[I];
+        end
         else
           Child := nil;
         if (Assigned(Child)) then
@@ -8508,9 +8546,15 @@ begin
             while (Assigned(Child) and (Child.ImageIndex in [iiBaseTable, iiSystemView, iiView]) and (Client.TableNameCmp(Database.Tables[I].Name, Child.Text) > 0)) do
               Child := Child.getNextSibling();
             if (not Assigned(Child)) then
-              Child := FNavigator.Items.AddChild(Node, Database.Tables[I].Name)
+            begin
+              Child := FNavigator.Items.AddChild(Node, Database.Tables[I].Name);
+              Child.Data := Database.Tables[I];
+            end
             else if (Client.TableNameCmp(Database.Tables[I].Name, Child.Text) <> 0) then
-              Child := FNavigator.Items.Insert(Child, Database.Tables[I].Name)
+            begin
+              Child := FNavigator.Items.Insert(Child, Database.Tables[I].Name);
+              Child.Data := Database.Tables[I];
+            end
             else
               Child := nil;
             if (Assigned(Child)) then
@@ -8550,9 +8594,15 @@ begin
             while (Assigned(Child) and (Child.ImageIndex in [iiProcedure, iiFunction]) and (lstrcmpi(PChar(Database.Routines[I].Name), PChar(Child.Text)) > 0)) do
               Child := Child.getNextSibling();
             if (not Assigned(Child)) then
-              Child := FNavigator.Items.AddChild(Node, Database.Routines[I].Name)
+            begin
+              Child := FNavigator.Items.AddChild(Node, Database.Routines[I].Name);
+              Child.Data := Database.Routines[I];
+            end
             else if (lstrcmpi(PChar(Database.Routines[I].Name), PChar(Child.Text)) <> 0) then
-              Child := FNavigator.Items.Insert(Child, Database.Routines[I].Name)
+            begin
+              Child := FNavigator.Items.Insert(Child, Database.Routines[I].Name);
+              Child.Data := Database.Routines[I];
+            end
             else
               Child := nil;
             if (Assigned(Child)) then
@@ -8586,9 +8636,15 @@ begin
             while (Assigned(Child) and (Child.ImageIndex in [iiEvent]) and (lstrcmpi(PChar(Database.Events[I].Name), PChar(Child.Text)) > 0)) do
               Child := Child.getNextSibling();
             if (not Assigned(Child)) then
-              Child := FNavigator.Items.AddChild(Node, Database.Events[I].Name)
+            begin
+              Child := FNavigator.Items.AddChild(Node, Database.Events[I].Name);
+              Child.Data := Database.Events[I];
+            end
             else if (lstrcmpi(PChar(Database.Events[I].Name), PChar(Child.Text)) <> 0) then
-              Child := FNavigator.Items.Insert(Child, Database.Events[I].Name)
+            begin
+              Child := FNavigator.Items.Insert(Child, Database.Events[I].Name);
+              Child.Data := Database.Events[I];
+            end
             else
               Child := nil;
             if (Assigned(Child)) then
@@ -8645,9 +8701,15 @@ begin
                 while (Assigned(Child) and (Child.ImageIndex in [iiTrigger]) and (lstrcmpi(PChar(Database.Triggers[I].Name), PChar(Child.Text)) > 0)) do
                   Child := Child.getNextSibling();
                 if (not Assigned(Child)) then
-                  Child := FNavigator.Items.AddChild(Node, Database.Triggers[I].Name)
+                begin
+                  Child := FNavigator.Items.AddChild(Node, Database.Triggers[I].Name);
+                  Child.Data := Database.Triggers[I];
+                end
                 else if (lstrcmpi(PChar(Database.Triggers[I].Name), PChar(Child.Text)) <> 0) then
-                  Child := FNavigator.Items.Insert(Child, Database.Triggers[I].Name)
+                begin
+                  Child := FNavigator.Items.Insert(Child, Database.Triggers[I].Name);
+                  Child.Data := Database.Triggers[I];
+                end
                 else
                   Child := nil;
                 if (Assigned(Child)) then
@@ -8684,11 +8746,13 @@ begin
           for I := 0 to TCBaseTable(Table).Indices.Count - 1 do
           begin
             Child := FNavigator.Items.AddChild(Node, TCBaseTable(Table).Indices[I].Caption);
+            Child.Data := TCBaseTable(Table).Indices[I];
             Child.ImageIndex := iiIndex;
           end;
           for I := 0 to TCBaseTable(Table).Fields.Count - 1 do
           begin
             Child := FNavigator.Items.AddChild(Node, TCBaseTable(Table).Fields[I].Name);
+            Child.Data := TCBaseTable(Table).Fields[I];
             if (Node.ImageIndex = iiSystemView) then
               Child.ImageIndex := iiSystemViewField
             else
@@ -8697,6 +8761,7 @@ begin
           for I := 0 to TCBaseTable(Table).ForeignKeys.Count - 1 do
           begin
             Child := FNavigator.Items.AddChild(Node, TCBaseTable(Table).ForeignKeys[I].Name);
+            Child.Data := TCBaseTable(Table).ForeignKeys[I];
             Child.ImageIndex := iiForeignKey;
           end;
           if (Assigned(Database.Triggers)) then
@@ -8704,6 +8769,7 @@ begin
               if (Database.Triggers[I].TableName = TCBaseTable(Table).Name) then
               begin
                 Child := FNavigator.Items.AddChild(Node, Database.Triggers[I].Name);
+                Child.Data := Database.Triggers[I];
                 Child.ImageIndex := iiTrigger;
               end;
         end
@@ -8711,6 +8777,7 @@ begin
           for I := 0 to Table.Fields.Count - 1 do
           begin
             Child := FNavigator.Items.AddChild(Node, Table.Fields[I].Name);
+            Child.Data := Table.Fields[I];
             Child.ImageIndex := iiViewField;
           end;
       end;

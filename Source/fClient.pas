@@ -103,6 +103,12 @@ type
     function ResultAvailable(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
   public
     Columns: array of TColumnSettings;
+    procedure Cleanup(); virtual;
+    procedure Clear(); virtual;
+    constructor Create(const AClient: TCClient); virtual;
+    destructor Destroy(); override;
+    function IndexOf(const DataSet: TDataSet): Integer; virtual;
+    procedure SendSQL(const SQL: string; const OnResult: TMySQLConnection.TResultEvent = nil); virtual;
     property Active: Boolean read GetActive;
     property Client: TCClient read FClient;
     property Count: Integer read GetCount;
@@ -121,12 +127,6 @@ type
     property AfterScroll: TDataSetNotifyEvent read FAfterScroll write FAfterScroll;
     property BeforeReceivingRecords: TDataSetNotifyEvent read FBeforeReceivingRecords write FBeforeReceivingRecords;
     property AfterReceivingRecords: TDataSetNotifyEvent read FAfterReceivingRecords write FAfterReceivingRecords;
-    procedure Cleanup(); virtual;
-    procedure Clear(); virtual;
-    constructor Create(const AClient: TCClient); virtual;
-    destructor Destroy(); override;
-    function IndexOf(const DataSet: TDataSet): Integer; virtual;
-    procedure SendSQL(const SQL: string; const OnResult: TMySQLConnection.TResultEvent = nil); virtual;
   end;
 
   TCItem = class(TObject)
@@ -135,10 +135,10 @@ type
   protected
     procedure SetName(const AName: string); virtual;
   public
-    property Name: string read FName write SetName;
     procedure Assign(const Source: TCItem); virtual;
     function Equal(const Second: TCItem): Boolean; virtual;
     constructor Create(const AName: string = ''); virtual;
+    property Name: string read FName write SetName;
   end;
 
   TCItems = class(TList)
@@ -147,12 +147,12 @@ type
   protected
     function GetCount(): Integer; virtual;
   public
-    property Count: Integer read GetCount;
-    property Item[Index: Integer]: TCItem read GetItem; default;
     procedure Clear(); override;
     destructor Destroy(); override;
     function IndexByName(const Name: string): Integer; virtual;
     function NameCmp(const Name1, Name2: string): Integer; virtual;
+    property Count: Integer read GetCount;
+    property Item[Index: Integer]: TCItem read GetItem; default;
   end;
 
   TCObject = class(TCItem)
@@ -167,13 +167,13 @@ type
     procedure SetSource(const ADataSet: TMySQLQuery); overload; virtual; abstract;
     procedure SetSource(const ASource: string); overload; virtual;
   public
-    property ActualSource: Boolean read GetActualSource;
-    property Client: TCClient read FClient;
-    property Source: string read GetSource;
     procedure Assign(const Source: TCObject); reintroduce; virtual;
     procedure Clear(); virtual;
     constructor Create(const AClient: TCClient; const AName: string = ''); reintroduce; virtual;
     function Initialize(): Boolean; overload; virtual; abstract;
+    property ActualSource: Boolean read GetActualSource;
+    property Client: TCClient read FClient;
+    property Source: string read GetSource;
   end;
 
   TCObjects = class(TCItems)
@@ -187,12 +187,12 @@ type
     function GetActual(): Boolean; virtual;
     function SQLGetItems(const Name: string = ''): string; virtual; abstract;
   public
-    property Actual: Boolean read GetActual;
-    property Client: TCClient read FClient;
     procedure Clear(); override;
     constructor Create(const AClient: TCClient); reintroduce; virtual;
     destructor Destroy(); override;
     procedure Refresh(); virtual;
+    property Actual: Boolean read GetActual;
+    property Client: TCClient read FClient;
   end;
 
   TCDBObject = class(TCObject)
@@ -202,10 +202,10 @@ type
     procedure SetSource(const ASource: string); override;
     function SQLGetSource(): string; virtual; abstract;
   public
-    property Database: TCDatabase read FDatabase;
     constructor Create(const ADatabase: TCDatabase; const AName: string = ''); reintroduce; virtual;
     function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; virtual; abstract;
     function Initialize(): Boolean; override;
+    property Database: TCDatabase read FDatabase;
   end;
 
   TCDBObjects = class(TCObjects)
@@ -216,9 +216,9 @@ type
     procedure Delete(const AObject: TCObject); override;
     function GetCount(): Integer; override;
   public
-    property Database: TCDatabase read FDatabase;
     constructor Create(const ADatabase: TCDatabase); reintroduce; virtual;
     procedure Refresh(); override;
+    property Database: TCDatabase read FDatabase;
   end;
 
   TCIndexColumn = class
@@ -228,11 +228,11 @@ type
     Ascending: Boolean;
     Field: TCBaseTableField;
     Length: Integer;
-    property IndexColumns: TCIndexColumns read FIndexColumns;
     procedure Assign(const Source: TCIndexColumn); virtual;
     procedure Clear(); virtual;
     constructor Create(const AIndexColumns: TCIndexColumns); virtual;
     function Equal(const Second: TCIndexColumn): Boolean; virtual;
+    property IndexColumns: TCIndexColumns read FIndexColumns;
   end;
 
   TCIndexColumns = class(TCItems)
@@ -240,13 +240,13 @@ type
     FIndex: TCIndex;
     function GetColumn(Index: Integer): TCIndexColumn;
   public
-    property Column[Index: Integer]: TCIndexColumn read GetColumn; default;
-    property Count: Integer read GetCount;
-    property Index: TCIndex read FIndex;
     procedure AddColumn(const NewColumn: TCIndexColumn); virtual;
     constructor Create(const AIndex: TCIndex); virtual;
     procedure DeleteColumn(const AColumn: TCIndexColumn); virtual;
     function IndexByField(const AField: TCTableField): Integer; virtual;
+    property Column[Index: Integer]: TCIndexColumn read GetColumn; default;
+    property Count: Integer read GetCount;
+    property Index: TCIndex read FIndex;
   end;
 
   TCIndex = class(TCItem)
@@ -267,11 +267,6 @@ type
     IndexType: string;
     Primary: Boolean;
     Unique: Boolean;
-    property Columns: TCIndexColumns read FColumns;
-    property Caption: string read GetCaption;
-    property Index: Integer read GetIndex;
-    property Table: TCBaseTable read GetTable;
-    property Key: Integer read GetKey;
     procedure Assign(const Source: TCIndex); reintroduce; virtual;
     procedure Clear(); virtual;
     function ColumnByField(const AField: TCBaseTableField): TCIndexColumn; virtual;
@@ -280,6 +275,11 @@ type
     destructor Destroy(); override;
     function Equal(const Second: TCIndex): Boolean; reintroduce; virtual;
     procedure GetSortDef(var SortDef: TIndexDef);
+    property Columns: TCIndexColumns read FColumns;
+    property Caption: string read GetCaption;
+    property Index: Integer read GetIndex;
+    property Table: TCBaseTable read GetTable;
+    property Key: Integer read GetKey;
   end;
 
   TCIndices = class(TCItems)
@@ -288,13 +288,13 @@ type
     function GetIndex(Index: Integer): TCIndex;
     function GetPrimary(): TCIndex;
   public
-    property Index[Index: Integer]: TCIndex read GetIndex; default;
-    property Primary: TCIndex read GetPrimary;
-    property Table: TCBaseTable read FTable;
     procedure AddIndex(const NewIndex: TCIndex); virtual;
     procedure Assign(const Source: TCIndices); virtual;
     constructor Create(const ATable: TCBaseTable); reintroduce; virtual;
     procedure DeleteIndex(const AIndex: TCIndex); virtual;
+    property Index[Index: Integer]: TCIndex read GetIndex; default;
+    property Primary: TCIndex read GetPrimary;
+    property Table: TCBaseTable read FTable;
   end;
 
   TCField = class(TCItem)
@@ -311,13 +311,13 @@ type
     National: Boolean;
     Size: Integer;
     Unsigned: Boolean;
-    property FieldTypes: TCFieldTypes read FFieldTypes;
     procedure Assign(const Source: TCField); reintroduce; virtual;
     procedure Clear(); virtual;
     constructor Create(const AFieldTypes: TCFieldTypes); reintroduce; virtual;
     function DBTypeStr(): string; virtual;
     function Equal(const Second: TCField): Boolean; reintroduce; virtual;
     function EscapeValue(const Value: string): string; virtual;
+    property FieldTypes: TCFieldTypes read FFieldTypes;
   end;
 
   TCTableField = class(TCField)
@@ -330,10 +330,10 @@ type
     function GetDesktopXML(): IXMLNode;
     function GetTable(): TCTable;
   protected
-    property DesktopXML: IXMLNode read GetDesktopXML;
-    property Fields: TCTableFields read FFields;
     function GetIndex(): Integer; virtual;
     procedure ParseFieldType(var Parse: TSQLParse); override;
+    property DesktopXML: IXMLNode read GetDesktopXML;
+    property Fields: TCTableFields read FFields;
   public
     Ascii: Boolean;
     AutoIncrement: Boolean;
@@ -344,11 +344,6 @@ type
     NullAllowed: Boolean;
     Unicode: Boolean;
     Zerofill: Boolean;
-    property Collation: string read FCollation write FCollation;
-    property InPrimaryIndex: Boolean read FInPrimaryIndex;
-    property InUniqueIndex: Boolean read FInUniqueIndex;
-    property Index: Integer read GetIndex;
-    property Table: TCTable read GetTable;
     procedure Assign(const Source: TCField); override;
     procedure Clear(); override;
     constructor Create(const AFields: TCTableFields); reintroduce; virtual;
@@ -356,6 +351,11 @@ type
     destructor Destroy(); override;
     function Equal(const Second: TCTableField): Boolean; reintroduce; virtual;
     function UnescapeValue(const Value: string): string; virtual;
+    property Collation: string read FCollation write FCollation;
+    property InPrimaryIndex: Boolean read FInPrimaryIndex;
+    property InUniqueIndex: Boolean read FInUniqueIndex;
+    property Index: Integer read GetIndex;
+    property Table: TCTable read GetTable;
   end;
 
   TCBaseTableField = class(TCTableField)
@@ -365,9 +365,9 @@ type
     Moved: Boolean;
     OnUpdate: string;
     OriginalName: string;
-    property Table: TCBaseTable read GetTable;
     procedure Assign(const Source: TCField); override;
     procedure Clear(); override;
+    property Table: TCBaseTable read GetTable;
   end;
 
   TCViewField = class(TCTableField)
@@ -381,16 +381,16 @@ type
     function GetDesktopXML(): IXMLNode;
     function GetField(Index: Integer): TCTableField;
   protected
-    property DesktopXML: IXMLNode read GetDesktopXML;
     function FieldByName(const FieldName: string): TCTableField; virtual;
+    property DesktopXML: IXMLNode read GetDesktopXML;
   public
-    property Field[Index: Integer]: TCTableField read GetField; default;
-    property Table: TCTable read FTable;
     procedure AddField(const NewField: TCTableField); virtual;
     procedure Assign(const Source: TCTableFields); virtual;
     constructor Create(const ATable: TCTable); reintroduce; virtual;
     procedure DeleteField(const AField: TCTableField); virtual;
     function IndexOf(const AField: TCTableField): Integer; virtual;
+    property Field[Index: Integer]: TCTableField read GetField; default;
+    property Table: TCTable read FTable;
   end;
 
   TCBaseTableFields = class(TCTableFields)
@@ -417,14 +417,14 @@ type
       TableName: string;
       FieldNames: array of string;
     end;
-    property Index: Integer read GetIndex;
-    property Table: TCBaseTable read GetTable;
     procedure Assign(const Source: TCForeignKey); reintroduce; virtual;
     procedure Clear(); virtual;
     constructor Create(const AForeignKeys: TCForeignKeys); reintroduce; virtual;
     function DBTypeStr(): string; virtual;
     function Equal(const Second: TCForeignKey): Boolean; reintroduce; virtual;
     destructor Destroy(); override;
+    property Index: Integer read GetIndex;
+    property Table: TCBaseTable read GetTable;
   end;
 
   TCForeignKeys = class(TCItems)
@@ -489,9 +489,9 @@ type
   protected
     function SQLSelect(const IgnoreLimit: Boolean = False): string; override;
   public
+    constructor Create(const ATable: TCTable); reintroduce; virtual;
     property QuickSearch: string read FQuickSearch;
     property Table: TCTable read FTable;
-    constructor Create(const ATable: TCTable); reintroduce; virtual;
   end;
 
   TCTable = class(TCDBObject)
@@ -551,11 +551,11 @@ type
     MaxRows: Integer;
     MinRows: Integer;
     ValuesExpr: string;
-    property Table: TCBaseTable read FTable;
     procedure Assign(const Source: TCPartition); reintroduce; virtual;
     procedure Clear(); virtual;
     constructor Create(const ATable: TCBaseTable); reintroduce; virtual;
     function Equal(const Second: TCPartition): Boolean; reintroduce; virtual;
+    property Table: TCBaseTable read FTable;
   end;
 
   TCPartitions = class(TCItems)
@@ -569,8 +569,6 @@ type
     Expression: string;
     Linear: Boolean;
     PartitionType: TMySQLPartitionType;
-    property Table: TCBaseTable read FTable;
-    property Partition[Index: Integer]: TCPartition read GetPartition; default;
     procedure AddPartition(const NewPartition: TCPartition); virtual;
     procedure Assign(const Source: TCPartitions); virtual;
     procedure Clear(); override;
@@ -579,6 +577,8 @@ type
     function IndexOf(const APartition: TCPartition): Integer; virtual;
     procedure MovePartition(const APartition: TCPartition; const NewIndex: Integer); virtual;
     function UpdatePartition(const Partition, NewPartition: TCPartition): Boolean; virtual;
+    property Table: TCBaseTable read FTable;
+    property Partition[Index: Integer]: TCPartition read GetPartition; default;
   end;
 
   TCPackIndices = (piUnpacked, piPacked, piDefault);
@@ -626,6 +626,27 @@ type
     procedure SetSource(const ADataSet: TMySQLQuery); overload; override;
     function SQLGetSource(): string; override;
   public
+    procedure Assign(const Source: TCTable); override;
+    function Check(): Boolean; virtual;
+    procedure Clear(); override;
+    procedure ClearBySource(const ASource: string); virtual;
+    function FieldByName(const FieldName: string): TCBaseTableField; reintroduce; virtual;
+    function ForeignKeyByName(const ForeignKeyName: string): TCForeignKey; virtual;
+    function CountRecords(): Integer; override;
+    constructor Create(const ADatabase: TCDatabase = nil; const AName: string = ''; const ASystemTable: Boolean = False); reintroduce; virtual;
+    destructor Destroy(); override;
+    function DBRowTypeStr(): string; virtual;
+    function Empty(): Boolean; virtual;
+    function EmptyFields(const Names: array of string): Boolean; virtual;
+    function Flush(): Boolean; virtual;
+    function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; override;
+    function IndexByCaption(const Caption: string): TCIndex; virtual;
+    function IndexByName(const IndexName: string): TCIndex; virtual;
+    function IndexByDataSet(const DataSet: TCTableDataSet): TCIndex; virtual;
+    function Open(const Filter, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean; override;
+    function Optimize(): Boolean; virtual;
+    function PartitionByName(const PartitionName: string): TCPartition; virtual;
+    function Repair(): Boolean; virtual;
     property ActualStatus: Boolean read FActualStatus;
     property AutoIncrement: LargeInt read FAutoIncrement write FAutoIncrement;
     property AutoIncrementField: TCBaseTableField read GetAutoIncrementField;
@@ -650,27 +671,6 @@ type
     property Temporary: Boolean read FTemporary write FTemporary;
     property UnusedSize: Int64 read FUnusedSize write FUnusedSize;
     property Updated: TDateTime read FUpdated;
-    procedure Assign(const Source: TCTable); override;
-    function Check(): Boolean; virtual;
-    procedure Clear(); override;
-    procedure ClearBySource(const ASource: string); virtual;
-    function FieldByName(const FieldName: string): TCBaseTableField; reintroduce; virtual;
-    function ForeignKeyByName(const ForeignKeyName: string): TCForeignKey; virtual;
-    function CountRecords(): Integer; override;
-    constructor Create(const ADatabase: TCDatabase = nil; const AName: string = ''; const ASystemTable: Boolean = False); reintroduce; virtual;
-    destructor Destroy(); override;
-    function DBRowTypeStr(): string; virtual;
-    function Empty(): Boolean; virtual;
-    function EmptyFields(const Names: array of string): Boolean; virtual;
-    function Flush(): Boolean; virtual;
-    function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; override;
-    function IndexByCaption(const Caption: string): TCIndex; virtual;
-    function IndexByName(const IndexName: string): TCIndex; virtual;
-    function IndexByDataSet(const DataSet: TCTableDataSet): TCIndex; virtual;
-    function Open(const Filter, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean; override;
-    function Optimize(): Boolean; virtual;
-    function PartitionByName(const PartitionName: string): TCPartition; virtual;
-    function Repair(): Boolean; virtual;
   end;
 
   TCSystemView = class(TCBaseTable)
@@ -717,7 +717,6 @@ type
     function GetDesktopXML(): IXMLNode;
     function GetTable(Index: Integer): TCTable;
   protected
-    property DesktopXML: IXMLNode read GetDesktopXML;
     function Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer; override;
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean; override;
     procedure BuildViewFields(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean); virtual;
@@ -725,16 +724,17 @@ type
     function GetCount(): Integer; override;
     function SQLGetItems(const Name: string = ''): string; override;
     function SQLGetNames(): string; virtual;
+    property DesktopXML: IXMLNode read GetDesktopXML;
   public
-    property ActualNames: Boolean read FActualNames;
-    property BaseTable[Index: Integer]: TCBaseTable read GetBaseTable;
-    property Table[Index: Integer]: TCTable read GetTable; default;
     procedure AddTable(const NewTable: TCTable); virtual;
     function ApplyMySQLTableName(const ATableName: string): string; virtual;
     procedure Assign(const Source: TCTables); virtual;
     procedure Clear(); override;
     constructor Create(const ADatabase: TCDatabase); override;
     function IndexByName(const Name: string): Integer; override;
+    property ActualNames: Boolean read FActualNames;
+    property BaseTable[Index: Integer]: TCBaseTable read GetBaseTable;
+    property Table[Index: Integer]: TCTable read GetTable; default;
   end;
 
   TCRoutineParameter = class(TCField)
@@ -744,10 +744,10 @@ type
     FRoutine: TCRoutine;
     FParameterType: TParameterType;
   public
-    property Routine: TCRoutine read FRoutine;
-    property ParameterType: TParameterType read FParameterType;
     procedure Assign(const Source: TCField); override;
     constructor Create(ARoutine: TCRoutine); reintroduce; virtual;
+    property Routine: TCRoutine read FRoutine;
+    property ParameterType: TParameterType read FParameterType;
   end;
 
   TCRoutine = class(TCDBObject)
@@ -822,10 +822,10 @@ type
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean; override;
     function SQLGetItems(const Name: string = ''): string; override;
   public
-    property Routine[Index: Integer]: TCRoutine read GetRoutine; default;
     procedure AddRoutine(const NewRoutine: TCRoutine); virtual;
     procedure Assign(const Source: TCRoutines); virtual;
     constructor Create(const ADatabase: TCDatabase); reintroduce; virtual;
+    property Routine[Index: Integer]: TCRoutine read GetRoutine; default;
   end;
 
   TCTrigger = class(TCDBObject)
@@ -879,8 +879,8 @@ type
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean; override;
     function SQLGetItems(const Name: string = ''): string; override;
   public
-    property Trigger[Index: Integer]: TCTrigger read GetTrigger; default;
     constructor Create(const ADatabase: TCDatabase); reintroduce; virtual;
+    property Trigger[Index: Integer]: TCTrigger read GetTrigger; default;
   end;
 
   TCEvent = class(TCDBObject)
@@ -935,8 +935,8 @@ type
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean; override;
     function SQLGetItems(const Name: string = ''): string; override;
   public
-    property Event[Index: Integer]: TCEvent read GetEvent; default;
     constructor Create(const ADatabase: TCDatabase); reintroduce; virtual;
+    property Event[Index: Integer]: TCEvent read GetEvent; default;
   end;
 
   TCDatabase = class(TCObject)
@@ -1036,17 +1036,17 @@ type
     function GetDatabase(Index: Integer): TCDatabase;
     function GetDesktopXML(): IXMLNode;
   protected
-    property DesktopXML: IXMLNode read GetDesktopXML;
     function Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer; override;
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean; override;
     procedure Delete(const AObject: TCObject); override;
     function GetCount(): Integer; override;
     function SQLGetItems(const Name: string = ''): string; override;
+    property DesktopXML: IXMLNode read GetDesktopXML;
   public
-    property Database[Index: Integer]: TCDatabase read GetDatabase; default;
     procedure Clear(); override;
     constructor Create(AClient: TCClient); reintroduce; virtual;
     function IndexByName(const Name: string): Integer; override;
+    property Database[Index: Integer]: TCDatabase read GetDatabase; default;
   end;
 
   TCVariable = class(TCItem)
@@ -1063,13 +1063,13 @@ type
     procedure SetAsFloat(const AAsFloat: Double);
     procedure SetAsInteger(const AAsInteger: Integer);
   public
+    procedure Assign(const Source: TCVariable); reintroduce; virtual;
+    constructor Create(const AVariables: TCVariables; const AName: string = ''); reintroduce; virtual;
     property AsBoolean: Boolean read GetAsBoolean write SetAsBoolean;
     property AsFloat: Double read GetAsFloat write SetAsFloat;
     property AsInteger: Integer read GetAsInteger write SetAsInteger;
     property Value: string read FValue write FValue;
     property Variables: TCVariables read FVariables;
-    procedure Assign(const Source: TCVariable); reintroduce; virtual;
-    constructor Create(const AVariables: TCVariables; const AName: string = ''); reintroduce; virtual;
   end;
 
   TCVariables = class(TCObjects)
@@ -1105,14 +1105,14 @@ type
     function GetForeignKeyAllowed(): Boolean;
     function GetIsMerge(): Boolean;
   public
+    constructor Create(const AEngines: TCEngines; const AName: string = ''); reintroduce; virtual;
+    function FieldAvailable(const MySQLFieldType: TMySQLFieldType): Boolean; virtual;
+    function ApplyMySQLFieldType(const MySQLFieldType: TMySQLFieldType; const MySQLFieldSize: Integer): TMySQLFieldType; virtual;
     property Comment: string read FComment write FComment;
     property Default: Boolean read FDefault;
     property Engines: TCEngines read FEngines;
     property ForeignKeyAllowed: Boolean read GetForeignKeyAllowed;
     property IsMerge: Boolean read GetIsMerge;
-    constructor Create(const AEngines: TCEngines; const AName: string = ''); reintroduce; virtual;
-    function FieldAvailable(const MySQLFieldType: TMySQLFieldType): Boolean; virtual;
-    function ApplyMySQLFieldType(const MySQLFieldType: TMySQLFieldType; const MySQLFieldSize: Integer): TMySQLFieldType; virtual;
   end;
 
   TCSystemEngine = class(TCEngine);
@@ -1135,9 +1135,9 @@ type
     FComment: string;
     FPlugins: TCPlugins;
   public
+    constructor Create(const APlugins: TCPlugins; const AName: string = ''); reintroduce; virtual;
     property Comment: string read FComment;
     property Plugins: TCPlugins read FPlugins;
-    constructor Create(const APlugins: TCPlugins; const AName: string = ''); reintroduce; virtual;
   end;
 
   TCPlugins = class(TCObjects)
@@ -1157,11 +1157,11 @@ type
     FieldTypes: TCFieldTypes;
     FMySQLFieldType: TMySQLFieldType;
   public
+    function DBTypeStr(): string; virtual;
+    constructor Create(const AFieldTypes: TCFieldTypes; const AMySQLFieldType: TMySQLFieldType; const ACaption: string; const AHighlighted: Boolean); virtual;
     property Caption: string read FCaption;
     property Highlighted: Boolean read FHighlighted;
     property MySQLFieldType: TMySQLFieldType read FMySQLFieldType;
-    function DBTypeStr(): string; virtual;
-    constructor Create(const AFieldTypes: TCFieldTypes; const AMySQLFieldType: TMySQLFieldType; const ACaption: string; const AHighlighted: Boolean); virtual;
   end;
 
   TCFieldTypes = class(TCItems)
@@ -1172,10 +1172,10 @@ type
   protected
     function FieldAvailable(const Engine: TCEngine; const MySQLFieldType: TMySQLFieldType): Boolean; virtual;
   public
-    property Client: TCClient read FClient;
-    property FieldType[Index: Integer]: TCFieldType read GetFieldType; default;
     function ApplyMySQLFieldType(const Engine: TCEngine; const MySQLFieldType: TMySQLFieldType): TMySQLFieldType; virtual;
     constructor Create(const AClient: TCClient); reintroduce; virtual;
+    property Client: TCClient read FClient;
+    property FieldType[Index: Integer]: TCFieldType read GetFieldType; default;
   end;
 
   TCCharset = class(TCItem)
@@ -1186,12 +1186,12 @@ type
     FMaxLength: Integer;
     function GetDefaultCollation(): TCCollation;
   public
+    constructor Create(const ACharsets: TCCharsets; const AName: string = ''); reintroduce; virtual;
     property Charsets: TCCharsets read FCharsets;
     property Collation: string read FCollation;
     property DefaultCollation: TCCollation read GetDefaultCollation;
     property Hint: string read FHint;
     property MaxLength: Integer read FMaxLength;
-    constructor Create(const ACharsets: TCCharsets; const AName: string = ''); reintroduce; virtual;
   end;
 
   TCCharsets = class(TCObjects)
@@ -1215,6 +1215,7 @@ type
     FId: Word;
     FSortLength: Byte;
   public
+    constructor Create(const ACollations: TCCollations; const AName: string = ''); reintroduce; virtual;
     property Charset: TCCharset read FCharset;
     property Compiled: Boolean read FCompiled;
     property Default: Boolean read FDefault;
@@ -1222,7 +1223,6 @@ type
     property Id: Word read FId;
     property SortLength: Byte read FSortLength;
     property Collations: TCCollations read FCollations;
-    constructor Create(const ACollations: TCCollations; const AName: string = ''); reintroduce; virtual;
   end;
 
   TCCollations = class(TCObjects)
@@ -1285,10 +1285,10 @@ type
     RGrant, RIndex, RInsert, RLockTables, RProcess, RReferences: Boolean;
     RReload, RReplClient, RReplSlave, RSelect: Boolean;
     RShowDatabases, RShowView, RShutdown, RSuper, RTrigger, RUpdate: Boolean;
-    property Caption: string read GetCaption;
-    property RawPassword: string read FRawPassword;
     constructor Create(); virtual;
     procedure Assign(const Source: TCUserRight);
+    property Caption: string read GetCaption;
+    property RawPassword: string read FRawPassword;
   end;
 
   TCUser = class(TCObject)
@@ -1318,6 +1318,16 @@ type
     Actual: Boolean;
     procedure SetName(const AName: string); override;
   public
+    function AddRight(const NewUserRight: TCUserRight): Boolean; virtual;
+    procedure Assign(const Source: TCUser); reintroduce; virtual;
+    procedure Clear(); override;
+    constructor Create(const AUsers: TCUsers; const AName: string = ''); reintroduce; virtual;
+    procedure DeleteRight(const UserRight: TCUserRight); virtual;
+    destructor Destroy(); override;
+    function IndexOf(const UserRight: TCUserRight): Integer; virtual;
+    function Initialize(): Boolean; override;
+    function RightByCaption(const Caption: string): TCUserRight; virtual;
+    function UpdateRight(const UserRight,  NewUserRight: TCUserRight): Boolean; virtual;
     property Caption: string read GetCaption;
     property ConnectionsPerHour: Integer read GetConnectionsPerHour write FConnectionsPerHour;
     property Host: string read GetHost;
@@ -1332,16 +1342,6 @@ type
     property UpdatesPerHour: Integer read GetUpdatesPerHour write FUpdatesPerHour;
     property UserConnections: Integer read GetUserConnections write FUserConnections;
     property Users: TCUsers read FUsers;
-    function AddRight(const NewUserRight: TCUserRight): Boolean; virtual;
-    procedure Assign(const Source: TCUser); reintroduce; virtual;
-    procedure Clear(); override;
-    constructor Create(const AUsers: TCUsers; const AName: string = ''); reintroduce; virtual;
-    procedure DeleteRight(const UserRight: TCUserRight); virtual;
-    destructor Destroy(); override;
-    function IndexOf(const UserRight: TCUserRight): Integer; virtual;
-    function Initialize(): Boolean; override;
-    function RightByCaption(const Caption: string): TCUserRight; virtual;
-    function UpdateRight(const UserRight,  NewUserRight: TCUserRight): Boolean; virtual;
   end;
 
   TCUsers = class(TCObjects)
@@ -1372,12 +1372,12 @@ type
   protected
     procedure Assign(const Source: TCHostDatabases); virtual;
   public
-    property Database[Index: Integer]: TCHostDatabase read GetDatabase; default;
-    property Host: TCHost read FHost;
     function AddDatabase(const NewDatabase: TCHostDatabase): Boolean; virtual;
     constructor Create(const AHost: TCHost); reintroduce; virtual;
     procedure DeleteDatabase(const Database: TCHostDatabase); virtual;
     function UpdateDatabase(const Database, NewDatabase: TCHostDatabase): Boolean; virtual;
+    property Database[Index: Integer]: TCHostDatabase read GetDatabase; default;
+    property Host: TCHost read FHost;
   end;
 
   TCHost = class(TCObject)
@@ -1389,15 +1389,15 @@ type
     OriginalHost: string;
     function GetSource(): string; override;
   public
-    property Caption: string read GetCaption;
-    property Databases: TCHostDatabases read FDatabases;
-    property Hosts: TCHosts read FHosts;
     procedure Assign(const Source: TCHost); reintroduce; virtual;
     procedure Clear(); override;
     constructor Create(const AHosts: TCHosts; const AHost: string = ''); reintroduce; virtual;
     function DatabaseByName(const DatabaseName: string): TCHostDatabase; virtual;
     destructor Destroy(); override;
     function Initialize(): Boolean; override;
+    property Caption: string read GetCaption;
+    property Databases: TCHostDatabases read FDatabases;
+    property Hosts: TCHosts read FHosts;
   end;
 
   TCHosts = class(TCObjects)
@@ -1589,12 +1589,12 @@ type
     FOnOpenConnection: TOpenConnectionEvent;
     function GetClient(Index: Integer): TCClient;
   public
-    property Client[Index: Integer]: TCClient read GetClient; default;
-    property OnOpenConnection: TOpenConnectionEvent read FOnOpenConnection write FOnOpenConnection;
     constructor Create(); virtual;
     function ClientByAccount(const Account: TSAccount; const DatabaseName: string): TCClient; virtual;
     function CreateClient(const AAccount: TSAccount; out UserAbort: Boolean): TCClient;
     procedure ReleaseClient(var AClient: TCClient);
+    property Client[Index: Integer]: TCClient read GetClient; default;
+    property OnOpenConnection: TOpenConnectionEvent read FOnOpenConnection write FOnOpenConnection;
   end;
 
 const
