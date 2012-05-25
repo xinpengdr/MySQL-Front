@@ -996,7 +996,7 @@ begin
           Database := ExecuteClient.DatabaseByName(FSelect.Items[I].Text);
           for J := 0 to Database.Tables.Count - 1 do
             if ((Database.Tables[J] is TCBaseTable)  and (RightStr(Database.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
-              Find.Add(Database.Tables.BaseTable[J], nil);
+              Find.Add(TCBaseTable(Database.Tables[J]), nil);
         end
         else // iiConnection
         begin
@@ -1006,7 +1006,7 @@ begin
             if (not (Database is TCSystemDatabase)) then
               for J := 0 to Database.Tables.Count - 1 do
                 if ((Database.Tables[J] is TCBaseTable)  and (RightStr(Database.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
-                  Find.Add(Database.Tables.BaseTable[J], nil);
+                  Find.Add(TCBaseTable(Database.Tables[J]), nil);
           end;
         end;
       end;

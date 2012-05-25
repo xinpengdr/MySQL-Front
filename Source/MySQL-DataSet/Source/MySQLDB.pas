@@ -2623,7 +2623,7 @@ begin
       SynchroThread.Success := Lib.mysql_real_query(SynchroThread.LibHandle, my_char(LibSQL), LibLength) = 0;
       SynchroThread.Time := SynchroThread.Time + Now() - StartTime;
 
-//      Sleep(2000);
+//      Sleep(200);
     end;
 
     if (SynchroThread.Success and not SynchroThread.Terminated) then
@@ -2792,6 +2792,7 @@ begin
   SynchroThread.Time := SynchroThread.Time + Now() - Time;
   if (SynchroThread.Success) then
   begin
+//    Sleep(200);
     SynchroThread.ResultHandle := Lib.mysql_use_result(SynchroThread.LibHandle);
     SynchroThread.Success := Assigned(SynchroThread.ResultHandle);
   end;

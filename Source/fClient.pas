@@ -678,7 +678,6 @@ type
   TCTables = class(TCDBObjects)
   private
     FActualNames: Boolean;
-    function GetBaseTable(Index: Integer): TCBaseTable;
     function GetTable(Index: Integer): TCTable;
   protected
     function Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer; override;
@@ -695,7 +694,6 @@ type
     constructor Create(const ADatabase: TCDatabase); override;
     function IndexByName(const Name: string): Integer; override;
     property ActualNames: Boolean read FActualNames;
-    property BaseTable[Index: Integer]: TCBaseTable read GetBaseTable;
     property Table[Index: Integer]: TCTable read GetTable; default;
   end;
 
@@ -1000,6 +998,7 @@ type
     procedure Clear(); override;
     constructor Create(AClient: TCClient); reintroduce; virtual;
     function IndexByName(const Name: string): Integer; override;
+    function Initialize(): Boolean;
     property Database[Index: Integer]: TCDatabase read GetDatabase; default;
   end;
 
@@ -4978,18 +4977,6 @@ begin
   Clear();
 end;
 
-function TCTables.GetBaseTable(Index: Integer): TCBaseTable;
-var
-  Table: TCTable;
-begin
-  Table := GetTable(Index);
-
-  if (Table is TCBaseTable) then
-    Result := TCBaseTable(Table)
-  else
-    Result := nil;
-end;
-
 function TCTables.GetCount(): Integer;
 begin
   if (not Actual and not ActualNames) then
@@ -6637,27 +6624,23 @@ function TCDatabase.GetSize(): Int64;
 // Result in Byte
 var
   I: Integer;
-  Size: Int64;
 begin
   Result := 0;
-  Size := 0;
 
   for I := 0 to Tables.Count - 1 do
-    if ((Tables[I] is TCBaseTable)) then
-      Inc(Result, Tables.BaseTable[I].DataSize + Tables.BaseTable[I].IndexSize + Tables.BaseTable[I].UnusedSize)
+    if ((Tables[I] is TCBaseTable) and TCBaseTable(Tables[I]).ActualStatus) then
+      Inc(Result, TCBaseTable(Tables[I]).DataSize + TCBaseTable(Tables[I]).IndexSize + TCBaseTable(Tables[I]).UnusedSize)
     else if (Tables[I] is TCView) then
-      Inc(Size, SizeOf(TCView(Tables[I]).Source));
+      Inc(Result, SizeOf(TCView(Tables[I]).Source));
   if (Assigned(Routines)) then
     for I := 0 to Routines.Count - 1 do
-      Inc(Size, SizeOf(Routines[I].Source));
+      Inc(Result, SizeOf(Routines[I].Source));
   if (Assigned(Triggers)) then
     for I := 0 to Triggers.Count - 1 do
-      Inc(Size, SizeOf(Triggers[I].Source));
+      Inc(Result, SizeOf(Triggers[I].Source));
   if (Assigned(Events)) then
     for I := 0 to Triggers.Count - 1 do
-      Inc(Size, SizeOf(Events[I].Source));
-
-  Inc(Result, Size);
+      Inc(Result, SizeOf(Events[I].Source));
 end;
 
 function TCDatabase.GetSource(): string;
@@ -7923,6 +7906,20 @@ begin
         Result := I;
 end;
 
+function TCDatabases.Initialize(): Boolean;
+var
+  I: Integer;
+begin
+  Result := True;
+
+  for I := 0 to Count - 1 do
+    if (Database[I].Initialize()) then
+    begin
+      Result := True;
+      exit;
+    end;
+end;
+
 function TCDatabases.SQLGetItems(const Name: string = ''): string;
 var
   DatabaseNames: TCSVStrings;
@@ -8104,6 +8101,8 @@ var
   StatusName: string;
   Update: Boolean;
 begin
+  Update := False; Index := -1;
+
   if (not DataSet.IsEmpty()) then
     repeat
       if (not UseInformationSchema) then
@@ -8111,11 +8110,10 @@ begin
       else
         StatusName := DataSet.FieldByName('VARIABLE_NAME').AsString;
 
+      Index := IndexByName(StatusName);
       Update := IndexByName(StatusName) >= 0;
 
-      if (Update) then
-        Index := IndexByName(StatusName)
-      else
+      if (not Update) then
         Index := Add(TCStatus.Create(StatusName));
 
       if (not UseInformationSchema) then
@@ -8125,6 +8123,11 @@ begin
     until (not DataSet.FindNext());
 
   Result := inherited;
+
+  if ((DataSet.RecordCount = 1) and Update) then
+    Client.ExecuteEvent(ceUpdated, Client, Self, Status[Index])
+  else
+    Client.ExecuteEvent(ceBuild, Client, Self, nil);
 end;
 
 function TCStati.GetStatus(Index: Integer): TCStatus;
@@ -8670,7 +8673,7 @@ var
   Seconds: Integer;
   Update: Boolean;
 begin
-  Update := False;
+  Update := False; Index := -1;
 
   if (not DataSet.IsEmpty()) then
     repeat
@@ -10052,7 +10055,7 @@ begin
   for I := 0 to SourceDatabase.Tables.Count - 1 do
     if (Result) then
       if (SourceDatabase.Tables[I] is TCBaseTable) then
-        Result := TargetDatabase.CloneTable(SourceDatabase.Tables.BaseTable[I], SourceDatabase.Tables[I].Name, Data);
+        Result := TargetDatabase.CloneTable(TCBaseTable(SourceDatabase.Tables[I]), SourceDatabase.Tables[I].Name, Data);
   TargetDatabase.Clear();
 end;
 

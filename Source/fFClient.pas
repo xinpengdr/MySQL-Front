@@ -38,7 +38,8 @@ const
 type
   TLastDataSource = record ResultSet: TCResultSet; DataSet: TDataSet; end;
   TSynMemoBeforeDrag = record SelStart: Integer; SelLength: Integer; end;
-  TFListSortColumn = array [ckServer .. ckVariables] of record Index: Integer; Order: Integer; end;
+  TListViewSortRec = record Kind: TADesktop.TColumnWidthKind; Index: Integer; Order: Integer; end;
+  TListViewSortData = array [ckServer .. ckVariables] of TListViewSortRec;
   TSQLEditor = record Filename: TFileName; CodePage: Cardinal; end;
 
 type
@@ -808,7 +809,6 @@ type
     EditorField: TField;
     FHTML: TWebBrowser;
     FilterMRU: TMRUList;
-    FListSortColumn: TFListSortColumn;
     FNavigatorMenuNode: TTreeNode;
     FrameState: TTabState;
     FSQLEditorCompletionTimerCounter: Integer;
@@ -825,6 +825,7 @@ type
     LastSelectedTable: string;
     LastTableView: TView;
     LeftMousePressed: Boolean;
+    ListViewSortData: TListViewSortData;
     MouseDownNode: TTreeNode;
     MovingToAddress: Boolean;
     NewLineFormat: TNewLineFormat;
@@ -940,6 +941,7 @@ type
     procedure gmFilterClearClick(Sender: TObject);
     procedure gmFilterIntoFilterClick(Sender: TObject);
     procedure ImportError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
+    procedure Initialize();
     procedure ListViewEmpty(Sender: TObject);
     procedure ListViewInitialize(const Sender: TObject; const ListView: TListView; const Data: TCustomData);
     procedure ListViewRefresh(const Sender: TObject; const ListView: TListView; const Data: TCustomData = nil);
@@ -1510,7 +1512,7 @@ var
 begin
   if (not Assigned(FXML) and Assigned(FClient.Client.Account.DesktopXML)) then
   begin
-    Node := XMLNode(FClient.Client.Account.DesktopXML, 'browser/databases');
+    Node := XMLNode(FClient.Client.Account.DesktopXML, 'browser/databases', True);
 
     for I := 0 to Node.ChildNodes.Count - 1 do
       if ((Node.NodeName = 'database') and (lstrcmpi(PChar(string(Node.ChildNodes[I].Attributes['name'])), PChar(Database.Name)) = 0)) then
@@ -2128,9 +2130,6 @@ begin
     PContentChange(Sender);
     PContentRefresh(Sender);
 
-    if (Client.Account.PackAddress(Address) = '/?system=processes') then
-      Client.Processes.Initialize();
-
 
     while (Assigned(OldControl) and OldControl.Visible and OldControl.Enabled and Assigned(OldControl.Parent)) do
       OldControl := OldControl.Parent;
@@ -2277,6 +2276,9 @@ begin
       LastTableView := View;
     if (View = avObjectIDE) then
       LastObjectIDEAddress := Address;
+
+    if (not Client.InUse) then
+      Initialize();
   end;
 end;
 
@@ -2285,7 +2287,6 @@ var
   NotFound: Boolean;
   Database: TCDatabase;
   DBObject: TCDBObject;
-  I: Integer;
   S: string;
   URI: TUURI;
 begin
@@ -2318,12 +2319,7 @@ begin
   begin
     AllowChange := not Client.Initialize();
     if (AllowChange) then
-      if ((URI.Database = '') and (URI.Param['view'] = Null) and (URI.Param['system'] = Null)) then
-      begin
-        for I := 0 to Client.Databases.Count - 1 do
-          AllowChange := AllowChange and not Client.Databases[I].Initialize();
-      end
-      else if (URI.Database <> '') then
+      if (URI.Database <> '') then
       begin
         Database := Client.DatabaseByName(URI.Database);
         if (not Assigned(Database)) then
@@ -2358,6 +2354,7 @@ begin
             end;
         end;
       end;
+
     if (NotFound) then
     begin
       AllowChange := False;
@@ -3810,7 +3807,9 @@ begin
   SetTimer(Handle, tiStatusBar, 5000, nil);
 
   if (Assigned(Wanted.Action) or (Wanted.Address <> '') or Assigned(Wanted.Initialize)) then
-    Wanted.Execute();
+    Wanted.Execute()
+  else
+    Initialize();
 end;
 
 procedure TFClient.aHRunClick(Sender: TObject);
@@ -4276,7 +4275,6 @@ procedure TFClient.ClientRefresh(Sender: TObject);
 var
   Control: TWinControl;
   ClientEvent: TCClient.TEvent;
-  ListView: TListView;
   OldAddress: string;
   TempActiveControl: TWinControl;
   TempSelectedItem: string;
@@ -4304,23 +4302,44 @@ begin
     FNavigatorRefresh(ClientEvent);
 
   if (ClientEvent.Sender is TCDatabase) then
-    ListView := TDatabaseDesktop(TCDatabase(ClientEvent.Sender).Desktop).FListView
+  begin
+    ListViewRefresh(Sender, FServerListView);
+    ListViewRefresh(Sender, TDatabaseDesktop(TCDatabase(ClientEvent.Sender).Desktop).FListView);
+  end
   else if (ClientEvent.Sender is TCTable) then
-    ListView := TTableDesktop(TCTable(ClientEvent.Sender).Desktop).FListView
+  begin
+    ListViewRefresh(Sender, FServerListView);
+    ListViewRefresh(Sender, TTableDesktop(TCTable(ClientEvent.Sender).Desktop).FListView);
+  end
   else if (ClientEvent.CItems is TCHosts) then
-    ListView := HostsListView
+  begin
+    ListViewRefresh(Sender, FServerListView);
+    ListViewRefresh(Sender, HostsListView);
+  end
   else if (ClientEvent.CItems is TCProcesses) then
-    ListView := ProcessesListView
+  begin
+    ListViewRefresh(Sender, FServerListView);
+    ListViewRefresh(Sender, ProcessesListView);
+  end
   else if (ClientEvent.CItems is TCStati) then
-    ListView := StatiListView
+  begin
+    ListViewRefresh(Sender, FServerListView);
+    ListViewRefresh(Sender, StatiListView);
+  end
   else if (ClientEvent.CItems is TCUsers) then
-    ListView := UsersListView
+  begin
+    ListViewRefresh(Sender, FServerListView);
+    ListViewRefresh(Sender, UsersListView);
+  end
   else if (ClientEvent.CItems is TCVariables) then
-    ListView := VariablesListView
+  begin
+    ListViewRefresh(Sender, FServerListView);
+    ListViewRefresh(Sender, VariablesListView);
+  end
   else
-    ListView := FServerListView;
-  if (Assigned(ListView) and (ClientEvent.EventType in [ceBuild, ceUpdated, ceCreated, ceDroped, ceAltered, ceStatus])) then
-    ListViewRefresh(Sender, ListView);
+  begin
+    ListViewRefresh(Sender, FServerListView);
+  end;
 
 
   if ((OldAddress <> '') and (Address <> OldAddress)) then
@@ -5253,11 +5272,12 @@ begin
   PanelMouseDownPoint := Point(-1, -1);
   for Kind := ckServer to ckVariables do
   begin
-    FListSortColumn[Kind].Index := 0;
+    ListViewSortData[Kind].Kind := Kind;
+    ListViewSortData[Kind].Index := 0;
     if (Kind = ckTable) then
-      FListSortColumn[Kind].Order := 0
+      ListViewSortData[Kind].Order := 0
     else
-      FListSortColumn[Kind].Order := 1;
+      ListViewSortData[Kind].Order := 1;
   end;
   CreateLine := False;
 
@@ -9187,7 +9207,7 @@ begin
         end;
       end;
 {
-ToDo: Implement
+ToDo: Implement this...
     for I := 0 to Database.Tables.Count - 1 do
       if ((Database.Tables[I] is TCBaseTable) and (Database.Tables[I] <> Table)) then
         for J := 0 to TCBaseTable(Database.Tables[I]).ForeignKeys.Count - 1 do
@@ -9653,6 +9673,17 @@ begin
   Success := daAbort;
 end;
 
+procedure TFClient.Initialize();
+var
+  PackedAddress: string;
+begin
+  PackedAddress := Client.Account.PackAddress(Address);
+  if (PackedAddress = '/') then
+    Client.Databases.Initialize()
+  else if (PackedAddress = '/?system=processes') then
+    Client.Processes.Initialize();
+end;
+
 procedure TFClient.ListViewChanging(Sender: TObject; Item: TListItem;
   Change: TItemChange; var AllowChange: Boolean);
 var
@@ -9669,23 +9700,26 @@ procedure TFClient.ListViewColumnClick(Sender: TObject; Column: TListColumn);
 var
   HDItem: THDItem;
   I: Integer;
+  Kind: TADesktop.TColumnWidthKind;
 begin
-  with (FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)]) do
+  Kind := ColumnWidthKindFromImageIndex(SelectedImageIndex);
+
+  with (ListViewSortData[Kind]) do
   begin
-    FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)].Index := Column.Index;
+    ListViewSortData[Kind].Index := Column.Index;
     if (Sender = ActiveListView) then
     begin
       if ((OldFListOrderIndex <> Index) or ((Order = 0) or (Order < 0) and (not (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) or (Index > 0)))) then
-        FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)].Order := 1
+        ListViewSortData[Kind].Order := 1
       else if (Order = 1) then
-        FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)].Order := -1
+        ListViewSortData[Kind].Order := -1
       else
-        FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)].Order := 0;
+        ListViewSortData[Kind].Order := 0;
 
       if (Order = 0) then
         ListViewRefresh(Sender, ActiveListView, FNavigator.Selected.Data)
       else
-        ActiveListView.CustomSort(nil, Index);
+        ActiveListView.CustomSort(nil, LPARAM(@ListViewSortData[Kind]));
     end;
 
     HDItem.Mask := HDI_FORMAT;
@@ -9724,7 +9758,10 @@ var
   ImageIndex2: Integer;
   String1: string;
   String2: string;
+  SortRec: ^TListViewSortRec;
 begin
+  SortRec := @TListViewSortRec(Pointer(Data)^);
+
   ImageIndex1 := Item1.ImageIndex;
   ImageIndex2 := Item2.ImageIndex;
   if (Pos(Chr(ImageIndex1), SourceImageIndex) > 0) then ImageIndex1 := Ord(DestImageIndex[Pos(Chr(ImageIndex1), SourceImageIndex)]);
@@ -9739,20 +9776,20 @@ begin
     end
   else
   begin
-    if ((Data = 0) or (Data > Item1.SubItems.Count) or (Data > Item2.SubItems.Count)) then
+    if ((SortRec^.Index = 0) or (SortRec^.Index > Item1.SubItems.Count) or (SortRec^.Index > Item2.SubItems.Count)) then
     begin
       String1 := Item1.Caption;
       String2 := Item2.Caption;
     end
     else
     begin
-      String1 := Item1.SubItems[Data - 1];
-      String2 := Item2.SubItems[Data - 1];
+      String1 := Item1.SubItems[SortRec^.Index - 1];
+      String2 := Item2.SubItems[SortRec^.Index - 1];
 
       Compare := 0;
       case (SelectedImageIndex) of
         iiServer:
-          case (Data) of
+          case (SortRec^.Index) of
             0: if (Client.LowerCaseTableNames = 0) then
                  Compare := Sign(lstrcmp(PChar(String1), PChar(String2)))
                else
@@ -9785,7 +9822,7 @@ begin
               end;
           end;
         iiDatabase:
-          case (Data) of
+          case (SortRec^.Index) of
             0: if (Client.LowerCaseTableNames = 0) then
                  Compare := Sign(lstrcmp(PChar(String1), PChar(String2)))
                else
@@ -9836,7 +9873,7 @@ begin
     if (Compare = 0) then
       Compare := Sign(lstrcmp(PChar(Item1.Caption), PChar(Item2.Caption)));
 
-    Compare := FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)].Order * Compare;
+    Compare := ListViewSortData[SortRec^.Kind].Order * Compare;
   end;
 end;
 
@@ -9948,15 +9985,16 @@ procedure TFClient.ListViewInitialize(const Sender: TObject; const ListView: TLi
   end;
 
 var
+  Count: Integer;
   Group: TListGroup;
+  I: Integer;
+  Item: TListItem;
   Update: Boolean;
 begin
   Update := ListView.Columns.Count > 0;
 
   ListView.Columns.BeginUpdate();
-  ListView.Columns.Clear();
   ListView.Groups.BeginUpdate();
-  ListView.Groups.Clear();
 
   if (not Update) then
     if (ListView = FServerListView) then
@@ -9975,7 +10013,6 @@ begin
       Group.GroupID := iiDatabase;
       Group := ListView.Groups.Add();
       Group.GroupID := 0;
-      Group.Header := ReplaceStr(Preferences.LoadStr(12), '&', '');
     end
     else if (TObject(Data) is TCDatabase) then
     begin
@@ -10100,6 +10137,19 @@ begin
     ListView.Columns[2].Caption := Preferences.LoadStr(67);
     ListView.Columns[3].Caption := Preferences.LoadStr(77);
     ListView.Columns[4].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
+
+    Count := ListView.Items.Count;
+    for I := 0 to ListView.Items.Count - 1 do
+      case (ListView.Items[I].ImageIndex) of
+        iiHosts: ListView.Items[I].Caption := Preferences.LoadStr(335);
+        iiProcesses: ListView.Items[I].Caption := Preferences.LoadStr(24);
+        iiStati: ListView.Items[I].Caption := Preferences.LoadStr(23);
+        iiUsers: ListView.Items[I].Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
+        iiVariables: ListView.Items[I].Caption := Preferences.LoadStr(22);
+        else Dec(Count);
+      end;
+
+    ListView.Groups[1].Header := ReplaceStr(Preferences.LoadStr(12), '&', '') + ' (' + IntToStr(Count) + ')';
   end
   else if (TObject(Data) is TCDatabase) then
   begin
@@ -10323,6 +10373,11 @@ end;
 
 procedure TFClient.ListViewRefresh(const Sender: TObject; const ListView: TListView; const Data: TCustomData = nil);
 
+  function Compare(const Kind: TADesktop.TColumnWidthKind; const Item1, Item2: TListItem): Integer;
+  begin
+    ListViewCompare(Sender, Item1, Item2, LPARAM(@ListViewSortData[Kind]), Result);
+  end;
+
   function GroupByImageIndex(const ImageIndex: Integer): TListGroup;
   var
     I: Integer;
@@ -10331,6 +10386,167 @@ procedure TFClient.ListViewRefresh(const Sender: TObject; const ListView: TListV
     for I := 0 to ListView.Groups.Count - 1 do
       if (ListView.Groups[I].GroupID = ImageIndex) then
         Result := ListView.Groups[I];
+  end;
+
+  procedure UpdateItem(const Item: TListItem; const CItem: TCItem);
+  var
+    Database: TCDatabase;
+    Event: TCEvent;
+    Routine: TCRoutine;
+    S: string;
+    Table: TCTable;
+  begin
+    Item.SubItems.BeginUpdate();
+    Item.SubItems.Clear();
+
+    case (Item.ImageIndex) of
+      iiDatabase,
+      iiSystemDatabase:
+        begin
+          Database := TCDatabase(CItem);
+
+          Item.Caption := Database.Name;
+          Item.SubItems.Clear();
+          if (Database.Count < 0) then
+            Item.SubItems.Add('')
+          else
+            Item.SubItems.Add(FormatFloat('#,##0', Database.Count, LocaleFormatSettings));
+          Item.SubItems.Add(SizeToStr(Database.Size));
+          if (Database is TCSystemDatabase) then
+            Item.SubItems.Add('')
+          else if (Database.Created = 0) then
+            Item.SubItems.Add('???')
+          else
+            Item.SubItems.Add(SysUtils.DateToStr(Database.Created, LocaleFormatSettings));
+          if (Database.DefaultCharset = Client.DefaultCharset) then
+            S := ''
+          else
+            S := Database.DefaultCharset;
+          if ((Database.Collation <> '') and (Database.Collation <> Client.Collation)) then
+          begin
+            if (S <> '') then S := S + ', ';
+            S := S + Database.Collation;
+          end;
+          if (Database is TCSystemDatabase) then
+            Item.SubItems.Add('')
+          else
+            Item.SubItems.Add(S);
+        end;
+      iiBaseTable,
+      iiSystemView,
+      iiView:
+        begin
+          Table := TCTable(CItem);
+
+          Item.Caption := Table.Name;
+          if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Engine)) then
+            Item.SubItems.Add(TCBaseTable(Table).Engine.Name)
+          else if ((Table is TCView)) then
+            Item.SubItems.Add(ReplaceStr(Preferences.LoadStr(738), '&', ''))
+          else
+            Item.SubItems.Add('???');
+          if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
+            Item.SubItems.Add('')
+          else if ((Table is TCBaseTable) and (TCBaseTable(Table).Rows < 0)) then
+            Item.SubItems.Add('???')
+          else if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Engine) and (UpperCase(TCBaseTable(Table).Engine.Name) = 'INNODB')) then
+            Item.SubItems.Add('~' + FormatFloat('#,##0', TCBaseTable(Table).Rows, LocaleFormatSettings))
+          else if ((Table is TCBaseTable)) then
+            Item.SubItems.Add(FormatFloat('#,##0', TCBaseTable(Table).Rows, LocaleFormatSettings))
+          else
+            Item.SubItems.Add('');
+          if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
+            Item.SubItems.Add('')
+          else if ((Table is TCBaseTable) and (TCBaseTable(Table).DataSize + TCBaseTable(Table).IndexSize < 0)) then
+            Item.SubItems.Add('???')
+          else if ((Table is TCBaseTable)) then
+            Item.SubItems.Add(SizeToStr(TCBaseTable(Table).DataSize + TCBaseTable(Table).IndexSize + 1))
+          else if ((Table is TCView) and TCView(Table).ActualSource) then
+            Item.SubItems.Add(SizeToStr(Length(TCView(Table).Source)))
+          else
+            Item.SubItems.Add('');
+          if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
+            Item.SubItems.Add('')
+          else if ((Table is TCBaseTable) and (TCBaseTable(Table).Updated <= 0)) then
+            Item.SubItems.Add('???')
+          else if ((Table is TCBaseTable)) then
+            Item.SubItems.Add(SysUtils.DateTimeToStr(TCBaseTable(Table).Updated, LocaleFormatSettings))
+          else
+            Item.SubItems.Add('');
+          S := '';
+          if ((Table is TCBaseTable) and (TCBaseTable(Table).DefaultCharset <> '') and (TCBaseTable(Table).DefaultCharset <> TCBaseTable(Table).Database.DefaultCharset)) then
+            S := S + TCBaseTable(Table).DefaultCharset;
+          if ((Table is TCBaseTable) and (TCBaseTable(Table).Collation <> '') and (TCBaseTable(Table).Collation <> TCBaseTable(Table).Database.Collation)) then
+          begin
+            if (S <> '') then S := S + ', ';
+            S := S + TCBaseTable(Table).Collation;
+          end;
+          Item.SubItems.Add(S);
+
+          if ((Table is TCBaseTable)) then
+            Item.SubItems.Add(TCBaseTable(Table).Comment)
+          else
+            Item.SubItems.Add(TCView(Table).Comment);
+        end;
+      iiProcedure,
+      iiFunction:
+        begin
+          Routine := TCRoutine(CItem);
+
+          Item.Caption := Routine.Name;
+          case (Routine.RoutineType) of
+            rtProcedure: Item.SubItems.Add('Procedure');
+            rtFunction: Item.SubItems.Add('Function');
+          end;
+          Item.SubItems.Add('');
+          if (not Routine.ActualSource) then
+            Item.SubItems.Add('')
+          else
+            Item.SubItems.Add(SizeToStr(Length(Routine.Source)));
+          if (Routine.Modified = 0) then
+            Item.SubItems.Add('???')
+          else
+            Item.SubItems.Add(SysUtils.DateTimeToStr(Routine.Modified, LocaleFormatSettings));
+          if (not Assigned(Routine.FunctionResult) or (Routine.FunctionResult.Charset = '') or (Routine.FunctionResult.Charset = Routine.Database.DefaultCharset)) then
+            Item.SubItems.Add('')
+          else
+            Item.SubItems.Add(Routine.FunctionResult.Charset);
+          Item.SubItems.Add(Routine.Comment);
+        end;
+      iiEvent:
+        begin
+          Event := TCEvent(CItem);
+
+          Item.Caption := Event.Name;
+          Item.SubItems.Add('Event');
+          Item.SubItems.Add('');
+          if (not Event.ActualSource) then
+            Item.SubItems.Add('')
+          else
+            Item.SubItems.Add(SizeToStr(Length(Event.Source)));
+          if (Event.Updated = 0) then
+            Item.SubItems.Add('???')
+          else
+            Item.SubItems.Add(SysUtils.DateTimeToStr(Event.Updated, LocaleFormatSettings));
+          Item.SubItems.Add('');
+          Item.SubItems.Add(Event.Comment);
+        end;
+      iiHosts:
+        Item.SubItems.Add(FormatFloat('#,##0', Client.Hosts.Count, LocaleFormatSettings));
+      iiProcesses:
+        Item.SubItems.Add(FormatFloat('#,##0', Client.Processes.Count, LocaleFormatSettings));
+      iiStati:
+        Item.SubItems.Add(FormatFloat('#,##0', Client.Stati.Count, LocaleFormatSettings));
+      iiUsers:
+        if (Client.Users.Count >= 0) then
+          Item.SubItems.Add(FormatFloat('#,##0', Client.Users.Count, LocaleFormatSettings))
+        else
+          Item.SubItems.Add('???');
+      iiVariables:
+        Item.SubItems.Add(FormatFloat('#,##0', Client.Variables.Count, LocaleFormatSettings));
+    end;
+
+    Item.SubItems.EndUpdate();
   end;
 
 var
@@ -10348,6 +10564,7 @@ var
   I: Integer;
   Index: TCIndex;
   Item: TListItem;
+  ItemIndex: Integer;
   J: Integer;
   Kind: TADesktop.TColumnWidthKind;
   LVItem: TLVItem;
@@ -10363,572 +10580,590 @@ var
   View: TCView;
   ViewField: TCViewField;
 begin
-  ChangingEvent := ActiveListView.OnChanging;
-  ListView.OnChanging := nil;
-  ListView.DisableAlign();
-  ListView.Columns.BeginUpdate();
-  ListView.Items.BeginUpdate();
-  ListView.Items.Clear();
-
-  for I := 0 to ListView.Columns.Count - 1 do
+  if (Assigned(ListView)) then
   begin
-    ColumnWidths[I] := ListView.Columns[I].Width;
-    ListView.Columns[I].Width := 50; // Make soure no auto column width will be calculated for each item
-  end;
+    ChangingEvent := ActiveListView.OnChanging;
+    ListView.OnChanging := nil;
+    ListView.DisableAlign();
+    ListView.Columns.BeginUpdate();
+    ListView.Items.BeginUpdate();
 
-  if (ListView = FServerListView) then
-  begin
-    Kind := ckServer;
-
-    for I := 0 to Client.Databases.Count - 1 do
+    for I := 0 to ListView.Columns.Count - 1 do
     begin
-      Database := Client.Databases[I];
-      Item := ListView.Items.Add();
-      Item.Data := Database;
-      Item.GroupId := iiDatabase;
-      if (Database is TCSystemDatabase) then
-        Item.ImageIndex := iiSystemDatabase
-      else
-        Item.ImageIndex := iiDatabase;
-      Item.Caption := Database.Name;
+      ColumnWidths[I] := ListView.Columns[I].Width;
+      ListView.Columns[I].Width := 50; // Make soure no auto column width will be calculated for each item
+    end;
 
-      if (not Database.Actual) then
-        Item.SubItems.Add('')
-      else
-        Item.SubItems.Add(FormatFloat('#,##0', Database.Count, LocaleFormatSettings));
-      Item.SubItems.Add(SizeToStr(Database.Size));
-      if (Database is TCSystemDatabase) then
-        Item.SubItems.Add('')
-      else if (Database.Created = 0) then
-        Item.SubItems.Add('???')
-      else
-        Item.SubItems.Add(SysUtils.DateToStr(Database.Created, LocaleFormatSettings));
-      if (Database.DefaultCharset = Client.DefaultCharset) then
-        S := ''
-      else
-        S := Database.DefaultCharset;
-      if ((Database.Collation <> '') and (Database.Collation <> Client.Collation)) then
+    if (ListView = FServerListView) then
+    begin
+      Kind := ckServer;
+
+      if (ListView.Items.Count = 0) then
       begin
-        if (S <> '') then S := S + ', ';
-        S := S + Database.Collation;
-      end;
-      if (Database is TCSystemDatabase) then
-        Item.SubItems.Add('')
-      else
-        Item.SubItems.Add(S);
-    end;
-    GroupByImageIndex(iiDatabase).Header := ReplaceStr(Preferences.LoadStr(265) + ' (' + IntToStr(Client.Databases.Count) + ')', '&', '');
-
-    if (Assigned(Client.Hosts)) then
-    begin
-      Item := ListView.Items.Add();
-      Item.Data := Client.Hosts;
-      Item.GroupID := 0;
-      Item.Caption := Preferences.LoadStr(335);
-      Item.ImageIndex := iiHosts;
-      if (Client.Hosts.Actual) then
-        Item.SubItems.Add(FormatFloat('#,##0', Client.Hosts.Count, LocaleFormatSettings));
-    end;
-
-    if (Assigned(Client.Processes)) then
-    begin
-      Item := ListView.Items.Add();
-      Item.Data := Client.Processes;
-      Item.GroupID := 0;
-      Item.ImageIndex := iiProcesses;
-      Item.Caption := Preferences.LoadStr(24);
-      if (Client.Processes.Actual) then
-        Item.SubItems.Add(FormatFloat('#,##0', Client.Processes.Count, LocaleFormatSettings));
-    end;
-
-    if (Assigned(Client.Stati)) then
-    begin
-      Item := ListView.Items.Add();
-      Item.Data := Client.Stati;
-      Item.GroupID := 0;
-      Item.ImageIndex := iiStati;
-      Item.Caption := Preferences.LoadStr(23);
-      if (Client.Stati.Actual) then
-        Item.SubItems.Add(FormatFloat('#,##0', Client.Stati.Count, LocaleFormatSettings));
-    end;
-
-    if (Assigned(Client.Users)) then
-    begin
-      Item := ListView.Items.Add();
-      Item.Data := Client.Users;
-      Item.GroupID := 0;
-      Item.ImageIndex := iiUsers;
-      Item.Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
-      if (Client.Users.Actual) then
-        if (Client.Users.Count >= 0) then
-          Item.SubItems.Add(FormatFloat('#,##0', Client.Users.Count, LocaleFormatSettings))
-        else
-          Item.SubItems.Add('???');
-    end;
-
-    if (Assigned(Client.Variables)) then
-    begin
-      Item := ListView.Items.Add();
-      Item.Data := Client.Variables;
-      Item.GroupID := 0;
-      Item.ImageIndex := iiVariables;
-      Item.Caption := Preferences.LoadStr(22);
-      if (Client.Variables.Actual) then
-        Item.SubItems.Add(FormatFloat('#,##0', Client.Variables.Count, LocaleFormatSettings));
-    end;
-  end
-  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).Sender is TCDatabase) or (TObject(Data) is TCDatabase)) then
-  begin
-    Kind := ckDatabase;
-
-    if (Sender is TCClient.TEvent) then
-      Database := TCDatabase(TCClient.TEvent(Sender).Sender)
-    else
-      Database := TCDatabase(Data);
-
-    if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCTables)) then
-    begin
-      for I := 0 to Database.Tables.Count - 1 do
-      begin
-        Table := Database.Tables[I];
-
-        Item := ListView.Items.Add();
-        Item.Data := Table;
-        Item.GroupID := iiTable;
-        if (Table is TCSystemView) then
-          Item.ImageIndex := iiSystemView
-        else if (Table is TCBaseTable) then
-          Item.ImageIndex := iiBaseTable
-        else
-          Item.ImageIndex := iiView;
-        Item.Caption := Table.Name;
-
-        if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Engine)) then
-          Item.SubItems.Add(TCBaseTable(Table).Engine.Name)
-        else if ((Table is TCView)) then
-          Item.SubItems.Add(ReplaceStr(Preferences.LoadStr(738), '&', ''))
-        else
-          Item.SubItems.Add('???');
-
-        if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
-          Item.SubItems.Add('')
-        else if ((Table is TCBaseTable) and (TCBaseTable(Table).Rows < 0)) then
-          Item.SubItems.Add('???')
-        else if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Engine) and (UpperCase(TCBaseTable(Table).Engine.Name) = 'INNODB')) then
-          Item.SubItems.Add('~' + FormatFloat('#,##0', TCBaseTable(Table).Rows, LocaleFormatSettings))
-        else if ((Table is TCBaseTable)) then
-          Item.SubItems.Add(FormatFloat('#,##0', TCBaseTable(Table).Rows, LocaleFormatSettings))
-        else
-          Item.SubItems.Add('');
-
-        if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
-          Item.SubItems.Add('')
-        else if ((Table is TCBaseTable) and (TCBaseTable(Table).DataSize + TCBaseTable(Table).IndexSize < 0)) then
-          Item.SubItems.Add('???')
-        else if ((Table is TCBaseTable)) then
-          Item.SubItems.Add(SizeToStr(TCBaseTable(Table).DataSize + TCBaseTable(Table).IndexSize + 1))
-        else if ((Table is TCView) and TCView(Table).ActualSource) then
-          Item.SubItems.Add(SizeToStr(Length(TCView(Table).Source)))
-        else
-          Item.SubItems.Add('');
-
-        if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
-          Item.SubItems.Add('')
-        else if ((Table is TCBaseTable) and (TCBaseTable(Table).Updated <= 0)) then
-          Item.SubItems.Add('???')
-        else if ((Table is TCBaseTable)) then
-          Item.SubItems.Add(SysUtils.DateTimeToStr(TCBaseTable(Table).Updated, LocaleFormatSettings))
-        else
-          Item.SubItems.Add('');
-
-        S := '';
-        if ((Table is TCBaseTable) and (TCBaseTable(Table).DefaultCharset <> '') and (TCBaseTable(Table).DefaultCharset <> TCBaseTable(Table).Database.DefaultCharset)) then
-          S := S + TCBaseTable(Table).DefaultCharset;
-        if ((Table is TCBaseTable) and (TCBaseTable(Table).Collation <> '') and (TCBaseTable(Table).Collation <> TCBaseTable(Table).Database.Collation)) then
+        if (Assigned(Client.Hosts)) then
         begin
-          if (S <> '') then S := S + ', ';
-          S := S + TCBaseTable(Table).Collation;
+          Item := ListView.Items.Add();
+          Item.Data := Client.Hosts;
+          Item.GroupID := 0;
+          Item.ImageIndex := iiHosts;
         end;
-        Item.SubItems.Add(S);
 
-        if ((Table is TCBaseTable)) then
-          Item.SubItems.Add(TCBaseTable(Table).Comment)
-        else
-          Item.SubItems.Add(TCView(Table).Comment);
-      end;
-      S := ReplaceStr(Preferences.LoadStr(234), '&', '');
-      if (Client.ServerVersion >= 50001) then
-        S := S + ' + ' + ReplaceStr(Preferences.LoadStr(873), '&', '');
-      GroupByImageIndex(iiTable).Header := S + ' (' + IntToStr(Database.Tables.Count) + ')';
-    end;
-
-    if (Assigned(Database.Routines) and (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCRoutines))) then
-    begin
-      for I := 0 to Database.Routines.Count - 1 do
-      begin
-        Routine := Database.Routines[I];
-
-        Item := ListView.Items.Add();
-        Item.Data := Routine;
-        Item.GroupID := iiProcedure;
-        if (Routine is TCProcedure) then
-          Item.ImageIndex := iiProcedure
-        else if (Routine is TCFunction) then
-          Item.ImageIndex := iiFunction;
-        Item.Caption := Routine.Name;
-
-        case (Routine.RoutineType) of
-          rtProcedure: Item.SubItems.Add('Procedure');
-          rtFunction: Item.SubItems.Add('Function');
-        end;
-        Item.SubItems.Add('');
-
-        if (not Routine.ActualSource) then
-          Item.SubItems.Add('')
-        else
-          Item.SubItems.Add(SizeToStr(Length(Routine.Source)));
-        if (Routine.Modified = 0) then
-          Item.SubItems.Add('???')
-        else
-          Item.SubItems.Add(SysUtils.DateTimeToStr(Routine.Modified, LocaleFormatSettings));
-        if (not Assigned(Routine.FunctionResult) or (Routine.FunctionResult.Charset = '') or (Routine.FunctionResult.Charset = Database.DefaultCharset)) then
-          Item.SubItems.Add('')
-        else
-          Item.SubItems.Add(Routine.FunctionResult.Charset);
-        Item.SubItems.Add(Routine.Comment);
-      end;
-      GroupByImageIndex(iiProcedure).Header := ReplaceStr(Preferences.LoadStr(874) + ' + ' + Preferences.LoadStr(875), '&', '') + ' (' + IntToStr(Database.Routines.Count) + ')';
-    end;
-
-    if (Assigned(Database.Events) and (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCEvents))) then
-    begin
-      for I := 0 to Database.Events.Count - 1 do
-      begin
-        Event := Database.Events[I];
-
-        Item := ListView.Items.Add();
-        Item.Data := Event;
-        Item.GroupID := iiEvent;
-        Item.ImageIndex := iiEvent;
-        Item.Caption := Event.Name;
-        Item.SubItems.Add('Event');
-        Item.SubItems.Add('');
-        if (not Event.ActualSource) then
-          Item.SubItems.Add('')
-        else
-          Item.SubItems.Add(SizeToStr(Length(Event.Source)));
-        if (Event.Updated = 0) then
-          Item.SubItems.Add('???')
-        else
-          Item.SubItems.Add(SysUtils.DateTimeToStr(Event.Updated, LocaleFormatSettings));
-        Item.SubItems.Add('');
-        Item.SubItems.Add(Event.Comment);
-      end;
-      GroupByImageIndex(iiEvent).Header := ReplaceStr(Preferences.LoadStr(876), '&', '') + ' (' + IntToStr(Database.Events.Count) + ')';
-    end;
-  end
-  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).Sender is TCBaseTable) or (TObject(Data) is TCBaseTable)) then
-  begin
-    Kind := ckTable;
-
-    if (Sender is TCClient.TEvent) then
-      BaseTable := TCBaseTable(TCClient.TEvent(Sender).Sender)
-    else
-      BaseTable := TCBaseTable(Data);
-
-    for I := 0 to BaseTable.Indices.Count - 1 do
-    begin
-      Index := BaseTable.Indices[I];
-
-      Item := ListView.Items.Add();
-      Item.Data := Index;
-      Item.GroupID := iiIndex;
-      Item.ImageIndex := iiIndex;
-      Item.Caption := Index.Caption;
-
-      FieldNames := '';
-      for J := 0 to Index.Columns.Count - 1 do
-      begin
-        if (FieldNames <> '') then FieldNames := FieldNames + ',';
-        FieldNames := FieldNames + Index.Columns[J].Field.Name;
-        if (Index.Columns.Column[J].Length > 0) then
-          FieldNames := FieldNames + '(' + IntToStr(Index.Columns[J].Length) + ')';
-      end;
-      Item.SubItems.Add(FieldNames);
-      Item.SubItems.Add('');
-      Item.SubItems.Add('');
-      if (Index.Unique) then
-        Item.SubItems.Add('unique')
-      else if (Index.Fulltext) then
-        Item.SubItems.Add('fulltext')
-      else
-        Item.SubItems.Add('');
-      if (Client.ServerVersion >= 40100) then
-        Item.SubItems.Add('');
-    end;
-    GroupByImageIndex(iiIndex).Header := ReplaceStr(Preferences.LoadStr(458), '&', '') + ' (' + IntToStr(BaseTable.Indices.Count) + ')';
-
-    for I := 0 to BaseTable.Fields.Count - 1 do
-    begin
-      BaseTableField := TCBaseTableField(BaseTable.Fields[I]);
-
-      Item := ListView.Items.Add();
-      Item.Data := BaseTableField;
-      Item.GroupID := iiField;
-      if (BaseTable is TCSystemView) then
-        Item.ImageIndex := iiSystemViewField
-      else
-        Item.ImageIndex := iiField;
-      Item.Caption := BaseTableField.Name;
-
-      Item.SubItems.Add(BaseTableField.DBTypeStr());
-
-      if (BaseTableField.NullAllowed) then
-        Item.SubItems.Add(Preferences.LoadStr(74))
-      else
-        Item.SubItems.Add(Preferences.LoadStr(75));
-      if (BaseTableField.AutoIncrement) then
-        Item.SubItems.Add('<auto_increment>')
-      else if (BaseTableField.Default = 'NULL') then
-        Item.SubItems.Add('<' + Preferences.LoadStr(71) + '>')
-      else if (BaseTableField.Default = 'CURRENT_TIMESTAMP') then
-        Item.SubItems.Add('<INSERT-TimeStamp>')
-      else
-        Item.SubItems.Add(BaseTableField.UnescapeValue(BaseTableField.Default));
-      S := '';
-      if (BaseTableField.FieldType in TextFieldTypes) then
-      begin
-        if ((BaseTableField.Charset <> '') and (BaseTableField.Charset <> BaseTable.DefaultCharset)) then
-          S := S + BaseTableField.Charset;
-        if ((BaseTableField.Collation <> '') and (BaseTableField.Collation <> BaseTable.Collation)) then
+        if (Assigned(Client.Processes)) then
         begin
-          if (S <> '') then S := S + ', ';
-          S := S + BaseTableField.Collation;
+          Item := ListView.Items.Add();
+          Item.Data := Client.Processes;
+          Item.GroupID := 0;
+          Item.ImageIndex := iiProcesses;
         end;
-      end;
-      Item.SubItems.Add(S);
-      if (Client.ServerVersion >= 40100) then
-        Item.SubItems.Add(BaseTableField.Comment);
-    end;
-    GroupByImageIndex(iiField).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(BaseTable.Fields.Count) + ')';
 
-    if (Assigned(BaseTable.ForeignKeys)) then
-    begin
-      for I := 0 to BaseTable.ForeignKeys.Count - 1 do
+        if (Assigned(Client.Stati)) then
+        begin
+          Item := ListView.Items.Add();
+          Item.Data := Client.Stati;
+          Item.GroupID := 0;
+          Item.ImageIndex := iiStati;
+        end;
+
+        if (Assigned(Client.Users)) then
+        begin
+          Item := ListView.Items.Add();
+          Item.Data := Client.Users;
+          Item.GroupID := 0;
+          Item.ImageIndex := iiUsers;
+        end;
+
+        if (Assigned(Client.Variables)) then
+        begin
+          Item := ListView.Items.Add();
+          Item.Data := Client.Variables;
+          Item.GroupID := 0;
+          Item.ImageIndex := iiVariables;
+        end;
+
+        ListViewInitialize(Sender, ListView, Data);
+      end;
+
+      if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCDatabases)) then
       begin
-        ForeignKey := BaseTable.ForeignKeys[I];
+        if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).EventType in [ceBuild, ceDroped])) then
+          for I := ListView.Items.Count - 1 downto 0 do
+            if ((ListView.Items[I].GroupID = iiDatabase) and (Client.Databases.IndexOf(ListView.Items[I].Data) < 0)) then
+              ListView.Items.Delete(I);
+
+        if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).EventType in [ceBuild, ceUpdated, ceCreated])) then
+          for I := 0 to Client.Databases.Count - 1 do
+          begin
+            Database := Client.Databases[I];
+
+            Item := TListItem.Create(ListView.Items);
+            Item.ImageIndex := iiDatabase;
+            UpdateItem(Item, Database);
+            ItemIndex := 0;
+            while ((ItemIndex < ListView.Items.Count)
+              and (ListView.Items[ItemIndex].GroupID = Item.ImageIndex)
+              and (Compare(Kind, ListView.Items[ItemIndex], Item) < 0)) do
+              Inc(ItemIndex);
+            Item.Free();
+
+            if ((ItemIndex = ListView.Items.Count) or (ListView.Items[ItemIndex].Data <> Database)) then
+            begin
+              if (ItemIndex < ListView.Items.Count) then
+                Item := ListView.Items.Insert(ItemIndex)
+              else
+                Item := ListView.Items.Add();
+              Item.Data := Database;
+              Item.GroupID := iiDatabase;
+              if (Database is TCSystemDatabase) then
+                Item.ImageIndex := iiSystemDatabase
+              else
+                Item.ImageIndex := iiDatabase;
+              Item.Caption := Database.Name
+            end;
+          end;
+
+        GroupByImageIndex(iiDatabase).Header := ReplaceStr(Preferences.LoadStr(265) + ' (' + IntToStr(Client.Databases.Count) + ')', '&', '');
+      end;
+
+      if (not (Sender is TCClient.TEvent)) then
+      begin
+        for I := 0 to ListView.Items.Count - 1 do
+          if (ListView.Items[I].GroupID = iiDatabase) then
+            UpdateItem(ListView.Items[I], TCItem(ListView.Items[I].Data));
+      end
+      else if (TCClient.TEvent(Sender).Sender is TCDatabase) then
+        for I := 0 to ListView.Items.Count - 1 do
+          if (ListView.Items[I].Data = TCDatabase(TCClient.TEvent(Sender).Sender)) then
+            UpdateItem(ListView.Items[I], TCItem(ListView.Items[I].Data));
+
+      if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCHosts) and Assigned(Client.Hosts)) then
+        for I := 0 to ListView.Items.Count - 1 do
+          if (ListView.Items[I].ImageIndex = iiHosts) then
+            UpdateItem(ListView.Items[I], nil);
+
+      if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCProcesses) and Assigned(Client.Processes)) then
+        for I := 0 to ListView.Items.Count - 1 do
+          if (ListView.Items[I].ImageIndex = iiProcesses) then
+            UpdateItem(ListView.Items[I], nil);
+
+      if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCStati) and Assigned(Client.Stati)) then
+        for I := 0 to ListView.Items.Count - 1 do
+          if (ListView.Items[I].ImageIndex = iiStati) then
+            UpdateItem(ListView.Items[I], nil);
+
+      if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCUsers) and Assigned(Client.Users)) then
+        for I := 0 to ListView.Items.Count - 1 do
+          if (ListView.Items[I].ImageIndex = iiUsers) then
+            UpdateItem(ListView.Items[I], nil);
+
+      if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCVariables) and Assigned(Client.Variables)) then
+        for I := 0 to ListView.Items.Count - 1 do
+          if (ListView.Items[I].ImageIndex = iiVariables) then
+            UpdateItem(ListView.Items[I], nil);
+    end
+    else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).Sender is TCDatabase) or (TObject(Data) is TCDatabase)) then
+    begin
+      Kind := ckDatabase;
+
+      if (Sender is TCClient.TEvent) then
+        Database := TCDatabase(TCClient.TEvent(Sender).Sender)
+      else
+        Database := TCDatabase(Data);
+
+      if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCTables)) then
+      begin
+        if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).EventType in [ceBuild, ceDroped])) then
+          for I := ListView.Items.Count - 1 downto 0 do
+            if ((ListView.Items[I].GroupID = iiTable) and (Database.Tables.IndexOf(ListView.Items[I].Data) < 0)) then
+              ListView.Items.Delete(I);
+
+        if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).EventType in [ceBuild, ceUpdated, ceCreated])) then
+          for I := 0 to Database.Tables.Count - 1 do
+          begin
+            Table := Database.Tables[I];
+
+            Item := TListItem.Create(ListView.Items);
+            Item.ImageIndex := iiTable;
+            UpdateItem(Item, Table);
+            ItemIndex := 0;
+            while ((ItemIndex < ListView.Items.Count)
+              and (ListView.Items[ItemIndex].GroupID = Item.ImageIndex)
+              and (Compare(Kind, ListView.Items[ItemIndex], Item) < 0)) do
+              Inc(ItemIndex);
+            Item.Free();
+
+            if ((ItemIndex = ListView.Items.Count) or (ListView.Items[ItemIndex].Data <> Table)) then
+            begin
+              if (ItemIndex < ListView.Items.Count) then
+                Item := ListView.Items.Insert(ItemIndex)
+              else
+                Item := ListView.Items.Add();
+              Item.Data := Table;
+              Item.GroupID := iiTable;
+              if (Table is TCSystemView) then
+                Item.ImageIndex := iiSystemView
+              else if (Table is TCBaseTable) then
+                Item.ImageIndex := iiBaseTable
+              else
+                Item.ImageIndex := iiView;
+              Item.Caption := Table.Name
+            end;
+          end;
+
+        S := ReplaceStr(Preferences.LoadStr(234), '&', '');
+        if (Client.ServerVersion >= 50001) then
+          S := S + ' + ' + ReplaceStr(Preferences.LoadStr(873), '&', '');
+        GroupByImageIndex(iiTable).Header := S + ' (' + IntToStr(Database.Tables.Count) + ')';
+      end;
+
+      if (not (Sender is TCClient.TEvent)) then
+      begin
+        for I := 0 to ListView.Items.Count - 1 do
+          if (ListView.Items[I].GroupID = iiTable) then
+            UpdateItem(ListView.Items[I], TCItem(ListView.Items[I].Data));
+      end
+      else if (TCClient.TEvent(Sender).Sender is TCTable) then
+        for I := 0 to ListView.Items.Count - 1 do
+          if (ListView.Items[I].Data = TCTable(TCClient.TEvent(Sender).Sender)) then
+            UpdateItem(ListView.Items[I], TCItem(ListView.Items[I].Data));
+
+
+      if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCRoutines)) then
+      begin
+        if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).EventType in [ceBuild, ceDroped])) then
+          for I := ListView.Items.Count - 1 downto 0 do
+            if ((ListView.Items[I].GroupID = iiProcedure) and (Database.Routines.IndexOf(ListView.Items[I].Data) < 0)) then
+              ListView.Items.Delete(I);
+
+        if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).EventType in [ceBuild, ceUpdated, ceCreated]) and Assigned(Database.Routines)) then
+          for I := 0 to Database.Routines.Count - 1 do
+          begin
+            Routine := Database.Routines[I];
+
+            Item := TListItem.Create(ListView.Items);
+            Item.ImageIndex := iiProcedure;
+            UpdateItem(Item, Routine);
+            ItemIndex := 0;
+            while ((ItemIndex < ListView.Items.Count)
+              and (ListView.Items[ItemIndex].GroupID = Item.ImageIndex)
+              and (Compare(Kind, ListView.Items[ItemIndex], Item) < 0)) do
+              Inc(ItemIndex);
+            Item.Free();
+
+            if ((ItemIndex = ListView.Items.Count) or (ListView.Items[ItemIndex].Data <> Routine)) then
+            begin
+              if (ItemIndex < ListView.Items.Count) then
+                Item := ListView.Items.Insert(ItemIndex)
+              else
+                Item := ListView.Items.Add();
+              Item.Data := Routine;
+              Item.GroupID := iiProcedure;
+              if (Routine is TCProcedure) then
+                Item.ImageIndex := iiProcedure
+              else
+                Item.ImageIndex := iiFunction;
+              Item.Caption := Routine.Name;
+            end;
+          end;
+        GroupByImageIndex(iiProcedure).Header := ReplaceStr(Preferences.LoadStr(874) + ' + ' + Preferences.LoadStr(875), '&', '') + ' (' + IntToStr(Database.Routines.Count) + ')';
+      end;
+
+      if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCEvents) and Assigned(Database.Events)) then
+      begin
+        if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).EventType in [ceBuild, ceDroped])) then
+          for I := ListView.Items.Count - 1 downto 0 do
+            if ((ListView.Items[I].GroupID = iiEvent) and (Database.Events.IndexOf(ListView.Items[I].Data) < 0)) then
+              ListView.Items.Delete(I);
+
+        if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).EventType in [ceBuild, ceUpdated, ceCreated])) then
+          for I := 0 to Database.Events.Count - 1 do
+          begin
+            Event := Database.Events[I];
+
+            Item := TListItem.Create(ListView.Items);
+            Item.ImageIndex := iiEvent;
+            UpdateItem(Item, Event);
+            ItemIndex := 0;
+            while ((ItemIndex < ListView.Items.Count)
+              and (ListView.Items[ItemIndex].GroupID = Item.ImageIndex)
+              and (Compare(Kind, ListView.Items[ItemIndex], Item) < 0)) do
+              Inc(ItemIndex);
+            Item.Free();
+
+            if ((ItemIndex = ListView.Items.Count) or (ListView.Items[ItemIndex].Data <> Event)) then
+            begin
+              if (ItemIndex < ListView.Items.Count) then
+                Item := ListView.Items.Insert(ItemIndex)
+              else
+                Item := ListView.Items.Add();
+              Item.Data := Event;
+              Item.GroupID := iiEvent;
+              Item.ImageIndex := iiEvent;
+              Item.Caption := Event.Name;
+            end;
+          end;
+        GroupByImageIndex(iiEvent).Header := ReplaceStr(Preferences.LoadStr(876), '&', '') + ' (' + IntToStr(Database.Events.Count) + ')';
+      end;
+    end
+    else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).Sender is TCBaseTable) or (TObject(Data) is TCBaseTable)) then
+    begin
+      Kind := ckTable;
+
+      if (Sender is TCClient.TEvent) then
+        BaseTable := TCBaseTable(TCClient.TEvent(Sender).Sender)
+      else
+        BaseTable := TCBaseTable(Data);
+
+      for I := 0 to BaseTable.Indices.Count - 1 do
+      begin
+        Index := BaseTable.Indices[I];
 
         Item := ListView.Items.Add();
-        Item.Data := ForeignKey;
-        Item.GroupID := iiForeignKey;
-        Item.ImageIndex := iiForeignKey;
-        Item.Caption := ForeignKey.Name;
+        Item.Data := Index;
+        Item.GroupID := iiIndex;
+        Item.ImageIndex := iiIndex;
+        Item.Caption := Index.Caption;
 
-        Item.SubItems.Add(ForeignKey.DBTypeStr());
+        FieldNames := '';
+        for J := 0 to Index.Columns.Count - 1 do
+        begin
+          if (FieldNames <> '') then FieldNames := FieldNames + ',';
+          FieldNames := FieldNames + Index.Columns[J].Field.Name;
+          if (Index.Columns.Column[J].Length > 0) then
+            FieldNames := FieldNames + '(' + IntToStr(Index.Columns[J].Length) + ')';
+        end;
+        Item.SubItems.Add(FieldNames);
         Item.SubItems.Add('');
         Item.SubItems.Add('');
-
-        S := '';
-        if (ForeignKey.OnDelete = dtCascade) then S := 'cascade on delete';
-        if (ForeignKey.OnDelete = dtSetNull) then S := 'set NULL on delete';
-        if (ForeignKey.OnDelete = dtSetDefault) then S := 'set default on delete';
-        if (ForeignKey.OnDelete = dtNoAction) then S := 'no action on delete';
-        S2 := '';
-        if (ForeignKey.OnUpdate = utCascade) then S2 := 'cascade on update';
-        if (ForeignKey.OnUpdate = utSetNull) then S2 := 'set NULL on update';
-        if (ForeignKey.OnUpdate = utSetDefault) then S2 := 'set default on update';
-        if (ForeignKey.OnUpdate = utNoAction) then S2 := 'no action on update';
-        if (S <> '') and (S2 <> '') then S := S + ', ';
-        S := S + S2;
-        Item.SubItems.Add(S);
-
+        if (Index.Unique) then
+          Item.SubItems.Add('unique')
+        else if (Index.Fulltext) then
+          Item.SubItems.Add('fulltext')
+        else
+          Item.SubItems.Add('');
         if (Client.ServerVersion >= 40100) then
           Item.SubItems.Add('');
       end;
-      GroupByImageIndex(iiForeignKey).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(BaseTable.ForeignKeys.Count) + ')';
-    end;
+      GroupByImageIndex(iiIndex).Header := ReplaceStr(Preferences.LoadStr(458), '&', '') + ' (' + IntToStr(BaseTable.Indices.Count) + ')';
 
-    if (Assigned(BaseTable.Database.Triggers)) then
-    begin
-      Count := 0;
-      for I := 0 to BaseTable.Database.Triggers.Count - 1 do
-        if (BaseTable.Database.Triggers[I].Table = BaseTable) then
-        begin
-          Trigger := BaseTable.Database.Triggers[I];
-
-          Item := ListView.Items.Add();
-          Item.Data := Trigger;
-          Item.GroupID := iiTrigger;
-          Item.ImageIndex := iiTrigger;
-          Item.Caption := Trigger.Name;
-
-          S := '';
-          case (Trigger.Timing) of
-            ttBefore: S := S + 'before ';
-            ttAfter: S := S + 'after ';
-          end;
-          case (Trigger.Event) of
-            teInsert: S := S + 'insert ';
-            teUpdate: S := S + 'update ';
-            teDelete: S := S + 'delete ';
-          end;
-          Item.SubItems.Add(S);
-
-          Inc(Count);
-        end;
-      GroupByImageIndex(iiTrigger).Header := ReplaceStr(Preferences.LoadStr(797), '&', '') + ' (' + IntToStr(Count) + ')';
-    end;
-  end
-  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).Sender is TCView) or (TObject(Data) is TCView)) then
-  begin
-    Kind := ckTable;
-
-    View := TCView(TCClient.TEvent(Sender).Sender);
-
-    for I := 0 to View.Fields.Count - 1 do
-    begin
-      ViewField := TCViewField(View.Fields[I]);
-
-      Item := ListView.Items.Add();
-      Item.Data := ViewField;
-      Item.GroupID := iiViewField;
-      Item.ImageIndex := iiViewField;
-      Item.Caption := ViewField.Name;
-      if (ViewField.FieldType <> mfUnknown) then
+      for I := 0 to BaseTable.Fields.Count - 1 do
       begin
-        Item.SubItems.Add(ViewField.DBTypeStr());
-        if (ViewField.NullAllowed) then
+        BaseTableField := TCBaseTableField(BaseTable.Fields[I]);
+
+        Item := ListView.Items.Add();
+        Item.Data := BaseTableField;
+        Item.GroupID := iiField;
+        if (BaseTable is TCSystemView) then
+          Item.ImageIndex := iiSystemViewField
+        else
+          Item.ImageIndex := iiField;
+        Item.Caption := BaseTableField.Name;
+
+        Item.SubItems.Add(BaseTableField.DBTypeStr());
+
+        if (BaseTableField.NullAllowed) then
           Item.SubItems.Add(Preferences.LoadStr(74))
         else
           Item.SubItems.Add(Preferences.LoadStr(75));
-        if (ViewField.AutoIncrement) then
+        if (BaseTableField.AutoIncrement) then
           Item.SubItems.Add('<auto_increment>')
+        else if (BaseTableField.Default = 'NULL') then
+          Item.SubItems.Add('<' + Preferences.LoadStr(71) + '>')
+        else if (BaseTableField.Default = 'CURRENT_TIMESTAMP') then
+          Item.SubItems.Add('<INSERT-TimeStamp>')
         else
-          Item.SubItems.Add(ViewField.Default);
-        if (ViewField.Charset <> View.Database.DefaultCharset) then
-          Item.SubItems.Add(ViewField.Charset);
+          Item.SubItems.Add(BaseTableField.UnescapeValue(BaseTableField.Default));
+        S := '';
+        if (BaseTableField.FieldType in TextFieldTypes) then
+        begin
+          if ((BaseTableField.Charset <> '') and (BaseTableField.Charset <> BaseTable.DefaultCharset)) then
+            S := S + BaseTableField.Charset;
+          if ((BaseTableField.Collation <> '') and (BaseTableField.Collation <> BaseTable.Collation)) then
+          begin
+            if (S <> '') then S := S + ', ';
+            S := S + BaseTableField.Collation;
+          end;
+        end;
+        Item.SubItems.Add(S);
+        if (Client.ServerVersion >= 40100) then
+          Item.SubItems.Add(BaseTableField.Comment);
       end;
-    end;
-    GroupByImageIndex(iiViewField).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(View.Fields.Count) + ')';
-  end
-  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCHosts) or (TObject(Data) is TCHosts)) then
-  begin
-    Kind := ckHosts;
+      GroupByImageIndex(iiField).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(BaseTable.Fields.Count) + ')';
 
-    for I := 0 to Client.Hosts.Count - 1 do
+      if (Assigned(BaseTable.ForeignKeys)) then
+      begin
+        for I := 0 to BaseTable.ForeignKeys.Count - 1 do
+        begin
+          ForeignKey := BaseTable.ForeignKeys[I];
+
+          Item := ListView.Items.Add();
+          Item.Data := ForeignKey;
+          Item.GroupID := iiForeignKey;
+          Item.ImageIndex := iiForeignKey;
+          Item.Caption := ForeignKey.Name;
+
+          Item.SubItems.Add(ForeignKey.DBTypeStr());
+          Item.SubItems.Add('');
+          Item.SubItems.Add('');
+
+          S := '';
+          if (ForeignKey.OnDelete = dtCascade) then S := 'cascade on delete';
+          if (ForeignKey.OnDelete = dtSetNull) then S := 'set NULL on delete';
+          if (ForeignKey.OnDelete = dtSetDefault) then S := 'set default on delete';
+          if (ForeignKey.OnDelete = dtNoAction) then S := 'no action on delete';
+          S2 := '';
+          if (ForeignKey.OnUpdate = utCascade) then S2 := 'cascade on update';
+          if (ForeignKey.OnUpdate = utSetNull) then S2 := 'set NULL on update';
+          if (ForeignKey.OnUpdate = utSetDefault) then S2 := 'set default on update';
+          if (ForeignKey.OnUpdate = utNoAction) then S2 := 'no action on update';
+          if (S <> '') and (S2 <> '') then S := S + ', ';
+          S := S + S2;
+          Item.SubItems.Add(S);
+
+          if (Client.ServerVersion >= 40100) then
+            Item.SubItems.Add('');
+        end;
+        GroupByImageIndex(iiForeignKey).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(BaseTable.ForeignKeys.Count) + ')';
+      end;
+
+      if (Assigned(BaseTable.Database.Triggers)) then
+      begin
+        Count := 0;
+        for I := 0 to BaseTable.Database.Triggers.Count - 1 do
+          if (BaseTable.Database.Triggers[I].Table = BaseTable) then
+          begin
+            Trigger := BaseTable.Database.Triggers[I];
+
+            Item := ListView.Items.Add();
+            Item.Data := Trigger;
+            Item.GroupID := iiTrigger;
+            Item.ImageIndex := iiTrigger;
+            Item.Caption := Trigger.Name;
+
+            S := '';
+            case (Trigger.Timing) of
+              ttBefore: S := S + 'before ';
+              ttAfter: S := S + 'after ';
+            end;
+            case (Trigger.Event) of
+              teInsert: S := S + 'insert ';
+              teUpdate: S := S + 'update ';
+              teDelete: S := S + 'delete ';
+            end;
+            Item.SubItems.Add(S);
+
+            Inc(Count);
+          end;
+        GroupByImageIndex(iiTrigger).Header := ReplaceStr(Preferences.LoadStr(797), '&', '') + ' (' + IntToStr(Count) + ')';
+      end;
+    end
+    else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).Sender is TCView) or (TObject(Data) is TCView)) then
     begin
-      Host := Client.Hosts[I];
+      Kind := ckTable;
 
-      Item := ListView.Items.Add();
-      Item.Data := Host;
-      Item.GroupID := iiHost;
-      Item.ImageIndex := iiHost;
-      Item.Caption := Host.Caption;
-    end;
-    GroupByImageIndex(iiHost).Header := ReplaceStr(Preferences.LoadStr(335), '&', '') + ' (' + IntToStr(Client.Hosts.Count) + ')';
-  end
-  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCProcesses) or (TObject(Data) is TCProcesses)) then
-  begin
-    Kind := ckProcesses;
+      View := TCView(TCClient.TEvent(Sender).Sender);
 
-    for I := 0 to Client.Processes.Count - 1 do
+      for I := 0 to View.Fields.Count - 1 do
+      begin
+        ViewField := TCViewField(View.Fields[I]);
+
+        Item := ListView.Items.Add();
+        Item.Data := ViewField;
+        Item.GroupID := iiViewField;
+        Item.ImageIndex := iiViewField;
+        Item.Caption := ViewField.Name;
+        if (ViewField.FieldType <> mfUnknown) then
+        begin
+          Item.SubItems.Add(ViewField.DBTypeStr());
+          if (ViewField.NullAllowed) then
+            Item.SubItems.Add(Preferences.LoadStr(74))
+          else
+            Item.SubItems.Add(Preferences.LoadStr(75));
+          if (ViewField.AutoIncrement) then
+            Item.SubItems.Add('<auto_increment>')
+          else
+            Item.SubItems.Add(ViewField.Default);
+          if (ViewField.Charset <> View.Database.DefaultCharset) then
+            Item.SubItems.Add(ViewField.Charset);
+        end;
+      end;
+      GroupByImageIndex(iiViewField).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(View.Fields.Count) + ')';
+    end
+    else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCHosts) or (TObject(Data) is TCHosts)) then
     begin
-      Process := Client.Processes[I];
+      Kind := ckHosts;
 
-      Item := ListView.Items.Add();
-      Item.Data := Process;
-      Item.GroupID := iiProcess;
-      Item.ImageIndex := iiProcess;
-      Item.Caption := IntToStr(Process.Id);
-      Item.SubItems.Add(Process.UserName);
-      Item.SubItems.Add(Process.Host);
-      Item.SubItems.Add(Process.DatabaseName);
-      Item.SubItems.Add(Process.Command);
-      Item.SubItems.Add(SQLStmtToCaption(Process.SQL, 30));
-      if (Process.Time = 0) then
-        Item.SubItems.Add('???')
-      else
-        Item.SubItems.Add(ExecutionTimeToStr(Process.Time));
-      Item.SubItems.Add(Process.State);
-    end;
-    GroupByImageIndex(iiProcess).Header := ReplaceStr(Preferences.LoadStr(24), '&', '') + ' (' + IntToStr(Client.Processes.Count) + ')';
-  end
-  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCStati) or (TObject(Data) is TCStati)) then
-  begin
-    Kind := ckStati;
+      for I := 0 to Client.Hosts.Count - 1 do
+      begin
+        Host := Client.Hosts[I];
 
-    for I := 0 to Client.Stati.Count - 1 do
+        Item := ListView.Items.Add();
+        Item.Data := Host;
+        Item.GroupID := iiHost;
+        Item.ImageIndex := iiHost;
+        Item.Caption := Host.Caption;
+      end;
+      GroupByImageIndex(iiHost).Header := ReplaceStr(Preferences.LoadStr(335), '&', '') + ' (' + IntToStr(Client.Hosts.Count) + ')';
+    end
+    else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCProcesses) or (TObject(Data) is TCProcesses)) then
     begin
-      Status := Client.Stati[I];
+      Kind := ckProcesses;
 
-      Item := ListView.Items.Add();
-      Item.Data := Status;
-      Item.GroupID := iiStatus;
-      Item.ImageIndex := iiStatus;
-      Item.Caption := Status.Name;
-      Item.SubItems.Add(Status.Value);
-    end;
-    GroupByImageIndex(iiStatus).Header := ReplaceStr(Preferences.LoadStr(23), '&', '') + ' (' + IntToStr(Client.Stati.Count) + ')';
-  end
-  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCUsers) or (TObject(Data) is TCUsers)) then
-  begin
-    Kind := ckUsers;
+      for I := 0 to Client.Processes.Count - 1 do
+      begin
+        Process := Client.Processes[I];
 
-    for I := 0 to Client.Users.Count - 1 do
+        Item := ListView.Items.Add();
+        Item.Data := Process;
+        Item.GroupID := iiProcess;
+        Item.ImageIndex := iiProcess;
+        Item.Caption := IntToStr(Process.Id);
+        Item.SubItems.Add(Process.UserName);
+        Item.SubItems.Add(Process.Host);
+        Item.SubItems.Add(Process.DatabaseName);
+        Item.SubItems.Add(Process.Command);
+        Item.SubItems.Add(SQLStmtToCaption(Process.SQL, 30));
+        if (Process.Time = 0) then
+          Item.SubItems.Add('???')
+        else
+          Item.SubItems.Add(ExecutionTimeToStr(Process.Time));
+        Item.SubItems.Add(Process.State);
+      end;
+      GroupByImageIndex(iiProcess).Header := ReplaceStr(Preferences.LoadStr(24), '&', '') + ' (' + IntToStr(Client.Processes.Count) + ')';
+    end
+    else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCStati) or (TObject(Data) is TCStati)) then
     begin
-      User := Client.Users[I];
+      Kind := ckStati;
 
-      Item := ListView.Items.Add();
-      Item.Data := User;
-      Item.GroupID := iiUser;
-      Item.ImageIndex := iiUser;
-      Item.Caption := User.Caption;
-    end;
-    GroupByImageIndex(iiUser).Header := ReplaceStr(Preferences.LoadStr(561), '&', '') + ' (' + IntToStr(Client.Users.Count) + ')';
-  end
-  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCVariables) or (TObject(Data) is TCVariables)) then
-  begin
-    Kind := ckVariables;
+      for I := 0 to Client.Stati.Count - 1 do
+      begin
+        Status := Client.Stati[I];
 
-    for I := 0 to Client.Variables.Count - 1 do
+        Item := ListView.Items.Add();
+        Item.Data := Status;
+        Item.GroupID := iiStatus;
+        Item.ImageIndex := iiStatus;
+        Item.Caption := Status.Name;
+        Item.SubItems.Add(Status.Value);
+      end;
+      GroupByImageIndex(iiStatus).Header := ReplaceStr(Preferences.LoadStr(23), '&', '') + ' (' + IntToStr(Client.Stati.Count) + ')';
+    end
+    else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCUsers) or (TObject(Data) is TCUsers)) then
     begin
-      Variable := Client.Variables[I];
+      Kind := ckUsers;
 
-      Item := ListView.Items.Add();
-      Item.Data := Variable;
-      Item.GroupID := iiVariable;
-      Item.ImageIndex := iiVariable;
-      Item.Caption := Variable.Name;
-      Item.SubItems.Add(Variable.Value);
-    end;
-    GroupByImageIndex(iiVariable).Header := ReplaceStr(Preferences.LoadStr(22), '&', '') + ' (' + IntToStr(Client.Variables.Count) + ')';
-  end
-  else
-    raise ERangeError.Create(SRangeError);
+      for I := 0 to Client.Users.Count - 1 do
+      begin
+        User := Client.Users[I];
 
-  if (not Assigned(ListView.ItemFocused) and (ListView.Items.Count > 0)) then
-    ListView.ItemFocused := ListView.Items[0];
-  if ((Window.ActiveControl = ListView) and Assigned(ListView.OnSelectItem)) then
-    ListView.OnSelectItem(Sender, ListView.Selected, Assigned(ListView.Selected));
+        Item := ListView.Items.Add();
+        Item.Data := User;
+        Item.GroupID := iiUser;
+        Item.ImageIndex := iiUser;
+        Item.Caption := User.Caption;
+      end;
+      GroupByImageIndex(iiUser).Header := ReplaceStr(Preferences.LoadStr(561), '&', '') + ' (' + IntToStr(Client.Users.Count) + ')';
+    end
+    else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCVariables) or (TObject(Data) is TCVariables)) then
+    begin
+      Kind := ckVariables;
 
-  ListView.Columns.EndUpdate();
+      for I := 0 to Client.Variables.Count - 1 do
+      begin
+        Variable := Client.Variables[I];
 
-  for I := 0 to ListView.Columns.Count - 1 do
-    if ((Kind = ckProcesses) and (I = 5)) then
-      ListView.Columns[I].Width := Preferences.GridMaxColumnWidth
-    else if ((Kind in [ckServer, ckDatabase, ckTable]) or (ListView.Items.Count > 0)) then
-      ListView.Columns[I].Width := ColumnWidths[I]
-    else if (ListView.Items.Count = 0) then
-      ListView.Columns[I].Width := ColumnHeaderWidth
+        Item := ListView.Items.Add();
+        Item.Data := Variable;
+        Item.GroupID := iiVariable;
+        Item.ImageIndex := iiVariable;
+        Item.Caption := Variable.Name;
+        Item.SubItems.Add(Variable.Value);
+      end;
+      GroupByImageIndex(iiVariable).Header := ReplaceStr(Preferences.LoadStr(22), '&', '') + ' (' + IntToStr(Client.Variables.Count) + ')';
+    end
     else
-      ListView.Columns[I].Width := ColumnTextWidth;
+      raise ERangeError.Create(SRangeError);
 
-  ListView.Items.EndUpdate();
-  ListView.EnableAlign();
-  ListView.OnChanging := ChangingEvent;
+    if (not Assigned(ListView.ItemFocused) and (ListView.Items.Count > 0)) then
+      ListView.ItemFocused := ListView.Items[0];
+    if ((Window.ActiveControl = ListView) and Assigned(ListView.OnSelectItem)) then
+      ListView.OnSelectItem(Sender, ListView.Selected, Assigned(ListView.Selected));
 
-  if (Assigned(FNavigator.Selected) and (FNavigator.Selected.ImageIndex >= 0)) then
-    ListViewColumnClick(nil, ListView.Column[FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)].Index]);
+    ListView.Columns.EndUpdate();
+
+    for I := 0 to ListView.Columns.Count - 1 do
+      if ((Kind = ckProcesses) and (I = 5)) then
+        ListView.Columns[I].Width := Preferences.GridMaxColumnWidth
+      else if ((Kind in [ckServer, ckDatabase, ckTable]) or (ListView.Items.Count > 0)) then
+        ListView.Columns[I].Width := ColumnWidths[I]
+      else if (ListView.Items.Count = 0) then
+        ListView.Columns[I].Width := ColumnHeaderWidth
+      else
+        ListView.Columns[I].Width := ColumnTextWidth;
+
+    ListView.Items.EndUpdate();
+    ListView.EnableAlign();
+    ListView.OnChanging := ChangingEvent;
+  end;
 end;
 
 procedure TFClient.ListViewSelectItem(Sender: TObject; Item: TListItem;
