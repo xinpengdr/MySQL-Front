@@ -864,7 +864,7 @@ end;
 procedure TWWindow.CMAddTab(var Message: TCMAddTab);
 var
   Client: TCClient;
-  Account: TSAccount;
+  Account: TAAccount;
   Tab: TFClient;
   UserAbort: Boolean;
 begin
@@ -1611,7 +1611,7 @@ begin
     EurekaLog.OnCustomDataRequest := EurekaLogCustomDataRequest;
   {$ENDIF}
 
-  Accounts := TSAccounts.Create(DBLogin, SQLError);
+  Accounts := TAAccounts.Create(DBLogin, SQLError);
   Clients.OnOpenConnection := OpenConnection;
 
   MainActionList := ActionList;

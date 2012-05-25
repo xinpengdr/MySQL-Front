@@ -38,12 +38,12 @@ object DLogin: TDLogin
     ModalResult = 2
     TabOrder = 3
   end
-  object GSession: TGroupBox_Ext
+  object GAccount: TGroupBox_Ext
     Left = 8
     Top = 8
     Width = 273
     Height = 105
-    Caption = 'GSession'
+    Caption = 'GAccount'
     TabOrder = 0
     object FLUsername: TLabel
       Left = 8

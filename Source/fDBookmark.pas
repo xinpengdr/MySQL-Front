@@ -25,8 +25,8 @@ type
   private
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
-    Bookmark: TSBookmark;
-    Bookmarks: TSBookmarks;
+    Bookmark: TABookmark;
+    Bookmarks: TABookmarks;
     NewCaption: string;
     NewURI: string;
     function Execute(): Boolean;
@@ -93,11 +93,11 @@ end;
 procedure TDBookmark.FormCloseQuery(Sender: TObject;
   var CanClose: Boolean);
 var
-  NewBookmark: TSBookmark;
+  NewBookmark: TABookmark;
 begin
   if (ModalResult = mrOk) then
   begin
-    NewBookmark := TSBookmark.Create(Bookmarks);
+    NewBookmark := TABookmark.Create(Bookmarks);
     if (Assigned(Bookmark)) then
       NewBookmark.Assign(Bookmark);
 

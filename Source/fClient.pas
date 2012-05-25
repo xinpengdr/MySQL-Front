@@ -3,7 +3,7 @@ unit fClient;
 interface {********************************************************************}
 
 uses
-  SysUtils, Classes, XMLDoc, XMLIntf, Windows,
+  SysUtils, Classes, Windows,
   Graphics,
   DB,
   SQLUtils, MySQLDB,
@@ -156,11 +156,24 @@ type
   end;
 
   TCObject = class(TCItem)
+  type
+    TDesktop = class
+    private
+      FCObject: TCObject;
+    protected
+      procedure Clear(); virtual;
+      procedure SaveToXML(); virtual;
+      property CObject: TCObject read FCObject;
+    public
+      constructor Create(const ACObject: TCObject);
+    end;
   protected
     FActualSource: Boolean;
+    FDesktop: TDesktop;
     FClient: TCClient;
     FSource: string;
     function GetActualSource(): Boolean; virtual;
+    function GetDesktop(): TDesktop; virtual;
     function GetSource(): string; virtual;
     procedure SetName(const AName: string); override;
     procedure SetSource(const AField: TField); overload; virtual;
@@ -170,9 +183,11 @@ type
     procedure Assign(const Source: TCObject); reintroduce; virtual;
     procedure Clear(); virtual;
     constructor Create(const AClient: TCClient; const AName: string = ''); reintroduce; virtual;
+    destructor Destroy(); override;
     function Initialize(): Boolean; overload; virtual; abstract;
     property ActualSource: Boolean read GetActualSource;
     property Client: TCClient read FClient;
+    property Desktop: TDesktop read GetDesktop;
     property Source: string read GetSource;
   end;
 
@@ -181,7 +196,7 @@ type
     FClient: TCClient;
   protected
     FActual: Boolean;
-    function Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer; overload; virtual;
+    function Add(const AObject: TCObject): Integer; overload; virtual;
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean; virtual;
     procedure Delete(const AObject: TCObject); overload; virtual;
     function GetActual(): Boolean; virtual;
@@ -189,7 +204,6 @@ type
   public
     procedure Clear(); override;
     constructor Create(const AClient: TCClient); reintroduce; virtual;
-    destructor Destroy(); override;
     procedure Refresh(); virtual;
     property Actual: Boolean read GetActual;
     property Client: TCClient read FClient;
@@ -212,7 +226,7 @@ type
   private
     FDatabase: TCDatabase;
   protected
-    function Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer; override;
+    function Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer; overload; virtual;
     procedure Delete(const AObject: TCObject); override;
     function GetCount(): Integer; override;
   public
@@ -323,16 +337,13 @@ type
   TCTableField = class(TCField)
   private
     FCollation: string;
-    FDesktopXML: IXMLNode;
     FFields: TCTableFields;
     FInPrimaryIndex: Boolean;
     FInUniqueIndex: Boolean;
-    function GetDesktopXML(): IXMLNode;
     function GetTable(): TCTable;
   protected
     function GetIndex(): Integer; virtual;
     procedure ParseFieldType(var Parse: TSQLParse); override;
-    property DesktopXML: IXMLNode read GetDesktopXML;
     property Fields: TCTableFields read FFields;
   public
     Ascii: Boolean;
@@ -376,13 +387,10 @@ type
 
   TCTableFields = class(TCItems)
   private
-    FDesktopXML: IXMLNode;
     FTable: TCTable;
-    function GetDesktopXML(): IXMLNode;
     function GetField(Index: Integer): TCTableField;
   protected
     function FieldByName(const FieldName: string): TCTableField; virtual;
-    property DesktopXML: IXMLNode read GetDesktopXML;
   public
     procedure AddField(const NewField: TCTableField); virtual;
     procedure Assign(const Source: TCTableFields); virtual;
@@ -448,40 +456,6 @@ type
     property Table: TCBaseTable read FTable;
   end;
 
-  TCTableDesktop = class
-  private
-    FColumnIndices: array of Integer;
-    FTable: TCTable;
-    function GetColumnIndex(Index: Integer): Integer;
-    function GetColunns(): Integer;
-    function GetFilter(Index: Integer): string;
-    function GetFilterCount(): Integer;
-    function GetGridVisible(FieldName: string): Boolean;
-    function GetGridWidth(FieldName: string): Integer;
-    function GetLimit(): Integer;
-    function GetLimited(): Boolean;
-    procedure SetColumnIndex(Index: Integer; const Value: Integer);
-    procedure SetGridVisible(FieldName: string; const Visible: Boolean);
-    procedure SetGridWidth(FieldName: string; const GridWidth: Integer);
-    procedure SetLimit(const Limit: Integer);
-    procedure SetLimited(const ALimited: Boolean);
-  protected
-    property Table: TCTable read FTable;
-    procedure Clear(); virtual;
-    procedure AddFilter(const AFilter: string); virtual;
-  public
-    property Columns: Integer read GetColunns;
-    property ColumnIndices[Index: Integer]: Integer read GetColumnIndex write SetColumnIndex;
-    property Filters[Index: Integer]: string read GetFilter;
-    property FilterCount: Integer read GetFilterCount;
-    property Limit: Integer read GetLimit write SetLimit;
-    property Limited: Boolean read GetLimited write SetLimited;
-    property GridVisible[FieldName: string]: Boolean read GetGridVisible write SetGridVisible;
-    property GridWidths[FieldName: string]: Integer read GetGridWidth write SetGridWidth;
-    constructor Create(const ATable: TCTable); virtual;
-    destructor Destroy(); override;
-  end;
-
   TCTableDataSet = class(TMySQLTable)
   private
     FQuickSearch: string;
@@ -497,9 +471,7 @@ type
   TCTable = class(TCDBObject)
   private
     FActual: Boolean;
-    FDesktopXML: IXMLNode;
     FDataSet: TCTableDataSet;
-    FDesktop: TCTableDesktop;
     FFields: TCTableFields;
     FFilterSQL: string;
     procedure AfterCancel(DataSet: TDataSet);
@@ -515,13 +487,11 @@ type
     procedure BeforeReceivingRecords(DataSet: TDataSet);
     procedure BeforeScroll(DataSet: TDataSet);
     function GetDataSet(): TCTableDataSet;
-    function GetDesktopXML(): IXMLNode;
     function GetIndex(): Integer;
   protected
     function GetFields(): TCTableFields; virtual;
     procedure SetName(const AName: string); override;
     property Actual: Boolean read FActual;
-    property DesktopXML: IXMLNode read GetDesktopXML;
   public
     procedure Assign(const Source: TCTable); reintroduce; virtual;
     procedure Clear(); override;
@@ -534,7 +504,6 @@ type
     function Initialize(): Boolean; override;
     function Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean; virtual;
     property DataSet: TCTableDataSet read GetDataSet;
-    property Desktop: TCTableDesktop read FDesktop;
     property Fields: TCTableFields read GetFields;
     property Index: Integer read GetIndex;
   end;
@@ -687,7 +656,6 @@ type
     FDefiner: string;
     FSecurity: TCSecurity;
     FStmt: string;
-    FSynMemo: TComponent;
     function ParseCreateView(const SQL: string; const RemoveDefiner: Boolean = False; const RemoveDatabaseName: Boolean = False): string;
   protected
     function GetActualSource(): Boolean; override;
@@ -698,7 +666,6 @@ type
     procedure Assign(const Source: TCTable); override;
     procedure Clear(); override;
     constructor Create(const ADatabase: TCDatabase = nil; const AName: string = ''); override;
-    destructor Destroy(); override;
     function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; overload; override;
     property Algorithm: TAlgorithm read FAlgorithm write FAlgorithm;
     property CheckOption: TCheckOption read FCheckOption write FCheckOption;
@@ -706,25 +673,20 @@ type
     property Definer: string read FDefiner;
     property Security: TCSecurity read FSecurity write FSecurity;
     property Stmt: string read FStmt write FStmt;
-    property SynMemo: TComponent read FSynMemo write FSynMemo;
   end;
 
   TCTables = class(TCDBObjects)
   private
     FActualNames: Boolean;
-    FDesktopXML: IXMLNode;
     function GetBaseTable(Index: Integer): TCBaseTable;
-    function GetDesktopXML(): IXMLNode;
     function GetTable(Index: Integer): TCTable;
   protected
     function Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer; override;
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean; override;
     procedure BuildViewFields(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean); virtual;
-    procedure Delete(const AObject: TCObject); override;
     function GetCount(): Integer; override;
     function SQLGetItems(const Name: string = ''): string; override;
     function SQLGetNames(): string; virtual;
-    property DesktopXML: IXMLNode read GetDesktopXML;
   public
     procedure AddTable(const NewTable: TCTable); virtual;
     function ApplyMySQLTableName(const ATableName: string): string; virtual;
@@ -765,7 +727,6 @@ type
     FParameters: array of TCRoutineParameter;
     FRoutineType: TRoutineType;
     FSecurity: TCSecurity;
-    FSynMemo: TComponent;
     OldSource: string;
     function GetIDEResult(): TCResultSet;
     function GetInputDataSet(): TMySQLDataSet;
@@ -793,7 +754,6 @@ type
     property Modified: TDateTime read FModified;
     property Security: TCSecurity read FSecurity write FSecurity;
     property Source: string read GetSource write SetSource;
-    property SynMemo: TComponent read FSynMemo write FSynMemo;
     property Parameter[Index: Integer]: TCRoutineParameter read GetParameter;
     property ParameterCount: Integer read GetParameterCount;
     property RoutineType: TRoutineType read FRoutineType;
@@ -843,7 +803,6 @@ type
     FDefiner: string;
     FEvent: TEvent;
     FStmt: string;
-    FSynMemo: TComponent;
     FTableName: string;
     FTiming: TTiming;
     procedure SetSource(const ADataSet: TMySQLQuery); overload; override;
@@ -852,7 +811,6 @@ type
   public
     procedure Assign(const Source: TCTrigger); reintroduce; virtual;
     procedure Clear(); override;
-    constructor Create(const ADatabase: TCDatabase; const AName: string = ''); override;
     destructor Destroy(); override;
     function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; override;
     function Initialize(): Boolean; override;
@@ -866,7 +824,6 @@ type
     property InputDataSet: TMySQLDataSet read GetInputDataSet;
     property Source: string read GetSource;
     property Stmt: string read FStmt write FStmt;
-    property SynMemo: TComponent read FSynMemo write FSynMemo;
     property Table: TCBaseTable read GetTable;
     property TableName: string read FTableName write FTableName;
     property Timing: TTiming read FTiming write FTiming;
@@ -897,7 +854,6 @@ type
     FPreserve: Boolean;
     FStartDateTime: TDateTime;
     FStmt: string;
-    FSynMemo: TComponent;
     FUpdated: TDateTime;
   protected
     procedure ParseCreateEvent(const SQL: string); virtual;
@@ -924,7 +880,6 @@ type
     property Source: string read GetSource;
     property StartDateTime: TDateTime read FStartDateTime write FStartDateTime;
     property Stmt: string read FStmt write FStmt;
-    property SynMemo: TComponent read FSynMemo write FSynMemo;
     property Updated: TDateTime read FUpdated;
   end;
 
@@ -940,23 +895,27 @@ type
   end;
 
   TCDatabase = class(TCObject)
+  type
+    TDesktop = class(TCObject.TDesktop)
+    private
+    protected
+    public
+      function TableCount(): Integer; virtual; abstract;
+    end;
   private
     FDefaultCharset: string;
     FDefaultCodePage: Cardinal;
-    FDesktopXML: IXMLNode;
     FCollation: string;
     FEvents: TCEvents;
     FRoutines: TCRoutines;
     FTables: TCTables;
     FTriggers: TCTriggers;
-    FWorkbench: TComponent;
     function GetActual(): Boolean;
     function GetActualSources(): Boolean;
     function GetDefaultCharset(): string;
     function GetCollation(): string;
     function GetCount(): Integer;
     function GetCreated(): TDateTime;
-    function GetDesktopXML(): IXMLNode;
     function GetPrefetchObjects(): Boolean;
     function GetSize(): Int64;
     function GetUpdated(): TDateTime;
@@ -971,7 +930,6 @@ type
     function SQLAlterTable(const Table, NewTable: TCBaseTable; const EncloseFields: Boolean = True): string; virtual;
     function SQLGetSource(): string; virtual;
     function SQLTruncateTable(const Table: TCBaseTable): string; virtual;
-    property DesktopXML: IXMLNode read GetDesktopXML;
     property PrefetchObjects: Boolean read GetPrefetchObjects;
   public
     function AddEvent(const NewEvent: TCEvent): Boolean; virtual;
@@ -1024,7 +982,6 @@ type
     property Tables: TCTables read FTables;
     property Triggers: TCTriggers read FTriggers;
     property Updated: TDateTime read GetUpdated;
-    property Workbench: TComponent read FWorkbench write FWorkbench;
   end;
 
   TCSystemDatabase = class(TCDatabase)
@@ -1032,16 +989,13 @@ type
 
   TCDatabases = class(TCObjects)
   private
-    FDesktopXML: IXMLNode;
     function GetDatabase(Index: Integer): TCDatabase;
-    function GetDesktopXML(): IXMLNode;
   protected
-    function Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer; override;
+    function Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer; overload; virtual;
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean; override;
     procedure Delete(const AObject: TCObject); override;
     function GetCount(): Integer; override;
     function SQLGetItems(const Name: string = ''): string; override;
-    property DesktopXML: IXMLNode read GetDesktopXML;
   public
     procedure Clear(); override;
     constructor Create(AClient: TCClient); reintroduce; virtual;
@@ -1413,28 +1367,30 @@ type
 
   TCClient = class(TMySQLConnection)
   type
-    TEventType = (ceBuild, ceUpdated, ceCreated, ceDroped, ceAltered, ceInitialize, ceBeforeExecuteSQL, ceBeforeCancel, ceBeforeClose, ceBeforeOpen, ceAfterOpen, ceAfterReceivingRecords, ceBeforeReceivingRecords, ceBeforeScroll, ceAfterExecuteSQL, ceAfterScroll, ceAfterCancel, ceAfterClose, ceAfterPost, ceBeforePost, ceMonitor);
+    TEventType = (ceBuild, ceUpdated, ceCreated, ceDroped, ceAltered, ceStatus, ceInitialize, ceBeforeExecuteSQL, ceBeforeCancel, ceBeforeClose, ceBeforeOpen, ceAfterOpen, ceAfterReceivingRecords, ceBeforeReceivingRecords, ceBeforeScroll, ceAfterExecuteSQL, ceAfterScroll, ceAfterCancel, ceAfterClose, ceAfterPost, ceBeforePost, ceMonitor);
     TInitialize = function (): Boolean of object;
     TEvent = class
     protected
       FEventType: TEventType;
       FSender: TObject;
+      FCItems: TCItems;
       FCItem: TCItem;
-      FDatabase: TCDatabase;
       FInitialize: TInitialize;
     public
       property EventType: TEventType read FEventType;
       property Sender: TObject read FSender;
+      property CItems: TCItems read FCItems;
       property CItem: TCItem read FCItem;
-      property Database: TCDatabase read FDatabase;
       property Initialize: TInitialize read FInitialize;
     end;
+    TCreateDesktop = function (const CObject: TCObject): TCObject.TDesktop of Object;
     TEventProc = procedure (const AEvent: TEvent) of object;
   private
     AutoCommitBeforeTransaction: Boolean;
     EventProcs: TList;
     FCharsets: TCCharsets;
     FCollations: TCCollations;
+    FCreateDesktop: TCreateDesktop;
     FCurrentUser: string;
     FDatabases: TCDatabases;
     FEngines: TCEngines;
@@ -1446,7 +1402,7 @@ type
     FProcesses: TCProcesses;
     FPrefetch: Integer;
     FQueryBuilderResult: TCResultSet;
-    FAccount: TSAccount;
+    FAccount: TAAccount;
     FStati: TCStati;
     FSQLEditorResult: TCResultSet;
     FSQLMonitor: TMySQLMonitor;
@@ -1475,7 +1431,7 @@ type
     procedure BuildUser(const DataSet: TMySQLQuery); virtual;
     function ClientResult(const Connection: TMySQLConnection; const Data: Boolean): Boolean; virtual;
     procedure ExecuteEvent(const EventType: TEventType); overload; virtual;
-    procedure ExecuteEvent(const EventType: TEventType; const Sender: TObject; const CItem: TCItem;  const Database: TCDatabase = nil); overload; virtual;
+    procedure ExecuteEvent(const EventType: TEventType; const Sender: TObject; const CItems: TCItems; const CItem: TCItem); overload; virtual;
     procedure ExecuteEvent(const Initialize: TInitialize); overload; virtual;
     function GetAutoCommit(): Boolean; override;
     function GetHosts(): TCHosts; virtual;
@@ -1509,7 +1465,7 @@ type
     procedure FirstConnect(); overload; virtual;
     procedure FirstConnect(const AConnectionType: Integer; const ALibraryName: string; const AHost, AUser, APassword, ADatabase: string; const APort: Integer; const ACompression, AMultiThreading: Boolean); overload; virtual;
     constructor CreateConnection(); overload; virtual;
-    constructor CreateConnection(const AAccount: TSAccount); overload; virtual;
+    constructor CreateConnection(const AAccount: TAAccount); overload; virtual;
     function DatabaseByName(const DatabaseName: string): TCDatabase; virtual;
     procedure DecodeInterval(const Value: string; const IntervalType: TMySQLIntervalType; var Year, Month, Day, Quarter, Week, Hour, Minute, Second, MSec: Word); virtual;
     function DeleteDatabase(const Database: TCDatabase): Boolean; virtual;
@@ -1558,6 +1514,7 @@ type
     property Charsets: TCCharsets read FCharsets;
     property Collation: string read GetCollation;
     property Collations: TCCollations read FCollations;
+    property CreateDesktop: TCreateDesktop read FCreateDesktop write FCreateDesktop;
     property CurrentUser: string read FCurrentUser;
     property Databases: TCDatabases read FDatabases;
     property DefaultCharset: string read GetDefaultCharset;
@@ -1570,7 +1527,7 @@ type
     property Plugins: TCPlugins read FPlugins;
     property Processes: TCProcesses read FProcesses;
     property QueryBuilderResult: TCResultSet read GetQueryBuilderResult;
-    property Account: TSAccount read FAccount;
+    property Account: TAAccount read FAccount;
     property SlowLog: string read GetSlowLog;
     property SlowLogActive: Boolean read GetSlowLogActive;
     property Stati: TCStati read FStati;
@@ -1590,8 +1547,8 @@ type
     function GetClient(Index: Integer): TCClient;
   public
     constructor Create(); virtual;
-    function ClientByAccount(const Account: TSAccount; const DatabaseName: string): TCClient; virtual;
-    function CreateClient(const AAccount: TSAccount; out UserAbort: Boolean): TCClient;
+    function ClientByAccount(const Account: TAAccount; const DatabaseName: string): TCClient; virtual;
+    function CreateClient(const AAccount: TAAccount; out UserAbort: Boolean): TCClient;
     procedure ReleaseClient(var AClient: TCClient);
     property Client[Index: Integer]: TCClient read GetClient; default;
     property OnOpenConnection: TOpenConnectionEvent read FOnOpenConnection write FOnOpenConnection;
@@ -1607,8 +1564,8 @@ var
 implementation {***************************************************************}
 
 uses
-  Variants, SysConst, WinInet, StrUtils, WinSock, DBConsts, RTLConsts, Math,
-  Consts, DBCommon,
+  Variants, SysConst, WinInet, WinSock, DBConsts, RTLConsts, Math,
+  Consts, DBCommon, StrUtils,
   Forms, DBGrids,
   MySQLConsts, CSVUtils, HTTPTunnel, MySQLDBGrid,
   fURI, fPreferences;
@@ -1962,6 +1919,24 @@ end;
 
 { TCObject ********************************************************************}
 
+constructor TCObject.TDesktop.Create(const ACObject: TCObject);
+begin
+  inherited Create();
+
+  FCObject := ACObject;
+  Clear();
+end;
+
+procedure TCObject.TDesktop.Clear();
+begin
+end;
+
+procedure TCObject.TDesktop.SaveToXML();
+begin
+end;
+
+{ TCObject ********************************************************************}
+
 procedure TCObject.Assign(const Source: TCObject);
 begin
   inherited Assign(Source);
@@ -1972,6 +1947,9 @@ end;
 
 procedure TCObject.Clear();
 begin
+  if (Assigned(FDesktop)) then
+    FDesktop.Clear();
+
   FActualSource := False;
   FSource := '';
 end;
@@ -1983,11 +1961,29 @@ begin
   Clear();
 
   FClient := AClient;
+
+  FDesktop := nil;
+end;
+
+destructor TCObject.Destroy();
+begin
+  if (Assigned(FDesktop)) then
+    FDesktop.Free();
+
+  inherited;
 end;
 
 function TCObject.GetActualSource(): Boolean;
 begin
   Result := FActualSource;
+end;
+
+function TCObject.GetDesktop(): TDesktop;
+begin
+  if (not Assigned(FDesktop) and Assigned(Client.CreateDesktop)) then
+    FDesktop := Client.CreateDesktop(Self);
+
+  Result := FDesktop;
 end;
 
 function TCObject.GetSource(): string;
@@ -2026,7 +2022,7 @@ end;
 
 { TCObjects *******************************************************************}
 
-function TCObjects.Add(const AObject: TCObject; const ExecuteEvent: Boolean = False): Integer;
+function TCObjects.Add(const AObject: TCObject): Integer;
 begin
   Result := 0;
   while ((Result < TList(Self).Count) and (lstrcmpi(PChar(Item[Result].Name), PChar(AObject.Name)) < 0)) do
@@ -2036,9 +2032,6 @@ begin
     TList(Self).Insert(Result, AObject)
   else
     TList(Self).Add(AObject);
-
-  if (ExecuteEvent) then
-    Client.ExecuteEvent(ceCreated, Self, AObject);
 end;
 
 function TCObjects.Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean;
@@ -2066,18 +2059,9 @@ end;
 
 procedure TCObjects.Delete(const AObject: TCObject);
 begin
-  Client.ExecuteEvent(ceDroped, Self, AObject);
-
   inherited Delete(IndexOf(AObject));
 
   AObject.Free();
-end;
-
-destructor TCObjects.Destroy();
-begin
-  Clear();
-
-  inherited;
 end;
 
 function TCObjects.GetActual(): Boolean;
@@ -2126,7 +2110,7 @@ begin
     TList(Self).Add(AObject);
 
   if (ExecuteEvent) then
-    Client.ExecuteEvent(ceCreated, Self, AObject, Database);
+    Client.ExecuteEvent(ceCreated, Database, Self, AObject);
 end;
 
 constructor TCDBObjects.Create(const ADatabase: TCDatabase);
@@ -2145,9 +2129,9 @@ begin
 
   if (Index >= 0) then
   begin
-    inherited Delete(Index);
+    TList(Self).Delete(Index);
 
-    Client.ExecuteEvent(ceDroped, Self, AObject, Database);
+    Client.ExecuteEvent(ceDroped, Database, Self, AObject);
 
     AObject.Free();
   end;
@@ -2638,8 +2622,6 @@ constructor TCTableField.Create(const AFields: TCTableFields);
 begin
   inherited Create(AFields.Table.Database.Client.FieldTypes);
 
-  FDesktopXML := nil;
-
   FFields := AFields;
 
   Clear();
@@ -2689,31 +2671,6 @@ begin
   Result := Result and (Unicode = Second.Unicode);
   Result := Result and (Unsigned = Second.Unsigned);
   Result := Result and (Zerofill = Second.Zerofill);
-end;
-
-function TCTableField.GetDesktopXML(): IXMLNode;
-var
-  I: Integer;
-begin
-  if (not Assigned(FDesktopXML) and Assigned(Fields.DesktopXML)) then
-  begin
-    for I := 0 to Fields.DesktopXML.ChildNodes.Count - 1 do
-      if (lstrcmpi(PChar(string(Fields.DesktopXML.ChildNodes[I].Attributes['name'])), PChar(Name)) = 0) then
-        FDesktopXML := Fields.DesktopXML.ChildNodes[I];
-
-    if (not Assigned(FDesktopXML)) then
-    begin
-      FDesktopXML := Fields.DesktopXML.AddChild('field');
-      try
-        FDesktopXML.Attributes['name'] := Name;
-      except
-        Fields.DesktopXML.ChildNodes.Delete(Fields.DesktopXML.ChildNodes.IndexOf(FDesktopXML));
-        FDesktopXML := nil;
-      end;
-    end;
-  end;
-
-  Result := FDesktopXML;
 end;
 
 function TCTableField.GetTable(): TCTable;
@@ -2861,9 +2818,6 @@ var
 begin
   Index := IndexOf(AField);
 
-  if (Assigned(DesktopXML)) then
-    DesktopXML.ChildNodes.Remove(AField.DesktopXML);
-
   if (Assigned(Table) and (Table is TCBaseTable)) then
     for I := TCBaseTable(Table).Indices.Count - 1 downto 0 do
     begin
@@ -2893,14 +2847,6 @@ begin
     Result := nil
   else
     Result := Field[Index];
-end;
-
-function TCTableFields.GetDesktopXML(): IXMLNode;
-begin
-  if (not Assigned(FDesktopXML) and Assigned(Table) and Assigned(Table.DesktopXML)) then
-    FDesktopXML := XMLNode(Table.DesktopXML, 'grid', True);
-
-  Result := FDesktopXML;
 end;
 
 function TCTableFields.GetField(Index: Integer): TCTableField;
@@ -3237,155 +3183,6 @@ begin
   end;
 end;
 
-{ TCTableDesktop **************************************************************}
-
-procedure TCTableDesktop.AddFilter(const AFilter: string);
-var
-  FiltersXML: IXMLNode;
-  I: Integer;
-begin
-  if (AFilter <> '') then
-  begin
-    FiltersXML := XMLNode(Table.DesktopXML, 'filters', True);
-    for I := FiltersXML.ChildNodes.Count - 1 downto 0 do
-      if (FiltersXML.ChildNodes[I].Text = AFilter) then
-        FiltersXML.ChildNodes.Delete(I);
-    try
-      FiltersXML.AddChild('filter').NodeValue := AFilter;
-    except
-      // Some characters are not storable inside XML - so just ignore them
-    end;
-  end;
-
-  while (FiltersXML.ChildNodes.Count > 10) do
-    FiltersXML.ChildNodes.Delete(0);
-end;
-
-procedure TCTableDesktop.Clear();
-begin
-  SetLength(FColumnIndices, 0);
-end;
-
-constructor TCTableDesktop.Create(const ATable: TCTable);
-begin
-  inherited Create();
-
-  FTable := ATable;
-end;
-
-destructor TCTableDesktop.Destroy();
-begin
-  Clear();
-
-  inherited;
-end;
-
-function TCTableDesktop.GetColumnIndex(Index: Integer): Integer;
-begin
-  Result := FColumnIndices[Index];
-end;
-
-function TCTableDesktop.GetColunns(): Integer;
-begin
-  Result := Length(FColumnIndices);
-end;
-
-function TCTableDesktop.GetFilter(Index: Integer): string;
-var
-  FiltersXML: IXMLNode;
-begin
-  Result := '';
-
-  if (Assigned(Table.DesktopXML)) then
-  begin
-    FiltersXML := XMLNode(Table.DesktopXML, 'filters', True);
-    if (Assigned(FiltersXML) and (Index < FiltersXML.ChildNodes.Count)) then
-      Result := XMLNode(Table.DesktopXML, 'filters').ChildNodes[FiltersXML.ChildNodes.Count - Index - 1].Text;
-  end;
-end;
-
-function TCTableDesktop.GetFilterCount(): Integer;
-begin
-  Result := 0;
-
-  if (Assigned(Table.DesktopXML)) then
-    if (Assigned(XMLNode(Table.DesktopXML, 'filters'))) then
-      Result := XMLNode(Table.DesktopXML, 'filters').ChildNodes.Count;
-end;
-
-function TCTableDesktop.GetGridVisible(FieldName: string): Boolean;
-begin
-  Result := True;
-
-  if (Assigned(Table.DesktopXML) and Assigned(XMLNode(Table.FieldByName(FieldName).DesktopXML, 'visible'))) then
-    TryStrToBool(XMLNode(Table.FieldByName(FieldName).DesktopXML, 'visible').Text, Result);
-end;
-
-function TCTableDesktop.GetGridWidth(FieldName: string): Integer;
-begin
-  Result := -1;
-
-  if (Assigned(Table.FDesktopXML) and Assigned(XMLNode(Table.FieldByName(FieldName).DesktopXML, 'width'))) then
-    TryStrToInt(XMLNode(Table.FieldByName(FieldName).DesktopXML, 'width').Text, Result);
-end;
-
-function TCTableDesktop.GetLimit(): Integer;
-begin
-  Result := DefaultLimit;
-
-  if (Assigned(Table.DesktopXML) and Assigned(XMLNode(Table.DesktopXML, 'limit'))) then
-    TryStrToInt(XMLNode(Table.DesktopXML, 'limit').Text, Result);
-
-  if (Result < 1) then
-    Result := DefaultLimit;
-end;
-
-function TCTableDesktop.GetLimited(): Boolean;
-begin
-  case (Table.Database.Client.Account.DefaultLimit) of
-    dlOff: Result := False;
-    dlRemember:
-      begin
-        Result := True;
-        if (Assigned(Table.DesktopXML) and Assigned(XMLNode(Table.DesktopXML, 'limit'))) then
-          TryStrToBool(XMLNode(Table.DesktopXML, 'limit').Attributes['used'], Result);
-      end;
-    else // dlOn
-      Result := True;
-  end;
-end;
-
-procedure TCTableDesktop.SetColumnIndex(Index: Integer; const Value: Integer);
-begin
-  if (Length(FColumnIndices) < Index + 1) then
-    SetLength(FColumnIndices, Index + 1);
-
-  FColumnIndices[Index] := Value;
-end;
-
-procedure TCTableDesktop.SetGridVisible(FieldName: string; const Visible: Boolean);
-begin
-  XMLNode(Table.FieldByName(FieldName).DesktopXML, 'visible', True).Text := BoolToStr(Visible, True);
-end;
-
-procedure TCTableDesktop.SetGridWidth(FieldName: string; const GridWidth: Integer);
-begin
-  if (GridWidth > 0) then
-    XMLNode(Table.FieldByName(FieldName).DesktopXML, 'width', True).Text := IntToStr(GridWidth);
-end;
-
-procedure TCTableDesktop.SetLimit(const Limit: Integer);
-begin
-  if (Limit > 0) then
-    XMLNode(Table.DesktopXML, 'limit', True).Text := IntToStr(Limit);
-end;
-
-procedure TCTableDesktop.SetLimited(const ALimited: Boolean);
-begin
-  if (Table.Database.Client.Account.DefaultLimit = dlRemember) then
-    XMLNode(Table.DesktopXML, 'limit', True).Attributes['used'] := BoolToStr(ALimited, True);
-end;
-
 { TCTableDataSet **************************************************************}
 
 constructor TCTableDataSet.Create(const ATable: TCTable);
@@ -3470,45 +3267,35 @@ end;
 
 procedure TCTable.AfterCancel(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceAfterCancel, Database.Tables, Self, Database);
+  Client.ExecuteEvent(ceAfterCancel, Database, Database.Tables, Self);
 end;
 
 procedure TCTable.AfterClose(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceAfterClose, Database.Tables, Self, Database);
+  Client.ExecuteEvent(ceAfterClose, Database, Database.Tables, Self);
 end;
 
 procedure TCTable.AfterOpen(DataSet: TDataSet);
 begin
   if ((DataSet is TCTableDataSet) and (DataSet.FieldCount > 0)) then
-  begin
     TCTableDataSet(DataSet).FFilterSQL := FFilterSQL;
-    if (TCTableDataSet(DataSet).FilterSQL <> '') then
-      Desktop.AddFilter(TCTableDataSet(DataSet).FilterSQL);
-    if (((TCTableDataSet(DataSet).Limit > 0) <> Desktop.Limited) or (TCTableDataSet(DataSet).Limit <> Desktop.Limit)) then
-    begin
-      Desktop.Limited := TCTableDataSet(DataSet).Limit > 0;
-      Desktop.Limit := TCTableDataSet(DataSet).Limit;
-    end;
 
-
-    Client.ExecuteEvent(ceAfterOpen, Database.Tables, Self, Database);
-  end;
+  Client.ExecuteEvent(ceAfterOpen, Database, Database.Tables, Self);
 end;
 
 procedure TCTable.AfterPost(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceAfterPost, Database.Tables, Self, Database);
+  Client.ExecuteEvent(ceAfterPost, Database, Database.Tables, Self);
 end;
 
 procedure TCTable.AfterReceivingRecords(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceAfterReceivingRecords, Database.Tables, Self, Database);
+  Client.ExecuteEvent(ceAfterReceivingRecords, Database, Database.Tables, Self);
 end;
 
 procedure TCTable.AfterScroll(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceAfterScroll, Database.Tables, Self, Database);
+  Client.ExecuteEvent(ceAfterScroll, Database, Database.Tables, Self);
 end;
 
 procedure TCTable.Assign(const Source: TCTable);
@@ -3527,8 +3314,7 @@ begin
   if (Assigned(FDataSet)) then
     FreeAndNil(FDataSet);
 
-  if (Assigned(Desktop)) then
-    Desktop.Clear();
+  Desktop.Clear();
 
   FFields.Clear();
   for I := 0 to Source.Fields.Count - 1 do
@@ -3537,32 +3323,32 @@ end;
 
 procedure TCTable.BeforeCancel(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceBeforeCancel, Database.Tables, Self, Database);
+  Client.ExecuteEvent(ceBeforeCancel, Database, Database.Tables, Self);
 end;
 
 procedure TCTable.BeforeClose(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceBeforeClose, Database.Tables, Self, Database);
+  Client.ExecuteEvent(ceBeforeClose, Database, Database.Tables, Self);
 end;
 
 procedure TCTable.BeforeOpen(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceBeforeOpen, Database.Tables, Self, Database);
+  Client.ExecuteEvent(ceBeforeOpen, Database, Database.Tables, Self);
 end;
 
 procedure TCTable.BeforePost(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceBeforePost, Database.Tables, Self, Database);
+  Client.ExecuteEvent(ceBeforePost, Database, Database.Tables, Self);
 end;
 
 procedure TCTable.BeforeReceivingRecords(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceBeforeReceivingRecords, Database.Tables, Self, Database);
+  Client.ExecuteEvent(ceBeforeReceivingRecords, Database, Database.Tables, Self);
 end;
 
 procedure TCTable.BeforeScroll(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceBeforeScroll, Database.Tables, Self, Database);
+  Client.ExecuteEvent(ceBeforeScroll, Database, Database.Tables, Self);
 end;
 
 procedure TCTable.Clear();
@@ -3571,9 +3357,6 @@ begin
 
   if (Assigned(FDataSet)) then
     FreeAndNil(FDataSet);
-
-  if (Assigned(Desktop)) then
-    Desktop.Clear();
 
   if (Assigned(FFields)) then
     FFields.Clear();
@@ -3600,8 +3383,6 @@ constructor TCTable.Create(const ADatabase: TCDatabase = nil; const AName: strin
 begin
   inherited Create(ADatabase);
 
-  FDesktopXML := nil;
-  FDesktop := nil;
   FDataSet := nil;
   if (Self is TCBaseTable) then
     FFields := TCBaseTableFields.Create(Self)
@@ -3609,9 +3390,6 @@ begin
     FFields := TCTableFields.Create(Self);
 
   FName := AName;
-
-  if (Name <> '') then
-    FDesktop := TCTableDesktop.Create(Self);
 end;
 
 function TCTable.DeleteRecords(const Field: TCTableField; const Values: TStringList): Boolean;
@@ -3639,6 +3417,9 @@ var
   I: Integer;
   J: Integer;
 begin
+  if (Assigned(FDesktop)) then
+    FDesktop.SaveToXML();
+
   for I := Length(Database.Client.CachedTables) - 1 downto 0 do
     if (Database.Client.CachedTables[I] = Self) then
     begin
@@ -3649,8 +3430,6 @@ begin
 
   if (Assigned(FDataSet)) then
     FDataSet.Free();
-  if (Assigned(FDesktop)) then
-    FDesktop.Free();
   if (Assigned(FFields)) then
     FFields.Free();
 
@@ -3689,31 +3468,6 @@ begin
   end;
 
   Result := FDataSet;
-end;
-
-function TCTable.GetDesktopXML(): IXMLNode;
-var
-  I: Integer;
-begin
-  if (not Assigned(FDesktopXML) and Assigned(Database.Tables.DesktopXML)) then
-  begin
-    for I := 0 to Database.Tables.DesktopXML.ChildNodes.Count - 1 do
-      if (lstrcmpi(PChar(string(Database.Tables.DesktopXML.ChildNodes[I].Attributes['name'])), PChar(Name)) = 0) then
-        FDesktopXML := Database.Tables.DesktopXML.ChildNodes[I];
-
-    if (not Assigned(FDesktopXML)) then
-    begin
-      FDesktopXML := Database.Tables.DesktopXML.AddChild('table');
-      try
-        FDesktopXML.Attributes['name'] := Name;
-      except
-        Database.Tables.DesktopXML.ChildNodes.Delete(Database.Tables.DesktopXML.ChildNodes.IndexOf(FDesktopXML));
-        FDesktopXML := nil;
-      end;
-    end;
-  end;
-
-  Result := FDesktopXML;
 end;
 
 function TCTable.GetFields(): TCTableFields;
@@ -4166,12 +3920,12 @@ end;
 
 destructor TCBaseTable.Destroy();
 begin
+  inherited;
+
   FIndices.Free();
   FForeignKeys.Free();
   if (Assigned(FPartitions)) then
     FPartitions.Free();
-
-  inherited;
 end;
 
 function TCBaseTable.Empty(): Boolean;
@@ -4819,7 +4573,7 @@ procedure TCBaseTable.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create Table'));
 
-  Client.ExecuteEvent(ceUpdated, Self, Self, Database);
+  Client.ExecuteEvent(ceUpdated, Self, Database.Tables, Self);
 end;
 
 function TCBaseTable.SQLGetSource(): string;
@@ -4857,8 +4611,6 @@ end;
 
 constructor TCView.Create(const ADatabase: TCDatabase = nil; const AName: string = '');
 begin
-  FSynMemo := nil;
-
   inherited Create(ADatabase, AName);
 
   FAlgorithm := vaUndefined;
@@ -4866,14 +4618,6 @@ begin
   FCheckOption := voNone;
   FSecurity := seDefiner;
   FStmt := '';
-end;
-
-destructor TCView.Destroy();
-begin
-  if (Assigned(FSynMemo)) then
-    FreeAndNil(FSynMemo);
-
-  inherited;
 end;
 
 function TCView.GetActualSource(): Boolean;
@@ -4985,7 +4729,7 @@ procedure TCView.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create View'));
 
-  // Client.ExecuteEvent will be called from TCTables.BuildViewFields
+  // Client.ExecuteEvent(ceBuild,  ... will be called from TCTables.BuildViewFields
 end;
 
 procedure TCView.SetSource(const ASource: string);
@@ -5014,7 +4758,7 @@ begin
     TList(Self).Add(AObject);
 
   if (ExecuteEvent) then
-    Client.ExecuteEvent(ceCreated, Self, AObject, Database);
+    Client.ExecuteEvent(ceCreated, Database, Self, AObject);
 end;
 
 procedure TCTables.AddTable(const NewTable: TCTable);
@@ -5088,17 +4832,19 @@ begin
 
         if (not Update) then
           if (Database = Database.Client.PerformanceSchema) then
-            Index := Add(TCSystemView.Create(Database, TableName, True))
+            Add(TCSystemView.Create(Database, TableName, True))
           else if ((Database.Client.ServerVersion < 50002) or (UpperCase(DataSet.FieldByName('Table_Type').AsString) = 'BASE TABLE') or (UpperCase(DataSet.FieldByName('Table_Type').AsString) = 'ERROR')) then
-            Index := Add(TCBaseTable.Create(Database, TableName))
+            Add(TCBaseTable.Create(Database, TableName))
           else if ((UpperCase(DataSet.FieldByName('Table_Type').AsString) = 'SYSTEM VIEW') or ((50000 <= Database.Client.ServerVersion) and (Database.Client.ServerVersion < 50012) and (Database = Database.Client.InformationSchema)) or (Database = Database.Client.PerformanceSchema)) then
-            Index := Add(TCSystemView.Create(Database, TableName, True))
+            Add(TCSystemView.Create(Database, TableName, True))
           else if (UpperCase(DataSet.FieldByName('Table_Type').AsString) = 'VIEW') then
-            Index := Add(TCView.Create(Database, TableName))
+            Add(TCView.Create(Database, TableName))
           else
             raise EDatabaseError.CreateFmt('Unknown TABLE_TYPE "%s" for Table "%S". Table will be ignored.  (%s)', [DataSet.FieldByName('TABLE_TYPE').AsString, TableName, DataSet.CommandText]);
       until (not DataSet.FindNext());
     FActualNames := True;
+
+    Client.ExecuteEvent(ceBuild, Database, Self, nil);
 
     Result := True;
   end
@@ -5146,13 +4892,14 @@ begin
         end;
       until (not DataSet.FindNext());
 
+    if ((DataSet.RecordCount = 1) and Update) then
+      Client.ExecuteEvent(ceStatus, Database, Self, Table[Index])
+    else
+      Client.ExecuteEvent(ceStatus, Database, Self, nil);
+    Client.ExecuteEvent(ceStatus, Client, Self, Database);
+
     Result := inherited;
   end;
-
-  if ((DataSet.RecordCount = 1) and Update) then
-    Client.ExecuteEvent(ceUpdated, Self, Table[Index], Database)
-  else
-    Client.ExecuteEvent(ceBuild, Self, nil, Database);
 end;
 
 procedure TCTables.BuildViewFields(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean);
@@ -5170,7 +4917,10 @@ begin
       begin
         FirstField := True;
         if (Assigned(View)) then
-          Client.ExecuteEvent(ceUpdated, View, View, Database);
+        begin
+          Client.ExecuteEvent(ceUpdated, View, Self, View);
+          Client.ExecuteEvent(ceStatus, View, Self, View);
+        end;
       end;
 
       View := Database.ViewByName(DataSet.FieldByName('TABLE_NAME').AsString);
@@ -5208,14 +4958,14 @@ begin
     until (not DataSet.FindNext());
 
   if (Assigned(View)) then
-    Client.ExecuteEvent(ceUpdated, View, View, Database);
+  begin
+    Client.ExecuteEvent(ceUpdated, Database, Self, View);
+    Client.ExecuteEvent(ceStatus, Client, Self, Database);
+  end;
 end;
 
 procedure TCTables.Clear();
 begin
-  if (Actual and Assigned(DesktopXML)) then
-    DesktopXML.Attributes['count'] := Count;
-
   inherited;
 
   FActualNames := False;
@@ -5225,19 +4975,7 @@ constructor TCTables.Create(const ADatabase: TCDatabase);
 begin
   inherited;
 
-  FDesktopXML := nil;
   Clear();
-end;
-
-procedure TCTables.Delete(const AObject: TCObject);
-begin
-  Assert(AObject is TCTable);
-
-
-  if (Assigned(DesktopXML)) then
-    DesktopXML.ChildNodes.Remove(TCTable(AObject).DesktopXML);
-
-  inherited;
 end;
 
 function TCTables.GetBaseTable(Index: Integer): TCBaseTable;
@@ -5258,14 +4996,6 @@ begin
     Result := -1
   else
     Result := TList(Self).Count;
-end;
-
-function TCTables.GetDesktopXML(): IXMLNode;
-begin
-  if (not Assigned(FDesktopXML) and Assigned(Database) and Assigned(Database.DesktopXML)) then
-    FDesktopXML := XMLNode(Database.DesktopXML, 'tables', True);
-
-  Result := FDesktopXML;
 end;
 
 function TCTables.GetTable(Index: Integer): TCTable;
@@ -5390,7 +5120,6 @@ begin
   FFunctionResult := nil;
   FIDEResult := nil;
   SetLength(FParameters, 0);
-  FSynMemo := nil;
 
   inherited Create(ADatabase, AName);
 end;
@@ -5410,8 +5139,6 @@ begin
   end;
   if (Assigned(FIDEResult)) then
     FIDEResult.Free();
-  if (Assigned(FSynMemo)) then
-    FSynMemo.Free();
   if (Assigned(FFunctionResult)) then
     FFunctionResult.Free();
 
@@ -5684,7 +5411,8 @@ begin
 
   OldSource := FSource;
 
-  Client.ExecuteEvent(ceUpdated, Self, Self, Database);
+  Client.ExecuteEvent(ceUpdated, Database, Database.Routines, Self);
+  Client.ExecuteEvent(ceStatus, Client, Database.Routines, Database);
 end;
 
 procedure TCRoutine.SetSource(const ASource: string);
@@ -5710,7 +5438,8 @@ procedure TCProcedure.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create Procedure'));
 
-  Client.ExecuteEvent(ceUpdated, Self, Self, Database);
+  Client.ExecuteEvent(ceUpdated, Database, Database.Routines, Self);
+  Client.ExecuteEvent(ceStatus, Client, Database.Routines, Database);
 end;
 
 function TCProcedure.SQLGetSource(): string;
@@ -5780,7 +5509,8 @@ procedure TCFunction.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create Function'));
 
-  Client.ExecuteEvent(ceUpdated, Self, Self, Database);
+  Client.ExecuteEvent(ceUpdated, Database, Database.Routines, Self);
+  Client.ExecuteEvent(ceStatus, Client, Database.Routines, Database);
 end;
 
 function TCFunction.SQLGetSource(): string;
@@ -5901,9 +5631,9 @@ begin
   Result := inherited;
 
   if ((DataSet.RecordCount = 1) and Update) then
-    Client.ExecuteEvent(ceUpdated, Self, Routine[Index], Database)
+    Client.ExecuteEvent(ceUpdated, Database, Self, Routine[Index])
   else
-    Client.ExecuteEvent(ceBuild, Self, nil, Database);
+    Client.ExecuteEvent(ceBuild, Database, Self, nil);
 end;
 
 constructor TCRoutines.Create(const ADatabase: TCDatabase);
@@ -5963,13 +5693,6 @@ begin
   FTiming := ttAfter;
 end;
 
-constructor TCTrigger.Create(const ADatabase: TCDatabase; const AName: string = '');
-begin
-  inherited Create(ADatabase, AName);
-
-  FSynMemo := nil;
-end;
-
 destructor TCTrigger.Destroy();
 begin
   if (Assigned(FInputDataSet)) then
@@ -5977,8 +5700,6 @@ begin
     FInputDataSet.Cancel();
     FreeAndNil(FInputDataSet);
   end;
-  if (Assigned(FSynMemo)) then
-    FreeAndNil(FSynMemo);
 
   inherited;
 end;
@@ -6042,7 +5763,7 @@ procedure TCTrigger.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('SQL Original Statement'));
 
-  Client.ExecuteEvent(ceUpdated, Self, Self, Database);
+  Client.ExecuteEvent(ceUpdated, Database.TableByName(TableName), Database.Triggers, Self);
 end;
 
 function TCTrigger.SQLDelete(): string;
@@ -6105,7 +5826,7 @@ begin
       else if (DataSet.FieldByName('TRIGGER_SCHEMA').AsString = Database.Name) then
         TriggerName := DataSet.FieldByName('TRIGGER_NAME').AsString
       else
-        raise ERangeError.CreateFmt(SPropertyOutOfRange + ' (' + DataSet.CommandText + ')', ['TriggerName']);
+        raise ERangeError.CreateFmt(SPropertyOutOfRange, ['TriggerName']);
 
       Index := IndexByName(TriggerName);
       Update := Index >= 0;
@@ -6161,9 +5882,9 @@ begin
   Result := inherited;
 
   if ((DataSet.RecordCount = 1) and Update) then
-    Client.ExecuteEvent(ceUpdated, Self, Trigger[Index], Database)
+    Client.ExecuteEvent(ceUpdated, Database, Self, Trigger[Index])
   else
-    Client.ExecuteEvent(ceBuild, Self, nil, Database);
+    Client.ExecuteEvent(ceBuild, Database, Self, nil);
 end;
 
 constructor TCTriggers.Create(const ADatabase: TCDatabase);
@@ -6341,7 +6062,8 @@ procedure TCEvent.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create Event'));
 
-  Client.ExecuteEvent(ceUpdated, Self, Self, Database);
+  Client.ExecuteEvent(ceUpdated, Database, Database.Events, Self);
+  Client.ExecuteEvent(ceStatus, Client, Database.Events, Database);
 end;
 
 procedure TCEvent.SetSource(const ASource: string);
@@ -6433,9 +6155,9 @@ begin
   Result := inherited;
 
   if ((DataSet.RecordCount = 1) and Update) then
-    Client.ExecuteEvent(ceUpdated, Self, Event[Index], Database)
+    Client.ExecuteEvent(ceUpdated, Database, Self, Event[Index])
   else
-    Client.ExecuteEvent(ceBuild, Self, nil, Database);
+    Client.ExecuteEvent(ceBuild, Database, Self, nil);
 end;
 
 constructor TCEvents.Create(const ADatabase: TCDatabase);
@@ -6679,8 +6401,6 @@ constructor TCDatabase.Create(const AClient: TCClient = nil; const AName: string
 begin
   inherited Create(AClient);
 
-  FDesktopXML := nil;
-  FWorkbench := nil;
   FName := AName;
 
   if ((Client.ServerVersion < 50004) or (Self is TCSystemDatabase)) then FRoutines := nil else FRoutines := TCRoutines.Create(Self);
@@ -6735,12 +6455,13 @@ end;
 
 destructor TCDatabase.Destroy();
 begin
-  if (Assigned(FRoutines)) then FRoutines.Free();
+  if (Assigned(FDesktop)) then
+    FDesktop.SaveToXML();
+
   FTables.Free();
+  if (Assigned(FRoutines)) then FRoutines.Free();
   if (Assigned(FTriggers)) then FTriggers.Free();
   if (Assigned(FEvents)) then FEvents.Free();
-
-  if (Assigned(FWorkbench)) then FWorkbench.Free();
 
   inherited;
 end;
@@ -6901,38 +6622,13 @@ begin
   Result := FDefaultCharset;
 end;
 
-function TCDatabase.GetDesktopXML(): IXMLNode;
-var
-  I: Integer;
-begin
-  if (not Assigned(FDesktopXML) and Assigned(Client.Databases.DesktopXML)) then
-  begin
-    for I := 0 to Client.Databases.DesktopXML.ChildNodes.Count - 1 do
-      if (lstrcmpi(PChar(string(Client.Databases.DesktopXML.ChildNodes[I].Attributes['name'])), PChar(Name)) = 0) then
-        FDesktopXML := Client.Databases.DesktopXML.ChildNodes[I];
-
-    if (not Assigned(FDesktopXML)) then
-    begin
-      FDesktopXML := Client.Databases.DesktopXML.AddChild('database');
-      try
-        FDesktopXML.Attributes['name'] := Name;
-      except
-        Client.Databases.DesktopXML.ChildNodes.Delete(Client.Databases.DesktopXML.ChildNodes.IndexOf(FDesktopXML));
-        FDesktopXML := nil;
-      end;
-    end;
-  end;
-
-  Result := FDesktopXML;
-end;
-
 function TCDatabase.GetPrefetchObjects(): Boolean;
 begin
   case (Client.Prefetch) of
     0: Result := False;
     2: Result := True;
     else Result := ((Tables.Actual and (Tables.Count <= PrefetchTableCount))
-           or (Assigned(Tables.DesktopXML) and (Tables.DesktopXML.Attributes['count'] <> '') and (0 < Tables.DesktopXML.Attributes['count']) and (Tables.DesktopXML.Attributes['count'] <= PrefetchTableCount)))
+           or ((0 < TDesktop(Desktop).TableCount) and (TDesktop(Desktop).TableCount <= PrefetchTableCount)))
            and Client.MultiStatements;
   end;
 end;
@@ -7256,7 +6952,7 @@ procedure TCDatabase.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create Database'));
 
-  Client.ExecuteEvent(ceUpdated, Self, Self, nil);
+  Client.ExecuteEvent(ceUpdated, Client, Client.Databases, Self);
 end;
 
 function TCDatabase.SQLAlterTable(const Table, NewTable: TCBaseTable; const EncloseFields: Boolean): string;
@@ -8061,7 +7757,7 @@ begin
     TList(Self).Add(AObject);
 
   if (ExecuteEvent) then
-    Client.ExecuteEvent(ceCreated, Self, AObject);
+    Client.ExecuteEvent(ceCreated, Client, Self, AObject);
 end;
 
 function TCDatabases.Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean;
@@ -8145,9 +7841,9 @@ begin
   Result := inherited;
 
   if ((DataSet.RecordCount = 1) and Update) then
-    Client.ExecuteEvent(ceUpdated, Self, Database[Index])
+    Client.ExecuteEvent(ceUpdated, Client, Self, Database[Index])
   else
-    Client.ExecuteEvent(ceBuild, Self, nil);
+    Client.ExecuteEvent(ceBuild, Client, Self, nil);
 end;
 
 procedure TCDatabases.Clear();
@@ -8162,8 +7858,6 @@ constructor TCDatabases.Create(AClient: TCClient);
 begin
   inherited Create(AClient);
 
-  FDesktopXML := nil;
-
   Clear();
 end;
 
@@ -8176,8 +7870,6 @@ var
 begin
   Assert(AObject is TCDatabase);
 
-
-  DesktopXML.ChildNodes.Remove(TCDatabase(AObject).DesktopXML);
 
   if (Client.Account.Connection.Database <> '') then
   begin
@@ -8202,7 +7894,7 @@ begin
   if (Index >= 0) then
     Delete(Index);
 
-  Client.ExecuteEvent(ceDroped, Self, AObject);
+  Client.ExecuteEvent(ceDroped, Client, Self, AObject);
 
   AObject.Free();
 end;
@@ -8218,14 +7910,6 @@ end;
 function TCDatabases.GetDatabase(Index: Integer): TCDatabase;
 begin
   Result := TCDatabase(Items[Index]);
-end;
-
-function TCDatabases.GetDesktopXML(): IXMLNode;
-begin
-  if (not Assigned(FDesktopXML) and Assigned(Client.Account.DesktopXML)) then
-    FDesktopXML := XMLNode(Client.Account.DesktopXML, 'browser/databases', True);
-
-  Result := FDesktopXML;
 end;
 
 function TCDatabases.IndexByName(const Name: string): Integer;
@@ -8391,9 +8075,9 @@ begin
   Result := inherited;
 
   if ((DataSet.RecordCount = 1) and Update) then
-    Client.ExecuteEvent(ceUpdated, Self, Variable[Index])
+    Client.ExecuteEvent(ceUpdated, Client, Self, Variable[Index])
   else
-    Client.ExecuteEvent(ceBuild, Self, nil);
+    Client.ExecuteEvent(ceBuild, Client, Self, nil);
 end;
 
 function TCVariables.GetVariable(Index: Integer): TCVariable;
@@ -8982,12 +8666,25 @@ var
   Hours: Integer;
   Index: Integer;
   Minutes: Integer;
+  ProcessName: string;
   Seconds: Integer;
+  Update: Boolean;
 begin
+  Update := False;
+
   if (not DataSet.IsEmpty()) then
     repeat
-      Add(TCProcess.Create());
-      Index := TList(Self).Count - 1;
+      if (not UseInformationSchema) then
+        ProcessName := DataSet.FieldByName('Id').AsString
+      else
+        ProcessName := DataSet.FieldByName('ID').AsString;
+
+      Index := IndexByName(ProcessName);
+      Update := Index >= 0;
+
+      if (not Update) then
+        Index := Add(TCProcess.Create());
+
       if (not UseInformationSchema) then
       begin
         Process[Index].FName := DataSet.FieldByName('Id').AsString;
@@ -9029,6 +8726,11 @@ begin
     until (not DataSet.FindNext());
 
   Result := inherited;
+
+  if ((DataSet.RecordCount = 1) and Update) then
+    Client.ExecuteEvent(ceUpdated, Client, Self, Process[Index])
+  else
+    Client.ExecuteEvent(ceBuild, Client, Self, nil);
 end;
 
 function TCProcesses.GetActual(): Boolean;
@@ -9626,9 +9328,9 @@ begin
   Result := inherited;
 
   if ((DataSet.RecordCount = 1) and Update) then
-    Client.ExecuteEvent(ceUpdated, Self, User[Index])
+    Client.ExecuteEvent(ceUpdated, Client, Self, User[Index])
   else
-    Client.ExecuteEvent(ceBuild, Self, nil);
+    Client.ExecuteEvent(ceBuild, Client, Self, nil);
 end;
 
 function TCUsers.GetActual(): Boolean;
@@ -9895,9 +9597,9 @@ begin
   Result := inherited;
 
   if ((DataSet.RecordCount = 1) and Update) then
-    Client.ExecuteEvent(ceUpdated, Self, Host[Index])
+    Client.ExecuteEvent(ceUpdated, Client, Self, Host[Index])
   else
-    Client.ExecuteEvent(ceBuild, Self, nil);
+    Client.ExecuteEvent(ceBuild, Client, Self, nil);
 end;
 
 function TCHosts.GetActual(): Boolean;
@@ -9975,9 +9677,9 @@ begin
     FProcesses := TCProcesses.Create(Self);
 
   if ((DataSet.RecordCount = 1) and Update) then
-    ExecuteEvent(ceUpdated, Self, User)
+    ExecuteEvent(ceUpdated, Self, Users, User)
   else
-    ExecuteEvent(ceBuild, Self, User);
+    ExecuteEvent(ceBuild, Self, Users, User);
 end;
 
 procedure TCClient.ConnectChange(Sender: TObject; Connecting: Boolean);
@@ -10010,7 +9712,7 @@ begin
     if (not Assigned(FStati)) then FStati := TCStati.Create(Self);
     if (not Assigned(FUsers)) then FUsers := TCUsers.Create(Self);
 
-    if (Assigned(Account) and not Account.IconFetched and not FileExists(Account.IconFilename) and not HostIsLocalHost(Host)) then
+    if (Assigned(Account) and not Account.IconFetched and not FileExists(Account.IconFilename) and (Host <> LOCAL_HOST) and (Host <> LOCAL_HOST_NAMEDPIPE)) then
     begin
       Internet := InternetOpen(PChar(Application.Title), INTERNET_OPEN_TYPE_PRECONFIG, nil, nil, 0);
 
@@ -10447,7 +10149,7 @@ begin
   RegisterClient(Self, ConnectChange);
 end;
 
-constructor TCClient.CreateConnection(const AAccount: TSAccount);
+constructor TCClient.CreateConnection(const AAccount: TAAccount);
 begin
   inherited Create(nil);
 
@@ -10813,8 +10515,8 @@ begin
 
   Event.FEventType := EventType;
   Event.FSender := nil;
+  Event.FCItems := nil;
   Event.FCItem := nil;
-  Event.FDatabase := nil;
   Event.FInitialize := nil;
 
   DoExecuteEvent(Event);
@@ -10822,7 +10524,7 @@ begin
   Event.Free();
 end;
 
-procedure TCClient.ExecuteEvent(const EventType: TEventType; const Sender: TObject; const CItem: TCItem;  const Database: TCDatabase = nil);
+procedure TCClient.ExecuteEvent(const EventType: TEventType; const Sender: TObject; const CItems: TCItems; const CItem: TCItem);
 var
   Event: TEvent;
 begin
@@ -10830,13 +10532,13 @@ begin
 
   Event.FEventType := EventType;
   Event.FSender := Sender;
+  Event.FCItems := CItems;
   Event.FCItem := CItem;
-  Event.FDatabase := Database;
   Event.FInitialize := nil;
 
   DoExecuteEvent(Event);
 
-  Event.Free;
+  Event.Free();
 end;
 
 procedure TCClient.ExecuteEvent(const Initialize: TInitialize);
@@ -10847,7 +10549,7 @@ begin
 
   Event.FEventType := ceInitialize;
   Event.FSender := nil;
-  Event.FDatabase := nil;
+  Event.FCItems := nil;
   Event.FCItem := nil;
   Event.FInitialize := Initialize;
 
@@ -11319,8 +11021,9 @@ begin
                       Table := Database.TableByName(TableName);
                       if (Assigned(Table)) then
                       begin
-                        ExecuteEvent(ceDroped, Database.Tables, Table);
                         Database.Tables.Delete(Table.Index);
+
+                        ExecuteEvent(ceDroped, Database, Database.Tables, Table);
 
                         Table.FDatabase := DatabaseByName(DatabaseName);
                         Table.Name := TableName;
@@ -11338,8 +11041,9 @@ begin
                   begin
                     if (DDLStmt.DefinitionType = dtAlterRename) then
                     begin
-                      ExecuteEvent(ceDroped, Database.Tables, Table);
                       Database.Tables.Delete(Table.Index);
+
+                      ExecuteEvent(ceDroped, Database, Database.Tables, Table);
 
                       Table.FDatabase := DatabaseByName(DDLStmt.NewDatabaseName);
                       Table.Name := DDLStmt.NewObjectName;
@@ -11348,7 +11052,7 @@ begin
                     end;
 
                     Table.Clear();
-                    ExecuteEvent(ceAltered, Database.Tables, Table, Database);
+                    ExecuteEvent(ceAltered, Database, Database.Tables, Table);
                   end;
                 end;
               dtDrop:
@@ -12137,7 +11841,7 @@ end;
 
 { TCClients ***************************************************************}
 
-function TCClients.ClientByAccount(const Account: TSAccount; const DatabaseName: string): TCClient;
+function TCClients.ClientByAccount(const Account: TAAccount; const DatabaseName: string): TCClient;
 var
   I: Integer;
 begin
@@ -12160,7 +11864,7 @@ begin
   FOnOpenConnection := nil;
 end;
 
-function TCClients.CreateClient(const AAccount: TSAccount; out UserAbort: Boolean): TCClient;
+function TCClients.CreateClient(const AAccount: TAAccount; out UserAbort: Boolean): TCClient;
 var
   Client: TCClient;
 begin

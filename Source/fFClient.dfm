@@ -118,7 +118,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 624
+        Height = 627
         HelpContext = 1082
         Align = alClient
         BorderStyle = bsNone
@@ -301,7 +301,7 @@ object FClient: TFClient
       ExplicitTop = 189
       ExplicitWidth = 319
     end
-    object PList: TPanel_Ext
+    object PListView: TPanel_Ext
       Left = 0
       Top = 0
       Width = 467
@@ -315,7 +315,7 @@ object FClient: TFClient
       ParentBackground = False
       TabOrder = 3
       Visible = False
-      object FList: TListView_Ext
+      object FServerListView: TListView_Ext
         Left = 2
         Top = 2
         Width = 463
@@ -331,18 +331,18 @@ object FClient: TFClient
         PopupMenu = MList
         TabOrder = 0
         ViewStyle = vsReport
-        OnChanging = FListChanging
-        OnColumnClick = FListColumnClick
-        OnCompare = FListCompare
+        OnChanging = ListViewChanging
+        OnColumnClick = ListViewColumnClick
+        OnCompare = ListViewCompare
         OnDblClick = ListViewDblClick
-        OnEdited = FListEdited
-        OnEditing = FListEditing
-        OnEnter = FListEnter
-        OnExit = FListExit
+        OnEdited = ListViewEdited
+        OnEditing = ListViewEditing
+        OnEnter = ListViewEnter
+        OnExit = ListViewExit
         OnDragDrop = FNavigatorDragDrop
-        OnDragOver = FListDragOver
+        OnDragOver = ListViewDragOver
         OnKeyDown = ListViewKeyDown
-        OnSelectItem = FListSelectItem
+        OnSelectItem = ListViewSelectItem
       end
     end
     object PSQLEditor: TPanel_Ext
@@ -358,7 +358,7 @@ object FClient: TFClient
       ParentBackground = False
       TabOrder = 2
       Visible = False
-      object FSQLEditor: TSynMemo
+      object FSQLEditorSynMemo: TSynMemo
         Left = 2
         Top = 2
         Width = 463
@@ -549,7 +549,7 @@ object FClient: TFClient
         Constraints.MinHeight = 50
         ParentBackground = False
         TabOrder = 0
-        object FBuilderEditor: TSynMemo
+        object FBuilderSynMemo: TSynMemo
           Left = 2
           Top = 2
           Width = 463
@@ -1059,13 +1059,6 @@ object FClient: TFClient
         OnEnter = FRTFEnter
         OnExit = FRTFExit
       end
-      object TSXML: TTabSheet
-        Caption = 'TSXML'
-        ExplicitLeft = 0
-        ExplicitTop = 0
-        ExplicitWidth = 0
-        ExplicitHeight = 0
-      end
       object FHexEditor: TMPHexEditorEx
         Left = 2
         Top = 27
@@ -1128,7 +1121,7 @@ object FClient: TFClient
         Align = alTop
         BevelOuter = bvNone
         ParentBackground = False
-        TabOrder = 5
+        TabOrder = 3
       end
     end
     object PWorkbench: TPanel_Ext
@@ -1331,7 +1324,7 @@ object FClient: TFClient
     object mlOpenInNewTab: TMenuItem
       Action = aPOpenInNewTab
     end
-    object N9: TMenuItem
+    object N01: TMenuItem
       Caption = '-'
     end
     object mlFImport: TMenuItem
@@ -1385,7 +1378,7 @@ object FClient: TFClient
         Caption = 'aFExportHTML'
       end
     end
-    object N8: TMenuItem
+    object N02: TMenuItem
       Caption = '-'
     end
     object mlECopy: TMenuItem
@@ -1394,7 +1387,7 @@ object FClient: TFClient
     object mlEPaste: TMenuItem
       Caption = 'aEPaste'
     end
-    object N17: TMenuItem
+    object N03: TMenuItem
       Caption = '-'
     end
     object mlDCreate: TMenuItem
@@ -1439,13 +1432,13 @@ object FClient: TFClient
     object mlDDelete: TMenuItem
       Action = aDDelete
     end
-    object N4: TMenuItem
+    object N04: TMenuItem
       Caption = '-'
     end
     object mlDEmpty: TMenuItem
       Caption = 'aDEmpty'
     end
-    object N16: TMenuItem
+    object N05: TMenuItem
       Caption = '-'
     end
     object mlERename: TMenuItem
@@ -1628,7 +1621,7 @@ object FClient: TFClient
     object miNOpenInNewTab: TMenuItem
       Action = aPOpenInNewTab
     end
-    object N7: TMenuItem
+    object N06: TMenuItem
       Caption = '-'
     end
     object miNImport: TMenuItem
@@ -1682,7 +1675,7 @@ object FClient: TFClient
         Caption = 'aFExportHTML'
       end
     end
-    object N5: TMenuItem
+    object N07: TMenuItem
       Caption = '-'
     end
     object miNCopy: TMenuItem
@@ -1691,7 +1684,7 @@ object FClient: TFClient
     object miNPaste: TMenuItem
       Caption = 'aEPaste'
     end
-    object N18: TMenuItem
+    object N08: TMenuItem
       Caption = '-'
     end
     object miNCreate: TMenuItem
@@ -1736,13 +1729,13 @@ object FClient: TFClient
     object miNDelete: TMenuItem
       Action = aDDelete
     end
-    object N15: TMenuItem
+    object N09: TMenuItem
       Caption = '-'
     end
     object miNEmpty: TMenuItem
       Caption = 'aDEmpty'
     end
-    object N6: TMenuItem
+    object N10: TMenuItem
       Caption = '-'
     end
     object miNRename: TMenuItem
@@ -1770,7 +1763,7 @@ object FClient: TFClient
     object smECopyToFile: TMenuItem
       Caption = 'aECopyToFile'
     end
-    object N13: TMenuItem
+    object N11: TMenuItem
       Caption = '-'
     end
     object smESelectAll: TMenuItem
@@ -1795,7 +1788,7 @@ object FClient: TFClient
     object gmDEditRecord: TMenuItem
       Caption = 'aDEditRecord'
     end
-    object N1: TMenuItem
+    object N12: TMenuItem
       Caption = '-'
     end
     object gmECut: TMenuItem
@@ -1816,7 +1809,7 @@ object FClient: TFClient
     object gmEDelete: TMenuItem
       Caption = 'aEDelete'
     end
-    object N2: TMenuItem
+    object N13: TMenuItem
       Caption = '-'
     end
     object gmECopyToFile: TMenuItem
@@ -1827,7 +1820,7 @@ object FClient: TFClient
       Caption = 'aPasteFromFile'
       OnClick = aEPasteFromFileExecute
     end
-    object N12: TMenuItem
+    object N14: TMenuItem
       Caption = '-'
     end
     object gmFExport: TMenuItem
@@ -1848,7 +1841,7 @@ object FClient: TFClient
         Caption = 'aFExportHTML'
       end
     end
-    object N14: TMenuItem
+    object N15: TMenuItem
       Caption = '-'
     end
     object gmFilter: TMenuItem
@@ -1865,7 +1858,7 @@ object FClient: TFClient
     object mpDRunSelection: TMenuItem
       Caption = 'aDRunSelection'
     end
-    object N10: TMenuItem
+    object N16: TMenuItem
       Caption = '-'
     end
     object mpECut: TMenuItem
@@ -1880,7 +1873,7 @@ object FClient: TFClient
     object mpEDelete: TMenuItem
       Caption = 'mpEDelete'
     end
-    object N11: TMenuItem
+    object N17: TMenuItem
       Caption = '-'
     end
     object mpECopyToFile: TMenuItem
@@ -1889,7 +1882,7 @@ object FClient: TFClient
     object mpEPasteFromFile: TMenuItem
       Caption = 'mpEPasteFromFile'
     end
-    object N29: TMenuItem
+    object N18: TMenuItem
       Caption = '-'
     end
     object mpESelectAll: TMenuItem
@@ -1912,7 +1905,7 @@ object FClient: TFClient
     object tmEDelete: TMenuItem
       Caption = 'aEDelete'
     end
-    object N28: TMenuItem
+    object N19: TMenuItem
       Caption = '-'
     end
     object tmESelectAll: TMenuItem
@@ -1979,7 +1972,7 @@ object FClient: TFClient
     OnPaintItem = FSQLEditorCompletionPaintItem
     OnShow = FSQLEditorCompletionShow
     ShortCut = 16416
-    Editor = FSQLEditor
+    Editor = FSQLEditorSynMemo
     Left = 265
     Top = 208
   end
@@ -2003,7 +1996,7 @@ object FClient: TFClient
     object mbBOpenInNewTab: TMenuItem
       Action = aPOpenInNewTab
     end
-    object N33: TMenuItem
+    object N20: TMenuItem
       Caption = '-'
     end
     object mbBAdd: TMenuItem
@@ -2045,7 +2038,7 @@ object FClient: TFClient
       Caption = 'miHStatementIntoSQLEditor'
       OnClick = miHStatementIntoSQLEditorClick
     end
-    object N30: TMenuItem
+    object N21: TMenuItem
       Caption = '-'
     end
     object miHExpand: TMenuItem
@@ -2054,7 +2047,7 @@ object FClient: TFClient
     object miHCollapse: TMenuItem
       Action = aPCollapse
     end
-    object N27: TMenuItem
+    object N22: TMenuItem
       Caption = '-'
     end
     object miHOpen: TMenuItem
@@ -2071,13 +2064,13 @@ object FClient: TFClient
     object miHRun: TMenuItem
       Action = aHRun
     end
-    object N26: TMenuItem
+    object N24: TMenuItem
       Caption = '-'
     end
     object miHCopy: TMenuItem
       Caption = 'aECopy'
     end
-    object N24: TMenuItem
+    object N25: TMenuItem
       Caption = '-'
     end
     object miHProperties: TMenuItem
@@ -2120,7 +2113,7 @@ object FClient: TFClient
     object mwPOpenInNewTab: TMenuItem
       Action = aPOpenInNewTab
     end
-    object N36: TMenuItem
+    object N26: TMenuItem
       Caption = '-'
     end
     object mwFImport: TMenuItem
@@ -2177,7 +2170,7 @@ object FClient: TFClient
         Caption = 'aFExportBitmap'
       end
     end
-    object N32: TMenuItem
+    object N27: TMenuItem
       Caption = '-'
     end
     object mwAddTable: TMenuItem
@@ -2193,7 +2186,7 @@ object FClient: TFClient
     object mwEDelete: TMenuItem
       Caption = 'aEDelete'
     end
-    object N34: TMenuItem
+    object N28: TMenuItem
       Caption = '-'
     end
     object mwDCreate: TMenuItem
@@ -2221,13 +2214,13 @@ object FClient: TFClient
     object mwDDelete: TMenuItem
       Action = aDDelete
     end
-    object N31: TMenuItem
+    object N29: TMenuItem
       Caption = '-'
     end
     object mwDEmpty: TMenuItem
       Caption = 'aDEmpty'
     end
-    object N35: TMenuItem
+    object N30: TMenuItem
       Caption = '-'
     end
     object mwDProperties: TMenuItem
@@ -2240,6 +2233,11 @@ object FClient: TFClient
     OnPopup = MToolBarPopup
     Left = 160
     Top = 8
+    object mtObjectBrowser: TMenuItem
+      Caption = 'mtObjectBrowser'
+      Enabled = False
+      OnClick = ToolBarTabsClick
+    end
     object mtDataBrowser: TMenuItem
       Caption = 'mtDataBrowser'
       OnClick = ToolBarTabsClick

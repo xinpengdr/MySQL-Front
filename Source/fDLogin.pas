@@ -45,7 +45,7 @@ type
   public
     Filename: TFileName;
     Password: string;
-    Account: TSAccount;
+    Account: TAAccount;
     Username: string;
     Window: TForm;
     function Execute(): Boolean;

@@ -10,7 +10,7 @@ uses
 
 type
   TDSTableItem = record
-    Account: TSAccount;
+    Account: TAAccount;
     DatabaseName: string;
     TableName: string;
   end;

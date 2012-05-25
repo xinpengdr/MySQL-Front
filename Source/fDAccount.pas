@@ -106,7 +106,7 @@ type
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Password: string;
-    Account: TSAccount;
+    Account: TAAccount;
     ShowType: TDAccountShowType;
     Username: string;
     function Execute(): Boolean;
@@ -407,7 +407,7 @@ end;
 
 procedure TDAccount.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
-  NewAccount: TSAccount;
+  NewAccount: TAAccount;
 begin
   if (ModalResult = mrOk) then
   begin
@@ -420,7 +420,7 @@ begin
 
     if (CanClose) then
     begin
-      NewAccount := TSAccount.Create(Accounts);
+      NewAccount := TAAccount.Create(Accounts);
       if (Assigned(Account)) then
         NewAccount.Assign(Account);
 

@@ -306,7 +306,7 @@ type
 
   TPPreferences = class(TRegistry)
   type
-    TToolbarTabs = set of (ttDataBrowser, ttObjectIDE, ttQueryBuilder, ttSQLEditor, ttDiagram);
+    TToolbarTabs = set of (ttObjectBrowser, ttDataBrowser, ttObjectIDE, ttQueryBuilder, ttSQLEditor, ttDiagram);
   private
     FLanguage: TPLanguage;
     FLargeImages: TImageList;
@@ -414,7 +414,7 @@ type
   end;
 
 function EncodeVersion(const AMajor, AMinor, APatch, ABuild: Integer): Integer;
-function XMLNode(const XML: IXMLNode; const Path: string; const NodeAutoCreate: Boolean = False): IXMLNode;
+function XMLNode(const XML: IXMLNode; const Path: string; const NodeAutoCreate: Boolean = False): IXMLNode; overload;
 
 function IsConnectedToInternet(): Boolean;
 function VersionStrToVersion(VersionStr: string): Integer;
@@ -427,7 +427,7 @@ implementation {***************************************************************}
 
 uses
   Consts, CommCtrl, SHFolder, WinInet, ShellAPI, ImgList, ShlObj,
-  StrUtils;
+  StrUtils, Math;
 
 const
   INTERNET_CONNECTION_CONFIGURED = $40;
@@ -1389,7 +1389,7 @@ begin
   LanguageFilename := 'English.ini';
   SkinFilename := 'Gio_medium.ini';
   TabsVisible := False;
-  ToolbarTabs := [ttDataBrowser, ttSQLEditor];
+  ToolbarTabs := [ttObjectBrowser, ttDataBrowser, ttSQLEditor];
   UpdateCheck := utNever;
   UpdateChecked := Now();
 
@@ -1721,6 +1721,8 @@ begin
   if (Assigned(XMLNode(XML, 'log/dbresult'))) then TryStrToBool(XMLNode(XML, 'log/dbresult').Attributes['visible'], LogResult);
   if (Assigned(XMLNode(XML, 'log/time'))) then TryStrToBool(XMLNode(XML, 'log/time').Attributes['visible'], LogTime);
   if (Assigned(XMLNode(XML, 'windowstate'))) then TryStrToWindowState(XMLNode(XML, 'windowstate').Text, WindowState);
+  if (Assigned(XMLNode(XML, 'toolbar/objects')) and TryStrToBool(XMLNode(XML, 'toolbar/objects').Attributes['visible'], Visible)) then
+    if (Visible) then ToolbarTabs := ToolbarTabs + [ttObjectBrowser] else ToolbarTabs := ToolbarTabs - [ttObjectBrowser];
   if (Assigned(XMLNode(XML, 'toolbar/browser')) and TryStrToBool(XMLNode(XML, 'toolbar/browser').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttDataBrowser] else ToolbarTabs := ToolbarTabs - [ttDataBrowser];
   if (Assigned(XMLNode(XML, 'toolbar/ide')) and TryStrToBool(XMLNode(XML, 'toolbar/ide').Attributes['visible'], Visible)) then
@@ -1876,7 +1878,7 @@ end;
 
 function TPPreferences.LoadStr(const Index: Integer; const Param1: string = ''; const Param2: string = ''; const Param3: string = ''): string;
 begin
-  SetLEngth(Result, 100);
+  SetLength(Result, 100);
   if (Assigned(Language) and (Language.Strs[Index] <> '')) then
     Result := Language.Strs[Index]
   else
@@ -1990,6 +1992,7 @@ begin
   XMLNode(XML, 'log/time').Attributes['visible'] := LogTime;
   if (WindowState in [wsNormal, wsMaximized	]) then
     XMLNode(XML, 'windowstate').Text := WindowStateToStr(WindowState);
+  XMLNode(XML, 'toolbar/objects').Attributes['visible'] := ttObjectBrowser in ToolbarTabs;
   XMLNode(XML, 'toolbar/browser').Attributes['visible'] := ttDataBrowser in ToolbarTabs;
   XMLNode(XML, 'toolbar/ide').Attributes['visible'] := ttObjectIDE in ToolbarTabs;
   XMLNode(XML, 'toolbar/builder').Attributes['visible'] := ttQueryBuilder in ToolbarTabs;

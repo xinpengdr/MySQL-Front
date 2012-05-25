@@ -38,7 +38,7 @@ const
 type
   TLastDataSource = record ResultSet: TCResultSet; DataSet: TDataSet; end;
   TSynMemoBeforeDrag = record SelStart: Integer; SelLength: Integer; end;
-  TFListSortColumn = array [0 .. 7] of record Index: Integer; Order: Integer; end;
+  TFListSortColumn = array [ckServer .. ckVariables] of record Index: Integer; Order: Integer; end;
   TSQLEditor = record Filename: TFileName; CodePage: Cardinal; end;
 
 type
@@ -78,7 +78,7 @@ type
     FBlobSearch: TEdit;
     FBookmarks: TListView;
     FBuilder: TacQueryBuilder;
-    FBuilderEditor: TSynMemo;
+    FBuilderSynMemo: TSynMemo;
     FFilter: TComboBox_Ext;
     FFilterEnabled: TToolButton;
     FGrid: TMySQLDBGrid;
@@ -87,7 +87,7 @@ type
     FImage: TImage;
     FLimit: TEdit;
     FLimitEnabled: TToolButton;
-    FList: TListView_Ext;
+    FServerListView: TListView_Ext;
     FLog: TRichEdit;
     FNavigator: TTreeView_Ext;
     FObjectIDEGrid: TMySQLDBGrid;
@@ -95,7 +95,7 @@ type
     FQuickSearch: TEdit;
     FQuickSearchEnabled: TToolButton;
     FRTF: TRichEdit;
-    FSQLEditor: TSynMemo;
+    FSQLEditorSynMemo: TSynMemo;
     FSQLEditorCompletion: TSynCompletionProposal;
     FSQLEditorPrint: TSynEditPrint;
     FSQLEditorSearch: TSynEditSearch;
@@ -281,6 +281,15 @@ type
     MWorkbench: TPopupMenu;
     mwPOpenInNewTab: TMenuItem;
     mwPOpenInNewWinodw: TMenuItem;
+    N01: TMenuItem;
+    N02: TMenuItem;
+    N03: TMenuItem;
+    N04: TMenuItem;
+    N05: TMenuItem;
+    N06: TMenuItem;
+    N07: TMenuItem;
+    N08: TMenuItem;
+    N09: TMenuItem;
     N10: TMenuItem;
     N11: TMenuItem;
     N12: TMenuItem;
@@ -290,25 +299,17 @@ type
     N16: TMenuItem;
     N17: TMenuItem;
     N18: TMenuItem;
+    N19: TMenuItem;
+    N20: TMenuItem;
+    N21: TMenuItem;
+    N22: TMenuItem;
     N23: TMenuItem;
     N24: TMenuItem;
+    N25: TMenuItem;
     N26: TMenuItem;
     N27: TMenuItem;
     N28: TMenuItem;
     N29: TMenuItem;
-    N30: TMenuItem;
-    N31: TMenuItem;
-    N32: TMenuItem;
-    N33: TMenuItem;
-    N34: TMenuItem;
-    N35: TMenuItem;
-    N36: TMenuItem;
-    N4: TMenuItem;
-    N5: TMenuItem;
-    N6: TMenuItem;
-    N7: TMenuItem;
-    N8: TMenuItem;
-    N9: TMenuItem;
     OpenDialog: TOpenDialog_Ext;
     PBlob: TPanel_Ext;
     PBlobSpacer: TPanel_Ext;
@@ -320,7 +321,7 @@ type
     PDataBrowserSpacer: TPanel_Ext;
     PGrid: TPanel_Ext;
     PHeader: TPanel_Ext;
-    PList: TPanel_Ext;
+    PListView: TPanel_Ext;
     PLog: TPanel_Ext;
     PLogHeader: TPanel_Ext;
     PNavigator: TPanel_Ext;
@@ -378,7 +379,7 @@ type
     ToolBarFilterEnabled: TToolBar;
     ToolBarLimitEnabled: TToolBar;
     ToolBarQuickSearchEnabled: TToolBar;
-    TSXML: TTabSheet;
+    mtObjectBrowser: TMenuItem;
     procedure aBAddExecute(Sender: TObject);
     procedure aBDeleteExecute(Sender: TObject);
     procedure aBEditExecute(Sender: TObject);
@@ -503,21 +504,6 @@ type
     procedure FHexEditorKeyPress(Sender: TObject; var Key: Char);
     procedure FLimitChange(Sender: TObject);
     procedure FLimitEnabledClick(Sender: TObject);
-    procedure FListChanging(Sender: TObject; Item: TListItem;
-      Change: TItemChange; var AllowChange: Boolean);
-    procedure FListColumnClick(Sender: TObject; Column: TListColumn);
-    procedure FListCompare(Sender: TObject; Item1: TListItem;
-      Item2: TListItem; Data: Integer; var Compare: Integer);
-    procedure FListDragOver(Sender, Source: TObject; X, Y: Integer;
-      State: TDragState; var Accept: Boolean);
-    procedure FListEdited(Sender: TObject; Item: TListItem;
-      var S: string);
-    procedure FListEditing(Sender: TObject; Item: TListItem;
-      var AllowEdit: Boolean);
-    procedure FListEnter(Sender: TObject);
-    procedure FListExit(Sender: TObject);
-    procedure FListSelectItem(Sender: TObject; Item: TListItem;
-      Selected: Boolean);
     procedure FLogEnter(Sender: TObject);
     procedure FLogExit(Sender: TObject);
     procedure FLogSelectionChange(Sender: TObject);
@@ -572,9 +558,24 @@ type
     procedure FTextEnter(Sender: TObject);
     procedure FTextExit(Sender: TObject);
     procedure FTextKeyPress(Sender: TObject; var Key: Char);
+    procedure ListViewChanging(Sender: TObject; Item: TListItem;
+      Change: TItemChange; var AllowChange: Boolean);
+    procedure ListViewColumnClick(Sender: TObject; Column: TListColumn);
+    procedure ListViewCompare(Sender: TObject; Item1: TListItem;
+      Item2: TListItem; Data: Integer; var Compare: Integer);
     procedure ListViewDblClick(Sender: TObject);
+    procedure ListViewDragOver(Sender, Source: TObject; X, Y: Integer;
+      State: TDragState; var Accept: Boolean);
+    procedure ListViewEdited(Sender: TObject; Item: TListItem;
+      var S: string);
+    procedure ListViewEditing(Sender: TObject; Item: TListItem;
+      var AllowEdit: Boolean);
+    procedure ListViewEnter(Sender: TObject);
+    procedure ListViewExit(Sender: TObject);
     procedure ListViewKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
+    procedure ListViewSelectItem(Sender: TObject; Item: TListItem;
+      Selected: Boolean);
     procedure mbBOpenClick(Sender: TObject);
     procedure MBookmarksPopup(Sender: TObject);
     procedure MetadataProviderGetSQLFieldNames(Sender: TacBaseMetadataProvider;
@@ -641,6 +642,8 @@ type
     procedure TreeViewMouseUp(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
   type
+    TNewLineFormat = (nlWindows, nlUnix, nlMacintosh);
+    TTabState = set of (tsLoading, tsActive);
     TView = (avObjectBrowser, avDataBrowser, avObjectIDE, avQueryBuilder, avSQLEditor, avDiagram);
     TToolBarData = record
       View: TView;
@@ -649,11 +652,128 @@ type
       AddressMRU: TMRUList;
       Caption: string;
       CurrentAddress: Integer;
-      RefreshAll: Boolean;
       tbPropertiesAction: TBasicAction;
     end;
-    TNewLineFormat = (nlWindows, nlUnix, nlMacintosh);
-    TTabState = set of (tsLoading, tsActive);
+
+    TCObjectDesktop = class(TCObject.TDesktop)
+    private
+      FFClient: TFClient;
+    protected
+      property FClient: TFClient read FFClient;
+    public
+      constructor Create(const AFClient: TFClient; const ACObject: TCObject);
+    end;
+
+    TTableDesktop = class(TCObjectDesktop)
+    private
+      FColumnIndices: array of Integer;
+      FXML: IXMLNode;
+      function GetColumnIndex(Index: Integer): Integer;
+      function GetColunns(): Integer;
+      function GetFilter(Index: Integer): string;
+      function GetFilterCount(): Integer;
+      function GetGridVisible(FieldName: string): Boolean;
+      function GetGridWidth(FieldName: string): Integer;
+      function GetGridXML(FieldName: string): IXMLNode;
+      function GetLimit(): Integer;
+      function GetLimited(): Boolean;
+      function GetListView(): TListView;
+      function GetTable(): TCTable; inline;
+      function GetXML(): IXMLNode;
+      procedure SetColumnIndex(Index: Integer; const Value: Integer);
+      procedure SetGridVisible(FieldName: string; const Visible: Boolean);
+      procedure SetGridWidth(FieldName: string; const GridWidth: Integer);
+      procedure SetLimit(const Limit: Integer);
+      procedure SetLimited(const ALimited: Boolean);
+    protected
+      FListView: TListView;
+      procedure Clear(); override;
+      procedure SaveToXML(); override;
+      property GridXML[FieldName: string]: IXMLNode read GetGridXML;
+    public
+      procedure AddFilter(const AFilter: string);
+      constructor Create(const AFClient: TFClient; const ATable: TCTable);
+      destructor Destroy(); override;
+      property Columns: Integer read GetColunns;
+      property ColumnIndices[Index: Integer]: Integer read GetColumnIndex write SetColumnIndex;
+      property Filters[Index: Integer]: string read GetFilter;
+      property FilterCount: Integer read GetFilterCount;
+      property GridVisible[FieldName: string]: Boolean read GetGridVisible write SetGridVisible;
+      property GridWidths[FieldName: string]: Integer read GetGridWidth write SetGridWidth;
+      property Limit: Integer read GetLimit write SetLimit;
+      property Limited: Boolean read GetLimited write SetLimited;
+      property ListView: TListView read GetListView;
+      property Table: TCTable read GetTable;
+      property XML: IXMLNode read GetXML;
+    end;
+
+    TViewDesktop = class(TTableDesktop)
+    private
+      FSynMemo: TSynMemo;
+      function GetSynMemo(): TSynMemo;
+    public
+      constructor Create(const AFClient: TFClient; const AView: TCView);
+      destructor Destroy(); override;
+      property SynMemo: TSynMemo read GetSynMemo write FSynMemo;
+    end;
+
+    TRoutineDesktop = class(TCObjectDesktop)
+    private
+      function GetSynMemo(): TSynMemo;
+    protected
+      FSynMemo: TSynMemo;
+    public
+      constructor Create(const AFClient: TFClient; const ARoutine: TCRoutine);
+      destructor Destroy(); override;
+      property SynMemo: TSynMemo read GetSynMemo write FSynMemo;
+    end;
+
+    TEventDesktop = class(TCObjectDesktop)
+    private
+      function GetSynMemo(): TSynMemo;
+    protected
+      FSynMemo: TSynMemo;
+    public
+      constructor Create(const AFClient: TFClient; const AEvent: TCEvent);
+      destructor Destroy(); override;
+      property SynMemo: TSynMemo read GetSynMemo write FSynMemo;
+    end;
+
+    TTriggerDesktop = class(TCObjectDesktop)
+    private
+      function GetSynMemo(): TSynMemo;
+    protected
+      FSynMemo: TSynMemo;
+    public
+      constructor Create(const AFClient: TFClient; const ATrigger: TCTrigger);
+      destructor Destroy(); override;
+      property SynMemo: TSynMemo read GetSynMemo write FSynMemo;
+    end;
+
+    TDatabaseDesktop = class(TCDatabase.TDesktop)
+    private
+      FFClient: TFClient;
+      FXML: IXMLNode;
+      function GetDatabase(): TCDatabase; inline;
+      function GetListView(): TListView;
+      function GetWorkbench(): TWWorkbench;
+      function GetXML(): IXMLNode;
+    protected
+      FListView: TListView;
+      FWorkbench: TWWorkbench;
+      property FClient: TFClient read FFClient;
+    public
+      procedure CloseQuery(Sender: TObject; var CanClose: Boolean);
+      constructor Create(const AFClient: TFClient; const ADatabase: TCDatabase);
+      destructor Destroy(); override;
+      function TableCount(): Integer; override;
+      procedure SaveToXML(); override;
+      property Database: TCDatabase read GetDatabase;
+      property ListView: TListView read GetListView;
+      property Workbench: TWWorkbench read GetWorkbench;
+      property XML: IXMLNode read GetXML;
+    end;
+
     TWanted = class
     private
       FAction: TAction;
@@ -678,8 +798,10 @@ type
       constructor Create(const AFClient: TFClient);
       procedure Execute();
     end;
+
   private
     ActiveControlOnDeactivate: TWinControl;
+    ActiveListView: TListView;
     aDRunExecuteSelStart: Integer;
     CloseButton: TPicture;
     CreateLine: Boolean;
@@ -693,13 +815,13 @@ type
     FSQLHistoryMenuNode: TTreeNode;
     FWorkbenchMouseDownPoint: TPoint;
     GIFImage: TGIFImage;
+    HostsListView: TListView;
     IgnoreFGridTitleClick, UseNavigatorTimer: Boolean;
     JPEGImage: TJPEGImage;
     LastDataSource: TLastDataSource;
     LastFNavigatorSelected: string;
     LastObjectIDEAddress: string;
     LastSelectedDatabase: string;
-    LastSelectedImageIndex: Integer;
     LastSelectedTable: string;
     LastTableView: TView;
     LeftMousePressed: Boolean;
@@ -713,9 +835,13 @@ type
     PasteMode: Boolean;
     PNGImage: TPNGImage;
     PResultHeight: Integer;
+    ProcessesListView: TListView;
     SQLEditor: TSQLEditor;
+    StatiListView: TListView;
     SynMemoBeforeDrag: TSynMemoBeforeDrag;
     UsedView: TView;
+    UsersListView: TListView;
+    VariablesListView: TListView;
     Wanted: TWanted;
     procedure aBookmarkExecute(Sender: TObject);
     function ViewToParam(const AView: TView): Variant;
@@ -752,7 +878,11 @@ type
     procedure BeforeExecuteSQL(Sender: TObject);
     procedure BeginEditLabel(Sender: TObject);
     procedure ClientRefresh(Sender: TObject);
-    function ContentWidthIndexFromImageIndex(AImageIndex: Integer): Integer;
+    function ColumnWidthKindFromImageIndex(const AImageIndex: Integer): TADesktop.TColumnWidthKind;
+    function CreateDesktop(const CObject: TCObject): TCObject.TDesktop;
+    function CreateListView(): TListView;
+    function CreateSynMemo(): TSynMemo;
+    function CreateWorkbench(const ADatabase: TCDatabase): TWWorkbench;
     function Dragging(const Sender: TObject): Boolean;
     procedure EndEditLabel(Sender: TObject);
     function FBuilderActiveSelectList(): TacQueryBuilderSelectListControl;
@@ -769,8 +899,6 @@ type
     procedure FHTMLShow(Sender: TObject);
     procedure FieldSetText(Sender: TField; const Text: string);
     procedure FImageShow(Sender: TObject);
-    procedure FListEmptyExecute(Sender: TObject);
-    procedure FListRefresh(Sender: TObject);
     procedure FNavigatorEmptyExecute(Sender: TObject);
     procedure FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
     procedure FormClientEvent(const ClientEvent: TCClient.TEvent);
@@ -793,7 +921,9 @@ type
     procedure FWorkbenchPrintExecute(Sender: TObject);
     procedure FWorkbenchValidateControl(Sender: TObject; Control: TWControl);
     function FWorkbenchValidateForeignKeys(Sender: TObject; WTable: TWTable): Boolean;
-    function GetView(): TView;
+    function GetActiveListView(): TListView;
+    function GetActiveSynMemo(): TSynMemo;
+    function GetActiveWorkbench(): TWWorkbench;
     function GetAddress(): string;
     function GetFocusedCItem(): TCItem;
     function GetFocusedDatabaseName(): string;
@@ -805,12 +935,14 @@ type
     function GetSelectedItem(): string;
     function GetSelectedNavigator(): string;
     function GetSelectedTable(): string;
-    function GetSynMemo(): TSynMemo;
+    function GetView(): TView;
     function GetWindow(): TForm_Ext;
-    function GetWorkbench(): TWWorkbench;
     procedure gmFilterClearClick(Sender: TObject);
     procedure gmFilterIntoFilterClick(Sender: TObject);
     procedure ImportError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
+    procedure ListViewEmpty(Sender: TObject);
+    procedure ListViewInitialize(const Sender: TObject; const ListView: TListView; const Data: TCustomData);
+    procedure ListViewRefresh(const Sender: TObject; const ListView: TListView; const Data: TCustomData = nil);
     procedure MGridHeaderMenuOrderClick(Sender: TObject);
     procedure MGridTitleMenuVisibleClick(Sender: TObject);
     function NavigatorNodeToAddress(const Node: TTreeNode): string;
@@ -838,7 +970,6 @@ type
     procedure SetSelectedTable(const ATableName: string);
     procedure SQLError(DataSet: TDataSet; E: EDatabaseError; var Action: TDataAction);
     procedure SQLHelp();
-    procedure StoreFListColumnWidths();
     procedure SynMemoApllyPreferences(const SynMemo: TSynMemo);
     procedure SynMemoPrintExecute(Sender: TObject);
     procedure TableOpen(Sender: TObject);
@@ -861,6 +992,8 @@ type
     procedure WMNotify(var Message: TWMNotify); message WM_NOTIFY;
     procedure WMParentNotify(var Message: TWMParentNotify); message WM_PARENTNOTIFY;
     procedure WMTimer(var Message: TWMTimer); message WM_TIMER;
+    property ActiveSynMemo: TSynMemo read GetActiveSynMemo;
+    property ActiveWorkbench: TWWorkbench read GetActiveWorkbench;
     property FocusedCItem: TCItem read GetFocusedCItem;
     property FocusedDatabases: string read GetFocusedDatabaseName;
     property FocusedTables: string read GetFocusedTableName;
@@ -868,8 +1001,6 @@ type
     property SelectedImageIndex: Integer read GetSelectedImageIndex;
     property SelectedItem: string read GetSelectedItem write SetSelectedItem;
     property SelectedNavigator: string read GetSelectedNavigator;
-    property SynMemo: TSynMemo read GetSynMemo;
-    property Workbench: TWWorkbench read GetWorkbench;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
     property ResultSet: TCResultSet read GetResultSet;
@@ -984,6 +1115,463 @@ begin
     Result := ReplaceStr(Result, ' ', '_');
     Inc(I);
   end;
+end;
+
+{ TFClient.TCObjectDesktop ****************************************************}
+
+constructor TFClient.TCObjectDesktop.Create(const AFClient: TFClient; const ACObject: TCObject);
+begin
+  FFClient := AFClient;
+
+  inherited Create(ACObject);
+end;
+
+{ TFClient.TTableDesktop ******************************************************}
+
+procedure TFClient.TTableDesktop.AddFilter(const AFilter: string);
+var
+  FiltersXML: IXMLNode;
+  I: Integer;
+begin
+  if (AFilter <> '') then
+  begin
+    FiltersXML := XMLNode(XML, 'filters', True);
+    for I := FiltersXML.ChildNodes.Count - 1 downto 0 do
+      if (FiltersXML.ChildNodes[I].Text = AFilter) then
+        FiltersXML.ChildNodes.Delete(I);
+    try
+      FiltersXML.AddChild('filter').NodeValue := AFilter;
+    except
+      // Some characters are not storable inside XML - so just ignore them
+    end;
+  end;
+
+  while (FiltersXML.ChildNodes.Count > 10) do
+    FiltersXML.ChildNodes.Delete(0);
+end;
+
+procedure TFClient.TTableDesktop.Clear();
+begin
+  SetLength(FColumnIndices, 0);
+
+  inherited;
+end;
+
+constructor TFClient.TTableDesktop.Create(const AFClient: TFClient; const ATable: TCTable);
+begin
+  inherited Create(AFClient, ATable);
+
+  FXML := nil;
+end;
+
+destructor TFClient.TTableDesktop.Destroy();
+begin
+  inherited;
+
+  if (Assigned(FListView)) then
+  begin
+    FListView.Items.BeginUpdate();
+    FListView.Items.Clear();
+    FListView.Items.EndUpdate();
+    FListView.Free();
+  end;
+end;
+
+function TFClient.TTableDesktop.GetColumnIndex(Index: Integer): Integer;
+begin
+  Result := FColumnIndices[Index];
+end;
+
+function TFClient.TTableDesktop.GetColunns(): Integer;
+begin
+  Result := Length(FColumnIndices);
+end;
+
+function TFClient.TTableDesktop.GetFilter(Index: Integer): string;
+var
+  FiltersXML: IXMLNode;
+begin
+  Result := '';
+
+  if (Assigned(XML)) then
+  begin
+    FiltersXML := XMLNode(XML, 'filters', True);
+    if (Assigned(FiltersXML) and (Index < FiltersXML.ChildNodes.Count)) then
+      Result := XMLNode(XML, 'filters').ChildNodes[FiltersXML.ChildNodes.Count - Index - 1].Text;
+  end;
+end;
+
+function TFClient.TTableDesktop.GetFilterCount(): Integer;
+begin
+  Result := 0;
+
+  if (Assigned(XML)) then
+    if (Assigned(XMLNode(XML, 'filters'))) then
+      Result := XMLNode(XML, 'filters').ChildNodes.Count;
+end;
+
+function TFClient.TTableDesktop.GetGridVisible(FieldName: string): Boolean;
+begin
+  Result := True;
+
+  if (Assigned(GridXML[FieldName]) and Assigned(XMLNode(GridXML[FieldName], 'visible'))) then
+    TryStrToBool(XMLNode(GridXML[FieldName], 'visible').Text, Result);
+end;
+
+function TFClient.TTableDesktop.GetGridWidth(FieldName: string): Integer;
+begin
+  Result := -1;
+
+  if (Assigned(GridXML[FieldName]) and Assigned(XMLNode(GridXML[FieldName], 'width'))) then
+    TryStrToInt(XMLNode(GridXML[FieldName], 'width').Text, Result);
+end;
+
+function TFClient.TTableDesktop.GetGridXML(FieldName: string): IXMLNode;
+var
+  GridXML: IXMLNode;
+  I: Integer;
+begin
+  GridXML := XMLNode(XML, 'grid');
+  Result := nil;
+  if (Assigned(GridXML)) then
+    for I := 0 to GridXML.ChildNodes.Count - 1 do
+      if ((GridXML.ChildNodes[I].NodeName = 'field') and (lstrcmpi(PChar(string(GridXML.ChildNodes[I].Attributes['name'])), PChar(FieldName)) = 0)) then
+        Result := GridXML.ChildNodes[I];
+end;
+
+function TFClient.TTableDesktop.GetLimit(): Integer;
+begin
+  Result := DefaultLimit;
+
+  if (Assigned(XML) and Assigned(XMLNode(XML, 'limit'))) then
+    TryStrToInt(XMLNode(XML, 'limit').Text, Result);
+
+  if (Result < 1) then
+    Result := DefaultLimit;
+end;
+
+function TFClient.TTableDesktop.GetLimited(): Boolean;
+begin
+  case (Table.Database.Client.Account.DefaultLimit) of
+    dlOff: Result := False;
+    dlRemember:
+      begin
+        Result := True;
+        if (Assigned(XML) and Assigned(XMLNode(XML, 'limit'))) then
+          TryStrToBool(XMLNode(XML, 'limit').Attributes['used'], Result);
+      end;
+    else // dlOn
+      Result := True;
+  end;
+end;
+
+function TFClient.TTableDesktop.GetXML(): IXMLNode;
+var
+  I: Integer;
+  Node: IXMLNode;
+begin
+  if (not Assigned(FXML) and Assigned(TFClient.TDatabaseDesktop(Table.Database.Desktop).XML)) then
+  begin
+    Node := XMLNode(TFClient.TDatabaseDesktop(Table.Database.Desktop).XML, 'tables', True);
+
+    for I := 0 to Node.ChildNodes.Count - 1 do
+      if ((Node.NodeName = 'table') and (lstrcmpi(PChar(string(Node.ChildNodes[I].Attributes['name'])), PChar(Table.Name)) = 0)) then
+        FXML := Node.ChildNodes[I];
+
+    if (not Assigned(FXML)) then
+    begin
+      FXML := Node.AddChild('table');
+      try
+        FXML.Attributes['name'] := Table.Name;
+      except
+        Node.ChildNodes.Delete(Node.ChildNodes.IndexOf(FXML));
+        FXML := nil;
+      end;
+    end;
+  end;
+
+  Result := FXML;
+end;
+
+function TFClient.TTableDesktop.GetListView(): TListView;
+begin
+  if (not Assigned(FListView)) then
+  begin
+    FListView := FClient.CreateListView();
+    FClient.ListViewInitialize(Self, FListView, Table);
+    FClient.ListViewRefresh(Self, FListView, Table);
+  end;
+
+  Result := FListView;
+end;
+
+function TFClient.TTableDesktop.GetTable(): TCTable;
+begin
+  Result := TCTable(CObject);
+end;
+
+procedure TFClient.TTableDesktop.SaveToXML();
+var
+  GridXML: IXMLNode;
+  I: Integer;
+begin
+  GridXML := XMLNode(XML, 'grid');
+  if (Assigned(GridXML)) then
+    for I := GridXML.ChildNodes.Count - 1 downto 0 do
+      if ((GridXML.ChildNodes[I].NodeName = 'field') and not Assigned(Table.FieldByName(GridXML.ChildNodes[I].Attributes['name']))) then
+        GridXML.ChildNodes.Delete(I);
+end;
+
+procedure TFClient.TTableDesktop.SetColumnIndex(Index: Integer; const Value: Integer);
+begin
+  if (Length(FColumnIndices) < Index + 1) then
+    SetLength(FColumnIndices, Index + 1);
+
+  FColumnIndices[Index] := Value;
+end;
+
+procedure TFClient.TTableDesktop.SetGridVisible(FieldName: string; const Visible: Boolean);
+begin
+  if (not Assigned(GridXML[FieldName])) then
+    XMLNode(XML, 'grid', True).AddChild('field').Attributes['name'] := FieldName;
+
+  XMLNode(GridXML[FieldName], 'visible', True).Text := BoolToStr(Visible, True);
+end;
+
+procedure TFClient.TTableDesktop.SetGridWidth(FieldName: string; const GridWidth: Integer);
+begin
+  if (GridWidth > 0) then
+  begin
+    if (not Assigned(GridXML[FieldName])) then
+      XMLNode(XML, 'grid', True).AddChild('field').Attributes['name'] := FieldName;
+
+    XMLNode(GridXML[FieldName], 'width', True).Text := IntToStr(GridWidth);
+  end;
+end;
+
+procedure TFClient.TTableDesktop.SetLimit(const Limit: Integer);
+begin
+  if (Limit > 0) then
+    XMLNode(XML, 'limit', True).Text := IntToStr(Limit);
+end;
+
+procedure TFClient.TTableDesktop.SetLimited(const ALimited: Boolean);
+begin
+  if (Table.Database.Client.Account.DefaultLimit = dlRemember) then
+    XMLNode(XML, 'limit', True).Attributes['used'] := BoolToStr(ALimited, True);
+end;
+
+{ TFClient.TViewDesktop *******************************************************}
+
+constructor TFClient.TViewDesktop.Create(const AFClient: TFClient; const AView: TCView);
+begin
+  FSynMemo := nil;
+
+  inherited Create(AFClient, AView);
+end;
+
+destructor TFClient.TViewDesktop.Destroy();
+begin
+  inherited;
+
+  if (Assigned(FSynMemo)) then
+    FSynMemo.Free();
+end;
+
+function TFClient.TViewDesktop.GetSynMemo(): TSynMemo;
+begin
+  if (not Assigned(FSynMemo)) then
+    FSynMemo := FClient.CreateSynMemo();
+
+  Result := FSynMemo;
+end;
+
+{ TFClient.TRoutineDesktop *******************************************************}
+
+constructor TFClient.TRoutineDesktop.Create(const AFClient: TFClient; const ARoutine: TCRoutine);
+begin
+  FSynMemo := nil;
+
+  inherited Create(AFClient, ARoutine);
+end;
+
+destructor TFClient.TRoutineDesktop.Destroy();
+begin
+  inherited;
+
+  if (Assigned(FSynMemo)) then
+    FSynMemo.Free();
+end;
+
+function TFClient.TRoutineDesktop.GetSynMemo(): TSynMemo;
+begin
+  if (not Assigned(FSynMemo)) then
+    FSynMemo := FClient.CreateSynMemo();
+
+  Result := FSynMemo;
+end;
+
+{ TFClient.TEventDesktop *******************************************************}
+
+constructor TFClient.TEventDesktop.Create(const AFClient: TFClient; const AEvent: TCEvent);
+begin
+  FSynMemo := nil;
+
+  inherited Create(AFClient, AEvent);
+end;
+
+destructor TFClient.TEventDesktop.Destroy();
+begin
+  inherited;
+
+  if (Assigned(FSynMemo)) then
+    FSynMemo.Free();
+end;
+
+function TFClient.TEventDesktop.GetSynMemo(): TSynMemo;
+begin
+  if (not Assigned(FSynMemo)) then
+    FSynMemo := FClient.CreateSynMemo();
+
+  Result := FSynMemo;
+end;
+
+{ TFClient.TTriggerDesktop *******************************************************}
+
+constructor TFClient.TTriggerDesktop.Create(const AFClient: TFClient; const ATrigger: TCTrigger);
+begin
+  FSynMemo := nil;
+
+  inherited Create(AFClient, ATrigger);
+end;
+
+destructor TFClient.TTriggerDesktop.Destroy();
+begin
+  inherited;
+
+  if (Assigned(FSynMemo)) then
+    FSynMemo.Free();
+end;
+
+function TFClient.TTriggerDesktop.GetSynMemo(): TSynMemo;
+begin
+  if (not Assigned(FSynMemo)) then
+    FSynMemo := FClient.CreateSynMemo();
+
+  Result := FSynMemo;
+end;
+
+{ TFClient.TDatabaseDesktop ***************************************************}
+
+procedure TFClient.TDatabaseDesktop.CloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  if (Assigned(FWorkbench) and FWorkbench.Modified) then
+    try
+      SysUtils.ForceDirectories(ExtractFilePath(FClient.Client.Account.DataPath + Database.Name));
+      FWorkbench.SaveToFile(FClient.Client.Account.DataPath + Database.Name + PathDelim + 'Diagram.xml');
+    except
+      raise EInOutError.Create(SysErrorMessage(GetLastError()) + '  (' + FClient.Client.Account.DataPath + Database.Name + ')');
+    end;
+end;
+
+constructor TFClient.TDatabaseDesktop.Create(const AFClient: TFClient; const ADatabase: TCDatabase);
+begin
+  FFClient := AFClient;
+
+  inherited Create(ADatabase);
+
+  FXML := nil;
+end;
+
+destructor TFClient.TDatabaseDesktop.Destroy();
+begin
+  if (Assigned(FListView)) then
+  begin
+    FListView.Items.BeginUpdate();
+    FListView.Items.Clear();
+    FListView.Items.EndUpdate();
+    FListView.Free();
+  end;
+  if (Assigned(FWorkbench)) then
+    FWorkbench.Free();
+
+  inherited;
+end;
+
+function TFClient.TDatabaseDesktop.GetDatabase(): TCDatabase;
+begin
+  Result := TCDatabase(CObject);
+end;
+
+function TFClient.TDatabaseDesktop.GetXML(): IXMLNode;
+var
+  I: Integer;
+  Node: IXMLNode;
+begin
+  if (not Assigned(FXML) and Assigned(FClient.Client.Account.DesktopXML)) then
+  begin
+    Node := XMLNode(FClient.Client.Account.DesktopXML, 'browser/databases');
+
+    for I := 0 to Node.ChildNodes.Count - 1 do
+      if ((Node.NodeName = 'database') and (lstrcmpi(PChar(string(Node.ChildNodes[I].Attributes['name'])), PChar(Database.Name)) = 0)) then
+        FXML := Node.ChildNodes[I];
+
+    if (not Assigned(FXML)) then
+    begin
+      FXML := Node.AddChild('database');
+      try
+        FXML.Attributes['name'] := Database.Name;
+      except
+        Node.ChildNodes.Delete(Node.ChildNodes.IndexOf(FXML));
+        FXML := nil;
+      end;
+    end;
+  end;
+
+  Result := FXML;
+end;
+
+function TFClient.TDatabaseDesktop.GetListView(): TListView;
+begin
+  if (not Assigned(FListView)) then
+  begin
+    FListView := FClient.CreateListView();
+    FClient.ListViewInitialize(Self, FListView, Database);
+    FClient.ListViewRefresh(Self, FListView, Database);
+  end;
+
+  Result := FListView;
+end;
+
+function TFClient.TDatabaseDesktop.GetWorkbench(): TWWorkbench;
+begin
+  if (not Assigned(FWorkbench)) then
+    FWorkbench := FClient.CreateWorkbench(Database);
+
+  Result := FWorkbench;
+end;
+
+procedure TFClient.TDatabaseDesktop.SaveToXML();
+var
+  TablesXML: IXMLNode;
+  I: Integer;
+begin
+  TablesXML := XMLNode(XML, 'tables');
+  if (Assigned(TablesXML)) then
+    for I := TablesXML.ChildNodes.Count - 1 downto 0 do
+      if ((TablesXML.ChildNodes[I].NodeName = 'table') and not Assigned(Database.TableByName(TablesXML.ChildNodes[I].Attributes['name']))) then
+        TablesXML.ChildNodes.Delete(I);
+
+  if (Database.Tables.Actual) then
+    XMLNode(XML, 'tables', True).Attributes['count'] := IntToStr(Database.Tables.Count);
+end;
+
+function TFClient.TDatabaseDesktop.TableCount(): Integer;
+begin
+  Result := -1;
+
+  if (Assigned(XMLNode(XML, 'tables'))) then
+    TryStrToInt(XMLNode(XML, 'tables').Attributes['count'], Result);
 end;
 
 { TFClient.TWanted ************************************************************}
@@ -1194,7 +1782,7 @@ procedure TFClient.aDCreateExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  if ((Window.ActiveControl = FNavigator) or (Window.ActiveControl = FList)) then
+  if ((Window.ActiveControl = FNavigator) or (Window.ActiveControl = ActiveListView)) then
   begin
     if (MainAction('aDCreateDatabase').Enabled) then MainAction('aDCreateDatabase').Execute()
     else if (MainAction('aDCreateDatabase').Enabled) then MainAction('aDCreateDatabase').Execute()
@@ -1203,8 +1791,8 @@ begin
     else if (MainAction('aDCreateHost').Enabled) then MainAction('aDCreateHost').Execute()
     else if (MainAction('aDCreateUser').Enabled) then MainAction('aDCreateUser').Execute();
   end
-  else if (Window.ActiveControl = FSQLEditor) then
-    FSQLEditor.InsertMode := not FSQLEditor.InsertMode
+  else if (Window.ActiveControl = FSQLEditorSynMemo) then
+    FSQLEditorSynMemo.InsertMode := not FSQLEditorSynMemo.InsertMode
   else if (Window.ActiveControl = FGrid) and (not FGrid.EditorMode) then
     MainAction('aDInsertRecord').Execute()
   else if (Window.ActiveControl = FText) then
@@ -1338,33 +1926,19 @@ begin
 
   CItems := TList.Create();
 
-  if ((Window.ActiveControl = FList) and (FList.SelCount > 1)) then
+  if ((Window.ActiveControl = ActiveListView) and (ActiveListView.SelCount > 1)) then
   begin
-    for I := 0 to FList.Items.Count - 1 do
-      if (FList.Items[I].Selected) then
-        case (FList.Items[I].ImageIndex) of
-          iiDatabase: CItems.Add(Client.DatabaseByName(FList.Items[I].Caption));
-          iiBaseTable,
-          iiView: CItems.Add(Client.DatabaseByName(SelectedDatabase).TableByName(FList.Items[I].Caption));
-          iiProcedure: CItems.Add(Client.DatabaseByName(SelectedDatabase).ProcedureByName(FList.Items[I].Caption));
-          iiFunction: CItems.Add(Client.DatabaseByName(SelectedDatabase).FunctionByName(FList.Items[I].Caption));
-          iiEvent: CItems.Add(Client.DatabaseByName(SelectedDatabase).EventByName(FList.Items[I].Caption));
-          iiTrigger: CItems.Add(Client.DatabaseByName(SelectedDatabase).TriggerByName(FList.Items[I].Caption));
-          iiIndex: CItems.Add(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).IndexByCaption(FList.Items[I].Caption));
-          iiField: CItems.Add(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).FieldByName(FList.Items[I].Caption));
-          iiForeignKey: CItems.Add(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).ForeignKeyByName(FList.Items[I].Caption));
-          iiHost: CItems.Add(Client.HostByCaption(FList.Items[I].Caption));
-          iiUser: CItems.Add(Client.UserByCaption(FList.Items[I].Caption));
-          iiProcess: CItems.Add(Client.ProcessById(SysUtils.StrToInt(FList.Items[I].Caption)));
-        end;
+    for I := 0 to ActiveListView.Items.Count - 1 do
+      if (ActiveListView.Items[I].Selected) then
+        CItems.Add(ActiveListView.Items[I].Data);
   end
-  else if ((Window.ActiveControl = Workbench) and (Workbench.SelCount > 1)) then
+  else if ((Window.ActiveControl = ActiveWorkbench) and (ActiveWorkbench.SelCount > 1)) then
   begin
-    for I := 0 to Workbench.ControlCount - 1 do
-      if ((Workbench.Controls[I] is TWTable) and (TWTable(Workbench.Controls[I]).Selected)) then
-        CItems.Add(Client.DatabaseByName(SelectedDatabase).BaseTableByName(TWTable(Workbench.Controls[I]).Caption))
-      else if ((Workbench.Controls[I] is TWForeignKey) and (TWForeignKey(Workbench.Controls[I]).Selected)) then
-        CItems.Add(Client.DatabaseByName(SelectedDatabase).BaseTableByName(TWForeignKey(Workbench.Controls[I]).ChildTable.Caption).ForeignKeyByName(TWForeignKey(Workbench.Controls[I]).Caption));
+    for I := 0 to ActiveWorkbench.ControlCount - 1 do
+      if ((ActiveWorkbench.Controls[I] is TWTable) and (TWTable(ActiveWorkbench.Controls[I]).Selected)) then
+        CItems.Add(Client.DatabaseByName(SelectedDatabase).BaseTableByName(TWTable(ActiveWorkbench.Controls[I]).Caption))
+      else if ((ActiveWorkbench.Controls[I] is TWForeignKey) and (TWForeignKey(ActiveWorkbench.Controls[I]).Selected)) then
+        CItems.Add(Client.DatabaseByName(SelectedDatabase).BaseTableByName(TWForeignKey(ActiveWorkbench.Controls[I]).ChildTable.Caption).ForeignKeyByName(TWForeignKey(ActiveWorkbench.Controls[I]).Caption));
   end
   else if (Assigned(FocusedCItem)) then
     CItems.Add(FocusedCItem);
@@ -1554,36 +2128,36 @@ begin
     PContentChange(Sender);
     PContentRefresh(Sender);
 
+    if (Client.Account.PackAddress(Address) = '/?system=processes') then
+      Client.Processes.Initialize();
+
+
     while (Assigned(OldControl) and OldControl.Visible and OldControl.Enabled and Assigned(OldControl.Parent)) do
       OldControl := OldControl.Parent;
 
     case (View) of
-      avObjectBrowser: NewActiveControl := FList;
+      avObjectBrowser: NewActiveControl := ActiveListView;
       avDataBrowser: NewActiveControl := FGrid;
-      avObjectIDE: NewActiveControl := SynMemo;
+      avObjectIDE: NewActiveControl := ActiveSynMemo;
       avQueryBuilder: NewActiveControl := FBuilderActiveWorkArea();
-      avSQLEditor: NewActiveControl := FSQLEditor;
-      avDiagram: NewActiveControl := Workbench;
+      avSQLEditor: NewActiveControl := FSQLEditorSynMemo;
+      avDiagram: NewActiveControl := ActiveWorkbench;
       else NewActiveControl := nil;
     end;
 
     Control := NewActiveControl;
     while (Assigned(Control) and Control.Visible and Control.Enabled and Assigned(Control.Parent)) do
       Control := Control.Parent;
-
-    if (not Assigned(OldControl) or not OldControl.Visible or not OldControl.Enabled and (Assigned(Control) and Control.Visible and Control.Enabled)) then
-try
+    if ((not Assigned(OldControl) or not OldControl.Visible or not OldControl.Enabled)
+      and Assigned(Control) and Control.Visible and Control.Enabled) then
       Window.ActiveControl := NewActiveControl;
-except
-  Write;
-end;
 
 
-    Empty := not Assigned(SynMemo) or (SynMemo.Lines.Count <= 1) and (SynMemo.Text = ''); // Takes a lot of time
-    if (not Empty and (View = avObjectIDE)) then SQL := SynMemo.Text else SQL := '';
+    Empty := not Assigned(ActiveSynMemo) or (ActiveSynMemo.Lines.Count <= 1) and (ActiveSynMemo.Text = ''); // Takes a lot of time
+    if (not Empty and (View = avObjectIDE)) then SQL := ActiveSynMemo.Text else SQL := '';
 
     MainAction('aFOpen').Enabled := View = avSQLEditor;
-    MainAction('aFSave').Enabled := (View = avSQLEditor) and not Empty and ((SQLEditor.Filename = '') or SynMemo.Modified);
+    MainAction('aFSave').Enabled := (View = avSQLEditor) and not Empty and ((SQLEditor.Filename = '') or ActiveSynMemo.Modified);
     MainAction('aFSaveAs').Enabled := (View = avSQLEditor) and not Empty;
     MainAction('aVObjectBrowser').Enabled := True;
     MainAction('aVDataBrowser').Enabled := (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView, iiTrigger]) or ((LastSelectedDatabase <> '') and (LastSelectedDatabase = SelectedDatabase) and (LastSelectedTable <> ''));
@@ -1595,8 +2169,8 @@ end;
       ((View = avSQLEditor)
       or ((View  = avQueryBuilder) and FBuilder.Visible)
       or ((View = avObjectIDE) and SQLSingleStmt(SQL) and (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent]))) and not Empty;
-    MainAction('aDRunSelection').Enabled := (((SynMemo = FSQLEditor) and not Empty) or Assigned(SynMemo) and (SynMemo.SelText <> '')) and True;
-    MainAction('aDPostObject').Enabled := (View = avObjectIDE) and Assigned(SynMemo) and SynMemo.Modified and SQLSingleStmt(SQL)
+    MainAction('aDRunSelection').Enabled := (((ActiveSynMemo = FSQLEditorSynMemo) and not Empty) or Assigned(ActiveSynMemo) and (ActiveSynMemo.SelText <> '')) and True;
+    MainAction('aDPostObject').Enabled := (View = avObjectIDE) and Assigned(ActiveSynMemo) and ActiveSynMemo.Modified and SQLSingleStmt(SQL)
       and ((SelectedImageIndex in [iiView]) and SQLCreateParse(Parse, PChar(SQL), Length(SQL),Client.ServerVersion) and (SQLParseKeyword(Parse, 'SELECT'))
         or (SelectedImageIndex in [iiProcedure, iiFunction]) and SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), Client.ServerVersion) and (DDLStmt.DefinitionType = dtCreate) and (DDLStmt.ObjectType in [otProcedure, otFunction])
         or (SelectedImageIndex in [iiEvent, iiTrigger]));
@@ -1605,6 +2179,7 @@ end;
 
     UsedView := View;
     case (View) of
+      avObjectBrowser: if (not (ttObjectBrowser in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttObjectBrowser); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
       avDataBrowser: if (not (ttDataBrowser in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttDataBrowser); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
       avObjectIDE: if (not (ttObjectIDE in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttObjectIDE); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
       avQueryBuilder: if (not (ttQueryBuilder in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttQueryBuilder); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
@@ -1657,7 +2232,7 @@ end;
       if ((tsActive in FrameState) and (ToolBarData.CurrentAddress > 0) and Wanted.Nothing) then
         PlaySound(PChar(Preferences.SoundFileNavigating), Handle, SND_FILENAME or SND_ASYNC);
 
-      if (SelectedTable <> '') then
+      if ((UsedView = avDataBrowser) and (SelectedTable <> '')) then
       begin
         Database := Client.DatabaseByName(SelectedDatabase);
         Table := Database.TableByName(SelectedTable);
@@ -1665,8 +2240,8 @@ end;
         if (not (Table.DataSet is TMySQLTable) or not Assigned(Table.DataSet) or not Table.DataSet.Active or (TMySQLTable(Table.DataSet).Limit < 1)) then
         begin
           FUDOffset.Position := 0;
-          FUDLimit.Position := Table.Desktop.Limit;
-          FLimitEnabled.Down := Table.Desktop.Limited;
+          FUDLimit.Position := TTableDesktop(Table.Desktop).Limit;
+          FLimitEnabled.Down := TTableDesktop(Table.Desktop).Limited;
         end
         else
         begin
@@ -1680,8 +2255,8 @@ end;
         else
           FFilter.Text := TMySQLTable(Table.DataSet).FilterSQL;
         FilterMRU.Clear();
-        for I := 0 to Table.Desktop.FilterCount - 1 do
-          FilterMRU.Add(Table.Desktop.Filters[I]);
+        for I := 0 to TTableDesktop(Table.Desktop).FilterCount - 1 do
+          FilterMRU.Add(TTableDesktop(Table.Desktop).Filters[I]);
         FFilterEnabled.Enabled := FFilter.Text <> '';
       end;
 
@@ -1933,10 +2508,10 @@ begin
           begin
             Child := DatabaseNode.getFirstChild();
             while (Assigned(Child) and not Assigned(ObjectIDENode)) do
-              if ((Client.TableNameCmp(PChar(URI.Table), PChar(Child.Text)) = 0) and (Child.ImageIndex = iiView)
-                  or (Client.TableNameCmp(PChar(string(URI.Param['object'])), PChar(Child.Text)) = 0) and (URI.Param['objecttype'] = 'procedure') and (Child.ImageIndex = iiProcedure)
-                  or (Client.TableNameCmp(PChar(string(URI.Param['object'])), PChar(Child.Text)) = 0) and (URI.Param['objecttype'] = 'function') and (Child.ImageIndex = iiFunction)
-                  or (Client.TableNameCmp(PChar(string(URI.Param['object'])), PChar(Child.Text)) = 0) and (URI.Param['objecttype'] = 'event') and (Child.ImageIndex = iiEvent)) then
+              if ((Child.ImageIndex = iiView) and (Client.TableNameCmp(PChar(URI.Table), PChar(Child.Text)) = 0)
+                  or (Child.ImageIndex = iiProcedure) and (Client.TableNameCmp(PChar(string(URI.Param['object'])), PChar(Child.Text)) = 0) and (URI.Param['objecttype'] = 'procedure')
+                  or (Child.ImageIndex = iiFunction) and (Client.TableNameCmp(PChar(string(URI.Param['object'])), PChar(Child.Text)) = 0) and (URI.Param['objecttype'] = 'function')
+                  or (Child.ImageIndex = iiEvent) and (Client.TableNameCmp(PChar(string(URI.Param['object'])), PChar(Child.Text)) = 0) and (URI.Param['objecttype'] = 'event')) then
                 ObjectIDENode := Child
               else
                 Child := Child.getNextSibling();
@@ -2005,27 +2580,25 @@ var
 begin
   Wanted.Clear();
 
-  if ((Window.ActiveControl = FList) and (FList.SelCount > 1)) then
+  if ((Window.ActiveControl = ActiveListView) and (ActiveListView.SelCount > 1)) then
   begin
     Database := Client.DatabaseByName(SelectedDatabase);
 
-    for I := 0 to FList.Items.Count - 1 do
-      if (FList.Items[I].Selected) then
+    for I := 0 to ActiveListView.Items.Count - 1 do
+      if (ActiveListView.Items[I].Selected) then
       begin
         SetLength(DTable.TableNames, Length(DTable.TableNames) + 1);
-        DTable.TableNames[Length(DTable.TableNames) - 1] := FList.Items[I].Caption;
+        DTable.TableNames[Length(DTable.TableNames) - 1] := ActiveListView.Items[I].Caption;
       end;
 
     DTable.Database := Database;
     DTable.Table := nil;
-    if (DTable.Execute()) then
-      FListRefresh(Sender);
   end
-  else if ((Window.ActiveControl = Workbench) and (Workbench.Selected is TWSection)) then
+  else if ((Window.ActiveControl = ActiveWorkbench) and (ActiveWorkbench.Selected is TWSection)) then
   begin
-    DSegment.Section := TWSection(Workbench.Selected);
+    DSegment.Section := TWSection(ActiveWorkbench.Selected);
     DSegment.Execute();
-    Workbench.Selected := nil;
+    ActiveWorkbench.Selected := nil;
   end
   else
   begin
@@ -2103,7 +2676,7 @@ begin
     end
     else if (CItem is TCProcess) then
     begin
-      Process := Client.ProcessById(SysUtils.StrToInt(FList.Selected.Caption));
+      Process := Client.ProcessById(SysUtils.StrToInt(ActiveListView.Selected.Caption));
 
       DStatement.DatabaseName := Process.DatabaseName;
       DStatement.DateTime := Client.DateTime - Process.Time;
@@ -2158,29 +2731,29 @@ begin
 
   SQL := '';
   if (View in [avQueryBuilder, avSQLEditor]) then
-    SQL := Trim(SynMemo.Text)
+    SQL := Trim(ActiveSynMemo.Text)
   else if ((View = avObjectIDE) and (SelectedImageIndex = iiView)) then
   begin
-    if (not SynMemo.Modified or PostObject(Sender)) then
+    if (not ActiveSynMemo.Modified or PostObject(Sender)) then
       View := avDataBrowser;
   end
   else if ((View = avObjectIDE) and (SelectedImageIndex = iiProcedure)) then
   begin
     if (Assigned(FObjectIDEGrid.DataSource.DataSet)) then
       FObjectIDEGrid.DataSource.DataSet.CheckBrowseMode();
-    if (not SynMemo.Modified or PostObject(Sender)) then
+    if (not ActiveSynMemo.Modified or PostObject(Sender)) then
       SQL := Client.DatabaseByName(SelectedDatabase).ProcedureByName(SelectedNavigator).SQLRun();
   end
   else if ((View = avObjectIDE) and (SelectedImageIndex = iiFunction)) then
   begin
     if (Assigned(FObjectIDEGrid.DataSource.DataSet)) then
       FObjectIDEGrid.DataSource.DataSet.CheckBrowseMode();
-    if (not SynMemo.Modified or PostObject(Sender)) then
+    if (not ActiveSynMemo.Modified or PostObject(Sender)) then
       SQL := Client.DatabaseByName(SelectedDatabase).FunctionByName(SelectedNavigator).SQLRun();
   end
   else if ((View = avObjectIDE) and (SelectedImageIndex = iiEvent)) then
   begin
-    if (not SynMemo.Modified or PostObject(Sender)) then
+    if (not ActiveSynMemo.Modified or PostObject(Sender)) then
       SQL := Client.DatabaseByName(SelectedDatabase).EventByName(SelectedNavigator).SQLRun();
   end;
 
@@ -2207,10 +2780,10 @@ begin
 
   FSQLEditorCompletion.CancelCompletion();
 
-  aDRunExecuteSelStart := SynMemo.SelStart;
-  if (SynMemo.SelText = '') then
+  aDRunExecuteSelStart := ActiveSynMemo.SelStart;
+  if (ActiveSynMemo.SelText = '') then
   begin
-    SQL := SynMemo.Text;
+    SQL := ActiveSynMemo.Text;
     Index := 1; Len := 0;
     while (Index <= aDRunExecuteSelStart + 1) do
     begin
@@ -2222,7 +2795,7 @@ begin
     aDRunExecuteSelStart := Index - 1;
   end
   else
-    SQL := SynMemo.SelText;
+    SQL := ActiveSynMemo.SelText;
 
   if (SQL <> '') then
   begin
@@ -2242,13 +2815,13 @@ begin
 
   if (Window.ActiveControl = FText) then
     FText.Text := ''
-  else if (Window.ActiveControl = FSQLEditor) then
+  else if (Window.ActiveControl = FSQLEditorSynMemo) then
   begin
     // ClearAll kann nicht mit Undo Rückgängig gemacht werden.
-    FSQLEditor.BeginUpdate();
-    FSQLEditor.SelectAll();
+    FSQLEditorSynMemo.BeginUpdate();
+    FSQLEditorSynMemo.SelectAll();
     MainAction('aEDelete').Execute();
-    FSQLEditor.EndUpdate();
+    FSQLEditorSynMemo.EndUpdate();
   end;
 end;
 
@@ -2291,42 +2864,42 @@ begin
         Data := 'Address=' + NavigatorNodeToAddress(FNavigatorMenuNode.Parent) + #13#10 + Data;
     end;
   end
-  else if (Window.ActiveControl = FList) then
+  else if (Window.ActiveControl = ActiveListView) then
   begin
     ImageIndex := SelectedImageIndex;
-    for I := 0 to FList.Items.Count - 1 do
-      if (FList.Items[I].Selected) then
-        case (FList.Items[I].ImageIndex) of
+    for I := 0 to ActiveListView.Items.Count - 1 do
+      if (ActiveListView.Items[I].Selected) then
+        case (ActiveListView.Items[I].ImageIndex) of
           iiDatabase,
-          iiSystemView: Data := Data + 'Database='   + FList.Items[I].Caption + #13#10;
-          iiBaseTable:  Data := Data + 'Table='      + FList.Items[I].Caption + #13#10;
-          iiView:       Data := Data + 'View='       + FList.Items[I].Caption + #13#10;
-          iiProcedure:  Data := Data + 'Procedure='  + FList.Items[I].Caption + #13#10;
-          iiFunction:   Data := Data + 'Function='   + FList.Items[I].Caption + #13#10;
-          iiEvent:      Data := Data + 'Event='      + FList.Items[I].Caption + #13#10;
-          iiIndex:      Data := Data + 'Index='      + Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).IndexByCaption(FList.Items[I].Caption).Name + #13#10;
+          iiSystemView: Data := Data + 'Database='   + ActiveListView.Items[I].Caption + #13#10;
+          iiBaseTable:  Data := Data + 'Table='      + ActiveListView.Items[I].Caption + #13#10;
+          iiView:       Data := Data + 'View='       + ActiveListView.Items[I].Caption + #13#10;
+          iiProcedure:  Data := Data + 'Procedure='  + ActiveListView.Items[I].Caption + #13#10;
+          iiFunction:   Data := Data + 'Function='   + ActiveListView.Items[I].Caption + #13#10;
+          iiEvent:      Data := Data + 'Event='      + ActiveListView.Items[I].Caption + #13#10;
+          iiIndex:      Data := Data + 'Index='      + Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).IndexByCaption(ActiveListView.Items[I].Caption).Name + #13#10;
           iiField,
-          iiViewField:  Data := Data + 'Field='      + FList.Items[I].Caption + #13#10;
-          iiForeignKey: Data := Data + 'ForeignKey=' + FList.Items[I].Caption + #13#10;
-          iiTrigger:    Data := Data + 'Trigger='    + FList.Items[I].Caption + #13#10;
-          iiHost:       Data := Data + 'Host='       + Client.HostByCaption(FList.Items[I].Caption).Name + #13#10;
-          iiUser:       Data := Data + 'User='       + FList.Items[I].Caption + #13#10;
+          iiViewField:  Data := Data + 'Field='      + ActiveListView.Items[I].Caption + #13#10;
+          iiForeignKey: Data := Data + 'ForeignKey=' + ActiveListView.Items[I].Caption + #13#10;
+          iiTrigger:    Data := Data + 'Trigger='    + ActiveListView.Items[I].Caption + #13#10;
+          iiHost:       Data := Data + 'Host='       + Client.HostByCaption(ActiveListView.Items[I].Caption).Name + #13#10;
+          iiUser:       Data := Data + 'User='       + ActiveListView.Items[I].Caption + #13#10;
         end;
     if (Data <> '') then
       Data := 'Address=' + NavigatorNodeToAddress(FNavigator.Selected) + #13#10 + Data;
   end
-  else if (Window.ActiveControl = Workbench) then
+  else if (Window.ActiveControl = ActiveWorkbench) then
   begin
     ImageIndex := SelectedImageIndex;
-    if (Assigned(Workbench)) then
+    if (Assigned(ActiveWorkbench)) then
     begin
       Data := 'Address=' + NavigatorNodeToAddress(FNavigator.Selected);
-      if (not Assigned(Workbench.Selected)) then
-        Data := Data + 'Database='   + Workbench.Selected.Name + #13#10
-      else if (Workbench.Selected is TWTable) then
-        Data := Data + 'Table='      + Workbench.Selected.Name + #13#10
-      else if (Workbench.Selected is TWForeignKey) then
-        Data := Data + 'ForeignKey=' + Workbench.Selected.Name + #13#10;
+      if (not Assigned(ActiveWorkbench.Selected)) then
+        Data := Data + 'Database='   + ActiveWorkbench.Selected.Name + #13#10
+      else if (ActiveWorkbench.Selected is TWTable) then
+        Data := Data + 'Table='      + ActiveWorkbench.Selected.Name + #13#10
+      else if (ActiveWorkbench.Selected is TWForeignKey) then
+        Data := Data + 'ForeignKey=' + ActiveWorkbench.Selected.Name + #13#10;
       if (Data <> '') then
         Data := 'Address=' + NavigatorNodeToAddress(FNavigator.Selected) + #13#10 + Data;
     end;
@@ -2409,17 +2982,17 @@ begin
   Wanted.Clear();
 
   DSearch.Client := Client;
-  if ((SelectedTable <> '') and (Window.ActiveControl = FList)) then
+  if ((SelectedTable <> '') and (Window.ActiveControl = ActiveListView)) then
   begin
     DSearch.DatabaseName := SelectedDatabase;
     DSearch.TableName := SelectedTable;
     DSearch.FieldName := '';
-    for I := 0 to FList.Items.Count - 1 do
-      if (FList.Items[I].Selected and (FList.Items[I].ImageIndex in [iiField, iiSystemViewField, iiViewField])) then
+    for I := 0 to ActiveListView.Items.Count - 1 do
+      if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex in [iiField, iiSystemViewField, iiViewField])) then
       begin
         if (DSearch.FieldName <> '') then
           DSearch.FieldName := DSearch.FieldName + ',';
-        DSearch.FieldName := DSearch.FieldName + FList.Items[I].Caption;
+        DSearch.FieldName := DSearch.FieldName + ActiveListView.Items[I].Caption;
       end;
   end
   else
@@ -2466,17 +3039,17 @@ begin
     FGrid.DataSource.DataSet.Edit();
     FGrid.InplaceEditor.PasteFromClipboard()
   end
-  else if ((Window.ActiveControl = FNavigator) or (Window.ActiveControl = FList)) then
+  else if ((Window.ActiveControl = FNavigator) or (Window.ActiveControl = ActiveListView)) then
   begin
     if (Window.ActiveControl = FNavigator) then
       Node := FNavigatorMenuNode
-    else if ((Window.ActiveControl = FList) and Assigned(FList.Selected)) then
+    else if ((Window.ActiveControl = ActiveListView) and Assigned(ActiveListView.Selected)) then
     begin
       Node := nil;
       FNavigatorExpanding(Sender, FNavigator.Selected, B);
       for I := 0 to FNavigator.Selected.Count - 1 do
-        if ((FNavigator.Selected[I].ImageIndex = FList.Selected.ImageIndex)
-          and (FNavigator.Selected[I].Text = FList.Selected.Caption)) then
+        if ((FNavigator.Selected[I].ImageIndex = ActiveListView.Selected.ImageIndex)
+          and (FNavigator.Selected[I].Text = ActiveListView.Selected.Caption)) then
           Node := FNavigator.Selected[I];
     end
     else
@@ -2511,9 +3084,9 @@ begin
       end;
     end;
   end
-  else if (Window.ActiveControl = FSQLEditor) then
-    FSQLEditor.PasteFromClipboard()
-  else if ((Window.ActiveControl = Workbench) and Assigned(Workbench)) then
+  else if (Window.ActiveControl = FSQLEditorSynMemo) then
+    FSQLEditorSynMemo.PasteFromClipboard()
+  else if ((Window.ActiveControl = ActiveWorkbench) and Assigned(ActiveWorkbench)) then
     FWorkbenchPasteExecute(Sender)
   else
     MessageBeep(MB_ICONERROR);
@@ -2583,7 +3156,7 @@ end;
 
 procedure TFClient.aERedoExecute(Sender: TObject);
 begin
-  FSQLEditor.Redo();
+  FSQLEditorSynMemo.Redo();
   FSQLEditorStatusChange(Sender, [scAll]);
 end;
 
@@ -2591,8 +3164,8 @@ procedure TFClient.aERenameExecute(Sender: TObject);
 begin
   if (Window.ActiveControl = FNavigator) then
     FNavigatorMenuNode.EditText()
-  else if (Window.ActiveControl = FList) then
-    FList.Selected.EditCaption();
+  else if (Window.ActiveControl = ActiveListView) then
+    ActiveListView.Selected.EditCaption();
 end;
 
 procedure TFClient.aEReplaceExecute(Sender: TObject);
@@ -2602,17 +3175,17 @@ begin
   Wanted.Clear();
 
   DSearch.Client := Client;
-  if ((SelectedTable <> '') and (Window.ActiveControl = FList)) then
+  if ((SelectedTable <> '') and (Window.ActiveControl = ActiveListView)) then
   begin
     DSearch.DatabaseName := SelectedDatabase;
     DSearch.TableName := SelectedTable;
     DSearch.FieldName := '';
-    for I := 0 to FList.Items.Count - 1 do
-      if (FList.Items[I].Selected and (FList.Items[I].ImageIndex in [iiField, iiSystemViewField, iiViewField])) then
+    for I := 0 to ActiveListView.Items.Count - 1 do
+      if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex in [iiField, iiSystemViewField, iiViewField])) then
       begin
         if (DSearch.FieldName <> '') then
           DSearch.FieldName := DSearch.FieldName + ',';
-        DSearch.FieldName := DSearch.FieldName + FList.Items[I].Caption;
+        DSearch.FieldName := DSearch.FieldName + ActiveListView.Items[I].Caption;
       end;
   end
   else
@@ -2672,7 +3245,7 @@ begin
   SaveDialog.EncodingIndex := -1;
   if (SaveDialog.Execute()) then
   begin
-    Workbench.SaveToBMP(SaveDialog.FileName);
+    ActiveWorkbench.SaveToBMP(SaveDialog.FileName);
 
     Preferences.Path := ExtractFilePath(SaveDialog.FileName);
   end;
@@ -2705,24 +3278,24 @@ begin
 
   if (Window.ActiveControl = FGrid) then
     DExport.DBGrid := FGrid
-  else if (Window.ActiveControl = Workbench) then
+  else if (Window.ActiveControl = ActiveWorkbench) then
   begin
     Database := Client.DatabaseByName(SelectedDatabase);
     if (Database.Initialize(Database.Tables)) then
       Wanted.Action := TAction(Sender)
     else
-      for I := 0 to Workbench.Tables.Count - 1 do
-        if (not Assigned(Workbench.Selected) or Workbench.Tables[I].Selected) then
-          DExport.DBObjects.Add(Database.TableByName(Workbench.Tables[I].Caption));
+      for I := 0 to ActiveWorkbench.Tables.Count - 1 do
+        if (not Assigned(ActiveWorkbench.Selected) or ActiveWorkbench.Tables[I].Selected) then
+          DExport.DBObjects.Add(Database.TableByName(ActiveWorkbench.Tables[I].Caption));
   end
-  else if ((Window.ActiveControl = FList) and (FList.SelCount > 0)) then
+  else if ((Window.ActiveControl = ActiveListView) and (ActiveListView.SelCount > 0)) then
   begin
     case (SelectedImageIndex) of
       iiServer:
-        for I := 0 to FList.Items.Count - 1 do
-          if (FList.Items[I].Selected) then
+        for I := 0 to ActiveListView.Items.Count - 1 do
+          if (ActiveListView.Items[I].Selected) then
           begin
-            Database := Client.DatabaseByName(FList.Items[I].Caption);
+            Database := TCDatabase(ActiveListView.Items[I].Data);
             if (Database.Initialize()) then
               Wanted.Action := TAction(Sender)
             else if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
@@ -2746,34 +3319,28 @@ begin
           else if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
           begin
             SetLength(TableNames, 0);
-            for I := 0 to FList.Items.Count - 1 do
-              if (FList.Items[I].Selected and (FList.Items[I].ImageIndex in [iiBaseTable, iiView])) then
+            for I := 0 to ActiveListView.Items.Count - 1 do
+              if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex in [iiBaseTable, iiView])) then
               begin
                 SetLength(TableNames, Length(TableNames) + 1);
-                TableNames[Length(TableNames) - 1] := FList.Items[I].Caption;
+                TableNames[Length(TableNames) - 1] := ActiveListView.Items[I].Caption;
               end;
 
             if ((Sender is TAction) and Database.Initialize()) then
               Wanted.Action := TAction(Sender)
             else
-              for I := 0 to FList.Items.Count - 1 do
-                if (FList.Items[I].Selected) then
-                  if (FList.Items[I].ImageIndex in [iiBaseTable, iiView]) then
+              for I := 0 to ActiveListView.Items.Count - 1 do
+                if (ActiveListView.Items[I].Selected) then
+                  if (ActiveListView.Items[I].ImageIndex in [iiBaseTable, iiView]) then
                   begin
-                    DExport.DBObjects.Add(Database.TableByName(FList.Items[I].Caption));
+                    DExport.DBObjects.Add(TCTable(ActiveListView.Items[I].Data));
 
                     if (Assigned(Database.Triggers)) then
                       for J := 0 to Database.Triggers.Count - 1 do
                         DExport.DBObjects.Add(Database.Triggers[J]);
                   end
-                  else if (FList.Items[I].ImageIndex = iiProcedure) then
-                    DExport.DBObjects.Add(Database.ProcedureByName(FList.Items[I].Caption))
-                  else if (FList.Items[I].ImageIndex = iiFunction) then
-                    DExport.DBObjects.Add(Database.FunctionByName(FList.Items[I].Caption))
-                  else if (FList.Items[I].ImageIndex = iiEvent) then
-                    DExport.DBObjects.Add(Database.EventByName(FList.Items[I].Caption))
-                  else if (FList.Items[I].ImageIndex = iiTrigger) then
-                    DExport.DBObjects.Add(Database.TriggerByName(FList.Items[I].Caption));
+                  else if (ActiveListView.Items[I].ImageIndex in [iiProcedure, iiFunction, iiEvent, iiTrigger]) then
+                    DExport.DBObjects.Add(TCDBObject(ActiveListView.Items[I].Data));
 
             SetLength(TableNames, 0);
           end;
@@ -2784,9 +3351,9 @@ begin
           if (Database.Initialize(Database.Triggers)) then
             Wanted.Action := TAction(Sender)
           else if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
-            for I := 0 to FList.Items.Count - 1 do
-              if (FList.Items[I].Selected and (FList.Items[I].ImageIndex = iiTrigger) and Assigned(Database.TriggerByName(FList.Items[I].Caption))) then
-                DExport.DBObjects.Add(Database.TriggerByName(FList.Items[I].Caption));
+            for I := 0 to ActiveListView.Items.Count - 1 do
+              if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex = iiTrigger)) then
+                DExport.DBObjects.Add(TCDBObject(ActiveListView.Items[I].Data));
         end;
     end
   end
@@ -3186,9 +3753,9 @@ procedure TFClient.aFPrintExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  if ((Window.ActiveControl = FSQLEditor) or (Window.ActiveControl = FLog)) then
+  if ((Window.ActiveControl = FSQLEditorSynMemo) or (Window.ActiveControl = FLog)) then
     SynMemoPrintExecute(Sender)
-  else if (Window.ActiveControl = Workbench) then
+  else if (Window.ActiveControl = ActiveWorkbench) then
     FWorkbenchPrintExecute(Sender)
   else
     aFExportExecute(Sender, etPrint);
@@ -3345,7 +3912,7 @@ end;
 
 function TFClient.ApplicationHelp(Command: Word; Data: THelpEventData; var CallHelp: Boolean): Boolean;
 begin
-  if ((Window.ActiveControl = SynMemo) and (Client.ServerVersion >= 40100)) then
+  if ((Window.ActiveControl = ActiveSynMemo) and (Client.ServerVersion >= 40100)) then
   begin
     CallHelp := False;
     SQLHelp();
@@ -3475,12 +4042,12 @@ begin
     View := NewView;
 
     case (View) of
-      avObjectBrowser: if (PList.Visible) then Window.ActiveControl := FList;
+      avObjectBrowser: if (PListView.Visible) then Window.ActiveControl := ActiveListView;
       avDataBrowser: if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
-      avObjectIDE: if (PSQLEditor.Visible and Assigned(SynMemo)) then Window.ActiveControl := SynMemo;
+      avObjectIDE: if (PSQLEditor.Visible and Assigned(ActiveSynMemo)) then Window.ActiveControl := ActiveSynMemo;
       avQueryBuilder: if (PBuilder.Visible and Assigned(FBuilderActiveWorkArea())) then Window.ActiveControl := FBuilderActiveWorkArea();
-      avSQLEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditor;
-      avDiagram: if (PWorkbench.Visible) then Window.ActiveControl := Workbench;
+      avSQLEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo;
+      avDiagram: if (PWorkbench.Visible) then Window.ActiveControl := ActiveWorkbench;
     end;
   end;
 end;
@@ -3686,7 +4253,7 @@ begin
 
   Trigger := Client.DatabaseByName(SelectedDatabase).TriggerByName(SelectedNavigator);
 
-  if (Assigned(Trigger) and (not SynMemo.Modified or PostObject(Sender))) then
+  if (Assigned(Trigger) and (not ActiveSynMemo.Modified or PostObject(Sender))) then
   begin
     FObjectIDEGrid.EditorMode := False;
     if (Sender = BINSERT) then
@@ -3708,32 +4275,53 @@ end;
 procedure TFClient.ClientRefresh(Sender: TObject);
 var
   Control: TWinControl;
-  Event: TCClient.TEvent;
+  ClientEvent: TCClient.TEvent;
+  ListView: TListView;
   OldAddress: string;
   TempActiveControl: TWinControl;
   TempSelectedItem: string;
   WTable: TWTable;
 begin
   if (Sender is TCClient.TEvent) then
-    Event := TCClient.TEvent(Sender)
+    ClientEvent := TCClient.TEvent(Sender)
   else
-    Event := nil;
+    ClientEvent := nil;
 
   LeftMousePressed := False;
 
   TempActiveControl := Window.ActiveControl;
   TempSelectedItem := SelectedItem;
 
-  if (Assigned(Event) and not Assigned(Event.CItem)) then
+  if (Assigned(ClientEvent) and not Assigned(ClientEvent.CItem)) then
   begin
     Client.SQLEditorResult.Clear();
     Client.QueryBuilderResult.Clear();
   end;
 
-
   OldAddress := Address;
 
-  FNavigatorRefresh(Event);
+  if (ClientEvent.EventType in [ceBuild, ceCreated, ceDroped, ceAltered]) then
+    FNavigatorRefresh(ClientEvent);
+
+  if (ClientEvent.Sender is TCDatabase) then
+    ListView := TDatabaseDesktop(TCDatabase(ClientEvent.Sender).Desktop).FListView
+  else if (ClientEvent.Sender is TCTable) then
+    ListView := TTableDesktop(TCTable(ClientEvent.Sender).Desktop).FListView
+  else if (ClientEvent.CItems is TCHosts) then
+    ListView := HostsListView
+  else if (ClientEvent.CItems is TCProcesses) then
+    ListView := ProcessesListView
+  else if (ClientEvent.CItems is TCStati) then
+    ListView := StatiListView
+  else if (ClientEvent.CItems is TCUsers) then
+    ListView := UsersListView
+  else if (ClientEvent.CItems is TCVariables) then
+    ListView := VariablesListView
+  else
+    ListView := FServerListView;
+  if (Assigned(ListView) and (ClientEvent.EventType in [ceBuild, ceUpdated, ceCreated, ceDroped, ceAltered, ceStatus])) then
+    ListViewRefresh(Sender, ListView);
+
 
   if ((OldAddress <> '') and (Address <> OldAddress)) then
     Wanted.Address := OldAddress
@@ -3749,28 +4337,28 @@ begin
       Window.ActiveControl := TempActiveControl;
   end;
 
-  if (Assigned(Workbench)) then
-    Workbench.Refresh();
+  if (Assigned(ActiveWorkbench)) then
+    ActiveWorkbench.Refresh();
 
-  if (Assigned(Event) and (Event.EventType = ceCreated) and Assigned(Event.Database) and (SelectedDatabase = Event.Database.Name)) then
+  if (Assigned(ClientEvent) and (ClientEvent.EventType = ceCreated) and (ClientEvent.Sender is TCDatabase) and (TCDatabase(ClientEvent.Sender) = TCDatabase(FNavigator.Selected.Data))) then
     case (View) of
       avDiagram:
-        if (Event.CItem is TCBaseTable) then
+        if (ClientEvent.CItem is TCBaseTable) then
         begin
-          Workbench.BeginUpdate();
-          WTable := TWTable.Create(Workbench.Tables);
-          WTable.Caption := Event.CItem.Name;
+          ActiveWorkbench.BeginUpdate();
+          WTable := TWTable.Create(ActiveWorkbench.Tables);
+          WTable.Caption := ClientEvent.CItem.Name;
           FWorkbenchValidateControl(nil, WTable);
           WTable.Move(nil, [], FWorkbenchMouseDownPoint);
-          Workbench.Tables.Add(WTable);
+          ActiveWorkbench.Tables.Add(WTable);
           FWorkbenchValidateForeignKeys(nil, WTable);
-          Workbench.Selected := WTable;
-          Workbench.EndUpdate();
+          ActiveWorkbench.Selected := WTable;
+          ActiveWorkbench.EndUpdate();
         end;
     end;
 
-  if (Assigned(Event) and (Event.EventType = ceCreated) and (Event.CItem is TCDBObject)) then
-    Wanted.Initialize := TCDBObject(Event.CItem).Initialize;
+  if (Assigned(ClientEvent) and (ClientEvent.EventType = ceCreated) and (ClientEvent.CItem is TCDBObject)) then
+    Wanted.Initialize := TCDBObject(ClientEvent.CItem).Initialize;
 end;
 
 procedure TFClient.CMActivateFGrid(var Message: TMessage);
@@ -3818,8 +4406,8 @@ begin
     FilterMRU.Clear();
     if (FFilterEnabled.Down) then
       FFilter.Text := TCTableDataSet(DataSet).FilterSQL;
-    for I := 0 to TCTableDataSet(DataSet).Table.Desktop.FilterCount - 1 do
-      FilterMRU.Add(TCTableDataSet(DataSet).Table.Desktop.Filters[I]);
+    for I := 0 to TTableDesktop(TCTableDataSet(DataSet).Table.Desktop).FilterCount - 1 do
+      FilterMRU.Add(TTableDesktop(TCTableDataSet(DataSet).Table.Desktop).Filters[I]);
     gmFilter.Clear();
 
     FQuickSearchEnabled.Down := TCTableDataSet(DataSet).QuickSearch <> '';
@@ -3843,7 +4431,7 @@ begin
   ToolBarLimitEnabled.Images := Preferences.SmallImages;
   ToolBarQuickSearchEnabled.Images := Preferences.SmallImages;
   ToolBarFilterEnabled.Images := Preferences.SmallImages;
-  FList.SmallImages := Preferences.SmallImages;
+  FServerListView.SmallImages := Preferences.SmallImages;
 
 
   Perform(CM_SYSFONTCHANGED, 0, 0);
@@ -3923,12 +4511,14 @@ begin
   FSQLHistory.Font.Size := Preferences.SQLFontSize;
   FSQLHistory.Font.Charset := Preferences.SQLFontCharset;
 
+  mtObjectBrowser.Caption := tbObjectBrowser.Caption;
   mtDataBrowser.Caption := tbDataBrowser.Caption;
   mtObjectIDE.Caption := tbObjectIDE.Caption;
   mtQueryBuilder.Caption := tbQueryBuilder.Caption;
   mtSQLEditor.Caption := tbSQLEditor.Caption;
   mtDiagram.Caption := tbDiagram.Caption;
 
+  tbObjectBrowser.Visible := ttObjectBrowser in Preferences.ToolbarTabs;
   tbDataBrowser.Visible := ttDataBrowser in Preferences.ToolbarTabs;
   tbObjectIDE.Visible := ttObjectIDE in Preferences.ToolbarTabs;
   tbQueryBuilder.Visible := ttQueryBuilder in Preferences.ToolbarTabs;
@@ -3957,46 +4547,46 @@ begin
   FBlobSearch.Hint := ReplaceStr(Preferences.LoadStr(424), '&', '');
 
   if (Preferences.Editor.LineNumbersBackground = clNone) then
-    FSQLEditor.Gutter.Color := clBtnFace
+    FSQLEditorSynMemo.Gutter.Color := clBtnFace
   else
-    FSQLEditor.Gutter.Color := Preferences.Editor.LineNumbersBackground;
-  FSQLEditor.Gutter.Font.Style := Preferences.Editor.LineNumbersStyle;
-  FSQLEditor.Gutter.Font.Size := FSQLEditor.Font.Size;
-  FSQLEditor.Gutter.Font.Charset := FSQLEditor.Font.Charset;
-  FSQLEditor.Gutter.Visible := Preferences.Editor.LineNumbers;
-  FSQLEditor.Options := FSQLEditor.Options + [eoScrollHintFollows];  // Slow down the performance on large content
+    FSQLEditorSynMemo.Gutter.Color := Preferences.Editor.LineNumbersBackground;
+  FSQLEditorSynMemo.Gutter.Font.Style := Preferences.Editor.LineNumbersStyle;
+  FSQLEditorSynMemo.Gutter.Font.Size := FSQLEditorSynMemo.Font.Size;
+  FSQLEditorSynMemo.Gutter.Font.Charset := FSQLEditorSynMemo.Font.Charset;
+  FSQLEditorSynMemo.Gutter.Visible := Preferences.Editor.LineNumbers;
+  FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options + [eoScrollHintFollows];  // Slow down the performance on large content
   if (Preferences.Editor.AutoIndent) then
-    FSQLEditor.Options := FSQLEditor.Options + [eoAutoIndent, eoSmartTabs]
+    FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options + [eoAutoIndent, eoSmartTabs]
   else
-    FSQLEditor.Options := FSQLEditor.Options - [eoAutoIndent, eoSmartTabs];
+    FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options - [eoAutoIndent, eoSmartTabs];
   if (Preferences.Editor.TabToSpaces) then
-    FSQLEditor.Options := FSQLEditor.Options + [eoTabsToSpaces]
+    FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options + [eoTabsToSpaces]
   else
-    FSQLEditor.Options := FSQLEditor.Options - [eoTabsToSpaces];
-  FSQLEditor.TabWidth := Preferences.Editor.TabWidth;
-  FSQLEditor.RightEdge := Preferences.Editor.RightEdge;
-  FSQLEditor.WantTabs := Preferences.Editor.TabAccepted;
+    FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options - [eoTabsToSpaces];
+  FSQLEditorSynMemo.TabWidth := Preferences.Editor.TabWidth;
+  FSQLEditorSynMemo.RightEdge := Preferences.Editor.RightEdge;
+  FSQLEditorSynMemo.WantTabs := Preferences.Editor.TabAccepted;
   if (not Preferences.Editor.CurrRowBGColorEnabled) then
-    FSQLEditor.ActiveLineColor := clNone
+    FSQLEditorSynMemo.ActiveLineColor := clNone
   else
-    FSQLEditor.ActiveLineColor := Preferences.Editor.CurrRowBGColor;
+    FSQLEditorSynMemo.ActiveLineColor := Preferences.Editor.CurrRowBGColor;
 
   for I := 0 to PSQLEditor.ControlCount - 1 do
     if (PSQLEditor.Controls[I] is TSynMemo) then
       SynMemoApllyPreferences(TSynMemo(PSQLEditor.Controls[I]));
 
-  SynMemoApllyPreferences(FBuilderEditor);
+  SynMemoApllyPreferences(FBuilderSynMemo);
 
-  FSQLEditorPrint.Font := FSQLEditor.Font;
+  FSQLEditorPrint.Font := FSQLEditorSynMemo.Font;
 
   {$IFNDEF Debug}
   // Bug in SynEdit: Bei Verwendung in der Delphi IDE hängt sich diess Programm auf
-  FSQLEditorCompletion.Font.Name := FSQLEditor.Font.Name;
+  FSQLEditorCompletion.Font.Name := FSQLEditorSynMemo.Font.Name;
   {$ENDIF}
-  FSQLEditorCompletion.Font.Style := FSQLEditor.Font.Style;
-  FSQLEditorCompletion.Font.Color := FSQLEditor.Font.Color;
-  FSQLEditorCompletion.Font.Size := FSQLEditor.Font.Size;
-  FSQLEditorCompletion.Font.Charset := FSQLEditor.Font.Charset;
+  FSQLEditorCompletion.Font.Style := FSQLEditorSynMemo.Font.Style;
+  FSQLEditorCompletion.Font.Color := FSQLEditorSynMemo.Font.Color;
+  FSQLEditorCompletion.Font.Size := FSQLEditorSynMemo.Font.Size;
+  FSQLEditorCompletion.Font.Charset := FSQLEditorSynMemo.Font.Charset;
 
   for I := 0 to TCResult.Tabs.Count - 1 do
     TCResult.Tabs[I] := Preferences.LoadStr(861, IntToStr(I + 1));
@@ -4012,7 +4602,7 @@ begin
       iiVariables: FNavigator.Items[I].Text := ReplaceStr(Preferences.LoadStr(22), '&', '');
     end;
 
-  BINSERT.Font := FSQLEditor.Font;
+  BINSERT.Font := FSQLEditorSynMemo.Font;
   BINSERT.Font.Style := [fsBold];
   BREPLACE.Font := BINSERT.Font;
   BUPDATE.Font := BINSERT.Font;
@@ -4023,76 +4613,68 @@ begin
 
   SQLBuilderSQLUpdated(nil);
 
-  if (PList.Visible) then
+  if (PListView.Visible) then
     case (SelectedImageIndex) of
       iiServer:
       begin
-        if (View = avObjectBrowser) then
-        begin
-          FList.Column[0].Caption := ReplaceStr(Preferences.LoadStr(38), '&', '');
-          FList.Column[1].Caption := Preferences.LoadStr(76);
-          FList.Column[2].Caption := Preferences.LoadStr(67);
-          FList.Column[3].Caption := Preferences.LoadStr(77);
-        end
-        else if (View = avDataBrowser) then
-        begin
-          FList.Column[0].Caption := Preferences.LoadStr(267);
-          FList.Column[1].Caption := Preferences.LoadStr(268);
-        end;
+        FServerListView.Column[0].Caption := ReplaceStr(Preferences.LoadStr(38), '&', '');
+        FServerListView.Column[1].Caption := Preferences.LoadStr(76);
+        FServerListView.Column[2].Caption := Preferences.LoadStr(67);
+        FServerListView.Column[3].Caption := Preferences.LoadStr(77);
       end;
       iiDatabase,
       iiSystemDatabase:
       begin
-        FList.Column[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
-        FList.Column[1].Caption := Preferences.LoadStr(69);
-        FList.Column[2].Caption := Preferences.LoadStr(66);
-        FList.Column[3].Caption := Preferences.LoadStr(67);
-        FList.Column[4].Caption := Preferences.LoadStr(68);
-        FList.Column[5].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
-        FList.Column[6].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
+        ActiveListView.Column[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
+        ActiveListView.Column[1].Caption := Preferences.LoadStr(69);
+        ActiveListView.Column[2].Caption := Preferences.LoadStr(66);
+        ActiveListView.Column[3].Caption := Preferences.LoadStr(67);
+        ActiveListView.Column[4].Caption := Preferences.LoadStr(68);
+        ActiveListView.Column[5].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
+        ActiveListView.Column[6].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
       end;
       iiBaseTable,
       iiSystemView:
       begin
-        FList.Column[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
-        FList.Column[1].Caption := Preferences.LoadStr(69);
-        FList.Column[2].Caption := Preferences.LoadStr(71);
-        FList.Column[3].Caption := Preferences.LoadStr(72);
-        FList.Column[4].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
-        if (FList.Columns.Count > 5) then
-          FList.Column[5].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
+        ActiveListView.Column[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
+        ActiveListView.Column[1].Caption := Preferences.LoadStr(69);
+        ActiveListView.Column[2].Caption := Preferences.LoadStr(71);
+        ActiveListView.Column[3].Caption := Preferences.LoadStr(72);
+        ActiveListView.Column[4].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
+        if (ActiveListView.Columns.Count > 5) then
+          ActiveListView.Column[5].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
       end;
       iiHosts:
-        FList.Column[0].Caption := Preferences.LoadStr(335);
+        ActiveListView.Column[0].Caption := Preferences.LoadStr(335);
       iiUsers:
-        FList.Column[0].Caption := Preferences.LoadStr(335);
+        ActiveListView.Column[0].Caption := Preferences.LoadStr(335);
       iiStati,
       iiVariables:
       begin
-        FList.Column[0].Caption := Preferences.LoadStr(267);
-        FList.Column[1].Caption := Preferences.LoadStr(268);
+        ActiveListView.Column[0].Caption := Preferences.LoadStr(267);
+        ActiveListView.Column[1].Caption := Preferences.LoadStr(268);
       end;
       iiProcesses:
       begin
-        FList.Column[0].Caption := Preferences.LoadStr(269);
-        FList.Column[1].Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
-        FList.Column[2].Caption := Preferences.LoadStr(271);
-        FList.Column[3].Caption := ReplaceStr(Preferences.LoadStr(38), '&', '');
-        FList.Column[4].Caption := Preferences.LoadStr(273);
-        FList.Column[5].Caption := Preferences.LoadStr(274);
-        FList.Column[6].Caption := ReplaceStr(Preferences.LoadStr(661), '&', '');
-        FList.Column[7].Caption := Preferences.LoadStr(276);
+        ActiveListView.Column[0].Caption := Preferences.LoadStr(269);
+        ActiveListView.Column[1].Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
+        ActiveListView.Column[2].Caption := Preferences.LoadStr(271);
+        ActiveListView.Column[3].Caption := ReplaceStr(Preferences.LoadStr(38), '&', '');
+        ActiveListView.Column[4].Caption := Preferences.LoadStr(273);
+        ActiveListView.Column[5].Caption := Preferences.LoadStr(274);
+        ActiveListView.Column[6].Caption := ReplaceStr(Preferences.LoadStr(661), '&', '');
+        ActiveListView.Column[7].Caption := Preferences.LoadStr(276);
       end;
     end;
 
-  if (PList.Visible) then
-    for I := 0 to FList.Items.Count - 1 do
-      case (FList.Items[I].ImageIndex) of
-        iiHosts: FList.Items[I].Caption := Preferences.LoadStr(335);
-        iiProcesses: FList.Items[I].Caption := ReplaceStr(Preferences.LoadStr(24), '&', '');
-        iiStati: FList.Items[I].Caption := ReplaceStr(Preferences.LoadStr(23), '&', '');
-        iiUsers: FList.Items[I].Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
-        iiVariables: FList.Items[I].Caption := ReplaceStr(Preferences.LoadStr(22), '&', '');
+  if (PListView.Visible) then
+    for I := 0 to ActiveListView.Items.Count - 1 do
+      case (ActiveListView.Items[I].ImageIndex) of
+        iiHosts: ActiveListView.Items[I].Caption := Preferences.LoadStr(335);
+        iiProcesses: ActiveListView.Items[I].Caption := ReplaceStr(Preferences.LoadStr(24), '&', '');
+        iiStati: ActiveListView.Items[I].Caption := ReplaceStr(Preferences.LoadStr(23), '&', '');
+        iiUsers: ActiveListView.Items[I].Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
+        iiVariables: ActiveListView.Items[I].Caption := ReplaceStr(Preferences.LoadStr(22), '&', '');
       end;
 
   FLog.Font.Name := Preferences.LogFontName;
@@ -4121,14 +4703,14 @@ begin
     FGrid.DataSource.DataSet.CheckBrowseMode();
 
   if (CanClose) then
-    if (FSQLEditor.Modified and (SQLEditor.Filename <> '')) then
+    if (FSQLEditorSynMemo.Modified and (SQLEditor.Filename <> '')) then
     begin
       if (SQLEditor.Filename = '') then
         Msg := Preferences.LoadStr(589)
       else
         Msg := Preferences.LoadStr(584, ExtractFileName(SQLEditor.Filename));
       View := avSQLEditor;
-      Window.ActiveControl := FSQLEditor;
+      Window.ActiveControl := FSQLEditorSynMemo;
       case (MsgBox(Msg, Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION)) of
         IDYES: SaveSQLFile(MainAction('aFSave'));
         IDCANCEL: CanClose := False;
@@ -4141,15 +4723,7 @@ begin
       if (CanClose and (ServerNode.Item[I].ImageIndex = iiDatabase)) then
       begin
         Database := Client.DatabaseByName(ServerNode.Item[I].Text);
-        if (Assigned(Database) and Assigned(Database.Workbench) and TWWorkbench(Database.Workbench).Modified) then
-        begin
-          try
-            SysUtils.ForceDirectories(ExtractFilePath(Client.Account.DataPath + Database.Name));
-          except
-            raise EInOutError.Create(SysErrorMessage(GetLastError()) + '  (' + Client.Account.DataPath + Database.Name + ')');
-          end;
-          TWWorkbench(Database.Workbench).SaveToFile(Client.Account.DataPath + Database.Name + PathDelim + 'Diagram.xml');
-        end;
+        TDatabaseDesktop(Database.Desktop).CloseQuery(nil, CanClose);
       end;
 
   if (not CanClose) then
@@ -4307,7 +4881,7 @@ begin
       try Window.FocusControl(ActiveControlOnDeactivate); except end;
 
     if (Window.ActiveControl = FNavigator) then FNavigatorEnter(nil)
-    else if (Window.ActiveControl = FList) then FListEnter(nil)
+    else if (Window.ActiveControl = ActiveListView) then ListViewEnter(nil)
     else if (Window.ActiveControl = FLog) then FLogEnter(nil)
     else if (Window.ActiveControl is TSynMemo) then FSQLEditorEnter(nil)
     else if (Window.ActiveControl = FGrid) then DBGridEnter(FGrid);
@@ -4351,7 +4925,7 @@ begin
   aPResult.ShortCut := 0;
 
   if (Window.ActiveControl = FNavigator) then FNavigatorExit(nil)
-  else if (Window.ActiveControl = FList) then FListExit(nil)
+  else if (Window.ActiveControl = ActiveListView) then ListViewExit(nil)
   else if (Window.ActiveControl = FLog) then FLogExit(nil)
   else if (Window.ActiveControl is TSynMemo) then FSQLEditorExit(nil)
   else if (Window.ActiveControl = FGrid) then DBGridExit(FGrid);
@@ -4393,12 +4967,12 @@ begin
 
   PSideBar.Width := Client.Account.Desktop.SelectorWitdth;
 
-  FSQLEditor.Options := FSQLEditor.Options + [eoScrollPastEol];  // Speed up the performance
-  FSQLEditor.Text := Client.Account.Desktop.EditorContent;
-  if (Length(FSQLEditor.Lines.Text) < LargeSQLScriptSize) then
-    FSQLEditor.Options := FSQLEditor.Options - [eoScrollPastEol]  // Slow down the performance on large content
+  FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options + [eoScrollPastEol];  // Speed up the performance
+  FSQLEditorSynMemo.Text := Client.Account.Desktop.EditorContent;
+  if (Length(FSQLEditorSynMemo.Lines.Text) < LargeSQLScriptSize) then
+    FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options - [eoScrollPastEol]  // Slow down the performance on large content
   else
-    FSQLEditor.Options := FSQLEditor.Options + [eoScrollPastEol];  // Speed up the performance
+    FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options + [eoScrollPastEol];  // Speed up the performance
   PResult.Height := Client.Account.Desktop.DataHeight;
   PResultHeight := PResult.Height;
   PBlob.Height := Client.Account.Desktop.BlobHeight;
@@ -4439,19 +5013,19 @@ begin
   begin
     if (PNavigator.Visible) then Window.ActiveControl := FNavigator
     else if (PBookmarks.Visible) then Window.ActiveControl := FBookmarks
-    else if (PList.Visible) then Window.ActiveControl := FList
+    else if (PListView.Visible) then Window.ActiveControl := ActiveListView
     else if (PBuilder.Visible) then Window.ActiveControl := FBuilder
-    else if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditor
+    else if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo
     else if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
   end
   else
     case (View) of
-      avObjectBrowser: if (PList.Visible) then Window.ActiveControl := FList;
+      avObjectBrowser: if (PListView.Visible) then Window.ActiveControl := ActiveListView;
       avDataBrowser: if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
-      avObjectIDE: if (PSQLEditor.Visible and Assigned(SynMemo)) then Window.ActiveControl := SynMemo;
+      avObjectIDE: if (PSQLEditor.Visible and Assigned(ActiveSynMemo)) then Window.ActiveControl := ActiveSynMemo;
       avQueryBuilder: if (PBuilder.Visible and Assigned(FBuilderActiveWorkArea())) then Window.ActiveControl := FBuilderActiveWorkArea();
-      avSQLEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditor;
-      avDiagram: if (PWorkbench.Visible) then Window.ActiveControl := Workbench;
+      avSQLEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo;
+      avDiagram: if (PWorkbench.Visible) then Window.ActiveControl := ActiveWorkbench;
     end;
 end;
 
@@ -4481,7 +5055,7 @@ begin
     PNavigator.BevelInner := bvRaised; PNavigator.BevelOuter := bvLowered;
     PBookmarks.BevelInner := bvRaised; PBookmarks.BevelOuter := bvLowered;
     PSQLHistory.BevelInner := bvRaised; PSQLHistory.BevelOuter := bvLowered;
-    PList.BevelInner := bvRaised; PList.BevelOuter := bvLowered;
+    PListView.BevelInner := bvRaised; PListView.BevelOuter := bvLowered;
     PBuilderQuery.BevelInner := bvRaised; PBuilderQuery.BevelOuter := bvLowered;
     PSQLEditor.BevelInner := bvRaised; PSQLEditor.BevelOuter := bvLowered;
     PWorkbench.BevelInner := bvRaised; PWorkbench.BevelOuter := bvLowered;
@@ -4497,7 +5071,7 @@ begin
     PNavigator.BevelInner := bvNone; PNavigator.BevelOuter := bvNone;
     PBookmarks.BevelInner := bvNone; PBookmarks.BevelOuter := bvNone;
     PSQLHistory.BevelInner := bvNone; PSQLHistory.BevelOuter := bvNone;
-    PList.BevelInner := bvNone; PList.BevelOuter := bvNone;
+    PListView.BevelInner := bvNone; PListView.BevelOuter := bvNone;
     PBuilderQuery.BevelInner := bvNone; PBuilderQuery.BevelOuter := bvNone;
     PSQLEditor.BevelInner := bvNone; PSQLEditor.BevelOuter := bvNone;
     PWorkbench.BevelInner := bvNone; PWorkbench.BevelOuter := bvNone;
@@ -4525,7 +5099,7 @@ begin
     SendMessage(FBlobSearch.Handle, EM_SETCUEBANNER, 0, LParam(PChar(ReplaceStr(Preferences.LoadStr(424), '&', ''))));
   end;
 
-  SetWindowLong(ListView_GetHeader(FList.Handle), GWL_STYLE, GetWindowLong(ListView_GetHeader(FList.Handle), GWL_STYLE) or HDS_DRAGDROP);
+  SetWindowLong(ListView_GetHeader(FServerListView.Handle), GWL_STYLE, GetWindowLong(ListView_GetHeader(FServerListView.Handle), GWL_STYLE) or HDS_DRAGDROP);
 
   if (not StyleServices.Enabled) then
     PObjectIDESpacer.Color := clBtnFace
@@ -4545,16 +5119,16 @@ begin
 
   Font := Window.Font;
 
-  FSQLEditor.Font.Name := Preferences.SQLFontName;
-  FSQLEditor.Font.Style := Preferences.SQLFontStyle;
-  FSQLEditor.Font.Color := Preferences.SQLFontColor;
-  FSQLEditor.Font.Size := Preferences.SQLFontSize;
-  FSQLEditor.Font.Charset := Preferences.SQLFontCharset;
-  FSQLEditor.Gutter.Font := FSQLEditor.Font;
+  FSQLEditorSynMemo.Font.Name := Preferences.SQLFontName;
+  FSQLEditorSynMemo.Font.Style := Preferences.SQLFontStyle;
+  FSQLEditorSynMemo.Font.Color := Preferences.SQLFontColor;
+  FSQLEditorSynMemo.Font.Size := Preferences.SQLFontSize;
+  FSQLEditorSynMemo.Font.Charset := Preferences.SQLFontCharset;
+  FSQLEditorSynMemo.Gutter.Font := FSQLEditorSynMemo.Font;
   if (Preferences.Editor.LineNumbersForeground = clNone) then
-    FSQLEditor.Gutter.Font.Color := clWindowText
+    FSQLEditorSynMemo.Gutter.Font.Color := clWindowText
   else
-    FSQLEditor.Gutter.Font.Color := Preferences.Editor.LineNumbersForeground;
+    FSQLEditorSynMemo.Gutter.Font.Color := Preferences.Editor.LineNumbersForeground;
 
   FGrid.Font.Name := Preferences.GridFontName;
   FGrid.Font.Style := Preferences.GridFontStyle;
@@ -4589,7 +5163,7 @@ begin
 
   FRTF.Font := FText.Font;
 
-  FHexEditor.Font := FSQLEditor.Font;
+  FHexEditor.Font := FSQLEditorSynMemo.Font;
   if (Preferences.Editor.LineNumbersForeground = clNone) then
     FHexEditor.Colors.Offset := clWindowText
   else
@@ -4609,34 +5183,34 @@ begin
     Wanted.Synchronize();
 end;
 
-function TFClient.ContentWidthIndexFromImageIndex(AImageIndex: Integer): Integer;
+function TFClient.ColumnWidthKindFromImageIndex(const AImageIndex: Integer): TADesktop.TColumnWidthKind;
 begin
   case (AImageIndex) of
-    iiServer: Result := 0;
+    iiServer: Result := ckServer;
     iiDatabase,
-    iiSystemDatabase: Result := 1;
+    iiSystemDatabase: Result := ckDatabase;
     iiBaseTable,
     iiSystemView,
-    iiView: Result := 2;
-    iiHosts: Result := 3;
-    iiUsers: Result := 4;
-    iiProcesses: Result := 5;
-    iiStati: Result := 6;
-    iiVariables: Result := 7;
-    else Result := -1;
+    iiView: Result := ckTable;
+    iiHosts: Result := ckHosts;
+    iiProcesses: Result := ckProcesses;
+    iiUsers: Result := ckUsers;
+    iiStati: Result := ckStati;
+    iiVariables: Result := ckVariables;
+    else raise ERangeError.Create(SRangeError);
   end;
 end;
 
 procedure TFClient.CrashRescue();
 begin
-  if ((SQLEditor.Filename <> '') and not FSQLEditor.Modified) then
+  if ((SQLEditor.Filename <> '') and not FSQLEditorSynMemo.Modified) then
     Client.Account.Desktop.EditorContent := ''
   else
-    Client.Account.Desktop.EditorContent := FSQLEditor.Text;
+    Client.Account.Desktop.EditorContent := FSQLEditorSynMemo.Text;
 
   try
-    if (Assigned(Workbench)) then
-      Workbench.SaveToFile(Client.Account.DataPath + Workbench.Name + PathDelim + 'Diagram.xml');
+    if (Assigned(ActiveWorkbench)) then
+      ActiveWorkbench.SaveToFile(Client.Account.DataPath + ActiveWorkbench.Name + PathDelim + 'Diagram.xml');
   except
   end;
 end;
@@ -4651,7 +5225,7 @@ end;
 
 constructor TFClient.Create(const AOwner: TComponent; const AParent: TWinControl; const AClient: TCClient; const AParam: string; const IconIndex: Integer);
 var
-  I: Integer;
+  Kind: TADesktop.TColumnWidthKind;
   NonClientMetrics: TNonClientMetrics;
 begin
   inherited Create(AOwner);
@@ -4670,14 +5244,20 @@ begin
   SQLEditor.CodePage := CP_ACP;
   Param := AParam;
   ActiveControlOnDeactivate := nil;
+  ActiveListView := FServerListView;
+  HostsListView := nil;
+  ProcessesListView := nil;
+  StatiListView := nil;
+  UsersListView := nil;
+  VariablesListView := nil;
   PanelMouseDownPoint := Point(-1, -1);
-  for I := 0 to Length(FListSortColumn) - 1 do
+  for Kind := ckServer to ckVariables do
   begin
-    FListSortColumn[I].Index := 0;
-    if (I = 2) then
-      FListSortColumn[I].Order := 0
+    FListSortColumn[Kind].Index := 0;
+    if (Kind = ckTable) then
+      FListSortColumn[Kind].Order := 0
     else
-      FListSortColumn[I].Order := 1;
+      FListSortColumn[Kind].Order := 1;
   end;
   CreateLine := False;
 
@@ -4839,14 +5419,15 @@ begin
   FNavigator.RowSelect := CheckWin32Version(6, 1);
   FSQLHistory.RowSelect := CheckWin32Version(6, 1);
 
-  PList.Align := alClient;
+  PListView.Align := alClient;
   PSQLEditor.Align := alClient;
   PBuilder.Align := alClient;
 
-  FList.RowSelect := CheckWin32Version(6);
+  FServerListView.RowSelect := CheckWin32Version(6);
+  ListViewInitialize(Self, FServerListView, Client);
 
-  FSQLEditor.Highlighter := MainHighlighter;
-  FBuilderEditor.Highlighter := MainHighlighter;
+  FSQLEditorSynMemo.Highlighter := MainHighlighter;
+  FBuilderSynMemo.Highlighter := MainHighlighter;
   FSQLEditorPrint.Highlighter := MainHighlighter;
 
   FText.Modified := False;
@@ -4866,11 +5447,10 @@ begin
   LastObjectIDEAddress := '';
 
 
-  LastSelectedImageIndex := -1;
   OldFListOrderIndex := -1;
   IgnoreFGridTitleClick := False;
-  SelectedItem := '';
 
+  Client.CreateDesktop := CreateDesktop;
   Client.RegisterEventProc(FormClientEvent);
   Client.Account.RegisterDesktop(Self, FormAccountEvent);
 
@@ -4906,6 +5486,110 @@ begin
 
 
   PostMessage(Handle, CM_POSTSHOW, 0, 0);
+end;
+
+function TFClient.CreateDesktop(const CObject: TCObject): TCObject.TDesktop;
+begin
+  if (CObject is TCDatabase) then
+    Result := TDatabaseDesktop.Create(Self, TCDatabase(CObject))
+  else if (CObject is TCTable) then
+    Result := TTableDesktop.Create(Self, TCTable(CObject))
+  else
+    Result := nil;
+end;
+
+function TFClient.CreateListView(): TListView;
+begin
+  Result := TListView.Create(FServerListView.Owner);
+
+  Result.HelpContext := 1035;
+  Result.Align := alClient;
+  Result.BorderStyle := bsNone;
+  Result.DragMode := dmAutomatic;
+  Result.HideSelection := False;
+  Result.MultiSelect := True;
+  Result.GroupView := True;
+  Result.PopupMenu := MList;
+  Result.RowSelect := FServerListView.RowSelect;
+  Result.SmallImages := Preferences.SmallImages;
+  Result.Parent := FServerListView.Parent;
+  Result.ViewStyle := vsReport;
+  Result.Visible := False;
+  Result.OnChanging := FServerListView.OnChanging;
+  Result.OnColumnClick := FServerListView.OnColumnClick;
+  Result.OnCompare := FServerListView.OnCompare;
+  Result.OnDblClick := FServerListView.OnDblClick;
+  Result.OnEdited := FServerListView.OnEdited;
+  Result.OnEditing := FServerListView.OnEditing;
+  Result.OnEnter := FServerListView.OnEnter;
+  Result.OnExit := FServerListView.OnExit;
+  Result.OnDragDrop := FServerListView.OnDragDrop;
+  Result.OnDragOver := FServerListView.OnDragOver;
+  Result.OnKeyDown := FServerListView.OnKeyDown;
+  Result.OnSelectItem := FServerListView.OnSelectItem;
+
+  SetWindowLong(ListView_GetHeader(Result.Handle), GWL_STYLE, GetWindowLong(ListView_GetHeader(FServerListView.Handle), GWL_STYLE) or HDS_DRAGDROP);
+end;
+
+function TFClient.CreateSynMemo(): TSynMemo;
+begin
+  Result := TSynMemo.Create(FSQLEditorSynMemo.Owner);
+
+  Result.Align := FSQLEditorSynMemo.Align;
+  Result.BorderStyle := FSQLEditorSynMemo.BorderStyle;
+  Result.HelpType := FSQLEditorSynMemo.HelpType;
+  Result.HelpContext := FSQLEditorSynMemo.HelpContext;
+  Result.Highlighter := FSQLEditorSynMemo.Highlighter;
+  Result.Gutter.AutoSize := FSQLEditorSynMemo.Gutter.AutoSize;
+  Result.Gutter.DigitCount := FSQLEditorSynMemo.Gutter.DigitCount;
+  Result.Gutter.LeftOffset := FSQLEditorSynMemo.Gutter.LeftOffset;
+  Result.Gutter.ShowLineNumbers := FSQLEditorSynMemo.Gutter.ShowLineNumbers;
+  Result.Keystrokes := FSQLEditorSynMemo.Keystrokes;
+  Result.MaxScrollWidth := FSQLEditorSynMemo.MaxScrollWidth;
+  Result.OnChange := FSQLEditorSynMemo.OnChange;
+  Result.OnDragDrop := FSQLEditorSynMemo.OnDragDrop;
+  Result.OnDragOver := FSQLEditorSynMemo.OnDragOver;
+  Result.OnEnter := FSQLEditorSynMemo.OnEnter;
+  Result.OnExit := FSQLEditorSynMemo.OnExit;
+  Result.OnSearchNotFound := FSQLEditorSynMemo.OnSearchNotFound;
+  Result.OnStatusChange := FSQLEditorSynMemo.OnStatusChange;
+  Result.PopupMenu := FSQLEditorSynMemo.PopupMenu;
+  Result.RightEdge := FSQLEditorSynMemo.RightEdge;
+  Result.ScrollHintFormat := FSQLEditorSynMemo.ScrollHintFormat;
+  Result.SearchEngine := FSQLEditorSynMemo.SearchEngine;
+
+  SynMemoApllyPreferences(Result);
+
+  Result.Parent := FSQLEditorSynMemo.Parent;
+end;
+
+function TFClient.CreateWorkbench(const ADatabase: TCDatabase): TWWorkbench;
+begin
+  Result := TWWorkbench.Create(PWorkbench.Owner, ADatabase);
+  Result.Parent := PWorkbench;
+  Result.Align := alClient;
+  Result.BorderStyle := bsNone;
+  Result.DoubleBuffered := True;
+  Result.HelpContext := 1125;
+  Result.HideSelection := True;
+  Result.HorzScrollBar.Tracking := True;
+  Result.MultiSelect := True;
+  Result.OnChange := FWorkbenchChange;
+  Result.OnDblClick := ListViewDblClick;
+  Result.OnDragOver := FWorkbenchDragOver;
+  Result.OnDragDrop := FWorkbenchDragDrop;
+  Result.OnEnter := FWorkbenchEnter;
+  Result.OnExit := FWorkbenchExit;
+  Result.OnCursorMove := FWorkbenchCursorMove;
+  Result.OnMouseDown := FWorkbenchMouseDown;
+  Result.OnValidateControl := FWorkbenchValidateControl;
+  Result.OnValidateForeignKeys := FWorkbenchValidateForeignKeys;
+  Result.ParentFont := True;
+  Result.PopupMenu := MWorkbench;
+  Result.VertScrollBar.Tracking := True;
+
+  if (FileExists(Client.Account.DataPath + SelectedDatabase + PathDelim + 'Diagram.xml')) then
+    Result.LoadFromFile(Client.Account.DataPath + SelectedDatabase + PathDelim + 'Diagram.xml');
 end;
 
 procedure TFClient.DataSetAfterCancel(DataSet: TDataSet);
@@ -4947,6 +5631,18 @@ begin
     ResultSet := TCResultSet(DataSet.Tag)
   else
     ResultSet := nil;
+
+  if ((DataSet is TCTableDataSet) and (DataSet.FieldCount > 0)) then
+  begin
+    if (TCTableDataSet(DataSet).FilterSQL <> '') then
+      TTableDesktop(TCTableDataSet(DataSet).Table.Desktop).AddFilter(TCTableDataSet(DataSet).FilterSQL);
+    if (((TCTableDataSet(DataSet).Limit > 0) <> TTableDesktop(TCTableDataSet(DataSet).Table.Desktop).Limited)
+      or (TCTableDataSet(DataSet).Limit <> TTableDesktop(TCTableDataSet(DataSet).Table.Desktop).Limit)) then
+    begin
+      TTableDesktop(TCTableDataSet(DataSet).Table.Desktop).Limited := TCTableDataSet(DataSet).Limit > 0;
+      TTableDesktop(TCTableDataSet(DataSet).Table.Desktop).Limit := TCTableDataSet(DataSet).Limit;
+    end;
+  end;
 
   if ((DataSet.FieldCount > 0)
     and ((View = avDataBrowser) and (DataSet is TCTableDataSet) and (TCTableDataSet(DataSet).DatabaseName = SelectedDatabase) and (TCTableDataSet(DataSet).CommandText = SelectedTable)
@@ -5230,7 +5926,7 @@ var
 begin
   if (Sender is TMySQLDBGrid) then
   begin
-    if (View = avObjectIDE) then SQL := SQLTrimStmt(SynMemo.Text) else SQL := '';
+    if (View = avObjectIDE) then SQL := SQLTrimStmt(ActiveSynMemo.Text) else SQL := '';
 
     DBGrid := TMySQLDBGrid(Sender);
 
@@ -5339,10 +6035,10 @@ begin
 
   SetDataSource();
 
-  if ((SQLEditor.Filename <> '') and not FSQLEditor.Modified) then
+  if ((SQLEditor.Filename <> '') and not FSQLEditorSynMemo.Modified) then
     Client.Account.Desktop.EditorContent := ''
   else
-    Client.Account.Desktop.EditorContent := FSQLEditor.Text;
+    Client.Account.Desktop.EditorContent := FSQLEditorSynMemo.Text;
   Client.Account.Desktop.NavigatorVisible := PNavigator.Visible;
   Client.Account.Desktop.BookmarksVisible := PBookmarks.Visible;
   Client.Account.Desktop.SQLHistoryVisible := PSQLHistory.Visible;
@@ -5353,10 +6049,6 @@ begin
   URI.Param['file'] := '';
   Client.Account.Desktop.Address := URI.Address;
   FreeAndNil(URI);
-  if (ToolBarData.RefreshAll) then
-    Client.Account.Desktop.ToolBarRefresh := 1
-  else
-    Client.Account.Desktop.ToolBarRefresh := 0;
 
   if (PResult.Align <> alBottom) then
     Client.Account.Desktop.DataHeight := PResultHeight
@@ -5374,10 +6066,10 @@ begin
   FNavigator.Items.Clear();
   FNavigator.Items.EndUpdate();
 
-  FList.OnChanging := nil;
-  FList.Items.BeginUpdate();
-  FList.Items.Clear();
-  FList.Items.EndUpdate();
+  FServerListView.OnChanging := nil;
+  FServerListView.Items.BeginUpdate();
+  FServerListView.Items.Clear();
+  FServerListView.Items.EndUpdate();
 
   FreeAndNil(JPEGImage);
   FreeAndNil(PNGImage);
@@ -5595,7 +6287,7 @@ procedure TFClient.FBuilderEditorChange(Sender: TObject);
 begin
   FBuilder.Enabled := True;
   try
-    FBuilder.SQL := FBuilderEditor.Lines.Text;
+    FBuilder.SQL := FBuilderSynMemo.Lines.Text;
     PostMessage(Handle, CM_POST_BUILDER_QUERY_CHANGE, 0, 0);
 
     FBuilderEditorPageControlCheckStyle();
@@ -5667,16 +6359,16 @@ begin
 
   ZeroMemory(@ScrollBarInfo, SizeOf(ScrollBarInfo));
   ScrollBarInfo.cbSize := SizeOf(ScrollBarInfo);
-  GetScrollBarInfo(FBuilderEditor.Handle, Integer(OBJID_HSCROLL), ScrollBarInfo);
+  GetScrollBarInfo(FBuilderSynMemo.Handle, Integer(OBJID_HSCROLL), ScrollBarInfo);
 
-  LineCount := FBuilderEditor.Lines.Count;
+  LineCount := FBuilderSynMemo.Lines.Count;
   if (LineCount = 0) then
     LineCount := 1;
 
   if (ScrollBarInfo.rgstate[0] = STATE_SYSTEM_INVISIBLE) then
-    NewHeight := LineCount * (FBuilderEditor.Canvas.TextHeight('SELECT') + 1) + 2 * FBuilderEditor.Top + 2 * BevelWidth
+    NewHeight := LineCount * (FBuilderSynMemo.Canvas.TextHeight('SELECT') + 1) + 2 * FBuilderSynMemo.Top + 2 * BevelWidth
   else
-    NewHeight := LineCount * (FBuilderEditor.Canvas.TextHeight('SELECT') + 1) + 2 * FBuilderEditor.Top + 2 * BevelWidth + GetSystemMetrics(SM_CYHSCROLL);
+    NewHeight := LineCount * (FBuilderSynMemo.Canvas.TextHeight('SELECT') + 1) + 2 * FBuilderSynMemo.Top + 2 * BevelWidth + GetSystemMetrics(SM_CYHSCROLL);
   PBuilderQuery.Constraints.MaxHeight := NewHeight;
 
   if (NewHeight > (PBuilder.Height + PBuilderQuery.Height) div 3) then
@@ -5685,7 +6377,7 @@ begin
   if ((Sender = FBuilder) or (NewHeight < PBuilderQuery.Height) or (scModified in Changes)) then
     PBuilderQuery.Height := NewHeight;
 
-  FSQLEditorStatusChange(FBuilderEditor, Changes);
+  FSQLEditorStatusChange(FBuilderSynMemo, Changes);
 end;
 
 procedure TFClient.FBuilderEditorTabSheetEnter(Sender: TObject);
@@ -5695,14 +6387,14 @@ end;
 
 procedure TFClient.FBuilderEnter(Sender: TObject);
 begin
-  FBuilderEditor.OnChange := nil;
+  FBuilderSynMemo.OnChange := nil;
 
   StatusBarRefresh();
 end;
 
 procedure TFClient.FBuilderExit(Sender: TObject);
 begin
-  FBuilderEditor.OnChange := FBuilderEditorChange;
+  FBuilderSynMemo.OnChange := FBuilderEditorChange;
 end;
 
 procedure TFClient.FBuilderResize(Sender: TObject);
@@ -6221,16 +6913,16 @@ begin
 
         if ((DataSet is TMySQLTable) and Assigned(Field)) then
         begin
-          if (I < Table.Desktop.Columns) then
+          if (I < TTableDesktop(Table.Desktop).Columns) then
             for J := 0 to FGrid.FieldCount - 1 do
-              if (FGrid.Fields[J].FieldNo - 1 = Table.Desktop.ColumnIndices[I]) then
+              if (FGrid.Fields[J].FieldNo - 1 = TTableDesktop(Table.Desktop).ColumnIndices[I]) then
                 FGrid.Fields[J].Index := I;
 
           if (GetFieldInfo(FGrid.Columns[I].Field.Origin, FieldInfo) and Assigned(Table.FieldByName(FieldInfo.OriginalFieldName))) then
           begin
-            FGrid.Columns[I].Visible := Table.Desktop.GridVisible[FieldInfo.OriginalFieldName];
-            if (Table.Desktop.GridWidths[FieldInfo.OriginalFieldName] > 0) then
-              FGrid.Columns[I].Width := Table.Desktop.GridWidths[FieldInfo.OriginalFieldName];
+            FGrid.Columns[I].Visible := TTableDesktop(Table.Desktop).GridVisible[FieldInfo.OriginalFieldName];
+            if (TTableDesktop(Table.Desktop).GridWidths[FieldInfo.OriginalFieldName] > 0) then
+              FGrid.Columns[I].Width := TTableDesktop(Table.Desktop).GridWidths[FieldInfo.OriginalFieldName];
           end;
         end
         else if (Assigned(LastDataSource.ResultSet)) then
@@ -6534,1550 +7226,6 @@ begin
   Window.ActiveControl := FOffset;
 end;
 
-procedure TFClient.FListChanging(Sender: TObject; Item: TListItem;
-  Change: TItemChange; var AllowChange: Boolean);
-var
-  Database: TCDatabase;
-begin
-  if (not Assigned(FList.ItemFocused) and (Change = ctState) and Assigned(Item) and (Item.SubItems.Count = 0) and (NMListView^.uNewState and LVIS_SELECTED <> 0) and (Item.ImageIndex = iiBaseTable)) then
-  begin
-    Database := Client.DatabaseByName(SelectedDatabase);
-    AllowChange := Assigned(Database) and Assigned(Database.BaseTableByName(Item.Caption));
-  end;
-end;
-
-procedure TFClient.FListColumnClick(Sender: TObject; Column: TListColumn);
-var
-  HDItem: THDItem;
-  I: Integer;
-begin
-  with (FListSortColumn[ContentWidthIndexFromImageIndex(SelectedImageIndex)]) do
-  begin
-    FListSortColumn[ContentWidthIndexFromImageIndex(SelectedImageIndex)].Index := Column.Index;
-    if (Sender = FList) then
-    begin
-      if ((OldFListOrderIndex <> Index) or ((Order = 0) or (Order < 0) and (not (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) or (Index > 0)))) then
-        FListSortColumn[ContentWidthIndexFromImageIndex(SelectedImageIndex)].Order := 1
-      else if (Order = 1) then
-        FListSortColumn[ContentWidthIndexFromImageIndex(SelectedImageIndex)].Order := -1
-      else
-        FListSortColumn[ContentWidthIndexFromImageIndex(SelectedImageIndex)].Order := 0;
-
-      if (Order = 0) then
-        FListRefresh(Sender)
-      else
-        FList.CustomSort(nil, Index);
-    end;
-
-    HDItem.Mask := HDI_FORMAT;
-    for I := 0 to FList.Columns.Count - 1 do
-      if (BOOL(SendMessage(ListView_GetHeader(FList.Handle), HDM_GETITEM, I, LParam(@HDItem)))) then
-      begin
-        if ((Order = 0) or (I <> Index)) then
-          HDItem.fmt := HDItem.fmt and not HDF_SORTUP and not HDF_SORTDOWN
-        else if (Order > 0) then
-          HDItem.fmt := HDItem.fmt and not HDF_SORTDOWN or HDF_SORTUP
-        else
-          HDItem.fmt := HDItem.fmt and not HDF_SORTUP or HDF_SORTDOWN;
-        SendMessage(ListView_GetHeader(FList.Handle), HDM_SETITEM, I, LParam(@HDItem));
-      end;
-
-    if (ComCtl32MajorVersion >= 6) then
-      if (Order = 0) then
-        SendMessage(FList.Handle, LVM_SETSELECTEDCOLUMN, -1, 0)
-      else
-        SendMessage(FList.Handle, LVM_SETSELECTEDCOLUMN, Index, 0);
-
-    OldFListOrderIndex := Index;
-  end;
-end;
-
-procedure TFClient.FListCompare(Sender: TObject; Item1: TListItem;
-  Item2: TListItem; Data: Integer; var Compare: Integer);
-const
-  iiServerSort = Chr(iiDatabase) + Chr(iiHosts) + Chr(iiProcesses) + Chr(iiStati) + Chr(iiUsers) + Chr(iiVariables);
-  iiDatabaseSort = Chr(iiBaseTable) + Chr(iiView) + Chr(iiProcedure) + Chr(iiFunction) + Chr(iiEvent);
-  iiTableSort = Chr(iiIndex) + Chr(iiField) + Chr(iiForeignKey) + Chr(iiTrigger);
-  SourceImageIndex = Chr(iiSystemDatabase) + Chr(iiFunction);
-  DestImageIndex = Chr(iiDatabase) + Chr(iiProcedure);
-var
-  ImageIndex1: Integer;
-  ImageIndex2: Integer;
-  String1: string;
-  String2: string;
-begin
-  ImageIndex1 := Item1.ImageIndex;
-  ImageIndex2 := Item2.ImageIndex;
-  if (Pos(Chr(ImageIndex1), SourceImageIndex) > 0) then ImageIndex1 := Ord(DestImageIndex[Pos(Chr(ImageIndex1), SourceImageIndex)]);
-  if (Pos(Chr(ImageIndex2), SourceImageIndex) > 0) then ImageIndex2 := Ord(DestImageIndex[Pos(Chr(ImageIndex2), SourceImageIndex)]);
-
-  Compare := 0;
-  if ((ImageIndex1 <> ImageIndex2) and not ((ImageIndex1 in [iiBaseTable, iiSystemView, iiView]) and (ImageIndex2 in [iiBaseTable, iiSystemView, iiView]))) then
-    case (SelectedImageIndex) of
-      iiServer: Compare := Sign(Pos(Chr(ImageIndex1), iiServerSort) - Pos(Chr(ImageIndex2), iiServerSort));
-      iiDatabase: Compare := Sign(Pos(Chr(ImageIndex1), iiDatabaseSort) - Pos(Chr(ImageIndex2), iiDatabaseSort));
-      iiBaseTable: Compare := Sign(Pos(Chr(ImageIndex1), iiTableSort) - Pos(Chr(ImageIndex2), iiTableSort));
-    end
-  else
-  begin
-    if ((Data = 0) or (Data > Item1.SubItems.Count) or (Data > Item2.SubItems.Count)) then
-    begin
-      String1 := Item1.Caption;
-      String2 := Item2.Caption;
-    end
-    else
-    begin
-      String1 := Item1.SubItems[Data - 1];
-      String2 := Item2.SubItems[Data - 1];
-
-      Compare := 0;
-      case (SelectedImageIndex) of
-        iiServer:
-          case (Data) of
-            0: if (Client.LowerCaseTableNames = 0) then
-                 Compare := Sign(lstrcmp(PChar(String1), PChar(String2)))
-               else
-                 Compare := Sign(lstrcmpi(PChar(String1), PChar(String2)));
-            1: Compare := Sign(SysUtils.StrToInt64(String1) - SysUtils.StrToInt64(String2));
-            2:
-              begin
-                if (String1 = '') then String1 := '0';               if (String2 = '') then String2 := '0';
-
-                String1 := ReplaceStr(String1, '???', '0');         String2 := ReplaceStr(String2, '???', '0');
-
-                String1 := ReplaceStr(String1, ' B', '');           String2 := ReplaceStr(String2, ' B', '');
-                String1 := ReplaceStr(String1, ' KB', '000');       String2 := ReplaceStr(String2, ' KB', '000');
-                String1 := ReplaceStr(String1, ' MB', '000000');    String2 := ReplaceStr(String2, ' MB', '000000');
-                String1 := ReplaceStr(String1, ' GB', '000000000'); String2 := ReplaceStr(String2, ' GB', '000000000');
-
-                String1 := ReplaceStr(String1, LocaleFormatSettings.ThousandSeparator, '');
-                String2 := ReplaceStr(String2, LocaleFormatSettings.ThousandSeparator, '');
-                Compare := Sign(SysUtils.StrToFloat(String1, LocaleFormatSettings) - SysUtils.StrToFloat(String2, LocaleFormatSettings));
-              end;
-            3:
-              begin
-                if (String1 = '') then String1 := SysUtils.DateToStr(1, LocaleFormatSettings);
-                if (String2 = '') then String2 := SysUtils.DateToStr(1, LocaleFormatSettings);
-
-                String1 := ReplaceStr(String1, '???', SysUtils.DateToStr(1, LocaleFormatSettings));
-                String2 := ReplaceStr(String2, '???', SysUtils.DateToStr(1, LocaleFormatSettings));
-
-                Compare := Sign(SysUtils.StrToDateTime(String1, LocaleFormatSettings) - SysUtils.StrToDateTime(String2, LocaleFormatSettings));
-              end;
-          end;
-        iiDatabase:
-          case (Data) of
-            0: if (Client.LowerCaseTableNames = 0) then
-                 Compare := Sign(lstrcmp(PChar(String1), PChar(String2)))
-               else
-                 Compare := Sign(lstrcmpi(PChar(String1), PChar(String2)));
-            2:
-              begin
-                if (String1 = '') then String1 := '0';
-                if (String2 = '') then String2 := '0';
-
-                String1 := ReplaceStr(String1, '~', '');            String2 := ReplaceStr(String2, '~', '');
-                String1 := ReplaceStr(String1, '???', '0');         String2 := ReplaceStr(String2, '???', '0');
-
-                String1 := ReplaceStr(String1, LocaleFormatSettings.ThousandSeparator, '');
-                String2 := ReplaceStr(String2, LocaleFormatSettings.ThousandSeparator, '');
-                Compare := Sign(SysUtils.StrToFloat(String1, LocaleFormatSettings) - SysUtils.StrToFloat(String2, LocaleFormatSettings));
-              end;
-            3:
-              begin
-                if (String1 = '') then String1 := '0';               if (String2 = '') then String2 := '0';
-
-                String1 := ReplaceStr(String1, '???', '0');         String2 := ReplaceStr(String2, '???', '0');
-                String1 := ReplaceStr(String1, '???', '0');         String2 := ReplaceStr(String2, '???', '0');
-                String1 := ReplaceStr(String1, ' B', '');           String2 := ReplaceStr(String2, ' B', '');
-                String1 := ReplaceStr(String1, ' KB', '000');       String2 := ReplaceStr(String2, ' KB', '000');
-                String1 := ReplaceStr(String1, ' MB', '000000');    String2 := ReplaceStr(String2, ' MB', '000000');
-                String1 := ReplaceStr(String1, ' GB', '000000000'); String2 := ReplaceStr(String2, ' GB', '000000000');
-
-                String1 := ReplaceStr(String1, LocaleFormatSettings.ThousandSeparator, '');
-                String2 := ReplaceStr(String2, LocaleFormatSettings.ThousandSeparator, '');
-                Compare := Sign(SysUtils.StrToFloat(String1, LocaleFormatSettings) - SysUtils.StrToFloat(String2, LocaleFormatSettings));
-              end;
-            4:
-              begin
-                if (String1 = '') then String1 := SysUtils.DateToStr(1, LocaleFormatSettings);
-                if (String2 = '') then String2 := SysUtils.DateToStr(1, LocaleFormatSettings);
-
-                String1 := ReplaceStr(String1, '???', SysUtils.DateToStr(1, LocaleFormatSettings));
-                String2 := ReplaceStr(String2, '???', SysUtils.DateToStr(1, LocaleFormatSettings));
-
-                Compare := Sign(SysUtils.StrToDateTime(String1, LocaleFormatSettings) - SysUtils.StrToDateTime(String2, LocaleFormatSettings));
-              end;
-          end;
-      end;
-    end;
-
-    if (Compare = 0) then
-      Compare := Sign(lstrcmp(PChar(String1), PChar(String2)));
-    if (Compare = 0) then
-      Compare := Sign(lstrcmp(PChar(Item1.Caption), PChar(Item2.Caption)));
-
-    Compare := FListSortColumn[ContentWidthIndexFromImageIndex(SelectedImageIndex)].Order * Compare;
-  end;
-end;
-
-procedure TFClient.FListDragOver(Sender, Source: TObject; X, Y: Integer;
-  State: TDragState; var Accept: Boolean);
-var
-  SourceClient: TCClient;
-  SourceDatabase: TCDatabase;
-  SourceItem: TListItem;
-  SourceNode: TTreeNode;
-  TargetItem: TListItem;
-begin
-  Accept := False;
-
-  TargetItem := TListView(Sender).GetItemAt(X, Y);
-
-  if ((Source is TTreeView_Ext) and (TTreeView_Ext(Source).Name = FNavigator.Name)) then
-  begin
-    SourceNode := TFClient(TTreeView_Ext(Source).Owner).MouseDownNode;
-
-    if (not Assigned(TargetItem)) then
-      case (SourceNode.ImageIndex) of
-        iiBaseTable,
-        iiProcedure,
-        iiFunction,
-        iiField: Accept := (SourceNode.Parent.ImageIndex = SelectedImageIndex) and (SourceNode.Parent <> FNavigator.Selected);
-      end
-    else if (((TargetItem.Caption <> SourceNode.Text) or (SourceNode.Parent <> FNavigator.Selected)) and (SourceNode.Parent.Text <> TargetItem.Caption)) then
-      case (TargetItem.ImageIndex) of
-        iiDatabase: Accept := (SourceNode.ImageIndex in [iiDatabase, iiBaseTable, iiProcedure, iiFunction]);
-        iiBaseTable: Accept := SourceNode.ImageIndex in [iiBaseTable, iiField];
-      end;
-  end
-  else if ((Source is TListView) and (TListView(Source).SelCount = 1) and (TListView(Source).Name = FList.Name)) then
-  begin
-    SourceItem := TListView(Source).Selected;
-    SourceClient := TFClient(TTreeView_Ext(Source).Owner).Client;
-    SourceDatabase := SourceClient.DatabaseByName(TFClient(TTreeView_Ext(Source).Owner).MenuDatabase);
-
-    if (not Assigned(TargetItem)) then
-      case (SourceItem.ImageIndex) of
-        iiBaseTable,
-        iiProcedure,
-        iiFunction: Accept := (SelectedImageIndex = iiDatabase) and (not Assigned(TargetItem) and (Client.DatabaseByName(SelectedDatabase) <> SourceDatabase));
-      end
-    else if ((TargetItem <> SourceItem) and (TargetItem.ImageIndex = SourceItem.ImageIndex)) then
-      case (SourceItem.ImageIndex) of
-        iiBaseTable: Accept := (SelectedImageIndex = iiDatabase);
-      end
-    else if ((TargetItem <> SourceItem) and (SourceClient <> Client)) then
-      case (SourceItem.ImageIndex) of
-        iiBaseTable: Accept := (SelectedImageIndex = iiServer);
-      end;
-  end;
-end;
-
-procedure TFClient.FListEdited(Sender: TObject; Item: TListItem;
-  var S: string);
-begin
-  if (not RenameCItem(FocusedCItem, S)) then
-    S := Item.Caption;
-end;
-
-procedure TFClient.FListEditing(Sender: TObject; Item: TListItem;
-  var AllowEdit: Boolean);
-begin
-  AllowEdit := (Item.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50107) or (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013) or (Item.ImageIndex in [iiBaseTable, iiView, iiEvent, iiField, iiTrigger, iiHost, iiUser]);
-end;
-
-procedure TFClient.FListEmptyExecute(Sender: TObject);
-var
-  I: Integer;
-  Names: array of string;
-begin
-  Wanted.Clear();
-
-  if (FList.SelCount <= 1) then
-    FNavigatorEmptyExecute(Sender)
-  else
-  begin
-    SetLength(Names, 0);
-    case (SelectedImageIndex) of
-      iiServer:
-        if (MsgBox(Preferences.LoadStr(405), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
-        begin
-          for I := 0 to FList.Items.Count - 1 do
-            if (FList.Items[I].Selected) then
-            begin
-              SetLength(Names, Length(Names) + 1);
-              Names[Length(Names) - 1] := FList.Items[I].Caption;
-            end;
-          Client.EmptyDatabases(Names);
-        end;
-      iiDatabase:
-        if (MsgBox(Preferences.LoadStr(406), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
-        begin
-          for I := 0 to FList.Items.Count - 1 do
-            if (FList.Items[I].Selected) then
-            begin
-              SetLength(Names, Length(Names) + 1);
-              Names[Length(Names) - 1] := FList.Items[I].Caption;
-            end;
-          Client.DatabaseByName(SelectedDatabase).EmptyTables(Names);
-        end;
-      iiBaseTable:
-        if (MsgBox(Preferences.LoadStr(407), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
-        begin
-          for I := 0 to FList.Items.Count - 1 do
-            if (FList.Items[I].Selected) then
-            begin
-              SetLength(Names, Length(Names) + 1);
-              Names[Length(Names) - 1] := FList.Items[I].Caption;
-            end;
-          Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).EmptyFields(Names);
-        end;
-    end;
-    SetLength(Names, 0);
-  end;
-end;
-
-procedure TFClient.FListEnter(Sender: TObject);
-begin
-  MainAction('aDEmpty').OnExecute := FListEmptyExecute;
-
-  aDCreate.ShortCut := VK_INSERT;
-  aDDelete.ShortCut := VK_DELETE;
-
-  FListSelectItem(Sender, FList.Selected, Assigned(FList.Selected));
-  if (not Assigned(FList.Selected) and (FList.Items.Count > 0)) then
-    FList.Items[0].Focused := True;
-
-  StatusBarRefresh();
-end;
-
-procedure TFClient.FListExit(Sender: TObject);
-begin
-  StoreFListColumnWidths();
-
-  MainAction('aFImportSQL').Enabled := False;
-  MainAction('aFImportText').Enabled := False;
-  MainAction('aFImportExcel').Enabled := False;
-  MainAction('aFImportAccess').Enabled := False;
-  MainAction('aFImportSQLite').Enabled := False;
-  MainAction('aFImportODBC').Enabled := False;
-  MainAction('aFImportXML').Enabled := False;
-  MainAction('aFExportSQL').Enabled := False;
-  MainAction('aFExportText').Enabled := False;
-  MainAction('aFExportExcel').Enabled := False;
-  MainAction('aFExportAccess').Enabled := False;
-  MainAction('aFExportSQLite').Enabled := False;
-  MainAction('aFExportODBC').Enabled := False;
-  MainAction('aFExportXML').Enabled := False;
-  MainAction('aFExportHTML').Enabled := False;
-  MainAction('aFPrint').Enabled := False;
-  MainAction('aERename').Enabled := False;
-  MainAction('aDCreateDatabase').Enabled := False;
-  MainAction('aDCreateTable').Enabled := False;
-  MainAction('aDCreateView').Enabled := False;
-  MainAction('aDCreateProcedure').Enabled := False;
-  MainAction('aDCreateFunction').Enabled := False;
-  MainAction('aDCreateEvent').Enabled := False;
-  MainAction('aDCreateTrigger').Enabled := False;
-  MainAction('aDCreateIndex').Enabled := False;
-  MainAction('aDCreateField').Enabled := False;
-  MainAction('aDCreateForeignKey').Enabled := False;
-  MainAction('aDCreateHost').Enabled := False;
-  MainAction('aDCreateUser').Enabled := False;
-  MainAction('aDDeleteDatabase').Enabled := False;
-  MainAction('aDDeleteTable').Enabled := False;
-  MainAction('aDDeleteView').Enabled := False;
-  MainAction('aDDeleteRoutine').Enabled := False;
-  MainAction('aDDeleteEvent').Enabled := False;
-  MainAction('aDDeleteIndex').Enabled := False;
-  MainAction('aDDeleteField').Enabled := False;
-  MainAction('aDDeleteForeignKey').Enabled := False;
-  MainAction('aDDeleteTrigger').Enabled := False;
-  MainAction('aDDeleteHost').Enabled := False;
-  MainAction('aDDeleteUser').Enabled := False;
-  MainAction('aDEditServer').Enabled := False;
-  MainAction('aDEditDatabase').Enabled := False;
-  MainAction('aDEditTable').Enabled := False;
-  MainAction('aDEditView').Enabled := False;
-  MainAction('aDEditRoutine').Enabled := False;
-  MainAction('aDEditEvent').Enabled := False;
-  MainAction('aDEditIndex').Enabled := False;
-  MainAction('aDEditField').Enabled := False;
-  MainAction('aDEditForeignKey').Enabled := False;
-  MainAction('aDEditTrigger').Enabled := False;
-  MainAction('aDEditHost').Enabled := False;
-  MainAction('aDEditProcess').Enabled := False;
-  MainAction('aDEditUser').Enabled := False;
-  MainAction('aDEditVariable').Enabled := False;
-  MainAction('aDEmpty').Enabled := False;
-
-  aDCreate.ShortCut := 0;
-  aDDelete.ShortCut := 0;
-  mlEProperties.ShortCut := 0;
-end;
-
-procedure TFClient.FListRefresh(Sender: TObject);
-
-  function GroupByImageIndex(const ImageIndex: Integer): TListGroup;
-  var
-    I: Integer;
-  begin
-    Result := nil;
-
-    for I := 0 to FList.Groups.Count - 1 do
-      if (FList.Groups[I].GroupID = ImageIndex) then
-        Result := FList.Groups[I];
-  end;
-
-  procedure SetFListColumnWidths();
-  var
-    ContentWidth: Integer;
-    I: Integer;
-    Index: Integer;
-  begin
-    Index := ContentWidthIndexFromImageIndex(SelectedImageIndex);
-    if ((0 <= Index) and (Index < Length(Client.Account.Desktop.ContentWidths))) then
-      for I := 0 to Min(FList.Columns.Count, Length(Client.Account.Desktop.ContentWidths[Index])) - 1 do
-      begin
-        ContentWidth := Client.Account.Desktop.ContentWidths[Index][I];
-        if (ContentWidth <= 10) then
-          FList.Column[I].Width := 100
-        else
-          FList.Column[I].Width := ContentWidth;
-      end;
-  end;
-
-var
-  BaseTable: TCBaseTable;
-  BaseTableField: TCBaseTableField;
-  ChangingEvent: TLVChangingEvent;
-  Count: Integer;
-  Database: TCDatabase;
-  Event: TCEvent;
-  FieldNames: string;
-  ForeignKey: TCForeignKey;
-  Group: TListGroup;
-  Host: TCHost;
-  I: Integer;
-  Index: TCIndex;
-  Item: TListItem;
-  J: Integer;
-  LVItem: TLVItem;
-  Process: TCProcess;
-  Routine: TCRoutine;
-  S: string;
-  S2: string;
-  Status: TCStatus;
-  Table: TCTable;
-  Trigger: TCTrigger;
-  User: TCUser;
-  Variable: TCVariable;
-  View: TCView;
-  ViewField: TCViewField;
-begin
-  if (FList.Columns.Count > 0) then
-    StoreFListColumnWidths();
-
-  ChangingEvent := FList.OnChanging;
-  FList.DisableAlign();
-  FList.Items.BeginUpdate();
-  FList.OnChanging := nil;
-  FList.Items.Clear();
-
-  case (SelectedImageIndex) of
-    iiServer:
-      begin
-        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
-        begin
-          FList.Columns.BeginUpdate();
-          FList.Columns.Clear();
-          FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(38), '&', '');
-          FList.Columns.Add().Caption := Preferences.LoadStr(76);
-          FList.Columns.Add().Caption := Preferences.LoadStr(67);
-          FList.Columns.Add().Caption := Preferences.LoadStr(77);
-          FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
-          SetFListColumnWidths();
-          FList.Columns[1].Alignment := taRightJustify;
-          FList.Columns[2].Alignment := taRightJustify;
-          FList.Columns.EndUpdate();
-
-          FList.Groups.Clear();
-          FList.Groups.BeginUpdate();
-          Group := FList.Groups.Add();
-          Group.GroupID := iiDatabase;
-          Group := FList.Groups.Add();
-          Group.GroupID := 0;
-          Group.Header := ReplaceStr(Preferences.LoadStr(12), '&', '');
-          FList.Groups.EndUpdate();
-        end;
-
-        for I := 0 to Client.Databases.Count - 1 do
-        begin
-          Database := Client.Databases[I];
-          Item := FList.Items.Add();
-          Item.Data := Database;
-          Item.GroupId := iiDatabase;
-          if (Database is TCSystemDatabase) then
-            Item.ImageIndex := iiSystemDatabase
-          else
-            Item.ImageIndex := iiDatabase;
-          Item.Caption := Database.Name;
-
-          if (not Database.Actual) then
-            Item.SubItems.Add('')
-          else
-            Item.SubItems.Add(FormatFloat('#,##0', Database.Count, LocaleFormatSettings));
-          Item.SubItems.Add(SizeToStr(Database.Size));
-          if (Database is TCSystemDatabase) then
-            Item.SubItems.Add('')
-          else if (Database.Created = 0) then
-            Item.SubItems.Add('???')
-          else
-            Item.SubItems.Add(SysUtils.DateToStr(Database.Created, LocaleFormatSettings));
-          if (Database.DefaultCharset = Client.DefaultCharset) then
-            S := ''
-          else
-            S := Database.DefaultCharset;
-          if ((Database.Collation <> '') and (Database.Collation <> Client.Collation)) then
-          begin
-            if (S <> '') then S := S + ', ';
-            S := S + Database.Collation;
-          end;
-          if (Database is TCSystemDatabase) then
-            Item.SubItems.Add('')
-          else
-            Item.SubItems.Add(S);
-        end;
-        GroupByImageIndex(iiDatabase).Header := ReplaceStr(Preferences.LoadStr(265) + ' (' + IntToStr(Client.Databases.Count) + ')', '&', '');
-
-        if (Assigned(Client.Hosts)) then
-        begin
-          Item := FList.Items.Add();
-          Item.Data := Client.Hosts;
-          Item.GroupID := 0;
-          Item.Caption := Preferences.LoadStr(335);
-          Item.ImageIndex := iiHosts;
-          if (Client.Hosts.Actual) then
-            Item.SubItems.Add(FormatFloat('#,##0', Client.Hosts.Count, LocaleFormatSettings));
-        end;
-
-        if (Assigned(Client.Processes)) then
-        begin
-          Item := FList.Items.Add();
-          Item.Data := Client.Processes;
-          Item.GroupID := 0;
-          Item.ImageIndex := iiProcesses;
-          Item.Caption := Preferences.LoadStr(24);
-          if (Client.Processes.Actual) then
-            Item.SubItems.Add(FormatFloat('#,##0', Client.Processes.Count, LocaleFormatSettings));
-        end;
-
-        if (Assigned(Client.Stati)) then
-        begin
-          Item := FList.Items.Add();
-          Item.Data := Client.Stati;
-          Item.GroupID := 0;
-          Item.ImageIndex := iiStati;
-          Item.Caption := Preferences.LoadStr(23);
-          if (Client.Stati.Actual) then
-            Item.SubItems.Add(FormatFloat('#,##0', Client.Stati.Count, LocaleFormatSettings));
-        end;
-
-        if (Assigned(Client.Users)) then
-        begin
-          Item := FList.Items.Add();
-          Item.Data := Client.Users;
-          Item.GroupID := 0;
-          Item.ImageIndex := iiUsers;
-          Item.Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
-          if (Client.Users.Actual) then
-            if (Client.Users.Count >= 0) then
-              Item.SubItems.Add(FormatFloat('#,##0', Client.Users.Count, LocaleFormatSettings))
-            else
-              Item.SubItems.Add('???');
-        end;
-
-        if (Assigned(Client.Variables)) then
-        begin
-          Item := FList.Items.Add();
-          Item.Data := Client.Variables;
-          Item.GroupID := 0;
-          Item.ImageIndex := iiVariables;
-          Item.Caption := Preferences.LoadStr(22);
-          if (Client.Variables.Actual) then
-            Item.SubItems.Add(FormatFloat('#,##0', Client.Variables.Count, LocaleFormatSettings));
-        end;
-      end;
-    iiDatabase,
-    iiSystemDatabase:
-      begin
-        Database := Client.DatabaseByName(FNavigator.Selected.Text);
-
-        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
-        begin
-          FList.Columns.BeginUpdate();
-          FList.Columns.Clear();
-          FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
-          FList.Columns.Add().Caption := Preferences.LoadStr(69);
-          FList.Columns.Add().Caption := Preferences.LoadStr(66);
-          FList.Columns.Add().Caption := Preferences.LoadStr(67);
-          FList.Columns.Add().Caption := Preferences.LoadStr(68);
-          FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
-          FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
-          SetFListColumnWidths();
-          if (FList.Column[1].Width > 2 * Preferences.GridMaxColumnWidth) then
-            FList.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
-          FList.Columns[2].Alignment := taRightJustify;
-          FList.Columns[3].Alignment := taRightJustify;
-          FList.Columns.EndUpdate();
-
-          FList.Groups.Clear();
-          FList.Groups.BeginUpdate();
-          Group := FList.Groups.Add();
-          Group.GroupID := iiTable;
-          if (Assigned(Database.Routines)) then
-          begin
-            Group := FList.Groups.Add();
-            Group.GroupID := iiProcedure;
-          end;
-          if (Assigned(Database.Events)) then
-          begin
-            Group := FList.Groups.Add();
-            Group.GroupID := iiEvent;
-          end;
-          FList.Groups.EndUpdate();
-        end;
-
-        for I := 0 to Database.Tables.Count - 1 do
-        begin
-          Table := Database.Tables[I];
-
-          Item := FList.Items.Add();
-          Item.Data := Table;
-          Item.GroupID := iiTable;
-          if (Table is TCSystemView) then
-            Item.ImageIndex := iiSystemView
-          else if (Table is TCBaseTable) then
-            Item.ImageIndex := iiBaseTable
-          else
-            Item.ImageIndex := iiView;
-          Item.Caption := Table.Name;
-
-          if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Engine)) then
-            Item.SubItems.Add(TCBaseTable(Table).Engine.Name)
-          else if ((Table is TCView)) then
-            Item.SubItems.Add(ReplaceStr(Preferences.LoadStr(738), '&', ''))
-          else
-            Item.SubItems.Add('???');
-
-          if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
-            Item.SubItems.Add('')
-          else if ((Table is TCBaseTable) and (TCBaseTable(Table).Rows < 0)) then
-            Item.SubItems.Add('???')
-          else if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Engine) and (UpperCase(TCBaseTable(Table).Engine.Name) = 'INNODB')) then
-            Item.SubItems.Add('~' + FormatFloat('#,##0', TCBaseTable(Table).Rows, LocaleFormatSettings))
-          else if ((Table is TCBaseTable)) then
-            Item.SubItems.Add(FormatFloat('#,##0', TCBaseTable(Table).Rows, LocaleFormatSettings))
-          else
-            Item.SubItems.Add('');
-
-          if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
-            Item.SubItems.Add('')
-          else if ((Table is TCBaseTable) and (TCBaseTable(Table).DataSize + TCBaseTable(Table).IndexSize < 0)) then
-            Item.SubItems.Add('???')
-          else if ((Table is TCBaseTable)) then
-            Item.SubItems.Add(SizeToStr(TCBaseTable(Table).DataSize + TCBaseTable(Table).IndexSize + 1))
-          else if ((Table is TCView) and TCView(Table).ActualSource) then
-            Item.SubItems.Add(SizeToStr(Length(TCView(Table).Source)))
-          else
-            Item.SubItems.Add('');
-
-          if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
-            Item.SubItems.Add('')
-          else if ((Table is TCBaseTable) and (TCBaseTable(Table).Updated <= 0)) then
-            Item.SubItems.Add('???')
-          else if ((Table is TCBaseTable)) then
-            Item.SubItems.Add(SysUtils.DateTimeToStr(TCBaseTable(Table).Updated, LocaleFormatSettings))
-          else
-            Item.SubItems.Add('');
-
-          S := '';
-          if ((Table is TCBaseTable) and (TCBaseTable(Table).DefaultCharset <> '') and (TCBaseTable(Table).DefaultCharset <> TCBaseTable(Table).Database.DefaultCharset)) then
-            S := S + TCBaseTable(Table).DefaultCharset;
-          if ((Table is TCBaseTable) and (TCBaseTable(Table).Collation <> '') and (TCBaseTable(Table).Collation <> TCBaseTable(Table).Database.Collation)) then
-          begin
-            if (S <> '') then S := S + ', ';
-            S := S + TCBaseTable(Table).Collation;
-          end;
-          Item.SubItems.Add(S);
-
-          if ((Table is TCBaseTable)) then
-            Item.SubItems.Add(TCBaseTable(Table).Comment)
-          else
-            Item.SubItems.Add(TCView(Table).Comment);
-        end;
-        S := ReplaceStr(Preferences.LoadStr(234), '&', '');
-        if (Client.ServerVersion >= 50001) then
-          S := S + ' + ' + ReplaceStr(Preferences.LoadStr(873), '&', '');
-        GroupByImageIndex(iiTable).Header := S + ' (' + IntToStr(Database.Tables.Count) + ')';
-
-        if (Assigned(Database.Routines)) then
-        begin
-          for I := 0 to Database.Routines.Count - 1 do
-          begin
-            Routine := Database.Routines[I];
-
-            Item := FList.Items.Add();
-            Item.Data := Routine;
-            Item.GroupID := iiProcedure;
-            if (Routine is TCProcedure) then
-              Item.ImageIndex := iiProcedure
-            else if (Routine is TCFunction) then
-              Item.ImageIndex := iiFunction;
-            Item.Caption := Routine.Name;
-
-            case (Routine.RoutineType) of
-              rtProcedure: Item.SubItems.Add('Procedure');
-              rtFunction: Item.SubItems.Add('Function');
-            end;
-            Item.SubItems.Add('');
-
-            if (not Routine.ActualSource) then
-              Item.SubItems.Add('')
-            else
-              Item.SubItems.Add(SizeToStr(Length(Routine.Source)));
-            if (Routine.Modified = 0) then
-              Item.SubItems.Add('???')
-            else
-              Item.SubItems.Add(SysUtils.DateTimeToStr(Routine.Modified, LocaleFormatSettings));
-            if (not Assigned(Routine.FunctionResult) or (Routine.FunctionResult.Charset = '') or (Routine.FunctionResult.Charset = Database.DefaultCharset)) then
-              Item.SubItems.Add('')
-            else
-              Item.SubItems.Add(Routine.FunctionResult.Charset);
-            Item.SubItems.Add(Routine.Comment);
-          end;
-          GroupByImageIndex(iiProcedure).Header := ReplaceStr(Preferences.LoadStr(874) + ' + ' + Preferences.LoadStr(875), '&', '') + ' (' + IntToStr(Database.Routines.Count) + ')';
-        end;
-
-        if (Assigned(Database.Events)) then
-        begin
-          for I := 0 to Database.Events.Count - 1 do
-          begin
-            Event := Database.Events[I];
-
-            Item := FList.Items.Add();
-            Item.Data := Event;
-            Item.GroupID := iiEvent;
-            Item.ImageIndex := iiEvent;
-            Item.Caption := Event.Name;
-            Item.SubItems.Add('Event');
-            Item.SubItems.Add('');
-            if (not Event.ActualSource) then
-              Item.SubItems.Add('')
-            else
-              Item.SubItems.Add(SizeToStr(Length(Event.Source)));
-            if (Event.Updated = 0) then
-              Item.SubItems.Add('???')
-            else
-              Item.SubItems.Add(SysUtils.DateTimeToStr(Event.Updated, LocaleFormatSettings));
-            Item.SubItems.Add('');
-            Item.SubItems.Add(Event.Comment);
-          end;
-          GroupByImageIndex(iiEvent).Header := ReplaceStr(Preferences.LoadStr(876), '&', '') + ' (' + IntToStr(Database.Events.Count) + ')';
-        end;
-      end;
-    iiBaseTable,
-    iiSystemView:
-      begin
-        Database := Client.DatabaseByName(FNavigator.Selected.Parent.Text);
-        BaseTable := Database.BaseTableByName(FNavigator.Selected.Text);
-
-        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
-        begin
-          FList.Columns.BeginUpdate();
-          FList.Columns.Clear();
-          FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
-          FList.Columns.Add().Caption := Preferences.LoadStr(69);
-          FList.Columns.Add().Caption := Preferences.LoadStr(71);
-          FList.Columns.Add().Caption := Preferences.LoadStr(72);
-          FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
-          if (Client.ServerVersion >= 40100) then
-            FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
-          SetFListColumnWidths();
-          if (FList.Column[1].Width > 2 * Preferences.GridMaxColumnWidth) then
-            FList.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
-          FList.Columns.EndUpdate();
-
-          FList.Groups.Clear();
-          FList.Groups.BeginUpdate();
-          Group := FList.Groups.Add();
-          Group.GroupID := iiIndex;
-          Group := FList.Groups.Add();
-          Group.GroupID := iiField;
-          if (Assigned(BaseTable.ForeignKeys)) then
-          begin
-            Group := FList.Groups.Add();
-            Group.GroupID := iiForeignKey;
-          end;
-          if (Assigned(Database.Triggers)) then
-          begin
-            Group := FList.Groups.Add();
-            Group.GroupID := iiTrigger;
-          end;
-          FList.Groups.EndUpdate();
-        end;
-
-        for I := 0 to BaseTable.Indices.Count - 1 do
-        begin
-          Index := BaseTable.Indices[I];
-
-          Item := FList.Items.Add();
-          Item.Data := Index;
-          Item.GroupID := iiIndex;
-          Item.ImageIndex := iiIndex;
-          Item.Caption := Index.Caption;
-
-          FieldNames := '';
-          for J := 0 to Index.Columns.Count - 1 do
-          begin
-            if (FieldNames <> '') then FieldNames := FieldNames + ',';
-            FieldNames := FieldNames + Index.Columns[J].Field.Name;
-            if (Index.Columns.Column[J].Length > 0) then
-              FieldNames := FieldNames + '(' + IntToStr(Index.Columns[J].Length) + ')';
-          end;
-          Item.SubItems.Add(FieldNames);
-          Item.SubItems.Add('');
-          Item.SubItems.Add('');
-          if (Index.Unique) then
-            Item.SubItems.Add('unique')
-          else if (Index.Fulltext) then
-            Item.SubItems.Add('fulltext')
-          else
-            Item.SubItems.Add('');
-          if (Client.ServerVersion >= 40100) then
-            Item.SubItems.Add('');
-        end;
-        GroupByImageIndex(iiIndex).Header := ReplaceStr(Preferences.LoadStr(458), '&', '') + ' (' + IntToStr(BaseTable.Indices.Count) + ')';
-
-        for I := 0 to BaseTable.Fields.Count - 1 do
-        begin
-          BaseTableField := TCBaseTableField(BaseTable.Fields[I]);
-
-          Item := FList.Items.Add();
-          Item.Data := BaseTableField;
-          Item.GroupID := iiField;
-          if (BaseTable is TCSystemView) then
-            Item.ImageIndex := iiSystemViewField
-          else
-            Item.ImageIndex := iiField;
-          Item.Caption := BaseTableField.Name;
-
-          Item.SubItems.Add(BaseTableField.DBTypeStr());
-
-          if (BaseTableField.NullAllowed) then
-            Item.SubItems.Add(Preferences.LoadStr(74))
-          else
-            Item.SubItems.Add(Preferences.LoadStr(75));
-          if (BaseTableField.AutoIncrement) then
-            Item.SubItems.Add('<auto_increment>')
-          else if (BaseTableField.Default = 'NULL') then
-            Item.SubItems.Add('<' + Preferences.LoadStr(71) + '>')
-          else if (BaseTableField.Default = 'CURRENT_TIMESTAMP') then
-            Item.SubItems.Add('<INSERT-TimeStamp>')
-          else
-            Item.SubItems.Add(BaseTableField.UnescapeValue(BaseTableField.Default));
-          S := '';
-          if (BaseTableField.FieldType in TextFieldTypes) then
-          begin
-            if ((BaseTableField.Charset <> '') and (BaseTableField.Charset <> BaseTable.DefaultCharset)) then
-              S := S + BaseTableField.Charset;
-            if ((BaseTableField.Collation <> '') and (BaseTableField.Collation <> BaseTable.Collation)) then
-            begin
-              if (S <> '') then S := S + ', ';
-              S := S + BaseTableField.Collation;
-            end;
-          end;
-          Item.SubItems.Add(S);
-          if (Client.ServerVersion >= 40100) then
-            Item.SubItems.Add(BaseTableField.Comment);
-        end;
-        GroupByImageIndex(iiField).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(BaseTable.Fields.Count) + ')';
-
-        if (Assigned(BaseTable.ForeignKeys)) then
-        begin
-          for I := 0 to BaseTable.ForeignKeys.Count - 1 do
-          begin
-            ForeignKey := BaseTable.ForeignKeys[I];
-
-            Item := FList.Items.Add();
-            Item.Data := ForeignKey;
-            Item.GroupID := iiForeignKey;
-            Item.ImageIndex := iiForeignKey;
-            Item.Caption := ForeignKey.Name;
-
-            Item.SubItems.Add(ForeignKey.DBTypeStr());
-            Item.SubItems.Add('');
-            Item.SubItems.Add('');
-
-            S := '';
-            if (ForeignKey.OnDelete = dtCascade) then S := 'cascade on delete';
-            if (ForeignKey.OnDelete = dtSetNull) then S := 'set NULL on delete';
-            if (ForeignKey.OnDelete = dtSetDefault) then S := 'set default on delete';
-            if (ForeignKey.OnDelete = dtNoAction) then S := 'no action on delete';
-            S2 := '';
-            if (ForeignKey.OnUpdate = utCascade) then S2 := 'cascade on update';
-            if (ForeignKey.OnUpdate = utSetNull) then S2 := 'set NULL on update';
-            if (ForeignKey.OnUpdate = utSetDefault) then S2 := 'set default on update';
-            if (ForeignKey.OnUpdate = utNoAction) then S2 := 'no action on update';
-            if (S <> '') and (S2 <> '') then S := S + ', ';
-            S := S + S2;
-            Item.SubItems.Add(S);
-
-            if (Client.ServerVersion >= 40100) then
-              Item.SubItems.Add('');
-          end;
-          GroupByImageIndex(iiForeignKey).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(BaseTable.ForeignKeys.Count) + ')';
-        end;
-
-        if (Assigned(BaseTable.Database.Triggers)) then
-        begin
-          Count := 0;
-          for I := 0 to Database.Triggers.Count - 1 do
-            if (Database.Triggers[I].Table = BaseTable) then
-            begin
-              Trigger := Database.Triggers[I];
-
-              Item := FList.Items.Add();
-              Item.Data := Trigger;
-              Item.GroupID := iiTrigger;
-              Item.ImageIndex := iiTrigger;
-              Item.Caption := Trigger.Name;
-
-              S := '';
-              case (Trigger.Timing) of
-                ttBefore: S := S + 'before ';
-                ttAfter: S := S + 'after ';
-              end;
-              case (Trigger.Event) of
-                teInsert: S := S + 'insert ';
-                teUpdate: S := S + 'update ';
-                teDelete: S := S + 'delete ';
-              end;
-              Item.SubItems.Add(S);
-
-              Inc(Count);
-            end;
-          GroupByImageIndex(iiTrigger).Header := ReplaceStr(Preferences.LoadStr(797), '&', '') + ' (' + IntToStr(Count) + ')';
-        end;
-      end;
-    iiView:
-      begin
-        Database := Client.DatabaseByName(FNavigator.Selected.Parent.Text);
-        View := Database.ViewByName(FNavigator.Selected.Text);
-
-        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
-        begin
-          FList.Columns.BeginUpdate();
-          FList.Columns.Clear();
-          FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
-          FList.Columns.Add().Caption := Preferences.LoadStr(69);
-          FList.Columns.Add().Caption := Preferences.LoadStr(71);
-          FList.Columns.Add().Caption := Preferences.LoadStr(72);
-          FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
-          SetFListColumnWidths();
-          if (FList.Column[1].Width > 2 * Preferences.GridMaxColumnWidth) then
-            FList.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
-          FList.Columns.EndUpdate();
-
-          FList.Groups.Clear();
-          FList.Groups.BeginUpdate();
-          Group := FList.Groups.Add();
-          Group.GroupID := iiViewField;
-          FList.Groups.EndUpdate();
-        end;
-
-        for I := 0 to View.Fields.Count - 1 do
-        begin
-          ViewField := TCViewField(View.Fields[I]);
-
-          Item := FList.Items.Add();
-          Item.Data := ViewField;
-          Item.GroupID := iiField;
-          Item.ImageIndex := iiViewField;
-          Item.Caption := ViewField.Name;
-          if (ViewField.FieldType <> mfUnknown) then
-          begin
-            Item.SubItems.Add(ViewField.DBTypeStr());
-            if (ViewField.NullAllowed) then
-              Item.SubItems.Add(Preferences.LoadStr(74))
-            else
-              Item.SubItems.Add(Preferences.LoadStr(75));
-            if (ViewField.AutoIncrement) then
-              Item.SubItems.Add('<auto_increment>')
-            else
-              Item.SubItems.Add(ViewField.Default);
-            if (ViewField.Charset <> Client.DatabaseByName(SelectedDatabase).DefaultCharset) then
-              Item.SubItems.Add(ViewField.Charset);
-          end;
-        end;
-        GroupByImageIndex(iiViewField).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(View.Fields.Count) + ')';
-      end;
-    iiHosts:
-      begin
-        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
-        begin
-          FList.Columns.BeginUpdate();
-          FList.Columns.Clear();
-          FList.Columns.Add().Caption := Preferences.LoadStr(335);
-          SetFListColumnWidths();
-          FList.Columns.EndUpdate();
-
-          FList.Groups.Clear();
-          FList.Groups.BeginUpdate();
-          Group := FList.Groups.Add();
-          Group.GroupID := iiHost;
-          FList.Groups.EndUpdate();
-        end;
-
-        for I := 0 to Client.Hosts.Count - 1 do
-        begin
-          Host := Client.Hosts[I];
-
-          Item := FList.Items.Add();
-          Item.Data := Host;
-          Item.GroupID := iiHost;
-          Item.ImageIndex := iiHost;
-          Item.Caption := Host.Caption;
-        end;
-        GroupByImageIndex(iiHost).Header := ReplaceStr(Preferences.LoadStr(335), '&', '') + ' (' + IntToStr(Client.Hosts.Count) + ')';
-      end;
-    iiProcesses:
-      begin
-        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
-        begin
-          FList.Columns.BeginUpdate();
-          FList.Columns.Clear();
-          FList.Columns.Add().Caption := Preferences.LoadStr(269);
-          FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
-          FList.Columns.Add().Caption := Preferences.LoadStr(271);
-          FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(38), '&', '');
-          FList.Columns.Add().Caption := Preferences.LoadStr(273);
-          FList.Columns.Add().Caption := Preferences.LoadStr(274);
-          FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(661), '&', '');
-          FList.Columns.Add().Caption := Preferences.LoadStr(276);
-          SetFListColumnWidths();
-          FList.Columns.EndUpdate();
-
-          FList.Groups.Clear();
-          FList.Groups.BeginUpdate();
-          Group := FList.Groups.Add();
-          Group.GroupID := iiProcess;
-          FList.Groups.EndUpdate();
-        end;
-
-        for I := 0 to Client.Processes.Count - 1 do
-        begin
-          Process := Client.Processes[I];
-
-          Item := FList.Items.Add();
-          Item.Data := Process;
-          Item.GroupID := iiProcess;
-          Item.ImageIndex := iiProcess;
-          Item.Caption := IntToStr(Process.Id);
-          Item.SubItems.Add(Process.UserName);
-          Item.SubItems.Add(Process.Host);
-          Item.SubItems.Add(Process.DatabaseName);
-          Item.SubItems.Add(Process.Command);
-          Item.SubItems.Add(SQLStmtToCaption(Process.SQL, 30));
-          if (Process.Time = 0) then
-            Item.SubItems.Add('???')
-          else
-            Item.SubItems.Add(ExecutionTimeToStr(Process.Time));
-          Item.SubItems.Add(Process.State);
-        end;
-        GroupByImageIndex(iiProcess).Header := ReplaceStr(Preferences.LoadStr(24), '&', '') + ' (' + IntToStr(Client.Processes.Count) + ')';
-      end;
-    iiStati:
-      begin
-        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
-        begin
-          FList.Columns.BeginUpdate();
-          FList.Columns.Clear();
-          FList.Columns.Add().Caption := Preferences.LoadStr(267);
-          FList.Columns.Add().Caption := Preferences.LoadStr(268);
-          SetFListColumnWidths();
-          FList.Columns.EndUpdate();
-
-          FList.Groups.Clear();
-          FList.Groups.BeginUpdate();
-          Group := FList.Groups.Add();
-          Group.GroupID := iiStatus;
-          FList.Groups.EndUpdate();
-        end;
-
-        for I := 0 to Client.Stati.Count - 1 do
-        begin
-          Status := Client.Stati[I];
-
-          Item := FList.Items.Add();
-          Item.Data := Status;
-          Item.GroupID := iiStatus;
-          Item.ImageIndex := iiStatus;
-          Item.Caption := Status.Name;
-          Item.SubItems.Add(Status.Value);
-        end;
-        GroupByImageIndex(iiStatus).Header := ReplaceStr(Preferences.LoadStr(23), '&', '') + ' (' + IntToStr(Client.Stati.Count) + ')';
-      end;
-    iiUsers:
-      begin
-        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
-        begin
-          FList.Columns.BeginUpdate();
-          FList.Columns.Clear();
-          FList.Columns.Add().Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
-          SetFListColumnWidths();
-          FList.Columns.EndUpdate();
-
-          FList.Groups.Clear();
-          FList.Groups.BeginUpdate();
-          Group := FList.Groups.Add();
-          Group.GroupID := iiUser;
-          FList.Groups.EndUpdate();
-        end;
-
-        for I := 0 to Client.Users.Count - 1 do
-        begin
-          User := Client.Users[I];
-
-          Item := FList.Items.Add();
-          Item.Data := User;
-          Item.GroupID := iiUser;
-          Item.ImageIndex := iiUser;
-          Item.Caption := User.Caption;
-        end;
-        GroupByImageIndex(iiUser).Header := ReplaceStr(Preferences.LoadStr(561), '&', '') + ' (' + IntToStr(Client.Users.Count) + ')';
-      end;
-    iiVariables:
-      begin
-        if (LastSelectedImageIndex <> FNavigator.Selected.ImageIndex) then
-        begin
-          FList.Columns.BeginUpdate();
-          FList.Columns.Clear();
-          FList.Columns.Add().Caption := Preferences.LoadStr(267);
-          FList.Columns.Add().Caption := Preferences.LoadStr(268);
-          SetFListColumnWidths();
-          FList.Columns.EndUpdate();
-
-          FList.Groups.Clear();
-          FList.Groups.BeginUpdate();
-          Group := FList.Groups.Add();
-          Group.GroupID := iiVariable;
-          FList.Groups.EndUpdate();
-        end;
-
-        for I := 0 to Client.Variables.Count - 1 do
-        begin
-          Variable := Client.Variables[I];
-
-          Item := FList.Items.Add();
-          Item.Data := Variable;
-          Item.GroupID := iiVariable;
-          Item.ImageIndex := iiVariable;
-          Item.Caption := Variable.Name;
-          Item.SubItems.Add(Variable.Value);
-        end;
-        GroupByImageIndex(iiVariable).Header := ReplaceStr(Preferences.LoadStr(22), '&', '') + ' (' + IntToStr(Client.Variables.Count) + ')';
-      end;
-  end;
-
-  if (not Assigned(FList.ItemFocused) and (FList.Items.Count > 0)) then
-    FList.ItemFocused := FList.Items[0];
-  if ((Window.ActiveControl = FList) and Assigned(FList.OnSelectItem)) then
-    FList.OnSelectItem(Sender, FList.Selected, Assigned(FList.Selected));
-
-  if (Assigned(FNavigator.Selected)) then
-    if (FNavigator.Selected.ImageIndex in [iiHosts, iiStati, iiUsers, iiVariables]) then
-      for I := 0 to FList.Columns.Count - 1 do
-        if (FList.Items.Count = 0) then
-          FList.Columns[I].Width := ColumnHeaderWidth
-        else
-          FList.Columns[I].Width := ColumnTextWidth
-    else if (FNavigator.Selected.ImageIndex in [iiProcesses]) then
-      for I := 0 to FList.Columns.Count - 1 do
-        if (I = 5) then
-          FList.Columns[I].Width := Preferences.GridMaxColumnWidth
-        else
-          FList.Columns[I].Width := ColumnTextWidth;
-
-  FList.Items.EndUpdate();
-  FList.EnableAlign();
-  FList.OnChanging := ChangingEvent;
-
-  if (Assigned(FNavigator.Selected) and (FNavigator.Selected.ImageIndex >= 0)) then
-  begin
-    if ((SelectedImageIndex >= 0) and (ContentWidthIndexFromImageIndex(SelectedImageIndex) < FList.Columns.Count)) then
-      FListColumnClick(nil, FList.Column[FListSortColumn[ContentWidthIndexFromImageIndex(SelectedImageIndex)].Index]);
-  end;
-
-  if (Assigned(FNavigator.Selected)) then
-    LastSelectedImageIndex := FNavigator.Selected.ImageIndex;
-end;
-
-procedure TFClient.FListSelectItem(Sender: TObject; Item: TListItem;
-  Selected: Boolean);
-var
-  BaseTable: TCBaseTable;
-  Database: TCDatabase;
-  I: Integer;
-  Msg: TMsg;
-begin
-  if (not (PeekMessage(Msg, 0, 0, 0, PM_NOREMOVE) and (Msg.Message = WM_MOUSEMOVE) and (Msg.wParam = MK_LBUTTON)) or (FList.SelCount <= 1)) then
-  begin
-    aPOpenInNewWindow.Enabled := False;
-    aPOpenInNewTab.Enabled := False;
-    MainAction('aFImportSQL').Enabled := False;
-    MainAction('aFImportText').Enabled := False;
-    MainAction('aFImportExcel').Enabled := False;
-    MainAction('aFImportAccess').Enabled := False;
-    MainAction('aFImportSQLite').Enabled := False;
-    MainAction('aFImportODBC').Enabled := False;
-    MainAction('aFImportXML').Enabled := False;
-    MainAction('aFExportSQL').Enabled := False;
-    MainAction('aFExportText').Enabled := False;
-    MainAction('aFExportExcel').Enabled := False;
-    MainAction('aFExportAccess').Enabled := False;
-    MainAction('aFExportSQLite').Enabled := False;
-    MainAction('aFExportODBC').Enabled := False;
-    MainAction('aFExportXML').Enabled := False;
-    MainAction('aFExportHTML').Enabled := False;
-    MainAction('aFPrint').Enabled := False;
-    MainAction('aECopy').Enabled := False;
-    MainAction('aEPaste').Enabled := False;
-    MainAction('aERename').Enabled := False;
-    MainAction('aDCreateDatabase').Enabled := False;
-    MainAction('aDCreateTable').Enabled := False;
-    MainAction('aDCreateView').Enabled := False;
-    MainAction('aDCreateProcedure').Enabled := False;
-    MainAction('aDCreateFunction').Enabled := False;
-    MainAction('aDCreateTrigger').Enabled := False;
-    MainAction('aDCreateEvent').Enabled := False;
-    MainAction('aDCreateIndex').Enabled := False;
-    MainAction('aDCreateField').Enabled := False;
-    MainAction('aDCreateForeignKey').Enabled := False;
-    MainAction('aDCreateHost').Enabled := False;
-    MainAction('aDCreateUser').Enabled := False;
-    MainAction('aDDeleteDatabase').Enabled := False;
-    MainAction('aDDeleteTable').Enabled := False;
-    MainAction('aDDeleteView').Enabled := False;
-    MainAction('aDDeleteRoutine').Enabled := False;
-    MainAction('aDDeleteIndex').Enabled := False;
-    MainAction('aDDeleteField').Enabled := False;
-    MainAction('aDDeleteForeignKey').Enabled := False;
-    MainAction('aDDeleteTrigger').Enabled := False;
-    MainAction('aDDeleteEvent').Enabled := False;
-    MainAction('aDDeleteHost').Enabled := False;
-    MainAction('aDDeleteUser').Enabled := False;
-    MainAction('aDEditServer').Enabled := False;
-    MainAction('aDEditDatabase').Enabled := False;
-    MainAction('aDEditTable').Enabled := False;
-    MainAction('aDEditView').Enabled := False;
-    MainAction('aDEditRoutine').Enabled := False;
-    MainAction('aDEditEvent').Enabled := False;
-    MainAction('aDEditIndex').Enabled := False;
-    MainAction('aDEditField').Enabled := False;
-    MainAction('aDEditForeignKey').Enabled := False;
-    MainAction('aDEditTrigger').Enabled := False;
-    MainAction('aDEmpty').Enabled := False;
-
-    mlOpen.Enabled := False;
-    aDDelete.Enabled := False;
-    mlEProperties.Action := nil;
-
-    if (not Assigned(Item) or (Item is TListItem)) then
-      case (SelectedImageIndex) of
-        iiServer:
-          begin
-            aPOpenInNewWindow.Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex in [iiDatabase, iiSystemDatabase]);
-            aPOpenInNewTab.Enabled := aPOpenInNewWindow.Enabled;
-            MainAction('aFImportSQL').Enabled := (FList.SelCount <= 1) and (not Assigned(Client.UserRights) or Client.UserRights.RInsert) or Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aFImportExcel').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aFImportAccess').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aFImportSQLite').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aFImportODBC').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aFExportSQL').Enabled := (FList.SelCount = 0) or Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aFExportText').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aFExportExcel').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aFExportAccess').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aFExportSQLite').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aFExportODBC').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aFExportXML').Enabled := (FList.SelCount = 0) or Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aFExportHTML').Enabled := (FList.SelCount = 0) or Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aFPrint').Enabled := (FList.SelCount = 0) or Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aECopy').Enabled := FList.SelCount >= 1;
-            MainAction('aEPaste').Enabled := (not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLSERVER) or Assigned(Item) and (Item.ImageIndex = iiDatabase) and Clipboard.HasFormat(CF_MYSQLDATABASE)) and True;
-            MainAction('aDCreateDatabase').Enabled := (FList.SelCount = 0) and (not Assigned(Client.UserRights) or Client.UserRights.RCreate);
-            MainAction('aDCreateTable').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aDCreateView').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50001);
-            MainAction('aDCreateProcedure').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50004);
-            MainAction('aDCreateFunction').Enabled := MainAction('aDCreateProcedure').Enabled;
-            MainAction('aDCreateEvent').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50106);
-            MainAction('aDCreateHost').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiHosts);
-            MainAction('aDCreateUser').Enabled := (FList.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiUsers);
-            MainAction('aDDeleteDatabase').Enabled := (FList.SelCount >= 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and True;
-            MainAction('aDEditServer').Enabled := (FList.SelCount = 0);
-            MainAction('aDEditDatabase').Enabled := (FList.SelCount >= 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aDEmpty').Enabled := (FList.SelCount >= 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and True;
-            aDDelete.Enabled := MainAction('aDDeleteDatabase').Enabled;
-
-            for I := 0 to FList.Items.Count - 1 do
-              if (FList.Items[I].Selected) then
-              begin
-                MainAction('aFExportSQL').Enabled := MainAction('aFExportSQL').Enabled and (FList.Items[I].ImageIndex in [iiDatabase]);
-                MainAction('aFExportText').Enabled := MainAction('aFExportText').Enabled and (FList.Items[I].ImageIndex in [iiDatabase]);
-                MainAction('aFExportExcel').Enabled := MainAction('aFExportExcel').Enabled and (FList.Items[I].ImageIndex in [iiDatabase]);
-                MainAction('aFExportAccess').Enabled := MainAction('aFExportAccess').Enabled and (FList.Items[I].ImageIndex in [iiDatabase]);
-                MainAction('aFExportSQLite').Enabled := MainAction('aFExportSQLite').Enabled and (FList.Items[I].ImageIndex in [iiDatabase]);
-                MainAction('aFExportODBC').Enabled := MainAction('aFExportODBC').Enabled and (FList.Items[I].ImageIndex in [iiDatabase]);
-                MainAction('aFExportXML').Enabled := MainAction('aFExportXML').Enabled and (FList.Items[I].ImageIndex in [iiDatabase]);
-                MainAction('aFExportHTML').Enabled := MainAction('aFExportHTML').Enabled and (FList.Items[I].ImageIndex in [iiDatabase]);
-                MainAction('aFPrint').Enabled := MainAction('aFPrint').Enabled and (FList.Items[I].ImageIndex in [iiDatabase]);
-                MainAction('aECopy').Enabled := MainAction('aECopy').Enabled and (FList.Items[I].ImageIndex in [iiDatabase, iiSystemDatabase]);
-                MainAction('aDDeleteDatabase').Enabled := MainAction('aDDeleteDatabase').Enabled and (FList.Items[I].ImageIndex in [iiDatabase]);
-                MainAction('aDEditDatabase').Enabled := MainAction('aDEditDatabase').Enabled and (FList.Items[I].ImageIndex in [iiDatabase]);
-                MainAction('aDEmpty').Enabled := MainAction('aDEmpty').Enabled and (FList.Items[I].ImageIndex in [iiDatabase]);
-              end;
-
-            mlOpen.Enabled := FList.SelCount = 1;
-
-            if (not Assigned(Item)) then
-              mlEProperties.Action := MainAction('aDEditServer')
-            else
-              mlEProperties.Action := MainAction('aDEditDatabase');
-          end;
-        iiDatabase,
-        iiSystemDatabase:
-          begin
-            Database := Client.DatabaseByName(SelectedDatabase);
-
-            aPOpenInNewWindow.Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction]);
-            aPOpenInNewTab.Enabled := aPOpenInNewWindow.Enabled;
-            MainAction('aFImportSQL').Enabled := (FList.SelCount = 0) and (SelectedImageIndex = iiDatabase);
-            MainAction('aFImportText').Enabled := ((FList.SelCount = 0) or (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable));
-            MainAction('aFImportExcel').Enabled := ((FList.SelCount = 0) or (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable));
-            MainAction('aFImportAccess').Enabled := ((FList.SelCount = 0) or (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable));
-            MainAction('aFImportSQLite').Enabled := ((FList.SelCount = 0) or (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable));
-            MainAction('aFImportODBC').Enabled := ((FList.SelCount = 0) or (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable));
-            MainAction('aFImportXML').Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
-            MainAction('aFExportSQL').Enabled := ((FList.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable, iiView, iiProcedure, iiFunction, iiEvent, iiTrigger])) and (SelectedImageIndex = iiDatabase);
-            MainAction('aFExportText').Enabled := ((FList.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable, iiView])) and (SelectedImageIndex = iiDatabase);
-            MainAction('aFExportExcel').Enabled := ((FList.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable, iiView])) and (SelectedImageIndex = iiDatabase);
-            MainAction('aFExportAccess').Enabled := ((FList.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable])) and (SelectedImageIndex = iiDatabase);
-            MainAction('aFExportSQLite').Enabled := ((FList.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable])) and (SelectedImageIndex = iiDatabase);
-            MainAction('aFExportODBC').Enabled := ((FList.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable])) and (SelectedImageIndex = iiDatabase);
-            MainAction('aFExportXML').Enabled := ((FList.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable, iiView])) and (SelectedImageIndex = iiDatabase);
-            MainAction('aFExportHTML').Enabled := SelectedImageIndex = iiDatabase;
-            MainAction('aFPrint').Enabled := SelectedImageIndex = iiDatabase;
-            MainAction('aECopy').Enabled := FList.SelCount >= 1;
-            MainAction('aEPaste').Enabled := (not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLDATABASE) or Assigned(Item) and ((Item.ImageIndex = iiBaseTable) and Clipboard.HasFormat(CF_MYSQLTABLE) or (Item.ImageIndex = iiView) and Clipboard.HasFormat(CF_MYSQLVIEW))) and True;
-            MainAction('aERename').Enabled := Assigned(Item) and (FList.SelCount = 1) and (Item.ImageIndex in [iiBaseTable, iiView, iiEvent]) and True;
-            MainAction('aDCreateTable').Enabled := (FList.SelCount = 0) and (SelectedImageIndex = iiDatabase);
-            MainAction('aDCreateView').Enabled := (FList.SelCount = 0) and (Client.ServerVersion >= 50001) and (SelectedImageIndex = iiDatabase);
-            MainAction('aDCreateProcedure').Enabled := (FList.SelCount = 0) and (Client.ServerVersion >= 50004) and (SelectedImageIndex = iiDatabase);
-            MainAction('aDCreateFunction').Enabled := MainAction('aDCreateProcedure').Enabled;
-            MainAction('aDCreateEvent').Enabled := (FList.SelCount = 0) and (Client.ServerVersion >= 50106) and (SelectedImageIndex = iiDatabase);
-            MainAction('aDCreateIndex').Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
-            MainAction('aDCreateField').Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
-            MainAction('aDCreateForeignKey').Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and Assigned(Database.BaseTableByName(Item.Caption)) and Assigned(Client.DatabaseByName(SelectedDatabase).BaseTableByName(Item.Caption).Engine) and Client.DatabaseByName(SelectedDatabase).BaseTableByName(Item.Caption).Engine.ForeignKeyAllowed;
-            MainAction('aDCreateTrigger').Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and Assigned(Database.Triggers);
-            MainAction('aDDeleteTable').Enabled := (FList.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and True;
-            MainAction('aDDeleteView').Enabled := (FList.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiView) and True;
-            MainAction('aDDeleteRoutine').Enabled := (FList.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex in [iiProcedure, iiFunction]) and True;
-            MainAction('aDDeleteEvent').Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiEvent) and True;
-            MainAction('aDEditDatabase').Enabled := (FList.SelCount = 0) and (SelectedImageIndex = iiDatabase);
-            MainAction('aDEditTable').Enabled := (FList.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
-            MainAction('aDEditView').Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiView);
-            MainAction('aDEditRoutine').Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex in [iiProcedure, iiFunction]);
-            MainAction('aDEditEvent').Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiEvent);
-            MainAction('aDEmpty').Enabled := (FList.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
-            aDDelete.Enabled := (FList.SelCount >= 1);
-
-            for I := 0 to FList.Items.Count - 1 do
-              if (FList.Items[I].Selected) then
-              begin
-                MainAction('aFExportSQL').Enabled := MainAction('aFExportSQL').Enabled and (FList.Items[I].ImageIndex in [iiBaseTable, iiView, iiProcedure, iiFunction, iiEvent, iiTrigger]);
-                MainAction('aFExportText').Enabled := MainAction('aFExportText').Enabled and (FList.Items[I].ImageIndex in [iiBaseTable, iiView]);
-                MainAction('aFExportExcel').Enabled := MainAction('aFExportExcel').Enabled and (FList.Items[I].ImageIndex in [iiBaseTable, iiView]);
-                MainAction('aFExportAccess').Enabled := MainAction('aFExportAccess').Enabled and (FList.Items[I].ImageIndex in [iiBaseTable]);
-                MainAction('aFExportSQLite').Enabled := MainAction('aFExportSQLite').Enabled and (FList.Items[I].ImageIndex in [iiBaseTable]);
-                MainAction('aFExportODBC').Enabled := MainAction('aFExportODBC').Enabled and (FList.Items[I].ImageIndex in [iiBaseTable]);
-                MainAction('aFExportXML').Enabled := MainAction('aFExportXML').Enabled and (FList.Items[I].ImageIndex in [iiBaseTable, iiView]);
-                MainAction('aFExportHTML').Enabled := MainAction('aFExportHTML').Enabled and (FList.Items[I].ImageIndex in [iiBaseTable, iiView]);
-                MainAction('aFPrint').Enabled := MainAction('aFPrint').Enabled and (FList.Items[I].ImageIndex in [iiBaseTable, iiView]);
-                MainAction('aECopy').Enabled := MainAction('aECopy').Enabled and (FList.Items[I].ImageIndex in [iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction, iiEvent]);
-                MainAction('aDDeleteTable').Enabled := MainAction('aDDeleteTable').Enabled and (FList.Items[I].ImageIndex in [iiBaseTable]);
-                MainAction('aDDeleteView').Enabled := MainAction('aDDeleteView').Enabled and (FList.Items[I].ImageIndex in [iiView]);
-                MainAction('aDDeleteRoutine').Enabled := MainAction('aDDeleteRoutine').Enabled and (FList.Items[I].ImageIndex in [iiProcedure, iiFunction]);
-                MainAction('aDDeleteEvent').Enabled := MainAction('aDDeleteEvent').Enabled and (FList.Items[I].ImageIndex in [iiEvent]);
-                MainAction('aDEditTable').Enabled := MainAction('aDEditTable').Enabled and (FList.Items[I].ImageIndex in [iiBaseTable]);
-                MainAction('aDEditView').Enabled := MainAction('aDEditView').Enabled and (FList.Items[I].ImageIndex in [iiView]);
-                MainAction('aDEditRoutine').Enabled := MainAction('aDEditRoutine').Enabled and (FList.Items[I].ImageIndex in [iiProcedure, iiFunction]);
-                MainAction('aDEditEvent').Enabled := MainAction('aDEditEvent').Enabled and (FList.Items[I].ImageIndex in [iiEvent]);
-                MainAction('aDEmpty').Enabled := MainAction('aDEmpty').Enabled and (FList.Items[I].ImageIndex in [iiBaseTable]);
-                aDDelete.Enabled := aDDelete.Enabled and not (FList.Items[I].ImageIndex in [iiSystemView]);
-              end;
-
-            mlOpen.Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction, iiEvent]);
-
-            if (SelectedImageIndex = iiSystemDatabase) then
-              mlEProperties.Action := nil
-            else if (not Assigned(Item)) then
-              mlEProperties.Action := MainAction('aDEditDatabase')
-            else
-              case (Item.ImageIndex) of
-                iiBaseTable,
-                iiSystemView: mlEProperties.Action := MainAction('aDEditTable');
-                iiView: mlEProperties.Action := MainAction('aDEditView');
-                iiProcedure,
-                iiFunction: mlEProperties.Action := MainAction('aDEditRoutine');
-                iiEvent: mlEProperties.Action := MainAction('aDEditEvent');
-              end;
-          end;
-        iiBaseTable:
-          begin
-            Database := Client.DatabaseByName(SelectedDatabase);
-            BaseTable := Database.BaseTableByName(SelectedTable);
-
-            MainAction('aFImportText').Enabled := (FList.SelCount = 0);
-            MainAction('aFImportExcel').Enabled := (FList.SelCount = 0);
-            MainAction('aFImportAccess').Enabled := (FList.SelCount = 0);
-            MainAction('aFImportSQLite').Enabled := (FList.SelCount = 0);
-            MainAction('aFImportODBC').Enabled := (FList.SelCount = 0);
-            MainAction('aFImportXML').Enabled := (FList.SelCount = 0);
-            MainAction('aFExportSQL').Enabled := (FList.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiTrigger]);
-            MainAction('aFExportText').Enabled := (FList.SelCount = 0);
-            MainAction('aFExportExcel').Enabled := (FList.SelCount = 0);
-            MainAction('aFExportAccess').Enabled := (FList.SelCount = 0);
-            MainAction('aFExportSQLite').Enabled := (FList.SelCount = 0);
-            MainAction('aFExportODBC').Enabled := (FList.SelCount = 0);
-            MainAction('aFExportXML').Enabled := (FList.SelCount = 0);
-            MainAction('aFExportHTML').Enabled := (FList.SelCount = 0);
-            MainAction('aECopy').Enabled := (FList.SelCount >= 1);
-            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLTABLE) and True;
-            MainAction('aERename').Enabled := Assigned(Item) and (FList.SelCount = 1) and ((Item.ImageIndex in [iiField, iiTrigger]) or (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013)) and True;
-            MainAction('aDCreateIndex').Enabled := (FList.SelCount = 0);
-            MainAction('aDCreateField').Enabled := (FList.SelCount = 0);
-            MainAction('aDCreateForeignKey').Enabled := (FList.SelCount = 0) and Assigned(BaseTable.Engine) and BaseTable.Engine.ForeignKeyAllowed;
-            MainAction('aDCreateTrigger').Enabled := (FList.SelCount = 0) and Assigned(Database.Triggers);
-            MainAction('aDDeleteIndex').Enabled := (FList.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiIndex) and True;
-            MainAction('aDDeleteField').Enabled := (FList.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField) and (BaseTable.Fields.Count > FList.SelCount) and True;
-            MainAction('aDDeleteForeignKey').Enabled := (FList.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013) and True;
-            MainAction('aDDeleteTrigger').Enabled := (FList.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiTrigger) and True;
-            MainAction('aDEditTable').Enabled := (FList.SelCount = 0);
-            MainAction('aDEditIndex').Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiIndex);
-            MainAction('aDEditField').Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField);
-            MainAction('aDEditForeignKey').Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiForeignKey);
-            MainAction('aDEditTrigger').Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiTrigger);
-            MainAction('aDEmpty').Enabled := (FList.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex = iiField) and (BaseTable.FieldByName(Item.Caption).NullAllowed);
-            aDDelete.Enabled := (FList.SelCount >= 1);
-
-            for I := 0 to FList.Items.Count - 1 do
-              if (FList.Items[I].Selected) then
-              begin
-                MainAction('aFExportSQL').Enabled := MainAction('aFExportSQL').Enabled and (FList.Items[I].ImageIndex in [iiTrigger]);
-                MainAction('aDDeleteIndex').Enabled := MainAction('aDDeleteIndex').Enabled and (FList.Items[I].ImageIndex in [iiIndex]);
-                MainAction('aDDeleteField').Enabled := MainAction('aDDeleteField').Enabled and (FList.Items[I].ImageIndex in [iiField]);
-                MainAction('aDDeleteForeignKey').Enabled := MainAction('aDDeleteForeignKey').Enabled and (FList.Items[I].ImageIndex in [iiForeignKey]);
-                MainAction('aDEditIndex').Enabled := MainAction('aDEditIndex').Enabled and (FList.Items[I].ImageIndex in [iiIndex]);
-                MainAction('aDEditField').Enabled := MainAction('aDEditField').Enabled and (FList.Items[I].ImageIndex in [iiField]);
-                MainAction('aDEditForeignKey').Enabled := MainAction('aDEditForeignKey').Enabled and (FList.Items[I].ImageIndex in [iiForeignKey]);
-                MainAction('aDEditTrigger').Enabled := MainAction('aDEditTrigger').Enabled and (FList.Items[I].ImageIndex in [iiTrigger]);
-                MainAction('aDEmpty').Enabled := MainAction('aDEmpty').Enabled and (FList.Items[I].ImageIndex in [iiField]);
-              end;
-
-            mlOpen.Enabled := (FList.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex in [iiForeignKey, iiTrigger]);
-
-            if (not Assigned(Item)) then
-              mlEProperties.Action := MainAction('aDEditTable')
-            else
-              case (Item.ImageIndex) of
-                iiIndex: mlEProperties.Action := MainAction('aDEditIndex');
-                iiField: mlEProperties.Action := MainAction('aDEditField');
-                iiForeignKey: mlEProperties.Action := MainAction('aDEditForeignKey');
-                iiTrigger: mlEProperties.Action := MainAction('aDEditTrigger');
-              end;
-          end;
-        iiSystemView:
-          begin
-            MainAction('aECopy').Enabled := (FList.SelCount >= 1);
-          end;
-        iiView:
-          begin
-            MainAction('aFExportSQL').Enabled := (FList.SelCount = 0);
-            MainAction('aFExportText').Enabled := (FList.SelCount = 0);
-            MainAction('aFExportExcel').Enabled := (FList.SelCount = 0);
-            MainAction('aFExportXML').Enabled := (FList.SelCount = 0);
-            MainAction('aFExportHTML').Enabled := (FList.SelCount = 0);
-            MainAction('aFExportSQLite').Enabled := (FList.SelCount = 0);
-            MainAction('aECopy').Enabled := (FList.SelCount >= 1);
-            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLVIEW) and True;
-            MainAction('aDEditView').Enabled := (FList.SelCount = 0);
-
-            mlEProperties.Action := MainAction('aDEditView');
-          end;
-        iiHosts:
-          begin
-            MainAction('aECopy').Enabled := (FList.SelCount >= 1);
-            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLHOSTS) and True;
-            MainAction('aDCreateHost').Enabled := (FList.SelCount = 0);
-            MainAction('aDDeleteHost').Enabled := (FList.SelCount >= 1) and True;
-            MainAction('aDEditHost').Enabled := (FList.SelCount = 1);
-            aDDelete.Enabled := (FList.SelCount >= 1) and True;
-
-            mlEProperties.Action := MainAction('aDEditHost');
-          end;
-        iiProcesses:
-          begin
-            MainAction('aDDeleteProcess').Enabled := (FList.SelCount >= 1) and Selected and Assigned(Item) and (Trunc(SysUtils.StrToInt(Item.Caption)) <> Client.ThreadId) and True;
-            MainAction('aDEditProcess').Enabled := (FList.SelCount = 1);
-            aDDelete.Enabled := (FList.SelCount >= 1) and True;
-
-            mlEProperties.Action := MainAction('aDEditProcess');
-          end;
-        iiUsers:
-          begin
-            MainAction('aECopy').Enabled := (FList.SelCount >= 1);
-            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLUSERS) and True;
-            MainAction('aDCreateUser').Enabled := (FList.SelCount = 0);
-            MainAction('aDDeleteUser').Enabled := (FList.SelCount >= 1) and True;
-            MainAction('aDEditUser').Enabled := (FList.SelCount = 1);
-            aDDelete.Enabled := (FList.SelCount >= 1) and True;
-
-            mlEProperties.Action := MainAction('aDEditUser');
-          end;
-        iiVariables:
-          begin
-            MainAction('aDEditVariable').Enabled := (FList.SelCount = 1);
-
-            mlEProperties.Action := MainAction('aDEditVariable');
-          end;
-      end;
-
-    mlOpen.Default := mlOpen.Enabled and not (Assigned(Item) and (Item.ImageIndex = iiForeignKey));
-    mlEProperties.Default := Assigned(Item) and not mlOpen.Default and mlEProperties.Enabled;
-    mlEProperties.Caption := Preferences.LoadStr(97) + '...';
-    mlEProperties.ShortCut := ShortCut(VK_RETURN, [ssAlt]);
-
-    ToolBarData.tbPropertiesAction := mlEProperties.Action;
-    Window.Perform(CM_UPDATETOOLBAR, 0, LPARAM(Self));
-
-    ShowEnabledItems(MList.Items);
-
-    if (Sender <> MList) then
-      StatusBarRefresh();
-  end;
-end;
-
 procedure TFClient.FLogEnter(Sender: TObject);
 begin
   MainAction('aECopyToFile').OnExecute := SaveSQLFile;
@@ -8155,7 +7303,7 @@ var
 begin
   if (Sender = FNavigator) then
     TargetNode := FNavigator.GetNodeAt(X, Y)
-  else if (Sender = FList) then
+  else if (Sender = ActiveListView) then
     TargetNode := FNavigator.Selected
   else
     TargetNode := nil;
@@ -8235,7 +7383,7 @@ begin
         iiField: Accept := (TargetNode.ImageIndex = iiBaseTable) and (TargetNode <> SourceNode.Parent);
       end;
   end
-  else if ((Source is TListView) and (TListView(Source).Name = FList.Name)) then
+  else if ((Source is TListView) and (TListView(Source).Parent.Name = PListView.Name)) then
     Accept := ((TFClient(TListView(Source).Owner).Client <> Client) or (TFClient(TListView(Source).Owner).FNavigator.Selected <> TargetNode))
       and (TFClient(TListView(Source).Owner).FNavigator.Selected.ImageIndex = SelectedImageIndex);
 end;
@@ -8406,7 +7554,6 @@ procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
 var
   Child: TTreeNode;
   Database: TCDatabase;
-  DatabaseNode: TTreeNode;
   ExpandingEvent: TTVExpandingEvent;
   I: Integer;
   Node: TTreeNode;
@@ -8435,7 +7582,7 @@ begin
         iiVariables: Node.Text := Preferences.LoadStr(22);
       end;
   end
-  else if (ClientEvent.Sender is TCDatabases) then
+  else if (ClientEvent.Sender is TCClient) then
   begin
     Node := FNavigator.Items.getFirstNode();
 
@@ -8474,7 +7621,7 @@ begin
       while (Assigned(Child) and (Child.ImageIndex in [iiDatabase, iiSystemDatabase])) do
       begin
         Sibling := Child.getNextSibling();
-        if (not Assigned(Client.DatabaseByName(Child.Text)) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Client.DatabaseByName(Child.Text))) then
+        if ((Client.Databases.IndexOf(Child.Data) < 0) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Child.Data)) then
           Child.Delete();
         Child := Sibling;
       end;
@@ -8516,17 +7663,16 @@ begin
 
     Node.HasChildren := Node.Count > 0;
   end
-  else if ((ClientEvent.Sender is TCTables) or (ClientEvent.Sender is TCRoutines) or (ClientEvent.Sender is TCEvents)) then
+  else if (ClientEvent.Sender is TCDatabase) then
   begin
-    Database := TCDBObjects(ClientEvent.Sender).Database;
+    Database := TCDatabase(ClientEvent.Sender);
 
     Node := FNavigator.Items.getFirstNode().getFirstChild();
-    while (Assigned(Node) and (Node.ImageIndex in [iiDatabase, iiSystemDatabase]) and (Node.Text <> Database.Name)) do
-      Node := Node.getNextSibling();
+    while (Assigned(Node) and (Node.Data <> Database)) do Node := Node.getNextSibling();
 
     if (Assigned(Node)) then
     begin
-      if (ClientEvent.Sender is TCTables) then
+      if (not Assigned(ClientEvent.CItem) or (ClientEvent.CItem is TCTable)) then
       begin
         if (ClientEvent.EventType in [ceBuild, ceDroped]) then
         begin
@@ -8534,7 +7680,7 @@ begin
           while (Assigned(Child) and (Child.ImageIndex in [iiBaseTable, iiSystemView, iiView])) do
           begin
             Sibling := Child.getNextSibling();
-            if (not Assigned(Database.TableByName(Child.Text)) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Database.TableByName(Child.Text))) then
+            if ((Database.Tables.IndexOf(Child.Data) < 0) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Child.Data)) then
               Child.Delete();
             Child := Sibling;
           end;
@@ -8569,7 +7715,7 @@ begin
             end;
           end;
       end
-      else if (ClientEvent.Sender is TCRoutines) then
+      else if (not Assigned(ClientEvent.CItem) or (ClientEvent.CItem is TCRoutine)) then
       begin
         if (ClientEvent.EventType in [ceBuild, ceDroped]) then
         begin
@@ -8579,8 +7725,7 @@ begin
           while (Assigned(Child) and (Child.ImageIndex in [iiProcedure, iiFunction])) do
           begin
             Sibling := Child.getNextSibling();
-            if ((Child.ImageIndex = iiProcedure) and (not Assigned(Database.ProcedureByName(Child.Text)) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Database.ProcedureByName(Child.Text)))
-              or (Child.ImageIndex = iiFunction) and (not Assigned(Database.FunctionByName(Child.Text)) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Database.FunctionByName(Child.Text)))) then
+            if ((Database.Routines.IndexOf(Child.Data) < 0) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Child.Data)) then
               Child.Delete();
             Child := Sibling;
           end;
@@ -8612,7 +7757,7 @@ begin
                 Child.ImageIndex := iiFunction;
           end;
       end
-      else if (ClientEvent.Sender is TCEvents) then
+      else if (not Assigned(ClientEvent.CItem) or (ClientEvent.CItem is TCEvent)) then
       begin
         if (ClientEvent.EventType in [ceBuild, ceDroped]) then
         begin
@@ -8622,7 +7767,7 @@ begin
           while (Assigned(Child) and (Child.ImageIndex in [iiEvent])) do
           begin
             Sibling := Child.getNextSibling();
-            if (not Assigned(Database.EventByName(Child.Text)) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Database.EventByName(Child.Text))) then
+            if ((Database.Events.IndexOf(Child.Data) < 0) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Child.Data)) then
               Child.Delete();
             Child := Sibling;
           end;
@@ -8658,83 +7803,17 @@ begin
         or (Assigned(Database.Events) and ((Database.Events.Count > 0) or not Database.Events.Actual));
     end;
   end
-  else if (ClientEvent.Sender is TCTriggers) then
-  begin
-    Database := TCTriggers(ClientEvent.Sender).Database;
-
-    DatabaseNode := FNavigator.Items.getFirstNode().getFirstChild();
-    while (Assigned(DatabaseNode) and (DatabaseNode.ImageIndex in [iiDatabase, iiSystemDatabase]) and (DatabaseNode.Text <> Database.Name)) do
-      DatabaseNode := DatabaseNode.getNextSibling();
-
-    if (not Assigned(DatabaseNode)) then
-      Node := nil
-    else
-    begin
-      Node := DatabaseNode.getFirstChild();
-      while (Assigned(Node) and (Node.ImageIndex in [iiBaseTable, iiSystemView, iiView])) do
-      begin
-        Table := Database.TableByName(Node.Text);
-
-        if (Assigned(Table) and (Table is TCBaseTable)) then
-        begin
-          if (ClientEvent.EventType in [ceBuild, ceDroped]) then
-          begin
-            Child := Node.getFirstChild();
-            while (Assigned(Child) and not (Child.ImageIndex in [iiTrigger])) do
-              Child := Child.getNextSibling();
-            while (Assigned(Child)) do
-            begin
-              Sibling := Child.getNextSibling();
-              if (not Assigned(Database.TriggerByName(Child.Text))) then
-                Child.Delete();
-              Child := Sibling;
-            end;
-          end;
-
-          if (ClientEvent.EventType in [ceBuild, ceUpdated, ceCreated]) then
-            for I := 0 to Database.Triggers.Count - 1 do
-              if (Database.Triggers[I].Table = Table) then
-              begin
-                Child := Node.getFirstChild();
-                while (Assigned(Child) and not (Child.ImageIndex in [iiTrigger])) do
-                  Child := Child.getNextSibling();
-                while (Assigned(Child) and (Child.ImageIndex in [iiTrigger]) and (lstrcmpi(PChar(Database.Triggers[I].Name), PChar(Child.Text)) > 0)) do
-                  Child := Child.getNextSibling();
-                if (not Assigned(Child)) then
-                begin
-                  Child := FNavigator.Items.AddChild(Node, Database.Triggers[I].Name);
-                  Child.Data := Database.Triggers[I];
-                end
-                else if (lstrcmpi(PChar(Database.Triggers[I].Name), PChar(Child.Text)) <> 0) then
-                begin
-                  Child := FNavigator.Items.Insert(Child, Database.Triggers[I].Name);
-                  Child.Data := Database.Triggers[I];
-                end
-                else
-                  Child := nil;
-                if (Assigned(Child)) then
-                  Child.ImageIndex := iiTrigger;
-              end;
-        end;
-
-        Node := Node.getNextSibling();
-      end;
-    end;
-  end
   else if (ClientEvent.Sender is TCTable) then
   begin
-    Database := TCTable(ClientEvent.Sender).Database;
     Table := TCTable(ClientEvent.Sender);
 
     Node := FNavigator.Items.getFirstNode().getFirstChild();
-    while (Assigned(Node) and (Node.ImageIndex in [iiDatabase, iiSystemDatabase]) and (Node.Text <> Database.Name)) do
-      Node := Node.getNextSibling();
+    while (Assigned(Node) and (Node.Data <> Table.Database)) do Node := Node.getNextSibling();
 
     if (Assigned(Node)) then
     begin
       Node := Node.getFirstChild();
-      while (Assigned(Node) and (Node.ImageIndex in [iiBaseTable, iiSystemView, iiView]) and (Node.Text <> Table.Name)) do
-        Node := Node.getNextSibling();
+      while (Assigned(Node) and (Node.Data <> Table)) do Node := Node.getNextSibling();
 
       if (Assigned(Node)) then
       begin
@@ -8764,12 +7843,12 @@ begin
             Child.Data := TCBaseTable(Table).ForeignKeys[I];
             Child.ImageIndex := iiForeignKey;
           end;
-          if (Assigned(Database.Triggers)) then
-            for I := 0 to Database.Triggers.Count - 1 do
-              if (Database.Triggers[I].TableName = TCBaseTable(Table).Name) then
+          if (Assigned(Table.Database.Triggers)) then
+            for I := 0 to Table.Database.Triggers.Count - 1 do
+              if (Table.Database.Triggers[I].TableName = TCBaseTable(Table).Name) then
               begin
-                Child := FNavigator.Items.AddChild(Node, Database.Triggers[I].Name);
-                Child.Data := Database.Triggers[I];
+                Child := FNavigator.Items.AddChild(Node, Table.Database.Triggers[I].Name);
+                Child.Data := Table.Database.Triggers[I];
                 Child.ImageIndex := iiTrigger;
               end;
         end
@@ -8788,7 +7867,7 @@ begin
 
   FNavigator.Items.EndUpdate();
 
-  if (Assigned(Node) and (Node = AddressToNavigatorNode(Wanted.FNavigatorNodeExpand)) and (Node.Count > 0)) then
+  if (Assigned(Node) and (Node.Count > 0) and (Node = AddressToNavigatorNode(Wanted.FNavigatorNodeExpand))) then
     Wanted.Execute();
 end;
 
@@ -8951,7 +8030,9 @@ begin
       ceBuild,
       ceUpdated,
       ceCreated,
-      ceDroped:
+      ceDroped,
+      ceAltered,
+      ceStatus:
         ClientRefresh(ClientEvent);
       ceInitialize:
         Wanted.Initialize := ClientEvent.Initialize;
@@ -9135,20 +8216,20 @@ begin
 
   Index := 1; Len := 0;
   try
-    SQL := SynMemo.Text; // Sometimes this forces in exception SynGetText / GetSelAvail
+    SQL := ActiveSynMemo.Text; // Sometimes this forces in exception SynGetText / GetSelAvail
     repeat
       Len := SQLStmtLength(SQL, Index);
       Inc(Index, Len);
-    until (Index >= SynMemo.SelStart);
+    until (Index >= ActiveSynMemo.SelStart);
     Dec(Index, Len);
     SQL := Copy(SQL, Index, Len);
   except
     SQL := '';
   end;
 
-  if ((Len <> 0) and not Client.InUse() and FSQLEditor.GetHighlighterAttriAtRowCol(FSQLEditor.WordStart(), Token, Attri)) then
+  if ((Len <> 0) and not Client.InUse() and FSQLEditorSynMemo.GetHighlighterAttriAtRowCol(FSQLEditorSynMemo.WordStart(), Token, Attri)) then
   begin
-    Index := SynMemo.SelStart - Index + 1;
+    Index := ActiveSynMemo.SelStart - Index + 1;
     while ((Index > 0) and (Pos(SQL[Index], FSQLEditorCompletion.EndOfTokenChr) = 0)) do Dec(Index);
 
     Database := Client.DatabaseByName(SelectedDatabase);
@@ -9196,7 +8277,7 @@ begin
         begin
           QueryBuilder := TacQueryBuilder.Create(Window);
           QueryBuilder.Visible := False;
-          QueryBuilder.Parent := SynMemo;
+          QueryBuilder.Parent := ActiveSynMemo;
           QueryBuilder.SyntaxProvider := SyntaxProvider;
           QueryBuilder.MetadataProvider := MetadataProvider;
           Insert('*', SQL, Index + 1);
@@ -9248,7 +8329,7 @@ begin
       begin
         QueryBuilder := TacQueryBuilder.Create(Window);
         QueryBuilder.Visible := False;
-        QueryBuilder.Parent := SynMemo;
+        QueryBuilder.Parent := ActiveSynMemo;
         QueryBuilder.SyntaxProvider := SyntaxProvider;
         QueryBuilder.MetadataProvider := MetadataProvider;
         try
@@ -9305,7 +8386,7 @@ begin
     except
     end;
 
-    S := Copy(SynMemo.Lines.Strings[SynMemo.WordStart().Line - 1], SynMemo.WordStart().Char, SynMemo.CharIndexToRowCol(SynMemo.SelStart).Char - SynMemo.WordStart().Char);
+    S := Copy(ActiveSynMemo.Lines.Strings[ActiveSynMemo.WordStart().Line - 1], ActiveSynMemo.WordStart().Char, ActiveSynMemo.CharIndexToRowCol(ActiveSynMemo.SelStart).Char - ActiveSynMemo.WordStart().Char);
 
     // avoid Popup, if a word has been typed completely
     I := StringList.Count - 1;
@@ -9386,36 +8467,36 @@ var
 begin
   if (not (csDestroying in ComponentState)) then
   begin
-    if (((scCaretX in Changes) or (scModified in Changes) or (scAll in Changes)) and Assigned(SynMemo)) then
+    if (((scCaretX in Changes) or (scModified in Changes) or (scAll in Changes)) and Assigned(ActiveSynMemo)) then
     begin
-      SelSQL := SynMemo.SelText; // Cache, da Abfrage bei vielen Zeilen Zeit benötigt
-      if (View = avObjectIDE) then SQL := SynMemo.Text;
+      SelSQL := ActiveSynMemo.SelText; // Cache, da Abfrage bei vielen Zeilen Zeit benötigt
+      if (View = avObjectIDE) then SQL := ActiveSynMemo.Text;
 
-      Empty := ((SynMemo.Lines.Count <= 1) and (SynMemo.Text = '')); // Benötigt bei vielen Zeilen Zeit
+      Empty := ((ActiveSynMemo.Lines.Count <= 1) and (ActiveSynMemo.Text = '')); // Benötigt bei vielen Zeilen Zeit
 
-      MainAction('aFSave').Enabled := not Empty and ((SQLEditor.Filename = '') or SynMemo.Modified);
+      MainAction('aFSave').Enabled := not Empty and ((SQLEditor.Filename = '') or ActiveSynMemo.Modified);
       MainAction('aFSaveAs').Enabled := not Empty;
-      MainAction('aFPrint').Enabled := (SynMemo = FSQLEditor) and not Empty;
-      MainAction('aERedo').Enabled := SynMemo.CanRedo;
+      MainAction('aFPrint').Enabled := (ActiveSynMemo = FSQLEditorSynMemo) and not Empty;
+      MainAction('aERedo').Enabled := ActiveSynMemo.CanRedo;
       MainAction('aECopyToFile').Enabled := (SelSQL <> '');
-      MainAction('aEPasteFromFile').Enabled := (SynMemo = FSQLEditor);
-      MainAction('aSGoto').Enabled := (Sender = FSQLEditor) and not Empty;
+      MainAction('aEPasteFromFile').Enabled := (ActiveSynMemo = FSQLEditorSynMemo);
+      MainAction('aSGoto').Enabled := (Sender = FSQLEditorSynMemo) and not Empty;
       MainAction('aDRun').Enabled :=
         ((View = avSQLEditor)
         or ((View  = avQueryBuilder) and FBuilder.Visible)
         or ((View = avObjectIDE) and SQLSingleStmt(SQL) and (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent]))) and not Empty;
-      MainAction('aDRunSelection').Enabled := (((SynMemo = FSQLEditor) and not Empty) or Assigned(SynMemo) and (SynMemo.SelText <> '')) and True;
-      MainAction('aDPostObject').Enabled := (View = avObjectIDE) and SynMemo.Modified and SQLSingleStmt(SQL)
+      MainAction('aDRunSelection').Enabled := (((ActiveSynMemo = FSQLEditorSynMemo) and not Empty) or Assigned(ActiveSynMemo) and (ActiveSynMemo.SelText <> '')) and True;
+      MainAction('aDPostObject').Enabled := (View = avObjectIDE) and ActiveSynMemo.Modified and SQLSingleStmt(SQL)
         and ((SelectedImageIndex in [iiView]) and SQLCreateParse(Parse, PChar(SQL), Length(SQL),Client.ServerVersion) and (SQLParseKeyword(Parse, 'SELECT'))
           or (SelectedImageIndex in [iiProcedure, iiFunction]) and SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), Client.ServerVersion) and (DDLStmt.DefinitionType = dtCreate) and (DDLStmt.ObjectType in [otProcedure, otFunction])
           or (SelectedImageIndex in [iiEvent, iiTrigger]));
     end;
 
     FSQLEditorCompletion.TimerInterval := 0;
-    if ((SynMemo = FSQLEditor) and (FSQLEditor.SelStart > 0)
-      and FSQLEditor.GetHighlighterAttriAtRowCol(FSQLEditor.WordStart(), Token, Attri) and (Attri <> MainHighlighter.StringAttri) and (Attri <> MainHighlighter.CommentAttri) and (Attri <> MainHighlighter.VariableAttri)) then
+    if ((ActiveSynMemo = FSQLEditorSynMemo) and (FSQLEditorSynMemo.SelStart > 0)
+      and FSQLEditorSynMemo.GetHighlighterAttriAtRowCol(FSQLEditorSynMemo.WordStart(), Token, Attri) and (Attri <> MainHighlighter.StringAttri) and (Attri <> MainHighlighter.CommentAttri) and (Attri <> MainHighlighter.VariableAttri)) then
     begin
-      FSQLEditorCompletion.Editor := SynMemo;
+      FSQLEditorCompletion.Editor := ActiveSynMemo;
       FSQLEditorCompletion.TimerInterval := Preferences.Editor.CodeCompletionTime;
     end;
 
@@ -9474,7 +8555,7 @@ begin
   TreeView := TTreeView_Ext(Sender);
 
   if (not TreeView.IsEditing()) then
-    if ((Sender = FList) and (Ord(Key) = VK_BACK)) then
+    if ((Sender = ActiveListView) and (Ord(Key) = VK_BACK)) then
       FNavigator.Selected := FNavigator.Selected.Parent
     else if (Key = #3) then
       Key := #0
@@ -9667,16 +8748,16 @@ begin
     begin
       Table := TCBaseTable(TMenuItem(Sender).Tag);
 
-      Workbench.BeginUpdate();
-      WTable := TWTable.Create(Workbench.Tables);
+      ActiveWorkbench.BeginUpdate();
+      WTable := TWTable.Create(ActiveWorkbench.Tables);
       WTable.Caption := Table.Name;
       FWorkbenchValidateControl(nil, WTable);
-      WTable.Move(nil, [], Workbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint));
-      Workbench.Tables.Add(WTable);
+      WTable.Move(nil, [], ActiveWorkbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint));
+      ActiveWorkbench.Tables.Add(WTable);
       FWorkbenchValidateForeignKeys(nil, WTable);
-      Workbench.Selected := WTable;
-      Window.ActiveControl := Workbench;
-      Workbench.EndUpdate();
+      ActiveWorkbench.Selected := WTable;
+      Window.ActiveControl := ActiveWorkbench;
+      ActiveWorkbench.EndUpdate();
     end;
   end;
 end;
@@ -9738,7 +8819,7 @@ begin
 
       aEPasteEnabled := (AccountName = Client.Account.Name) and (DatabaseName = SelectedDatabase)
         and Assigned(Table) and Assigned(Table.Engine) and Table.Engine.ForeignKeyAllowed
-        and not Assigned(Workbench.TableByCaption(Table.Name));
+        and not Assigned(ActiveWorkbench.TableByCaption(Table.Name));
     end;
 
     Values.Free();
@@ -9763,8 +8844,8 @@ begin
   MainAction('aFExportODBC').Enabled := not Assigned(Control) or (Control is TWTable);
   MainAction('aFExportXML').Enabled := not Assigned(Control) or (Control is TWTable);
   MainAction('aFExportHTML').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFExportBitmap').Enabled := Assigned(Workbench) and (Workbench.ControlCount > 0);
-  MainAction('aFPrint').Enabled := Assigned(Workbench) and (Workbench.ControlCount > 0);
+  MainAction('aFExportBitmap').Enabled := Assigned(ActiveWorkbench) and (ActiveWorkbench.ControlCount > 0);
+  MainAction('aFPrint').Enabled := Assigned(ActiveWorkbench) and (ActiveWorkbench.ControlCount > 0);
   MainAction('aECopy').Enabled := Assigned(Control) and (not (Control is TWForeignKey) or not TWForeignKey(Control).IsLine);
   MainAction('aEPaste').Enabled := aEPasteEnabled;
   MainAction('aDCreateTable').Enabled := not Assigned(Control);
@@ -9804,16 +8885,16 @@ begin
     Database := Client.DatabaseByName(SelectedDatabase);
     Table := Database.BaseTableByName(SourceNode.Text);
 
-    Workbench.BeginUpdate();
-    WTable := TWTable.Create(Workbench.Tables);
+    ActiveWorkbench.BeginUpdate();
+    WTable := TWTable.Create(ActiveWorkbench.Tables);
     WTable.Caption := Table.Name;
     FWorkbenchValidateControl(nil, WTable);
     WTable.Move(nil, [], Point(X, Y));
-    Workbench.Tables.Add(WTable);
+    ActiveWorkbench.Tables.Add(WTable);
     FWorkbenchValidateForeignKeys(nil, WTable);
-    Workbench.Selected := WTable;
-    Window.ActiveControl := Workbench;
-    Workbench.EndUpdate();
+    ActiveWorkbench.Selected := WTable;
+    Window.ActiveControl := ActiveWorkbench;
+    ActiveWorkbench.EndUpdate();
   end;
 end;
 
@@ -9831,7 +8912,7 @@ begin
     if ((SourceNode.ImageIndex = iiBaseTable) and (SourceNode.Parent.Text = SelectedDatabase)) then
     begin
       Table := Client.DatabaseByName(SelectedDatabase).BaseTableByName(SourceNode.Text);
-      Accept := Assigned(Table) and not Assigned(Workbench.TableByCaption(SourceNode.Text));
+      Accept := Assigned(Table) and not Assigned(ActiveWorkbench.TableByCaption(SourceNode.Text));
     end;
   end;
 end;
@@ -9840,10 +8921,10 @@ procedure TFClient.FWorkbenchEmptyExecute(Sender: TObject);
 var
   Names: array of string;
 begin
-  if (Workbench.Selected is TWTable) then
+  if (ActiveWorkbench.Selected is TWTable) then
   begin
     SetLength(Names, 1);
-    Names[Length(Names) - 1] := TWTable(Workbench.Selected).Caption;
+    Names[Length(Names) - 1] := TWTable(ActiveWorkbench.Selected).Caption;
 
     if (MsgBox(Preferences.LoadStr(375, Names[Length(Names) - 1]), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
       Client.DatabaseByName(SelectedDatabase).EmptyTables(Names);
@@ -9960,10 +9041,10 @@ begin
 
       Table := Client.DatabaseByName(SelectedDatabase).BaseTableByName(TableName);
 
-      Workbench.BeginUpdate();
-      WTable := TWTable.Create(Workbench.Tables);
+      ActiveWorkbench.BeginUpdate();
+      WTable := TWTable.Create(ActiveWorkbench.Tables);
       WTable.Caption := Table.Name;
-      Workbench.Tables.Add(WTable);
+      ActiveWorkbench.Tables.Add(WTable);
       FWorkbenchValidateControl(nil, WTable);
 
       if (Sender is TMenuItem) then
@@ -9971,15 +9052,15 @@ begin
         MenuItem := TMenuItem(Sender);
 
         if ((MenuItem.GetParentMenu() is TPopupMenu)) then
-          WTable.Move(nil, [], Workbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint));
+          WTable.Move(nil, [], ActiveWorkbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint));
       end
       else
         WTable.Move(nil, [], Point(0, 0));
 
       FWorkbenchValidateForeignKeys(nil, WTable);
-      Workbench.Selected := WTable;
-      Window.ActiveControl := Workbench;
-      Workbench.EndUpdate();
+      ActiveWorkbench.Selected := WTable;
+      Window.ActiveControl := ActiveWorkbench;
+      ActiveWorkbench.EndUpdate();
     end;
 
     Values.Free();
@@ -10001,7 +9082,7 @@ begin
   PrintDialog.Options := PrintDialog.Options - [poSelection];
   PrintDialog.PrintRange := prAllPages;
   if (PrintDialog.Execute()) then
-    Workbench.Print(SelectedDatabase);
+    ActiveWorkbench.Print(SelectedDatabase);
 end;
 
 procedure TFClient.FWorkbenchValidateControl(Sender: TObject; Control: TWControl);
@@ -10084,7 +9165,7 @@ begin
   if (Sender is TWWorkbench) then
     Workbench := TWWorkbench(Sender)
   else
-    Workbench := TWWorkbench(Client.DatabaseByName(SelectedDatabase).Workbench);
+    Workbench := TDatabaseDesktop(Client.DatabaseByName(SelectedDatabase).Desktop).Workbench;
 
   Database := Client.DatabaseByName(SelectedDatabase);
   Table := Database.BaseTableByName(WTable.Caption);
@@ -10106,6 +9187,7 @@ begin
         end;
       end;
 {
+ToDo: Implement
     for I := 0 to Database.Tables.Count - 1 do
       if ((Database.Tables[I] is TCBaseTable) and (Database.Tables[I] <> Table)) then
         for J := 0 to TCBaseTable(Database.Tables[I]).ForeignKeys.Count - 1 do
@@ -10126,15 +9208,116 @@ begin
   end;
 end;
 
-function TFClient.GetView(): TView;
+function TFClient.GetActiveListView(): TListView;
+var
+  I: Integer;
+  OldListView: TListView;
 begin
-  if (MainAction('aVObjectBrowser').Checked) then Result := avObjectBrowser
-  else if (MainAction('aVDataBrowser').Checked) then Result := avDataBrowser
-  else if (MainAction('aVObjectIDE').Checked) then Result := avObjectIDE
-  else if (MainAction('aVQueryBuilder').Checked) then Result := avQueryBuilder
-  else if (MainAction('aVSQLEditor').Checked) then Result := avSQLEditor
-  else if (MainAction('aVDiagram').Checked) then Result := avDiagram
-  else Result := UsedView;
+  OldListView := nil;
+  for I := 0 to PListView.ControlCount - 1 do
+    if (PListView.Controls[I].Visible and (PListView.Controls[I] is TListView)) then
+      OldListView := TListView(PListView.Controls[I]);
+
+  if (not Assigned(FNavigator.Selected)) then
+    Result := FServerListView
+  else
+    case (FNavigator.Selected.ImageIndex) of
+      iiServer: Result := FServerListView;
+      iiDatabase,
+      iiSystemDatabase: Result := TDatabaseDesktop(TCDatabase(FNavigator.Selected.Data).Desktop).ListView;
+      iiBaseTable,
+      iiSystemView,
+      iiView: Result := TTableDesktop(TCTable(FNavigator.Selected.Data).Desktop).ListView;
+      iiHosts:
+        begin
+          if (not Assigned(HostsListView)) then
+          begin
+            HostsListView := CreateListView();
+            ListViewInitialize(nil, HostsListView, Client.Hosts);
+            ListViewRefresh(nil, HostsListView, Client.Hosts);
+          end;
+          Result := HostsListView;
+        end;
+      iiProcesses:
+        begin
+          if (not Assigned(ProcessesListView)) then
+          begin
+            ProcessesListView := CreateListView();
+            ListViewInitialize(nil, ProcessesListView, Client.Processes);
+            ListViewRefresh(nil, ProcessesListView, Client.Processes);
+          end;
+          Result := ProcessesListView;
+        end;
+      iiStati:
+        begin
+          if (not Assigned(StatiListView)) then
+          begin
+            StatiListView := CreateListView();
+            ListViewInitialize(nil, StatiListView, Client.Stati);
+            ListViewRefresh(nil, StatiListView, Client.Stati);
+          end;
+          Result := StatiListView;
+        end;
+      iiUsers:
+        begin
+          if (not Assigned(UsersListView)) then
+          begin
+            UsersListView := CreateListView();
+            ListViewInitialize(nil, UsersListView, Client.Users);
+            ListViewRefresh(nil, UsersListView, Client.Users);
+          end;
+          Result := UsersListView;
+        end;
+      iiVariables:
+        begin
+          if (not Assigned(VariablesListView)) then
+          begin
+            VariablesListView := CreateListView();
+            ListViewInitialize(nil, VariablesListView, Client.Variables);
+            ListViewRefresh(nil, VariablesListView, Client.Variables);
+          end;
+          Result := VariablesListView;
+        end;
+      else Result := nil;
+    end;
+
+  for I := 0 to PListView.ControlCount - 1 do
+    if (PListView.Controls[I] = Result) then
+    begin
+      Result.SendToBack();
+      Result.Visible := True;
+    end;
+  if (Assigned(OldListView) and (Result <> OldListView)) then
+    OldListView.Visible := False;
+end;
+
+function TFClient.GetActiveSynMemo(): TSynMemo;
+begin
+  case (View) of
+    avObjectIDE:
+      case (SelectedImageIndex) of
+        iiView: Result := TViewDesktop(TCView(FNavigator.Selected.Data).Desktop).SynMemo;
+        iiProcedure,
+        iiFunction: Result := TRoutineDesktop(TCRoutine(FNavigator.Selected.Data).Desktop).SynMemo;
+        iiEvent: Result := TEventDesktop(TCEvent(FNavigator.Selected.Data).Desktop).SynMemo;
+        iiTrigger: Result := TTriggerDesktop(TCTrigger(FNavigator.Selected.Data).Desktop).SynMemo;
+        else Result := nil;
+      end;
+    avQueryBuilder:
+      Result := FBuilderSynMemo;
+    avSQLEditor:
+      Result := FSQLEditorSynMemo
+    else
+      Result := nil;
+  end;
+end;
+
+function TFClient.GetActiveWorkbench(): TWWorkbench;
+begin
+  if (not Assigned(Client.DatabaseByName(SelectedDatabase))) then
+    Result := nil
+  else
+    Result := TDatabaseDesktop(Client.DatabaseByName(SelectedDatabase).Desktop).Workbench;
 end;
 
 function TFClient.GetAddress(): string;
@@ -10148,8 +9331,8 @@ var
   Name: string;
   ObjectName: string;
 begin
-  if ((Window.ActiveControl = FList) and Assigned(FList.Selected)) then
-    if (FList.SelCount > 1) then
+  if ((Window.ActiveControl = ActiveListView) and Assigned(ActiveListView.Selected)) then
+    if (ActiveListView.SelCount > 1) then
     begin
       ImageIndex := -1;
       ObjectName := '';
@@ -10157,23 +9340,23 @@ begin
     end
     else
     begin
-      ImageIndex := FList.Selected.ImageIndex;
+      ImageIndex := ActiveListView.Selected.ImageIndex;
       ObjectName := FNavigator.Selected.Text;
-      Name := FList.Selected.Caption;
+      Name := ActiveListView.Selected.Caption;
     end
-  else if ((Window.ActiveControl = Workbench) and Assigned(Workbench) and Assigned(Workbench.Selected)) then
+  else if ((Window.ActiveControl = ActiveWorkbench) and Assigned(ActiveWorkbench) and Assigned(ActiveWorkbench.Selected)) then
   begin
-    if (Workbench.Selected is TWTable) then
+    if (ActiveWorkbench.Selected is TWTable) then
     begin
       ImageIndex := iiBaseTable;
       ObjectName := FNavigator.Selected.Text;
-      Name := TWTable(Workbench.Selected).Caption;
+      Name := TWTable(ActiveWorkbench.Selected).Caption;
     end
-    else if (Workbench.Selected is TWForeignKey) then
+    else if (ActiveWorkbench.Selected is TWForeignKey) then
     begin
       ImageIndex := iiForeignKey;
-      ObjectName := TWForeignKey(Workbench.Selected).ChildTable.Caption;
-      Name := TWForeignKey(Workbench.Selected).Caption;
+      ObjectName := TWForeignKey(ActiveWorkbench.Selected).ChildTable.Caption;
+      Name := TWForeignKey(ActiveWorkbench.Selected).Caption;
     end
     else
     begin
@@ -10182,7 +9365,7 @@ begin
       Name := FNavigatorMenuNode.Text;
     end;
   end
-  else if ((Window.ActiveControl = FList) and not Assigned(FList.Selected) or (Window.ActiveControl = Workbench) and (not Assigned(Workbench) or not Assigned(Workbench.Selected))) then
+  else if ((Window.ActiveControl = ActiveListView) and not Assigned(ActiveListView.Selected) or (Window.ActiveControl = ActiveWorkbench) and (not Assigned(ActiveWorkbench) or not Assigned(ActiveWorkbench.Selected))) then
   begin
     ImageIndex := FNavigator.Selected.ImageIndex;
     if (not Assigned(FNavigator.Selected.Parent)) then
@@ -10239,15 +9422,15 @@ var
 begin
   if (Window.ActiveControl = FNavigator) then
     Result := SelectedDatabase
-  else if ((Window.ActiveControl = FList) and (SelectedImageIndex = iiServer)) then
+  else if ((Window.ActiveControl = ActiveListView) and (SelectedImageIndex = iiServer)) then
   begin
     Result := '';
-    for I := 0 to FList.Items.Count - 1 do
-      if ((FList.Items[I].Selected) and (FList.Items[I].ImageIndex in [iiDatabase, iiSystemDatabase])) then
+    for I := 0 to ActiveListView.Items.Count - 1 do
+      if ((ActiveListView.Items[I].Selected) and (ActiveListView.Items[I].ImageIndex in [iiDatabase, iiSystemDatabase])) then
       begin
         if (Result <> '') then
           Result := Result + ',';
-        Result := Result + FList.Items[I].Caption;
+        Result := Result + ActiveListView.Items[I].Caption;
       end;
   end
   else
@@ -10258,18 +9441,18 @@ function TFClient.GetFocusedTableName(): string;
 var
   I: Integer;
 begin
-  if ((Window.ActiveControl = FList) and (SelectedImageIndex in [iiDatabase, iiSystemDatabase])) then
+  if ((Window.ActiveControl = ActiveListView) and (SelectedImageIndex in [iiDatabase, iiSystemDatabase])) then
   begin
     Result := '';
-    for I := 0 to FList.Items.Count - 1 do
-      if ((FList.Items[I].Selected) and (FList.Items[I].ImageIndex in [iiTable, iiBaseTable, iiSystemView, iiView])) then
+    for I := 0 to ActiveListView.Items.Count - 1 do
+      if ((ActiveListView.Items[I].Selected) and (ActiveListView.Items[I].ImageIndex in [iiTable, iiBaseTable, iiSystemView, iiView])) then
       begin
         if (Result <> '') then Result := Result + ',';
-        Result := Result + FList.Items[I].Caption;
+        Result := Result + ActiveListView.Items[I].Caption;
       end;
   end
-  else if ((Window.ActiveControl is TWWorkbench) and Assigned(Workbench.Selected) and (Workbench.Selected is TWTable)) then
-    Result := TWTable(Workbench.Selected).Caption
+  else if ((Window.ActiveControl is TWWorkbench) and Assigned(ActiveWorkbench.Selected) and (ActiveWorkbench.Selected is TWTable)) then
+    Result := TWTable(ActiveWorkbench.Selected).Caption
   else
     Result := SelectedTable;
 end;
@@ -10344,8 +9527,8 @@ begin
   Result := '';
   case (View) of
     avObjectBrowser:
-      if (Assigned(FList.ItemFocused) and FList.ItemFocused.Selected) then
-        try Result := FList.ItemFocused.Caption; except end;
+      if (Assigned(ActiveListView.ItemFocused) and ActiveListView.ItemFocused.Selected) then
+        try Result := ActiveListView.ItemFocused.Caption; except end;
   end;
 end;
 
@@ -10380,25 +9563,15 @@ begin
     end;
 end;
 
-function TFClient.GetSynMemo(): TSynMemo;
+function TFClient.GetView(): TView;
 begin
-  case (View) of
-    avObjectIDE:
-      case (SelectedImageIndex) of
-        iiView: Result := TSynMemo(Client.DatabaseByName(SelectedDatabase).ViewByName(SelectedNavigator).SynMemo);
-        iiProcedure: Result := TSynMemo(Client.DatabaseByName(SelectedDatabase).ProcedureByName(SelectedNavigator).SynMemo);
-        iiFunction: Result := TSynMemo(Client.DatabaseByName(SelectedDatabase).FunctionByName(SelectedNavigator).SynMemo);
-        iiEvent: Result := TSynMemo(Client.DatabaseByName(SelectedDatabase).EventByName(SelectedNavigator).SynMemo);
-        iiTrigger: Result := TSynMemo(Client.DatabaseByName(SelectedDatabase).TriggerByName(SelectedNavigator).SynMemo);
-        else Result := nil;
-      end;
-    avQueryBuilder:
-      Result := FBuilderEditor;
-    avSQLEditor:
-      Result := FSQLEditor
-    else
-      Result := nil;
-  end;
+  if (MainAction('aVObjectBrowser').Checked) then Result := avObjectBrowser
+  else if (MainAction('aVDataBrowser').Checked) then Result := avDataBrowser
+  else if (MainAction('aVObjectIDE').Checked) then Result := avObjectIDE
+  else if (MainAction('aVQueryBuilder').Checked) then Result := avQueryBuilder
+  else if (MainAction('aVSQLEditor').Checked) then Result := avSQLEditor
+  else if (MainAction('aVDiagram').Checked) then Result := avDiagram
+  else Result := UsedView;
 end;
 
 function TFClient.GetWindow(): TForm_Ext;
@@ -10407,14 +9580,6 @@ begin
     raise Exception.Create('Owner not set');
 
   Result := TForm_Ext(Owner);
-end;
-
-function TFClient.GetWorkbench(): TWWorkbench;
-begin
-  if (not Assigned(Client.DatabaseByName(SelectedDatabase))) then
-    Result := nil
-  else
-    Result := TWWorkbench(Client.DatabaseByName(SelectedDatabase).Workbench);
 end;
 
 procedure TFClient.gmFilterClearClick(Sender: TObject);
@@ -10488,6 +9653,193 @@ begin
   Success := daAbort;
 end;
 
+procedure TFClient.ListViewChanging(Sender: TObject; Item: TListItem;
+  Change: TItemChange; var AllowChange: Boolean);
+var
+  Database: TCDatabase;
+begin
+  if (not Assigned(ActiveListView.ItemFocused) and (Change = ctState) and Assigned(Item) and (Item.SubItems.Count = 0) and (NMListView^.uNewState and LVIS_SELECTED <> 0) and (Item.ImageIndex = iiBaseTable)) then
+  begin
+    Database := Client.DatabaseByName(SelectedDatabase);
+    AllowChange := Assigned(Database) and Assigned(Database.BaseTableByName(Item.Caption));
+  end;
+end;
+
+procedure TFClient.ListViewColumnClick(Sender: TObject; Column: TListColumn);
+var
+  HDItem: THDItem;
+  I: Integer;
+begin
+  with (FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)]) do
+  begin
+    FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)].Index := Column.Index;
+    if (Sender = ActiveListView) then
+    begin
+      if ((OldFListOrderIndex <> Index) or ((Order = 0) or (Order < 0) and (not (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) or (Index > 0)))) then
+        FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)].Order := 1
+      else if (Order = 1) then
+        FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)].Order := -1
+      else
+        FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)].Order := 0;
+
+      if (Order = 0) then
+        ListViewRefresh(Sender, ActiveListView, FNavigator.Selected.Data)
+      else
+        ActiveListView.CustomSort(nil, Index);
+    end;
+
+    HDItem.Mask := HDI_FORMAT;
+    for I := 0 to ActiveListView.Columns.Count - 1 do
+      if (BOOL(SendMessage(ListView_GetHeader(ActiveListView.Handle), HDM_GETITEM, I, LParam(@HDItem)))) then
+      begin
+        if ((Order = 0) or (I <> Index)) then
+          HDItem.fmt := HDItem.fmt and not HDF_SORTUP and not HDF_SORTDOWN
+        else if (Order > 0) then
+          HDItem.fmt := HDItem.fmt and not HDF_SORTDOWN or HDF_SORTUP
+        else
+          HDItem.fmt := HDItem.fmt and not HDF_SORTUP or HDF_SORTDOWN;
+        SendMessage(ListView_GetHeader(ActiveListView.Handle), HDM_SETITEM, I, LParam(@HDItem));
+      end;
+
+    if (ComCtl32MajorVersion >= 6) then
+      if (Order = 0) then
+        SendMessage(ActiveListView.Handle, LVM_SETSELECTEDCOLUMN, -1, 0)
+      else
+        SendMessage(ActiveListView.Handle, LVM_SETSELECTEDCOLUMN, Index, 0);
+
+    OldFListOrderIndex := Index;
+  end;
+end;
+
+procedure TFClient.ListViewCompare(Sender: TObject; Item1: TListItem;
+  Item2: TListItem; Data: Integer; var Compare: Integer);
+const
+  iiServerSort = Chr(iiDatabase) + Chr(iiHosts) + Chr(iiProcesses) + Chr(iiStati) + Chr(iiUsers) + Chr(iiVariables);
+  iiDatabaseSort = Chr(iiBaseTable) + Chr(iiView) + Chr(iiProcedure) + Chr(iiFunction) + Chr(iiEvent);
+  iiTableSort = Chr(iiIndex) + Chr(iiField) + Chr(iiForeignKey) + Chr(iiTrigger);
+  SourceImageIndex = Chr(iiSystemDatabase) + Chr(iiFunction);
+  DestImageIndex = Chr(iiDatabase) + Chr(iiProcedure);
+var
+  ImageIndex1: Integer;
+  ImageIndex2: Integer;
+  String1: string;
+  String2: string;
+begin
+  ImageIndex1 := Item1.ImageIndex;
+  ImageIndex2 := Item2.ImageIndex;
+  if (Pos(Chr(ImageIndex1), SourceImageIndex) > 0) then ImageIndex1 := Ord(DestImageIndex[Pos(Chr(ImageIndex1), SourceImageIndex)]);
+  if (Pos(Chr(ImageIndex2), SourceImageIndex) > 0) then ImageIndex2 := Ord(DestImageIndex[Pos(Chr(ImageIndex2), SourceImageIndex)]);
+
+  Compare := 0;
+  if ((ImageIndex1 <> ImageIndex2) and not ((ImageIndex1 in [iiBaseTable, iiSystemView, iiView]) and (ImageIndex2 in [iiBaseTable, iiSystemView, iiView]))) then
+    case (SelectedImageIndex) of
+      iiServer: Compare := Sign(Pos(Chr(ImageIndex1), iiServerSort) - Pos(Chr(ImageIndex2), iiServerSort));
+      iiDatabase: Compare := Sign(Pos(Chr(ImageIndex1), iiDatabaseSort) - Pos(Chr(ImageIndex2), iiDatabaseSort));
+      iiBaseTable: Compare := Sign(Pos(Chr(ImageIndex1), iiTableSort) - Pos(Chr(ImageIndex2), iiTableSort));
+    end
+  else
+  begin
+    if ((Data = 0) or (Data > Item1.SubItems.Count) or (Data > Item2.SubItems.Count)) then
+    begin
+      String1 := Item1.Caption;
+      String2 := Item2.Caption;
+    end
+    else
+    begin
+      String1 := Item1.SubItems[Data - 1];
+      String2 := Item2.SubItems[Data - 1];
+
+      Compare := 0;
+      case (SelectedImageIndex) of
+        iiServer:
+          case (Data) of
+            0: if (Client.LowerCaseTableNames = 0) then
+                 Compare := Sign(lstrcmp(PChar(String1), PChar(String2)))
+               else
+                 Compare := Sign(lstrcmpi(PChar(String1), PChar(String2)));
+            1: Compare := Sign(SysUtils.StrToInt64(String1) - SysUtils.StrToInt64(String2));
+            2:
+              begin
+                if (String1 = '') then String1 := '0';               if (String2 = '') then String2 := '0';
+
+                String1 := ReplaceStr(String1, '???', '0');         String2 := ReplaceStr(String2, '???', '0');
+
+                String1 := ReplaceStr(String1, ' B', '');           String2 := ReplaceStr(String2, ' B', '');
+                String1 := ReplaceStr(String1, ' KB', '000');       String2 := ReplaceStr(String2, ' KB', '000');
+                String1 := ReplaceStr(String1, ' MB', '000000');    String2 := ReplaceStr(String2, ' MB', '000000');
+                String1 := ReplaceStr(String1, ' GB', '000000000'); String2 := ReplaceStr(String2, ' GB', '000000000');
+
+                String1 := ReplaceStr(String1, LocaleFormatSettings.ThousandSeparator, '');
+                String2 := ReplaceStr(String2, LocaleFormatSettings.ThousandSeparator, '');
+                Compare := Sign(SysUtils.StrToFloat(String1, LocaleFormatSettings) - SysUtils.StrToFloat(String2, LocaleFormatSettings));
+              end;
+            3:
+              begin
+                if (String1 = '') then String1 := SysUtils.DateToStr(1, LocaleFormatSettings);
+                if (String2 = '') then String2 := SysUtils.DateToStr(1, LocaleFormatSettings);
+
+                String1 := ReplaceStr(String1, '???', SysUtils.DateToStr(1, LocaleFormatSettings));
+                String2 := ReplaceStr(String2, '???', SysUtils.DateToStr(1, LocaleFormatSettings));
+
+                Compare := Sign(SysUtils.StrToDateTime(String1, LocaleFormatSettings) - SysUtils.StrToDateTime(String2, LocaleFormatSettings));
+              end;
+          end;
+        iiDatabase:
+          case (Data) of
+            0: if (Client.LowerCaseTableNames = 0) then
+                 Compare := Sign(lstrcmp(PChar(String1), PChar(String2)))
+               else
+                 Compare := Sign(lstrcmpi(PChar(String1), PChar(String2)));
+            2:
+              begin
+                if (String1 = '') then String1 := '0';
+                if (String2 = '') then String2 := '0';
+
+                String1 := ReplaceStr(String1, '~', '');            String2 := ReplaceStr(String2, '~', '');
+                String1 := ReplaceStr(String1, '???', '0');         String2 := ReplaceStr(String2, '???', '0');
+
+                String1 := ReplaceStr(String1, LocaleFormatSettings.ThousandSeparator, '');
+                String2 := ReplaceStr(String2, LocaleFormatSettings.ThousandSeparator, '');
+                Compare := Sign(SysUtils.StrToFloat(String1, LocaleFormatSettings) - SysUtils.StrToFloat(String2, LocaleFormatSettings));
+              end;
+            3:
+              begin
+                if (String1 = '') then String1 := '0';               if (String2 = '') then String2 := '0';
+
+                String1 := ReplaceStr(String1, '???', '0');         String2 := ReplaceStr(String2, '???', '0');
+                String1 := ReplaceStr(String1, '???', '0');         String2 := ReplaceStr(String2, '???', '0');
+                String1 := ReplaceStr(String1, ' B', '');           String2 := ReplaceStr(String2, ' B', '');
+                String1 := ReplaceStr(String1, ' KB', '000');       String2 := ReplaceStr(String2, ' KB', '000');
+                String1 := ReplaceStr(String1, ' MB', '000000');    String2 := ReplaceStr(String2, ' MB', '000000');
+                String1 := ReplaceStr(String1, ' GB', '000000000'); String2 := ReplaceStr(String2, ' GB', '000000000');
+
+                String1 := ReplaceStr(String1, LocaleFormatSettings.ThousandSeparator, '');
+                String2 := ReplaceStr(String2, LocaleFormatSettings.ThousandSeparator, '');
+                Compare := Sign(SysUtils.StrToFloat(String1, LocaleFormatSettings) - SysUtils.StrToFloat(String2, LocaleFormatSettings));
+              end;
+            4:
+              begin
+                if (String1 = '') then String1 := SysUtils.DateToStr(1, LocaleFormatSettings);
+                if (String2 = '') then String2 := SysUtils.DateToStr(1, LocaleFormatSettings);
+
+                String1 := ReplaceStr(String1, '???', SysUtils.DateToStr(1, LocaleFormatSettings));
+                String2 := ReplaceStr(String2, '???', SysUtils.DateToStr(1, LocaleFormatSettings));
+
+                Compare := Sign(SysUtils.StrToDateTime(String1, LocaleFormatSettings) - SysUtils.StrToDateTime(String2, LocaleFormatSettings));
+              end;
+          end;
+      end;
+    end;
+
+    if (Compare = 0) then
+      Compare := Sign(lstrcmp(PChar(String1), PChar(String2)));
+    if (Compare = 0) then
+      Compare := Sign(lstrcmp(PChar(Item1.Caption), PChar(Item2.Caption)));
+
+    Compare := FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)].Order * Compare;
+  end;
+end;
+
 procedure TFClient.ListViewDblClick(Sender: TObject);
 var
   I: Integer;
@@ -10516,6 +9868,298 @@ begin
   if (Assigned(MenuItem)) then MenuItem.Click();
 end;
 
+procedure TFClient.ListViewDragOver(Sender, Source: TObject; X, Y: Integer;
+  State: TDragState; var Accept: Boolean);
+var
+  SourceClient: TCClient;
+  SourceDatabase: TCDatabase;
+  SourceItem: TListItem;
+  SourceNode: TTreeNode;
+  TargetItem: TListItem;
+begin
+  Accept := False;
+
+  TargetItem := TListView(Sender).GetItemAt(X, Y);
+
+  if ((Source is TTreeView_Ext) and (TTreeView_Ext(Source).Name = FNavigator.Name)) then
+  begin
+    SourceNode := TFClient(TTreeView_Ext(Source).Owner).MouseDownNode;
+
+    if (not Assigned(TargetItem)) then
+      case (SourceNode.ImageIndex) of
+        iiBaseTable,
+        iiProcedure,
+        iiFunction,
+        iiField: Accept := (SourceNode.Parent.ImageIndex = SelectedImageIndex) and (SourceNode.Parent <> FNavigator.Selected);
+      end
+    else if (((TargetItem.Caption <> SourceNode.Text) or (SourceNode.Parent <> FNavigator.Selected)) and (SourceNode.Parent.Text <> TargetItem.Caption)) then
+      case (TargetItem.ImageIndex) of
+        iiDatabase: Accept := (SourceNode.ImageIndex in [iiDatabase, iiBaseTable, iiProcedure, iiFunction]);
+        iiBaseTable: Accept := SourceNode.ImageIndex in [iiBaseTable, iiField];
+      end;
+  end
+  else if ((Source is TListView) and (TListView(Source).SelCount = 1) and (TListView(Source).Parent.Name = PListView.Name)) then
+  begin
+    SourceItem := TListView(Source).Selected;
+    SourceClient := TFClient(TTreeView_Ext(Source).Owner).Client;
+    SourceDatabase := SourceClient.DatabaseByName(TFClient(TTreeView_Ext(Source).Owner).MenuDatabase);
+
+    if (not Assigned(TargetItem)) then
+      case (SourceItem.ImageIndex) of
+        iiBaseTable,
+        iiProcedure,
+        iiFunction: Accept := (SelectedImageIndex = iiDatabase) and (not Assigned(TargetItem) and (Client.DatabaseByName(SelectedDatabase) <> SourceDatabase));
+      end
+    else if ((TargetItem <> SourceItem) and (TargetItem.ImageIndex = SourceItem.ImageIndex)) then
+      case (SourceItem.ImageIndex) of
+        iiBaseTable: Accept := (SelectedImageIndex = iiDatabase);
+      end
+    else if ((TargetItem <> SourceItem) and (SourceClient <> Client)) then
+      case (SourceItem.ImageIndex) of
+        iiBaseTable: Accept := (SelectedImageIndex = iiServer);
+      end;
+  end;
+end;
+
+procedure TFClient.ListViewEdited(Sender: TObject; Item: TListItem;
+  var S: string);
+begin
+  if (not RenameCItem(FocusedCItem, S)) then
+    S := Item.Caption;
+end;
+
+procedure TFClient.ListViewEditing(Sender: TObject; Item: TListItem;
+  var AllowEdit: Boolean);
+begin
+  AllowEdit := (Item.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50107) or (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013) or (Item.ImageIndex in [iiBaseTable, iiView, iiEvent, iiField, iiTrigger, iiHost, iiUser]);
+end;
+
+procedure TFClient.ListViewInitialize(const Sender: TObject; const ListView: TListView; const Data: TCustomData);
+
+  procedure SetColumnWidths(const ListView: TListView; const Kind: TADesktop.TColumnWidthKind);
+  var
+    I: Integer;
+  begin
+    for I := 0 to ListView.Columns.Count - 1 do
+    begin
+      ListView.Column[I].Width := Client.Account.Desktop.ColumnWidths[Kind, I];
+      ListView.Columns[I].MinWidth := 10;
+    end;
+  end;
+
+var
+  Group: TListGroup;
+  Update: Boolean;
+begin
+  Update := ListView.Columns.Count > 0;
+
+  ListView.Columns.BeginUpdate();
+  ListView.Columns.Clear();
+  ListView.Groups.BeginUpdate();
+  ListView.Groups.Clear();
+
+  if (not Update) then
+    if (ListView = FServerListView) then
+    begin
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.EndUpdate();
+      SetColumnWidths(ListView, ckServer);
+      ListView.Columns[1].Alignment := taRightJustify;
+      ListView.Columns[2].Alignment := taRightJustify;
+
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiDatabase;
+      Group := ListView.Groups.Add();
+      Group.GroupID := 0;
+      Group.Header := ReplaceStr(Preferences.LoadStr(12), '&', '');
+    end
+    else if (TObject(Data) is TCDatabase) then
+    begin
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.EndUpdate();
+      SetColumnWidths(ListView, ckDatabase);
+      if (ListView.Column[1].Width > 2 * Preferences.GridMaxColumnWidth) then
+        ListView.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
+      ListView.Columns[2].Alignment := taRightJustify;
+      ListView.Columns[3].Alignment := taRightJustify;
+
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiTable;
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiProcedure;
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiEvent;
+    end
+    else if (TObject(Data) is TCBaseTable) then
+    begin
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      if (Client.ServerVersion >= 40100) then
+        ListView.Columns.Add();
+      ListView.Columns.EndUpdate();
+      SetColumnWidths(ListView, ckTable);
+      if (ListView.Column[1].Width > 2 * Preferences.GridMaxColumnWidth) then
+        ListView.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
+
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiIndex;
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiField;
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiForeignKey;
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiTrigger;
+    end
+    else if (TObject(Data) is TCView) then
+    begin
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.EndUpdate();
+      SetColumnWidths(ListView, ckTable);
+      if (ListView.Column[1].Width > 2 * Preferences.GridMaxColumnWidth) then
+        ListView.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
+
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiViewField;
+    end
+    else if (TObject(Data) is TCHosts) then
+    begin
+      ListView.Columns.Add();
+      ListView.Columns.EndUpdate();
+      SetColumnWidths(ListView, ckHosts);
+
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiHost;
+    end
+    else if (TObject(Data) is TCProcesses) then
+    begin
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.EndUpdate();
+      SetColumnWidths(ListView, ckProcesses);
+
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiProcess;
+    end
+    else if (TObject(Data) is TCStati) then
+    begin
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.EndUpdate();
+      SetColumnWidths(ListView, ckStati);
+
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiStatus;
+    end
+    else if (TObject(Data) is TCUsers) then
+    begin
+      ListView.Columns.Add();
+      ListView.Columns.EndUpdate();
+      SetColumnWidths(ListView, ckUsers);
+
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiUser;
+    end
+    else if (TObject(Data) is TCVariables) then
+    begin
+      ListView.Columns.Add();
+      ListView.Columns.Add();
+      ListView.Columns.EndUpdate();
+      SetColumnWidths(ListView, ckVariables);
+
+      Group := ListView.Groups.Add();
+      Group.GroupID := iiVariable;
+    end;
+
+  if (ListView = FServerListView) then
+  begin
+    ListView.Columns[0].Caption := ReplaceStr(Preferences.LoadStr(38), '&', '');
+    ListView.Columns[1].Caption := Preferences.LoadStr(76);
+    ListView.Columns[2].Caption := Preferences.LoadStr(67);
+    ListView.Columns[3].Caption := Preferences.LoadStr(77);
+    ListView.Columns[4].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
+  end
+  else if (TObject(Data) is TCDatabase) then
+  begin
+    ListView.Columns[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
+    ListView.Columns[1].Caption := Preferences.LoadStr(69);
+    ListView.Columns[2].Caption := Preferences.LoadStr(66);
+    ListView.Columns[3].Caption := Preferences.LoadStr(67);
+    ListView.Columns[4].Caption := Preferences.LoadStr(68);
+    ListView.Columns[5].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
+    ListView.Columns[6].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
+  end
+  else if (TObject(Data) is TCTable) then
+  begin
+    ListView.Columns[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
+    ListView.Columns[1].Caption := Preferences.LoadStr(69);
+    ListView.Columns[2].Caption := Preferences.LoadStr(71);
+    ListView.Columns[3].Caption := Preferences.LoadStr(72);
+    ListView.Columns[4].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
+  end
+  else if (TObject(Data) is TCView) then
+  begin
+    ListView.Columns[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
+    ListView.Columns[1].Caption := Preferences.LoadStr(69);
+    ListView.Columns[2].Caption := Preferences.LoadStr(71);
+    ListView.Columns[3].Caption := Preferences.LoadStr(72);
+    ListView.Columns[4].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
+  end
+  else if (ListView = HostsListView) then
+  begin
+    ListView.Columns[0].Caption := Preferences.LoadStr(335);
+  end
+  else if (ListView = ProcessesListView) then
+  begin
+    ListView.Columns[0].Caption := Preferences.LoadStr(269);
+    ListView.Columns[1].Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
+    ListView.Columns[2].Caption := Preferences.LoadStr(271);
+    ListView.Columns[3].Caption := ReplaceStr(Preferences.LoadStr(38), '&', '');
+    ListView.Columns[4].Caption := Preferences.LoadStr(273);
+    ListView.Columns[5].Caption := Preferences.LoadStr(274);
+    ListView.Columns[6].Caption := ReplaceStr(Preferences.LoadStr(661), '&', '');
+    ListView.Columns[7].Caption := Preferences.LoadStr(276);
+  end
+  else if (TObject(Data) is TCStati) then
+  begin
+    ListView.Columns[0].Caption := Preferences.LoadStr(267);
+    ListView.Columns[1].Caption := Preferences.LoadStr(268);
+  end
+  else if (ListView = UsersListView) then
+  begin
+    ListView.Columns[0].Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
+  end
+  else if (ListView = VariablesListView) then
+  begin
+    ListView.Columns[0].Caption := Preferences.LoadStr(267);
+    ListView.Columns[1].Caption := Preferences.LoadStr(268);
+  end;
+
+  ListView.Groups.EndUpdate();
+end;
+
 procedure TFClient.ListViewKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 var
@@ -10523,7 +10167,7 @@ var
   MenuItem: TMenuItem;
 begin
   if (not TListView(Sender).IsEditing()) then
-    if ((Sender = FList) and (Key = VK_BACK)) then
+    if ((Sender = ActiveListView) and (Key = VK_BACK)) then
       FNavigator.Selected := FNavigator.Selected.Parent
     else if ((Key = Ord('A')) and (Shift = [ssCtrl])) then
       MainAction('aESelectAll').Execute()
@@ -10541,6 +10185,1104 @@ begin
         if (Assigned(MenuItem)) then
           begin MenuItem.Click(); Key := 0; end;
       end;
+end;
+
+procedure TFClient.ListViewEmpty(Sender: TObject);
+var
+  I: Integer;
+  Names: array of string;
+begin
+  Wanted.Clear();
+
+  if (ActiveListView.SelCount <= 1) then
+    FNavigatorEmptyExecute(Sender)
+  else
+  begin
+    SetLength(Names, 0);
+    case (SelectedImageIndex) of
+      iiServer:
+        if (MsgBox(Preferences.LoadStr(405), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
+        begin
+          for I := 0 to ActiveListView.Items.Count - 1 do
+            if (ActiveListView.Items[I].Selected) then
+            begin
+              SetLength(Names, Length(Names) + 1);
+              Names[Length(Names) - 1] := ActiveListView.Items[I].Caption;
+            end;
+          Client.EmptyDatabases(Names);
+        end;
+      iiDatabase:
+        if (MsgBox(Preferences.LoadStr(406), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
+        begin
+          for I := 0 to ActiveListView.Items.Count - 1 do
+            if (ActiveListView.Items[I].Selected) then
+            begin
+              SetLength(Names, Length(Names) + 1);
+              Names[Length(Names) - 1] := ActiveListView.Items[I].Caption;
+            end;
+          Client.DatabaseByName(SelectedDatabase).EmptyTables(Names);
+        end;
+      iiBaseTable:
+        if (MsgBox(Preferences.LoadStr(407), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
+        begin
+          for I := 0 to ActiveListView.Items.Count - 1 do
+            if (ActiveListView.Items[I].Selected) then
+            begin
+              SetLength(Names, Length(Names) + 1);
+              Names[Length(Names) - 1] := ActiveListView.Items[I].Caption;
+            end;
+          Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).EmptyFields(Names);
+        end;
+    end;
+    SetLength(Names, 0);
+  end;
+end;
+
+procedure TFClient.ListViewEnter(Sender: TObject);
+begin
+  MainAction('aDEmpty').OnExecute := ListViewEmpty;
+
+  aDCreate.ShortCut := VK_INSERT;
+  aDDelete.ShortCut := VK_DELETE;
+
+  ListViewSelectItem(Sender, ActiveListView.Selected, Assigned(ActiveListView.Selected));
+  if (not Assigned(ActiveListView.Selected) and (ActiveListView.Items.Count > 0)) then
+    ActiveListView.Items[0].Focused := True;
+
+  StatusBarRefresh();
+end;
+
+procedure TFClient.ListViewExit(Sender: TObject);
+var
+  I: Integer;
+begin
+  if (SelectedImageIndex >= 0) then
+    for I := 0 to ActiveListView.Columns.Count - 1 do
+      Client.Account.Desktop.ColumnWidths[ColumnWidthKindFromImageIndex(SelectedImageIndex), I] := ActiveListView.Columns[I].Width;
+
+  MainAction('aFImportSQL').Enabled := False;
+  MainAction('aFImportText').Enabled := False;
+  MainAction('aFImportExcel').Enabled := False;
+  MainAction('aFImportAccess').Enabled := False;
+  MainAction('aFImportSQLite').Enabled := False;
+  MainAction('aFImportODBC').Enabled := False;
+  MainAction('aFImportXML').Enabled := False;
+  MainAction('aFExportSQL').Enabled := False;
+  MainAction('aFExportText').Enabled := False;
+  MainAction('aFExportExcel').Enabled := False;
+  MainAction('aFExportAccess').Enabled := False;
+  MainAction('aFExportSQLite').Enabled := False;
+  MainAction('aFExportODBC').Enabled := False;
+  MainAction('aFExportXML').Enabled := False;
+  MainAction('aFExportHTML').Enabled := False;
+  MainAction('aFPrint').Enabled := False;
+  MainAction('aERename').Enabled := False;
+  MainAction('aDCreateDatabase').Enabled := False;
+  MainAction('aDCreateTable').Enabled := False;
+  MainAction('aDCreateView').Enabled := False;
+  MainAction('aDCreateProcedure').Enabled := False;
+  MainAction('aDCreateFunction').Enabled := False;
+  MainAction('aDCreateEvent').Enabled := False;
+  MainAction('aDCreateTrigger').Enabled := False;
+  MainAction('aDCreateIndex').Enabled := False;
+  MainAction('aDCreateField').Enabled := False;
+  MainAction('aDCreateForeignKey').Enabled := False;
+  MainAction('aDCreateHost').Enabled := False;
+  MainAction('aDCreateUser').Enabled := False;
+  MainAction('aDDeleteDatabase').Enabled := False;
+  MainAction('aDDeleteTable').Enabled := False;
+  MainAction('aDDeleteView').Enabled := False;
+  MainAction('aDDeleteRoutine').Enabled := False;
+  MainAction('aDDeleteEvent').Enabled := False;
+  MainAction('aDDeleteIndex').Enabled := False;
+  MainAction('aDDeleteField').Enabled := False;
+  MainAction('aDDeleteForeignKey').Enabled := False;
+  MainAction('aDDeleteTrigger').Enabled := False;
+  MainAction('aDDeleteHost').Enabled := False;
+  MainAction('aDDeleteUser').Enabled := False;
+  MainAction('aDEditServer').Enabled := False;
+  MainAction('aDEditDatabase').Enabled := False;
+  MainAction('aDEditTable').Enabled := False;
+  MainAction('aDEditView').Enabled := False;
+  MainAction('aDEditRoutine').Enabled := False;
+  MainAction('aDEditEvent').Enabled := False;
+  MainAction('aDEditIndex').Enabled := False;
+  MainAction('aDEditField').Enabled := False;
+  MainAction('aDEditForeignKey').Enabled := False;
+  MainAction('aDEditTrigger').Enabled := False;
+  MainAction('aDEditHost').Enabled := False;
+  MainAction('aDEditProcess').Enabled := False;
+  MainAction('aDEditUser').Enabled := False;
+  MainAction('aDEditVariable').Enabled := False;
+  MainAction('aDEmpty').Enabled := False;
+
+  aDCreate.ShortCut := 0;
+  aDDelete.ShortCut := 0;
+  mlEProperties.ShortCut := 0;
+end;
+
+procedure TFClient.ListViewRefresh(const Sender: TObject; const ListView: TListView; const Data: TCustomData = nil);
+
+  function GroupByImageIndex(const ImageIndex: Integer): TListGroup;
+  var
+    I: Integer;
+  begin
+    Result := nil;
+    for I := 0 to ListView.Groups.Count - 1 do
+      if (ListView.Groups[I].GroupID = ImageIndex) then
+        Result := ListView.Groups[I];
+  end;
+
+var
+  BaseTable: TCBaseTable;
+  BaseTableField: TCBaseTableField;
+  ChangingEvent: TLVChangingEvent;
+  ColumnWidths: array [0..7] of Integer;
+  Count: Integer;
+  Database: TCDatabase;
+  Event: TCEvent;
+  FieldNames: string;
+  ForeignKey: TCForeignKey;
+  Group: TListGroup;
+  Host: TCHost;
+  I: Integer;
+  Index: TCIndex;
+  Item: TListItem;
+  J: Integer;
+  Kind: TADesktop.TColumnWidthKind;
+  LVItem: TLVItem;
+  Process: TCProcess;
+  Routine: TCRoutine;
+  S: string;
+  S2: string;
+  Status: TCStatus;
+  Table: TCTable;
+  Trigger: TCTrigger;
+  User: TCUser;
+  Variable: TCVariable;
+  View: TCView;
+  ViewField: TCViewField;
+begin
+  ChangingEvent := ActiveListView.OnChanging;
+  ListView.OnChanging := nil;
+  ListView.DisableAlign();
+  ListView.Columns.BeginUpdate();
+  ListView.Items.BeginUpdate();
+  ListView.Items.Clear();
+
+  for I := 0 to ListView.Columns.Count - 1 do
+  begin
+    ColumnWidths[I] := ListView.Columns[I].Width;
+    ListView.Columns[I].Width := 50; // Make soure no auto column width will be calculated for each item
+  end;
+
+  if (ListView = FServerListView) then
+  begin
+    Kind := ckServer;
+
+    for I := 0 to Client.Databases.Count - 1 do
+    begin
+      Database := Client.Databases[I];
+      Item := ListView.Items.Add();
+      Item.Data := Database;
+      Item.GroupId := iiDatabase;
+      if (Database is TCSystemDatabase) then
+        Item.ImageIndex := iiSystemDatabase
+      else
+        Item.ImageIndex := iiDatabase;
+      Item.Caption := Database.Name;
+
+      if (not Database.Actual) then
+        Item.SubItems.Add('')
+      else
+        Item.SubItems.Add(FormatFloat('#,##0', Database.Count, LocaleFormatSettings));
+      Item.SubItems.Add(SizeToStr(Database.Size));
+      if (Database is TCSystemDatabase) then
+        Item.SubItems.Add('')
+      else if (Database.Created = 0) then
+        Item.SubItems.Add('???')
+      else
+        Item.SubItems.Add(SysUtils.DateToStr(Database.Created, LocaleFormatSettings));
+      if (Database.DefaultCharset = Client.DefaultCharset) then
+        S := ''
+      else
+        S := Database.DefaultCharset;
+      if ((Database.Collation <> '') and (Database.Collation <> Client.Collation)) then
+      begin
+        if (S <> '') then S := S + ', ';
+        S := S + Database.Collation;
+      end;
+      if (Database is TCSystemDatabase) then
+        Item.SubItems.Add('')
+      else
+        Item.SubItems.Add(S);
+    end;
+    GroupByImageIndex(iiDatabase).Header := ReplaceStr(Preferences.LoadStr(265) + ' (' + IntToStr(Client.Databases.Count) + ')', '&', '');
+
+    if (Assigned(Client.Hosts)) then
+    begin
+      Item := ListView.Items.Add();
+      Item.Data := Client.Hosts;
+      Item.GroupID := 0;
+      Item.Caption := Preferences.LoadStr(335);
+      Item.ImageIndex := iiHosts;
+      if (Client.Hosts.Actual) then
+        Item.SubItems.Add(FormatFloat('#,##0', Client.Hosts.Count, LocaleFormatSettings));
+    end;
+
+    if (Assigned(Client.Processes)) then
+    begin
+      Item := ListView.Items.Add();
+      Item.Data := Client.Processes;
+      Item.GroupID := 0;
+      Item.ImageIndex := iiProcesses;
+      Item.Caption := Preferences.LoadStr(24);
+      if (Client.Processes.Actual) then
+        Item.SubItems.Add(FormatFloat('#,##0', Client.Processes.Count, LocaleFormatSettings));
+    end;
+
+    if (Assigned(Client.Stati)) then
+    begin
+      Item := ListView.Items.Add();
+      Item.Data := Client.Stati;
+      Item.GroupID := 0;
+      Item.ImageIndex := iiStati;
+      Item.Caption := Preferences.LoadStr(23);
+      if (Client.Stati.Actual) then
+        Item.SubItems.Add(FormatFloat('#,##0', Client.Stati.Count, LocaleFormatSettings));
+    end;
+
+    if (Assigned(Client.Users)) then
+    begin
+      Item := ListView.Items.Add();
+      Item.Data := Client.Users;
+      Item.GroupID := 0;
+      Item.ImageIndex := iiUsers;
+      Item.Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
+      if (Client.Users.Actual) then
+        if (Client.Users.Count >= 0) then
+          Item.SubItems.Add(FormatFloat('#,##0', Client.Users.Count, LocaleFormatSettings))
+        else
+          Item.SubItems.Add('???');
+    end;
+
+    if (Assigned(Client.Variables)) then
+    begin
+      Item := ListView.Items.Add();
+      Item.Data := Client.Variables;
+      Item.GroupID := 0;
+      Item.ImageIndex := iiVariables;
+      Item.Caption := Preferences.LoadStr(22);
+      if (Client.Variables.Actual) then
+        Item.SubItems.Add(FormatFloat('#,##0', Client.Variables.Count, LocaleFormatSettings));
+    end;
+  end
+  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).Sender is TCDatabase) or (TObject(Data) is TCDatabase)) then
+  begin
+    Kind := ckDatabase;
+
+    if (Sender is TCClient.TEvent) then
+      Database := TCDatabase(TCClient.TEvent(Sender).Sender)
+    else
+      Database := TCDatabase(Data);
+
+    if (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCTables)) then
+    begin
+      for I := 0 to Database.Tables.Count - 1 do
+      begin
+        Table := Database.Tables[I];
+
+        Item := ListView.Items.Add();
+        Item.Data := Table;
+        Item.GroupID := iiTable;
+        if (Table is TCSystemView) then
+          Item.ImageIndex := iiSystemView
+        else if (Table is TCBaseTable) then
+          Item.ImageIndex := iiBaseTable
+        else
+          Item.ImageIndex := iiView;
+        Item.Caption := Table.Name;
+
+        if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Engine)) then
+          Item.SubItems.Add(TCBaseTable(Table).Engine.Name)
+        else if ((Table is TCView)) then
+          Item.SubItems.Add(ReplaceStr(Preferences.LoadStr(738), '&', ''))
+        else
+          Item.SubItems.Add('???');
+
+        if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
+          Item.SubItems.Add('')
+        else if ((Table is TCBaseTable) and (TCBaseTable(Table).Rows < 0)) then
+          Item.SubItems.Add('???')
+        else if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Engine) and (UpperCase(TCBaseTable(Table).Engine.Name) = 'INNODB')) then
+          Item.SubItems.Add('~' + FormatFloat('#,##0', TCBaseTable(Table).Rows, LocaleFormatSettings))
+        else if ((Table is TCBaseTable)) then
+          Item.SubItems.Add(FormatFloat('#,##0', TCBaseTable(Table).Rows, LocaleFormatSettings))
+        else
+          Item.SubItems.Add('');
+
+        if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
+          Item.SubItems.Add('')
+        else if ((Table is TCBaseTable) and (TCBaseTable(Table).DataSize + TCBaseTable(Table).IndexSize < 0)) then
+          Item.SubItems.Add('???')
+        else if ((Table is TCBaseTable)) then
+          Item.SubItems.Add(SizeToStr(TCBaseTable(Table).DataSize + TCBaseTable(Table).IndexSize + 1))
+        else if ((Table is TCView) and TCView(Table).ActualSource) then
+          Item.SubItems.Add(SizeToStr(Length(TCView(Table).Source)))
+        else
+          Item.SubItems.Add('');
+
+        if ((Table is TCBaseTable) and not TCBaseTable(Table).ActualStatus) then
+          Item.SubItems.Add('')
+        else if ((Table is TCBaseTable) and (TCBaseTable(Table).Updated <= 0)) then
+          Item.SubItems.Add('???')
+        else if ((Table is TCBaseTable)) then
+          Item.SubItems.Add(SysUtils.DateTimeToStr(TCBaseTable(Table).Updated, LocaleFormatSettings))
+        else
+          Item.SubItems.Add('');
+
+        S := '';
+        if ((Table is TCBaseTable) and (TCBaseTable(Table).DefaultCharset <> '') and (TCBaseTable(Table).DefaultCharset <> TCBaseTable(Table).Database.DefaultCharset)) then
+          S := S + TCBaseTable(Table).DefaultCharset;
+        if ((Table is TCBaseTable) and (TCBaseTable(Table).Collation <> '') and (TCBaseTable(Table).Collation <> TCBaseTable(Table).Database.Collation)) then
+        begin
+          if (S <> '') then S := S + ', ';
+          S := S + TCBaseTable(Table).Collation;
+        end;
+        Item.SubItems.Add(S);
+
+        if ((Table is TCBaseTable)) then
+          Item.SubItems.Add(TCBaseTable(Table).Comment)
+        else
+          Item.SubItems.Add(TCView(Table).Comment);
+      end;
+      S := ReplaceStr(Preferences.LoadStr(234), '&', '');
+      if (Client.ServerVersion >= 50001) then
+        S := S + ' + ' + ReplaceStr(Preferences.LoadStr(873), '&', '');
+      GroupByImageIndex(iiTable).Header := S + ' (' + IntToStr(Database.Tables.Count) + ')';
+    end;
+
+    if (Assigned(Database.Routines) and (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCRoutines))) then
+    begin
+      for I := 0 to Database.Routines.Count - 1 do
+      begin
+        Routine := Database.Routines[I];
+
+        Item := ListView.Items.Add();
+        Item.Data := Routine;
+        Item.GroupID := iiProcedure;
+        if (Routine is TCProcedure) then
+          Item.ImageIndex := iiProcedure
+        else if (Routine is TCFunction) then
+          Item.ImageIndex := iiFunction;
+        Item.Caption := Routine.Name;
+
+        case (Routine.RoutineType) of
+          rtProcedure: Item.SubItems.Add('Procedure');
+          rtFunction: Item.SubItems.Add('Function');
+        end;
+        Item.SubItems.Add('');
+
+        if (not Routine.ActualSource) then
+          Item.SubItems.Add('')
+        else
+          Item.SubItems.Add(SizeToStr(Length(Routine.Source)));
+        if (Routine.Modified = 0) then
+          Item.SubItems.Add('???')
+        else
+          Item.SubItems.Add(SysUtils.DateTimeToStr(Routine.Modified, LocaleFormatSettings));
+        if (not Assigned(Routine.FunctionResult) or (Routine.FunctionResult.Charset = '') or (Routine.FunctionResult.Charset = Database.DefaultCharset)) then
+          Item.SubItems.Add('')
+        else
+          Item.SubItems.Add(Routine.FunctionResult.Charset);
+        Item.SubItems.Add(Routine.Comment);
+      end;
+      GroupByImageIndex(iiProcedure).Header := ReplaceStr(Preferences.LoadStr(874) + ' + ' + Preferences.LoadStr(875), '&', '') + ' (' + IntToStr(Database.Routines.Count) + ')';
+    end;
+
+    if (Assigned(Database.Events) and (not (Sender is TCClient.TEvent) or (TCClient.TEvent(Sender).CItems is TCEvents))) then
+    begin
+      for I := 0 to Database.Events.Count - 1 do
+      begin
+        Event := Database.Events[I];
+
+        Item := ListView.Items.Add();
+        Item.Data := Event;
+        Item.GroupID := iiEvent;
+        Item.ImageIndex := iiEvent;
+        Item.Caption := Event.Name;
+        Item.SubItems.Add('Event');
+        Item.SubItems.Add('');
+        if (not Event.ActualSource) then
+          Item.SubItems.Add('')
+        else
+          Item.SubItems.Add(SizeToStr(Length(Event.Source)));
+        if (Event.Updated = 0) then
+          Item.SubItems.Add('???')
+        else
+          Item.SubItems.Add(SysUtils.DateTimeToStr(Event.Updated, LocaleFormatSettings));
+        Item.SubItems.Add('');
+        Item.SubItems.Add(Event.Comment);
+      end;
+      GroupByImageIndex(iiEvent).Header := ReplaceStr(Preferences.LoadStr(876), '&', '') + ' (' + IntToStr(Database.Events.Count) + ')';
+    end;
+  end
+  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).Sender is TCBaseTable) or (TObject(Data) is TCBaseTable)) then
+  begin
+    Kind := ckTable;
+
+    if (Sender is TCClient.TEvent) then
+      BaseTable := TCBaseTable(TCClient.TEvent(Sender).Sender)
+    else
+      BaseTable := TCBaseTable(Data);
+
+    for I := 0 to BaseTable.Indices.Count - 1 do
+    begin
+      Index := BaseTable.Indices[I];
+
+      Item := ListView.Items.Add();
+      Item.Data := Index;
+      Item.GroupID := iiIndex;
+      Item.ImageIndex := iiIndex;
+      Item.Caption := Index.Caption;
+
+      FieldNames := '';
+      for J := 0 to Index.Columns.Count - 1 do
+      begin
+        if (FieldNames <> '') then FieldNames := FieldNames + ',';
+        FieldNames := FieldNames + Index.Columns[J].Field.Name;
+        if (Index.Columns.Column[J].Length > 0) then
+          FieldNames := FieldNames + '(' + IntToStr(Index.Columns[J].Length) + ')';
+      end;
+      Item.SubItems.Add(FieldNames);
+      Item.SubItems.Add('');
+      Item.SubItems.Add('');
+      if (Index.Unique) then
+        Item.SubItems.Add('unique')
+      else if (Index.Fulltext) then
+        Item.SubItems.Add('fulltext')
+      else
+        Item.SubItems.Add('');
+      if (Client.ServerVersion >= 40100) then
+        Item.SubItems.Add('');
+    end;
+    GroupByImageIndex(iiIndex).Header := ReplaceStr(Preferences.LoadStr(458), '&', '') + ' (' + IntToStr(BaseTable.Indices.Count) + ')';
+
+    for I := 0 to BaseTable.Fields.Count - 1 do
+    begin
+      BaseTableField := TCBaseTableField(BaseTable.Fields[I]);
+
+      Item := ListView.Items.Add();
+      Item.Data := BaseTableField;
+      Item.GroupID := iiField;
+      if (BaseTable is TCSystemView) then
+        Item.ImageIndex := iiSystemViewField
+      else
+        Item.ImageIndex := iiField;
+      Item.Caption := BaseTableField.Name;
+
+      Item.SubItems.Add(BaseTableField.DBTypeStr());
+
+      if (BaseTableField.NullAllowed) then
+        Item.SubItems.Add(Preferences.LoadStr(74))
+      else
+        Item.SubItems.Add(Preferences.LoadStr(75));
+      if (BaseTableField.AutoIncrement) then
+        Item.SubItems.Add('<auto_increment>')
+      else if (BaseTableField.Default = 'NULL') then
+        Item.SubItems.Add('<' + Preferences.LoadStr(71) + '>')
+      else if (BaseTableField.Default = 'CURRENT_TIMESTAMP') then
+        Item.SubItems.Add('<INSERT-TimeStamp>')
+      else
+        Item.SubItems.Add(BaseTableField.UnescapeValue(BaseTableField.Default));
+      S := '';
+      if (BaseTableField.FieldType in TextFieldTypes) then
+      begin
+        if ((BaseTableField.Charset <> '') and (BaseTableField.Charset <> BaseTable.DefaultCharset)) then
+          S := S + BaseTableField.Charset;
+        if ((BaseTableField.Collation <> '') and (BaseTableField.Collation <> BaseTable.Collation)) then
+        begin
+          if (S <> '') then S := S + ', ';
+          S := S + BaseTableField.Collation;
+        end;
+      end;
+      Item.SubItems.Add(S);
+      if (Client.ServerVersion >= 40100) then
+        Item.SubItems.Add(BaseTableField.Comment);
+    end;
+    GroupByImageIndex(iiField).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(BaseTable.Fields.Count) + ')';
+
+    if (Assigned(BaseTable.ForeignKeys)) then
+    begin
+      for I := 0 to BaseTable.ForeignKeys.Count - 1 do
+      begin
+        ForeignKey := BaseTable.ForeignKeys[I];
+
+        Item := ListView.Items.Add();
+        Item.Data := ForeignKey;
+        Item.GroupID := iiForeignKey;
+        Item.ImageIndex := iiForeignKey;
+        Item.Caption := ForeignKey.Name;
+
+        Item.SubItems.Add(ForeignKey.DBTypeStr());
+        Item.SubItems.Add('');
+        Item.SubItems.Add('');
+
+        S := '';
+        if (ForeignKey.OnDelete = dtCascade) then S := 'cascade on delete';
+        if (ForeignKey.OnDelete = dtSetNull) then S := 'set NULL on delete';
+        if (ForeignKey.OnDelete = dtSetDefault) then S := 'set default on delete';
+        if (ForeignKey.OnDelete = dtNoAction) then S := 'no action on delete';
+        S2 := '';
+        if (ForeignKey.OnUpdate = utCascade) then S2 := 'cascade on update';
+        if (ForeignKey.OnUpdate = utSetNull) then S2 := 'set NULL on update';
+        if (ForeignKey.OnUpdate = utSetDefault) then S2 := 'set default on update';
+        if (ForeignKey.OnUpdate = utNoAction) then S2 := 'no action on update';
+        if (S <> '') and (S2 <> '') then S := S + ', ';
+        S := S + S2;
+        Item.SubItems.Add(S);
+
+        if (Client.ServerVersion >= 40100) then
+          Item.SubItems.Add('');
+      end;
+      GroupByImageIndex(iiForeignKey).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(BaseTable.ForeignKeys.Count) + ')';
+    end;
+
+    if (Assigned(BaseTable.Database.Triggers)) then
+    begin
+      Count := 0;
+      for I := 0 to BaseTable.Database.Triggers.Count - 1 do
+        if (BaseTable.Database.Triggers[I].Table = BaseTable) then
+        begin
+          Trigger := BaseTable.Database.Triggers[I];
+
+          Item := ListView.Items.Add();
+          Item.Data := Trigger;
+          Item.GroupID := iiTrigger;
+          Item.ImageIndex := iiTrigger;
+          Item.Caption := Trigger.Name;
+
+          S := '';
+          case (Trigger.Timing) of
+            ttBefore: S := S + 'before ';
+            ttAfter: S := S + 'after ';
+          end;
+          case (Trigger.Event) of
+            teInsert: S := S + 'insert ';
+            teUpdate: S := S + 'update ';
+            teDelete: S := S + 'delete ';
+          end;
+          Item.SubItems.Add(S);
+
+          Inc(Count);
+        end;
+      GroupByImageIndex(iiTrigger).Header := ReplaceStr(Preferences.LoadStr(797), '&', '') + ' (' + IntToStr(Count) + ')';
+    end;
+  end
+  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).Sender is TCView) or (TObject(Data) is TCView)) then
+  begin
+    Kind := ckTable;
+
+    View := TCView(TCClient.TEvent(Sender).Sender);
+
+    for I := 0 to View.Fields.Count - 1 do
+    begin
+      ViewField := TCViewField(View.Fields[I]);
+
+      Item := ListView.Items.Add();
+      Item.Data := ViewField;
+      Item.GroupID := iiViewField;
+      Item.ImageIndex := iiViewField;
+      Item.Caption := ViewField.Name;
+      if (ViewField.FieldType <> mfUnknown) then
+      begin
+        Item.SubItems.Add(ViewField.DBTypeStr());
+        if (ViewField.NullAllowed) then
+          Item.SubItems.Add(Preferences.LoadStr(74))
+        else
+          Item.SubItems.Add(Preferences.LoadStr(75));
+        if (ViewField.AutoIncrement) then
+          Item.SubItems.Add('<auto_increment>')
+        else
+          Item.SubItems.Add(ViewField.Default);
+        if (ViewField.Charset <> View.Database.DefaultCharset) then
+          Item.SubItems.Add(ViewField.Charset);
+      end;
+    end;
+    GroupByImageIndex(iiViewField).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(View.Fields.Count) + ')';
+  end
+  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCHosts) or (TObject(Data) is TCHosts)) then
+  begin
+    Kind := ckHosts;
+
+    for I := 0 to Client.Hosts.Count - 1 do
+    begin
+      Host := Client.Hosts[I];
+
+      Item := ListView.Items.Add();
+      Item.Data := Host;
+      Item.GroupID := iiHost;
+      Item.ImageIndex := iiHost;
+      Item.Caption := Host.Caption;
+    end;
+    GroupByImageIndex(iiHost).Header := ReplaceStr(Preferences.LoadStr(335), '&', '') + ' (' + IntToStr(Client.Hosts.Count) + ')';
+  end
+  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCProcesses) or (TObject(Data) is TCProcesses)) then
+  begin
+    Kind := ckProcesses;
+
+    for I := 0 to Client.Processes.Count - 1 do
+    begin
+      Process := Client.Processes[I];
+
+      Item := ListView.Items.Add();
+      Item.Data := Process;
+      Item.GroupID := iiProcess;
+      Item.ImageIndex := iiProcess;
+      Item.Caption := IntToStr(Process.Id);
+      Item.SubItems.Add(Process.UserName);
+      Item.SubItems.Add(Process.Host);
+      Item.SubItems.Add(Process.DatabaseName);
+      Item.SubItems.Add(Process.Command);
+      Item.SubItems.Add(SQLStmtToCaption(Process.SQL, 30));
+      if (Process.Time = 0) then
+        Item.SubItems.Add('???')
+      else
+        Item.SubItems.Add(ExecutionTimeToStr(Process.Time));
+      Item.SubItems.Add(Process.State);
+    end;
+    GroupByImageIndex(iiProcess).Header := ReplaceStr(Preferences.LoadStr(24), '&', '') + ' (' + IntToStr(Client.Processes.Count) + ')';
+  end
+  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCStati) or (TObject(Data) is TCStati)) then
+  begin
+    Kind := ckStati;
+
+    for I := 0 to Client.Stati.Count - 1 do
+    begin
+      Status := Client.Stati[I];
+
+      Item := ListView.Items.Add();
+      Item.Data := Status;
+      Item.GroupID := iiStatus;
+      Item.ImageIndex := iiStatus;
+      Item.Caption := Status.Name;
+      Item.SubItems.Add(Status.Value);
+    end;
+    GroupByImageIndex(iiStatus).Header := ReplaceStr(Preferences.LoadStr(23), '&', '') + ' (' + IntToStr(Client.Stati.Count) + ')';
+  end
+  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCUsers) or (TObject(Data) is TCUsers)) then
+  begin
+    Kind := ckUsers;
+
+    for I := 0 to Client.Users.Count - 1 do
+    begin
+      User := Client.Users[I];
+
+      Item := ListView.Items.Add();
+      Item.Data := User;
+      Item.GroupID := iiUser;
+      Item.ImageIndex := iiUser;
+      Item.Caption := User.Caption;
+    end;
+    GroupByImageIndex(iiUser).Header := ReplaceStr(Preferences.LoadStr(561), '&', '') + ' (' + IntToStr(Client.Users.Count) + ')';
+  end
+  else if ((Sender is TCClient.TEvent) and (TCClient.TEvent(Sender).CItems is TCVariables) or (TObject(Data) is TCVariables)) then
+  begin
+    Kind := ckVariables;
+
+    for I := 0 to Client.Variables.Count - 1 do
+    begin
+      Variable := Client.Variables[I];
+
+      Item := ListView.Items.Add();
+      Item.Data := Variable;
+      Item.GroupID := iiVariable;
+      Item.ImageIndex := iiVariable;
+      Item.Caption := Variable.Name;
+      Item.SubItems.Add(Variable.Value);
+    end;
+    GroupByImageIndex(iiVariable).Header := ReplaceStr(Preferences.LoadStr(22), '&', '') + ' (' + IntToStr(Client.Variables.Count) + ')';
+  end
+  else
+    raise ERangeError.Create(SRangeError);
+
+  if (not Assigned(ListView.ItemFocused) and (ListView.Items.Count > 0)) then
+    ListView.ItemFocused := ListView.Items[0];
+  if ((Window.ActiveControl = ListView) and Assigned(ListView.OnSelectItem)) then
+    ListView.OnSelectItem(Sender, ListView.Selected, Assigned(ListView.Selected));
+
+  ListView.Columns.EndUpdate();
+
+  for I := 0 to ListView.Columns.Count - 1 do
+    if ((Kind = ckProcesses) and (I = 5)) then
+      ListView.Columns[I].Width := Preferences.GridMaxColumnWidth
+    else if ((Kind in [ckServer, ckDatabase, ckTable]) or (ListView.Items.Count > 0)) then
+      ListView.Columns[I].Width := ColumnWidths[I]
+    else if (ListView.Items.Count = 0) then
+      ListView.Columns[I].Width := ColumnHeaderWidth
+    else
+      ListView.Columns[I].Width := ColumnTextWidth;
+
+  ListView.Items.EndUpdate();
+  ListView.EnableAlign();
+  ListView.OnChanging := ChangingEvent;
+
+  if (Assigned(FNavigator.Selected) and (FNavigator.Selected.ImageIndex >= 0)) then
+    ListViewColumnClick(nil, ListView.Column[FListSortColumn[ColumnWidthKindFromImageIndex(SelectedImageIndex)].Index]);
+end;
+
+procedure TFClient.ListViewSelectItem(Sender: TObject; Item: TListItem;
+  Selected: Boolean);
+var
+  BaseTable: TCBaseTable;
+  Database: TCDatabase;
+  I: Integer;
+  Msg: TMsg;
+begin
+  if (not (PeekMessage(Msg, 0, 0, 0, PM_NOREMOVE) and (Msg.Message = WM_MOUSEMOVE) and (Msg.wParam = MK_LBUTTON)) or (ActiveListView.SelCount <= 1)) then
+  begin
+    aPOpenInNewWindow.Enabled := False;
+    aPOpenInNewTab.Enabled := False;
+    MainAction('aFImportSQL').Enabled := False;
+    MainAction('aFImportText').Enabled := False;
+    MainAction('aFImportExcel').Enabled := False;
+    MainAction('aFImportAccess').Enabled := False;
+    MainAction('aFImportSQLite').Enabled := False;
+    MainAction('aFImportODBC').Enabled := False;
+    MainAction('aFImportXML').Enabled := False;
+    MainAction('aFExportSQL').Enabled := False;
+    MainAction('aFExportText').Enabled := False;
+    MainAction('aFExportExcel').Enabled := False;
+    MainAction('aFExportAccess').Enabled := False;
+    MainAction('aFExportSQLite').Enabled := False;
+    MainAction('aFExportODBC').Enabled := False;
+    MainAction('aFExportXML').Enabled := False;
+    MainAction('aFExportHTML').Enabled := False;
+    MainAction('aFPrint').Enabled := False;
+    MainAction('aECopy').Enabled := False;
+    MainAction('aEPaste').Enabled := False;
+    MainAction('aERename').Enabled := False;
+    MainAction('aDCreateDatabase').Enabled := False;
+    MainAction('aDCreateTable').Enabled := False;
+    MainAction('aDCreateView').Enabled := False;
+    MainAction('aDCreateProcedure').Enabled := False;
+    MainAction('aDCreateFunction').Enabled := False;
+    MainAction('aDCreateTrigger').Enabled := False;
+    MainAction('aDCreateEvent').Enabled := False;
+    MainAction('aDCreateIndex').Enabled := False;
+    MainAction('aDCreateField').Enabled := False;
+    MainAction('aDCreateForeignKey').Enabled := False;
+    MainAction('aDCreateHost').Enabled := False;
+    MainAction('aDCreateUser').Enabled := False;
+    MainAction('aDDeleteDatabase').Enabled := False;
+    MainAction('aDDeleteTable').Enabled := False;
+    MainAction('aDDeleteView').Enabled := False;
+    MainAction('aDDeleteRoutine').Enabled := False;
+    MainAction('aDDeleteIndex').Enabled := False;
+    MainAction('aDDeleteField').Enabled := False;
+    MainAction('aDDeleteForeignKey').Enabled := False;
+    MainAction('aDDeleteTrigger').Enabled := False;
+    MainAction('aDDeleteEvent').Enabled := False;
+    MainAction('aDDeleteHost').Enabled := False;
+    MainAction('aDDeleteUser').Enabled := False;
+    MainAction('aDEditServer').Enabled := False;
+    MainAction('aDEditDatabase').Enabled := False;
+    MainAction('aDEditTable').Enabled := False;
+    MainAction('aDEditView').Enabled := False;
+    MainAction('aDEditRoutine').Enabled := False;
+    MainAction('aDEditEvent').Enabled := False;
+    MainAction('aDEditIndex').Enabled := False;
+    MainAction('aDEditField').Enabled := False;
+    MainAction('aDEditForeignKey').Enabled := False;
+    MainAction('aDEditTrigger').Enabled := False;
+    MainAction('aDEmpty').Enabled := False;
+
+    mlOpen.Enabled := False;
+    aDDelete.Enabled := False;
+    mlEProperties.Action := nil;
+
+    if (not Assigned(Item) or (Item is TListItem)) then
+      case (SelectedImageIndex) of
+        iiServer:
+          begin
+            aPOpenInNewWindow.Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex in [iiDatabase, iiSystemDatabase]);
+            aPOpenInNewTab.Enabled := aPOpenInNewWindow.Enabled;
+            MainAction('aFImportSQL').Enabled := (ActiveListView.SelCount <= 1) and (not Assigned(Client.UserRights) or Client.UserRights.RInsert) or Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aFImportExcel').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aFImportAccess').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aFImportSQLite').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aFImportODBC').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aFExportSQL').Enabled := (ActiveListView.SelCount = 0) or Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aFExportText').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aFExportExcel').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aFExportAccess').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aFExportSQLite').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aFExportODBC').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aFExportXML').Enabled := (ActiveListView.SelCount = 0) or Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aFExportHTML').Enabled := (ActiveListView.SelCount = 0) or Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aFPrint').Enabled := (ActiveListView.SelCount = 0) or Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aECopy').Enabled := ActiveListView.SelCount >= 1;
+            MainAction('aEPaste').Enabled := (not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLSERVER) or Assigned(Item) and (Item.ImageIndex = iiDatabase) and Clipboard.HasFormat(CF_MYSQLDATABASE)) and True;
+            MainAction('aDCreateDatabase').Enabled := (ActiveListView.SelCount = 0) and (not Assigned(Client.UserRights) or Client.UserRights.RCreate);
+            MainAction('aDCreateTable').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aDCreateView').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50001);
+            MainAction('aDCreateProcedure').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50004);
+            MainAction('aDCreateFunction').Enabled := MainAction('aDCreateProcedure').Enabled;
+            MainAction('aDCreateEvent').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50106);
+            MainAction('aDCreateHost').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiHosts);
+            MainAction('aDCreateUser').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiUsers);
+            MainAction('aDDeleteDatabase').Enabled := (ActiveListView.SelCount >= 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and True;
+            MainAction('aDEditServer').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aDEditDatabase').Enabled := (ActiveListView.SelCount >= 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
+            MainAction('aDEmpty').Enabled := (ActiveListView.SelCount >= 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and True;
+            aDDelete.Enabled := MainAction('aDDeleteDatabase').Enabled;
+
+            for I := 0 to ActiveListView.Items.Count - 1 do
+              if (ActiveListView.Items[I].Selected) then
+              begin
+                MainAction('aFExportSQL').Enabled := MainAction('aFExportSQL').Enabled and (ActiveListView.Items[I].ImageIndex in [iiDatabase]);
+                MainAction('aFExportText').Enabled := MainAction('aFExportText').Enabled and (ActiveListView.Items[I].ImageIndex in [iiDatabase]);
+                MainAction('aFExportExcel').Enabled := MainAction('aFExportExcel').Enabled and (ActiveListView.Items[I].ImageIndex in [iiDatabase]);
+                MainAction('aFExportAccess').Enabled := MainAction('aFExportAccess').Enabled and (ActiveListView.Items[I].ImageIndex in [iiDatabase]);
+                MainAction('aFExportSQLite').Enabled := MainAction('aFExportSQLite').Enabled and (ActiveListView.Items[I].ImageIndex in [iiDatabase]);
+                MainAction('aFExportODBC').Enabled := MainAction('aFExportODBC').Enabled and (ActiveListView.Items[I].ImageIndex in [iiDatabase]);
+                MainAction('aFExportXML').Enabled := MainAction('aFExportXML').Enabled and (ActiveListView.Items[I].ImageIndex in [iiDatabase]);
+                MainAction('aFExportHTML').Enabled := MainAction('aFExportHTML').Enabled and (ActiveListView.Items[I].ImageIndex in [iiDatabase]);
+                MainAction('aFPrint').Enabled := MainAction('aFPrint').Enabled and (ActiveListView.Items[I].ImageIndex in [iiDatabase]);
+                MainAction('aECopy').Enabled := MainAction('aECopy').Enabled and (ActiveListView.Items[I].ImageIndex in [iiDatabase, iiSystemDatabase]);
+                MainAction('aDDeleteDatabase').Enabled := MainAction('aDDeleteDatabase').Enabled and (ActiveListView.Items[I].ImageIndex in [iiDatabase]);
+                MainAction('aDEditDatabase').Enabled := MainAction('aDEditDatabase').Enabled and (ActiveListView.Items[I].ImageIndex in [iiDatabase]);
+                MainAction('aDEmpty').Enabled := MainAction('aDEmpty').Enabled and (ActiveListView.Items[I].ImageIndex in [iiDatabase]);
+              end;
+
+            mlOpen.Enabled := ActiveListView.SelCount = 1;
+
+            if (not Assigned(Item)) then
+              mlEProperties.Action := MainAction('aDEditServer')
+            else
+              mlEProperties.Action := MainAction('aDEditDatabase');
+          end;
+        iiDatabase,
+        iiSystemDatabase:
+          begin
+            Database := Client.DatabaseByName(SelectedDatabase);
+
+            aPOpenInNewWindow.Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction]);
+            aPOpenInNewTab.Enabled := aPOpenInNewWindow.Enabled;
+            MainAction('aFImportSQL').Enabled := (ActiveListView.SelCount = 0) and (SelectedImageIndex = iiDatabase);
+            MainAction('aFImportText').Enabled := ((ActiveListView.SelCount = 0) or (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable));
+            MainAction('aFImportExcel').Enabled := ((ActiveListView.SelCount = 0) or (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable));
+            MainAction('aFImportAccess').Enabled := ((ActiveListView.SelCount = 0) or (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable));
+            MainAction('aFImportSQLite').Enabled := ((ActiveListView.SelCount = 0) or (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable));
+            MainAction('aFImportODBC').Enabled := ((ActiveListView.SelCount = 0) or (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable));
+            MainAction('aFImportXML').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
+            MainAction('aFExportSQL').Enabled := ((ActiveListView.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable, iiView, iiProcedure, iiFunction, iiEvent, iiTrigger])) and (SelectedImageIndex = iiDatabase);
+            MainAction('aFExportText').Enabled := ((ActiveListView.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable, iiView])) and (SelectedImageIndex = iiDatabase);
+            MainAction('aFExportExcel').Enabled := ((ActiveListView.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable, iiView])) and (SelectedImageIndex = iiDatabase);
+            MainAction('aFExportAccess').Enabled := ((ActiveListView.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable])) and (SelectedImageIndex = iiDatabase);
+            MainAction('aFExportSQLite').Enabled := ((ActiveListView.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable])) and (SelectedImageIndex = iiDatabase);
+            MainAction('aFExportODBC').Enabled := ((ActiveListView.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable])) and (SelectedImageIndex = iiDatabase);
+            MainAction('aFExportXML').Enabled := ((ActiveListView.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable, iiView])) and (SelectedImageIndex = iiDatabase);
+            MainAction('aFExportHTML').Enabled := SelectedImageIndex = iiDatabase;
+            MainAction('aFPrint').Enabled := SelectedImageIndex = iiDatabase;
+            MainAction('aECopy').Enabled := ActiveListView.SelCount >= 1;
+            MainAction('aEPaste').Enabled := (not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLDATABASE) or Assigned(Item) and ((Item.ImageIndex = iiBaseTable) and Clipboard.HasFormat(CF_MYSQLTABLE) or (Item.ImageIndex = iiView) and Clipboard.HasFormat(CF_MYSQLVIEW))) and True;
+            MainAction('aERename').Enabled := Assigned(Item) and (ActiveListView.SelCount = 1) and (Item.ImageIndex in [iiBaseTable, iiView, iiEvent]) and True;
+            MainAction('aDCreateTable').Enabled := (ActiveListView.SelCount = 0) and (SelectedImageIndex = iiDatabase);
+            MainAction('aDCreateView').Enabled := (ActiveListView.SelCount = 0) and (Client.ServerVersion >= 50001) and (SelectedImageIndex = iiDatabase);
+            MainAction('aDCreateProcedure').Enabled := (ActiveListView.SelCount = 0) and (Client.ServerVersion >= 50004) and (SelectedImageIndex = iiDatabase);
+            MainAction('aDCreateFunction').Enabled := MainAction('aDCreateProcedure').Enabled;
+            MainAction('aDCreateEvent').Enabled := (ActiveListView.SelCount = 0) and (Client.ServerVersion >= 50106) and (SelectedImageIndex = iiDatabase);
+            MainAction('aDCreateIndex').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
+            MainAction('aDCreateField').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
+            MainAction('aDCreateForeignKey').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and Assigned(Database.BaseTableByName(Item.Caption)) and Assigned(Client.DatabaseByName(SelectedDatabase).BaseTableByName(Item.Caption).Engine) and Client.DatabaseByName(SelectedDatabase).BaseTableByName(Item.Caption).Engine.ForeignKeyAllowed;
+            MainAction('aDCreateTrigger').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and Assigned(Database.Triggers);
+            MainAction('aDDeleteTable').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and True;
+            MainAction('aDDeleteView').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiView) and True;
+            MainAction('aDDeleteRoutine').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex in [iiProcedure, iiFunction]) and True;
+            MainAction('aDDeleteEvent').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiEvent) and True;
+            MainAction('aDEditDatabase').Enabled := (ActiveListView.SelCount = 0) and (SelectedImageIndex = iiDatabase);
+            MainAction('aDEditTable').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
+            MainAction('aDEditView').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiView);
+            MainAction('aDEditRoutine').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex in [iiProcedure, iiFunction]);
+            MainAction('aDEditEvent').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiEvent);
+            MainAction('aDEmpty').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
+            aDDelete.Enabled := (ActiveListView.SelCount >= 1);
+
+            for I := 0 to ActiveListView.Items.Count - 1 do
+              if (ActiveListView.Items[I].Selected) then
+              begin
+                MainAction('aFExportSQL').Enabled := MainAction('aFExportSQL').Enabled and (ActiveListView.Items[I].ImageIndex in [iiBaseTable, iiView, iiProcedure, iiFunction, iiEvent, iiTrigger]);
+                MainAction('aFExportText').Enabled := MainAction('aFExportText').Enabled and (ActiveListView.Items[I].ImageIndex in [iiBaseTable, iiView]);
+                MainAction('aFExportExcel').Enabled := MainAction('aFExportExcel').Enabled and (ActiveListView.Items[I].ImageIndex in [iiBaseTable, iiView]);
+                MainAction('aFExportAccess').Enabled := MainAction('aFExportAccess').Enabled and (ActiveListView.Items[I].ImageIndex in [iiBaseTable]);
+                MainAction('aFExportSQLite').Enabled := MainAction('aFExportSQLite').Enabled and (ActiveListView.Items[I].ImageIndex in [iiBaseTable]);
+                MainAction('aFExportODBC').Enabled := MainAction('aFExportODBC').Enabled and (ActiveListView.Items[I].ImageIndex in [iiBaseTable]);
+                MainAction('aFExportXML').Enabled := MainAction('aFExportXML').Enabled and (ActiveListView.Items[I].ImageIndex in [iiBaseTable, iiView]);
+                MainAction('aFExportHTML').Enabled := MainAction('aFExportHTML').Enabled and (ActiveListView.Items[I].ImageIndex in [iiBaseTable, iiView]);
+                MainAction('aFPrint').Enabled := MainAction('aFPrint').Enabled and (ActiveListView.Items[I].ImageIndex in [iiBaseTable, iiView]);
+                MainAction('aECopy').Enabled := MainAction('aECopy').Enabled and (ActiveListView.Items[I].ImageIndex in [iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction, iiEvent]);
+                MainAction('aDDeleteTable').Enabled := MainAction('aDDeleteTable').Enabled and (ActiveListView.Items[I].ImageIndex in [iiBaseTable]);
+                MainAction('aDDeleteView').Enabled := MainAction('aDDeleteView').Enabled and (ActiveListView.Items[I].ImageIndex in [iiView]);
+                MainAction('aDDeleteRoutine').Enabled := MainAction('aDDeleteRoutine').Enabled and (ActiveListView.Items[I].ImageIndex in [iiProcedure, iiFunction]);
+                MainAction('aDDeleteEvent').Enabled := MainAction('aDDeleteEvent').Enabled and (ActiveListView.Items[I].ImageIndex in [iiEvent]);
+                MainAction('aDEditTable').Enabled := MainAction('aDEditTable').Enabled and (ActiveListView.Items[I].ImageIndex in [iiBaseTable]);
+                MainAction('aDEditView').Enabled := MainAction('aDEditView').Enabled and (ActiveListView.Items[I].ImageIndex in [iiView]);
+                MainAction('aDEditRoutine').Enabled := MainAction('aDEditRoutine').Enabled and (ActiveListView.Items[I].ImageIndex in [iiProcedure, iiFunction]);
+                MainAction('aDEditEvent').Enabled := MainAction('aDEditEvent').Enabled and (ActiveListView.Items[I].ImageIndex in [iiEvent]);
+                MainAction('aDEmpty').Enabled := MainAction('aDEmpty').Enabled and (ActiveListView.Items[I].ImageIndex in [iiBaseTable]);
+                aDDelete.Enabled := aDDelete.Enabled and not (ActiveListView.Items[I].ImageIndex in [iiSystemView]);
+              end;
+
+            mlOpen.Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex in [iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction, iiEvent]);
+
+            if (SelectedImageIndex = iiSystemDatabase) then
+              mlEProperties.Action := nil
+            else if (not Assigned(Item)) then
+              mlEProperties.Action := MainAction('aDEditDatabase')
+            else
+              case (Item.ImageIndex) of
+                iiBaseTable,
+                iiSystemView: mlEProperties.Action := MainAction('aDEditTable');
+                iiView: mlEProperties.Action := MainAction('aDEditView');
+                iiProcedure,
+                iiFunction: mlEProperties.Action := MainAction('aDEditRoutine');
+                iiEvent: mlEProperties.Action := MainAction('aDEditEvent');
+              end;
+          end;
+        iiBaseTable:
+          begin
+            Database := Client.DatabaseByName(SelectedDatabase);
+            BaseTable := Database.BaseTableByName(SelectedTable);
+
+            MainAction('aFImportText').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFImportExcel').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFImportAccess').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFImportSQLite').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFImportODBC').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFImportXML').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFExportSQL').Enabled := (ActiveListView.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex in [iiTrigger]);
+            MainAction('aFExportText').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFExportExcel').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFExportAccess').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFExportSQLite').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFExportODBC').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFExportXML').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFExportHTML').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aECopy').Enabled := (ActiveListView.SelCount >= 1);
+            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLTABLE) and True;
+            MainAction('aERename').Enabled := Assigned(Item) and (ActiveListView.SelCount = 1) and ((Item.ImageIndex in [iiField, iiTrigger]) or (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013)) and True;
+            MainAction('aDCreateIndex').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aDCreateField').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aDCreateForeignKey').Enabled := (ActiveListView.SelCount = 0) and Assigned(BaseTable.Engine) and BaseTable.Engine.ForeignKeyAllowed;
+            MainAction('aDCreateTrigger').Enabled := (ActiveListView.SelCount = 0) and Assigned(Database.Triggers);
+            MainAction('aDDeleteIndex').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiIndex) and True;
+            MainAction('aDDeleteField').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField) and (BaseTable.Fields.Count > ActiveListView.SelCount) and True;
+            MainAction('aDDeleteForeignKey').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013) and True;
+            MainAction('aDDeleteTrigger').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiTrigger) and True;
+            MainAction('aDEditTable').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aDEditIndex').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiIndex);
+            MainAction('aDEditField').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField);
+            MainAction('aDEditForeignKey').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiForeignKey);
+            MainAction('aDEditTrigger').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiTrigger);
+            MainAction('aDEmpty').Enabled := (ActiveListView.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex = iiField) and (BaseTable.FieldByName(Item.Caption).NullAllowed);
+            aDDelete.Enabled := (ActiveListView.SelCount >= 1);
+
+            for I := 0 to ActiveListView.Items.Count - 1 do
+              if (ActiveListView.Items[I].Selected) then
+              begin
+                MainAction('aFExportSQL').Enabled := MainAction('aFExportSQL').Enabled and (ActiveListView.Items[I].ImageIndex in [iiTrigger]);
+                MainAction('aDDeleteIndex').Enabled := MainAction('aDDeleteIndex').Enabled and (ActiveListView.Items[I].ImageIndex in [iiIndex]);
+                MainAction('aDDeleteField').Enabled := MainAction('aDDeleteField').Enabled and (ActiveListView.Items[I].ImageIndex in [iiField]);
+                MainAction('aDDeleteForeignKey').Enabled := MainAction('aDDeleteForeignKey').Enabled and (ActiveListView.Items[I].ImageIndex in [iiForeignKey]);
+                MainAction('aDEditIndex').Enabled := MainAction('aDEditIndex').Enabled and (ActiveListView.Items[I].ImageIndex in [iiIndex]);
+                MainAction('aDEditField').Enabled := MainAction('aDEditField').Enabled and (ActiveListView.Items[I].ImageIndex in [iiField]);
+                MainAction('aDEditForeignKey').Enabled := MainAction('aDEditForeignKey').Enabled and (ActiveListView.Items[I].ImageIndex in [iiForeignKey]);
+                MainAction('aDEditTrigger').Enabled := MainAction('aDEditTrigger').Enabled and (ActiveListView.Items[I].ImageIndex in [iiTrigger]);
+                MainAction('aDEmpty').Enabled := MainAction('aDEmpty').Enabled and (ActiveListView.Items[I].ImageIndex in [iiField]);
+              end;
+
+            mlOpen.Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex in [iiForeignKey, iiTrigger]);
+
+            if (not Assigned(Item)) then
+              mlEProperties.Action := MainAction('aDEditTable')
+            else
+              case (Item.ImageIndex) of
+                iiIndex: mlEProperties.Action := MainAction('aDEditIndex');
+                iiField: mlEProperties.Action := MainAction('aDEditField');
+                iiForeignKey: mlEProperties.Action := MainAction('aDEditForeignKey');
+                iiTrigger: mlEProperties.Action := MainAction('aDEditTrigger');
+              end;
+          end;
+        iiSystemView:
+          begin
+            MainAction('aECopy').Enabled := (ActiveListView.SelCount >= 1);
+          end;
+        iiView:
+          begin
+            MainAction('aFExportSQL').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFExportText').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFExportExcel').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFExportXML').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFExportHTML').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aFExportSQLite').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aECopy').Enabled := (ActiveListView.SelCount >= 1);
+            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLVIEW) and True;
+            MainAction('aDEditView').Enabled := (ActiveListView.SelCount = 0);
+
+            mlEProperties.Action := MainAction('aDEditView');
+          end;
+        iiHosts:
+          begin
+            MainAction('aECopy').Enabled := (ActiveListView.SelCount >= 1);
+            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLHOSTS) and True;
+            MainAction('aDCreateHost').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aDDeleteHost').Enabled := (ActiveListView.SelCount >= 1) and True;
+            MainAction('aDEditHost').Enabled := (ActiveListView.SelCount = 1);
+            aDDelete.Enabled := (ActiveListView.SelCount >= 1) and True;
+
+            mlEProperties.Action := MainAction('aDEditHost');
+          end;
+        iiProcesses:
+          begin
+            MainAction('aDDeleteProcess').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Trunc(SysUtils.StrToInt(Item.Caption)) <> Client.ThreadId) and True;
+            MainAction('aDEditProcess').Enabled := (ActiveListView.SelCount = 1);
+            aDDelete.Enabled := (ActiveListView.SelCount >= 1) and True;
+
+            mlEProperties.Action := MainAction('aDEditProcess');
+          end;
+        iiUsers:
+          begin
+            MainAction('aECopy').Enabled := (ActiveListView.SelCount >= 1);
+            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLUSERS) and True;
+            MainAction('aDCreateUser').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aDDeleteUser').Enabled := (ActiveListView.SelCount >= 1) and True;
+            MainAction('aDEditUser').Enabled := (ActiveListView.SelCount = 1);
+            aDDelete.Enabled := (ActiveListView.SelCount >= 1) and True;
+
+            mlEProperties.Action := MainAction('aDEditUser');
+          end;
+        iiVariables:
+          begin
+            MainAction('aDEditVariable').Enabled := (ActiveListView.SelCount = 1);
+
+            mlEProperties.Action := MainAction('aDEditVariable');
+          end;
+      end;
+
+    mlOpen.Default := mlOpen.Enabled and not (Assigned(Item) and (Item.ImageIndex = iiForeignKey));
+    mlEProperties.Default := Assigned(Item) and not mlOpen.Default and mlEProperties.Enabled;
+    mlEProperties.Caption := Preferences.LoadStr(97) + '...';
+    mlEProperties.ShortCut := ShortCut(VK_RETURN, [ssAlt]);
+
+    ToolBarData.tbPropertiesAction := mlEProperties.Action;
+    Window.Perform(CM_UPDATETOOLBAR, 0, LPARAM(Self));
+
+    ShowEnabledItems(MList.Items);
+
+    if (Sender <> MList) then
+      StatusBarRefresh();
+  end;
 end;
 
 procedure TFClient.mbBOpenClick(Sender: TObject);
@@ -10785,9 +11527,9 @@ begin
     View := avSQLEditor;
     if (View = avSQLEditor) then
     begin
-      FSQLEditor.Text := XMLNode(IXMLNode(FSQLHistoryMenuNode.Data), 'sql').Text;
+      FSQLEditorSynMemo.Text := XMLNode(IXMLNode(FSQLHistoryMenuNode.Data), 'sql').Text;
 
-      Window.ActiveControl := FSQLEditor;
+      Window.ActiveControl := FSQLEditorSynMemo;
     end;
   end;
 end;
@@ -10855,14 +11597,14 @@ begin
     View := avSQLEditor;
     if (View = avSQLEditor) then
     begin
-      SelStart := FSQLEditor.SelStart;
-      FSQLEditor.SelText := XMLNode(IXMLNode(FSQLHistoryMenuNode.Data), 'sql').Text;
-      SelLength := FSQLEditor.SelStart - SelStart;
+      SelStart := FSQLEditorSynMemo.SelStart;
+      FSQLEditorSynMemo.SelText := XMLNode(IXMLNode(FSQLHistoryMenuNode.Data), 'sql').Text;
+      SelLength := FSQLEditorSynMemo.SelStart - SelStart;
 
-      FSQLEditor.SelStart := SelStart;
-      FSQLEditor.SelLength := SelLength;
+      FSQLEditorSynMemo.SelStart := SelStart;
+      FSQLEditorSynMemo.SelLength := SelLength;
 
-      Window.ActiveControl := FSQLEditor;
+      Window.ActiveControl := FSQLEditorSynMemo;
     end;
   end;
 end;
@@ -10872,9 +11614,9 @@ var
   I: Integer;
   Rect: TRect;
 begin
-  FListSelectItem(Sender, FList.Selected, Assigned(FList.Selected));
+  ListViewSelectItem(Sender, ActiveListView.Selected, Assigned(ActiveListView.Selected));
 
-  if (not BOOL(Header_GetItemRect(ListView_GetHeader(FList.Handle), 0, @Rect)) or (MList.PopupPoint.Y - FList.ClientOrigin.Y < Rect.Bottom)) then
+  if (not BOOL(Header_GetItemRect(ListView_GetHeader(ActiveListView.Handle), 0, @Rect)) or (MList.PopupPoint.Y - ActiveListView.ClientOrigin.Y < Rect.Bottom)) then
     for I := 0 to MList.Items.Count - 1 do
       MList.Items[I].Visible := False;
 end;
@@ -10888,10 +11630,10 @@ var
 begin
   Wanted.Clear();
 
-  case (FList.Selected.ImageIndex) of
+  case (ActiveListView.Selected.ImageIndex) of
     iiForeignKey:
       begin
-        ForeignKey := Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).ForeignKeyByName(FList.Selected.Caption);
+        ForeignKey := TCForeignKey(ActiveListView.Selected.Data);
         URI := TUURI.Create(Address);
         URI.Database := ForeignKey.Parent.DatabaseName;
         URI.Table := ForeignKey.Parent.TableName;
@@ -10905,7 +11647,7 @@ begin
         Child := FNavigator.Selected.getFirstChild();
         while (Assigned(Child)) do
         begin
-          if (lstrcmpi(PChar(Child.Text), PChar(FList.Selected.Caption)) = 0) then
+          if (lstrcmpi(PChar(Child.Text), PChar(ActiveListView.Selected.Caption)) = 0) then
             NewNode := Child;
           Child := FNavigator.Selected.getNextChild(Child);
         end;
@@ -10953,23 +11695,23 @@ procedure TFClient.MSQLEditorPopup(Sender: TObject);
 var
   I: Integer;
 begin
-  if ((View = avQueryBuilder) and not (Window.ActiveControl = FBuilderEditor)) then
+  if ((View = avQueryBuilder) and not (Window.ActiveControl = FBuilderSynMemo)) then
   begin
-    Window.ActiveControl := FBuilderEditor;
+    Window.ActiveControl := FBuilderSynMemo;
     FSQLEditorStatusChange(Sender, []);
   end
   else
-  if ((View = avSQLEditor) and not (Window.ActiveControl = FSQLEditor)) then
+  if ((View = avSQLEditor) and not (Window.ActiveControl = FSQLEditorSynMemo)) then
   begin
-    Window.ActiveControl := FSQLEditor;
+    Window.ActiveControl := FSQLEditorSynMemo;
     FSQLEditorStatusChange(Sender, []);
   end;
 
   ShowEnabledItems(MSQLEditor.Items);
 
-  if (FSQLEditor.Gutter.Visible) then
+  if (FSQLEditorSynMemo.Gutter.Visible) then
     for I := 0 to MSQLEditor.Items.Count - 1 do
-      MSQLEditor.Items[I].Visible := MSQLEditor.Items[I].Visible and (MSQLEditor.PopupPoint.X - FSQLEditor.ClientOrigin.X > FSQLEditor.Gutter.Width);
+      MSQLEditor.Items[I].Visible := MSQLEditor.Items[I].Visible and (MSQLEditor.PopupPoint.X - FSQLEditorSynMemo.ClientOrigin.X > FSQLEditorSynMemo.Gutter.Width);
 end;
 
 procedure TFClient.MSQLHistoryPopup(Sender: TObject);
@@ -11018,6 +11760,7 @@ var
   Checked: Integer;
   I: Integer;
 begin
+  mtObjectBrowser.Checked := ttObjectBrowser in Preferences.ToolbarTabs;
   mtDataBrowser.Checked := ttDataBrowser in Preferences.ToolbarTabs;
   mtObjectIDE.Checked := ttObjectIDE in Preferences.ToolbarTabs;
   mtQueryBuilder.Checked := ttQueryBuilder in Preferences.ToolbarTabs;
@@ -11045,8 +11788,8 @@ begin
     MenuItem := TMenuItem(Sender);
 
     CreateLine := True;
-    P := Workbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint);
-    Workbench.InsertForeignKey(P.X, P.Y);
+    P := ActiveWorkbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint);
+    ActiveWorkbench.InsertForeignKey(P.X, P.Y);
   end;
 end;
 
@@ -11062,8 +11805,8 @@ begin
     MenuItem := TMenuItem(Sender);
 
     CreateLine := True;
-    P := Workbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint);
-    Workbench.InsertSection(P.X, P.Y);
+    P := ActiveWorkbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint);
+    ActiveWorkbench.InsertSection(P.X, P.Y);
   end;
 end;
 
@@ -11079,8 +11822,8 @@ begin
     MenuItem := TMenuItem(Sender);
 
     CreateLine := False;
-    P := Workbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint);
-    Workbench.InsertForeignKey(P.X, P.Y);
+    P := ActiveWorkbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint);
+    ActiveWorkbench.InsertForeignKey(P.X, P.Y);
   end;
 end;
 
@@ -11100,15 +11843,15 @@ begin
   mwAddTable.Clear();
   mwEPaste.Enabled := MainAction('aEPaste').Enabled;
 
-  Workbench.UpdateAction(MainAction('aEDelete'));
+  ActiveWorkbench.UpdateAction(MainAction('aEDelete'));
   mwEDelete.Enabled := MainAction('aEDelete').Enabled;
 
-  if (not Assigned(Workbench.Selected)) then
+  if (not Assigned(ActiveWorkbench.Selected)) then
     for I := 0 to Database.Tables.Count - 1 do
       if ((Database.Tables[I] is TCBaseTable)
         and Assigned(TCBaseTable(Database.Tables[I]).Engine)
         and TCBaseTable(Database.Tables[I]).Engine.ForeignKeyAllowed
-        and not Assigned(Workbench.TableByCaption(Database.Tables[I].Name))) then
+        and not Assigned(ActiveWorkbench.TableByCaption(Database.Tables[I].Name))) then
       begin
         MenuItem := TMenuItem.Create(Self);
         MenuItem.Caption := Database.Tables[I].Name;
@@ -11306,7 +12049,7 @@ begin
 
     if ((Handle = INVALID_HANDLE_VALUE) or (LARGE_INTEGER(FileSize).LowPart = INVALID_FILE_SIZE) and (GetLastError() <> 0)) then
       MsgBox(SysErrorMessage(GetLastError()), Preferences.LoadStr(45), MB_OK + MB_ICONERROR)
-    else if ((SynMemo <> FSQLEditor) or (FileSize < TLargeInteger(LargeSQLScriptSize))) then
+    else if ((ActiveSynMemo <> FSQLEditorSynMemo) or (FileSize < TLargeInteger(LargeSQLScriptSize))) then
       Answer := ID_NO
     else
       Answer := MsgBox(Preferences.LoadStr(751), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION);
@@ -11334,25 +12077,25 @@ begin
 
       if (Import.ErrorCount = 0) then
       begin
-        FSQLEditor.Options := FSQLEditor.Options + [eoScrollPastEol];  // Speed up the performance
+        FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options + [eoScrollPastEol];  // Speed up the performance
         if (Insert) then
-          SynMemo.SelText := Text
+          ActiveSynMemo.SelText := Text
         else
         begin
-          SynMemo.Text := Text;
-          if (SynMemo = FSQLEditor) then
+          ActiveSynMemo.Text := Text;
+          if (ActiveSynMemo = FSQLEditorSynMemo) then
           begin
             SQLEditor.Filename := Import.Filename;
             SQLEditor.CodePage := Import.CodePage;
             AddressChange(nil);
           end;
         end;
-        if (Length(FSQLEditor.Lines.Text) < LargeSQLScriptSize) then
-          FSQLEditor.Options := FSQLEditor.Options - [eoScrollPastEol]  // Slow down the performance on large content
+        if (Length(FSQLEditorSynMemo.Lines.Text) < LargeSQLScriptSize) then
+          FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options - [eoScrollPastEol]  // Slow down the performance on large content
         else
-          FSQLEditor.Options := FSQLEditor.Options + [eoScrollPastEol];  // Speed up the performance
-        SynMemo.ClearUndo();
-        SynMemo.Modified := Import.SetCharacterSetApplied;
+          FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options + [eoScrollPastEol];  // Speed up the performance
+        ActiveSynMemo.ClearUndo();
+        ActiveSynMemo.Modified := Import.SetCharacterSetApplied;
       end;
 
       Import.Free();
@@ -11852,8 +12595,8 @@ begin
     Trigger := nil;
 
   for I := 0 to Client.Databases.Count - 1 do
-    if (Assigned(Client.Databases[I].Workbench)) then
-      TWWorkbench(Client.Databases[I].Workbench).Visible := Client.Databases[I].Name = SelectedDatabase;
+    if (Assigned(TDatabaseDesktop(Client.Databases[I].Desktop).FWorkbench)) then
+      TDatabaseDesktop(Client.Databases[I].Desktop).Workbench.Visible := Client.Databases[I].Name = SelectedDatabase;
 
   if (Sender <> Self) then
   begin
@@ -11889,8 +12632,8 @@ begin
     if ((View = avDataBrowser) and Assigned(Table)) then
     begin
       FUDOffset.Position := 0;
-      FUDLimit.Position := Table.Desktop.Limit;
-      FLimitEnabled.Down := Table.Desktop.Limited;
+      FUDLimit.Position := TTableDesktop(Table.Desktop).Limit;
+      FLimitEnabled.Down := TTableDesktop(Table.Desktop).Limited;
     end;
 
     if (PResult.Align = alBottom) then
@@ -11899,11 +12642,11 @@ begin
     OldActiveControl := Window.ActiveControl;
     DisableAligns(PContent);
 
-    if (PList.Align = alClient) then PList.Align := alNone;
+    if (PListView.Align = alClient) then PListView.Align := alNone;
     if (PBuilder.Align = alClient) then PBuilder.Align := alNone;
     if (PSQLEditor.Align = alClient) then PSQLEditor.Align := alNone;
     if (PResult.Align = alClient) then PResult.Align := alNone;
-    PList.Align := alNone;
+    PListView.Align := alNone;
     PDataBrowser.Align := alNone;
     PObjectIDE.Align := alNone;
     PBuilder.Align := alNone;
@@ -11914,6 +12657,8 @@ begin
     PBlob.Align := alNone;
 
     PBlob.Visible := False;
+
+    ActiveListView := GetActiveListView();
 
     EnableAligns(PContent);
 
@@ -12043,7 +12788,7 @@ begin
     if ((View = avSQLEditor) and (SelectedImageIndex in [iiServer, iiDatabase, iiSystemDatabase]) or (View = avObjectIDE) and (SelectedImageIndex in [iiView, iiFunction, iiProcedure, iiEvent, iiTrigger])) then
     begin
       PSQLEditorRefresh(Sender);
-      if (Assigned(SynMemo)) then SynMemo.BringToFront();
+      if (Assigned(ActiveSynMemo)) then ActiveSynMemo.BringToFront();
       PSQLEditor.Align := alClient;
       PSQLEditor.Visible := True;
     end
@@ -12052,12 +12797,12 @@ begin
 
     if ((View = avObjectBrowser) and not (SelectedImageIndex in [iiIndex, iiField, iiForeignKey]) or ((View = avDataBrowser) and (SelectedImageIndex = iiServer))) then
     begin
-      PList.Align := alClient;
-      PList.Visible := True;
-      PList.BringToFront();
+      PListView.Align := alClient;
+      PListView.Visible := True;
+      PListView.BringToFront();
     end
     else
-      PList.Visible := False;
+      PListView.Visible := False;
   end;
 
   PObjectIDEResize(Sender);
@@ -12068,7 +12813,7 @@ end;
 procedure TFClient.PContentRefresh(Sender: TObject);
 begin
   if (PSQLEditor.Visible) then PSQLEditorRefresh(Sender);
-  if (PList.Visible) then FListRefresh(Sender);
+  if (PListView.Visible) then ActiveListView := GetActiveListView();
   if (PObjectIDE.Visible) then PObjectIDERefresh(Sender);
   if (PWorkbench.Visible) then PWorkbenchRefresh(Sender);
 
@@ -12195,7 +12940,7 @@ begin
         NewView := TCView.Create(Database);
         NewView.Assign(View);
 
-        NewView.Stmt := Trim(SynMemo.Text);
+        NewView.Stmt := Trim(ActiveSynMemo.Text);
 
         Result := Database.UpdateView(View, NewView);
 
@@ -12216,8 +12961,8 @@ begin
         end;
         NewRoutine.Assign(Routine);
 
-        try // This will initate a ParseCreateRoutine - parsing errors are uninteressted
-          NewRoutine.Source := Trim(SynMemo.Text);
+        try // This will initate a ParseCreateRoutine - parsing errors are uninteressted here
+          NewRoutine.Source := Trim(ActiveSynMemo.Text);
         except
         end;
 
@@ -12236,7 +12981,7 @@ begin
         NewEvent := TCEvent.Create(Database);
         NewEvent.Assign(Event);
 
-        NewEvent.Stmt := Trim(SynMemo.Text);
+        NewEvent.Stmt := Trim(ActiveSynMemo.Text);
 
         Result := Database.UpdateEvent(Event, NewEvent);
 
@@ -12249,7 +12994,7 @@ begin
         NewTrigger := TCTrigger.Create(Database);
         NewTrigger.Assign(Trigger);
 
-        NewTrigger.Stmt := Trim(SynMemo.Text);
+        NewTrigger.Stmt := Trim(ActiveSynMemo.Text);
 
         Result := Database.UpdateTrigger(Trigger, NewTrigger);
 
@@ -12262,8 +13007,8 @@ begin
   if (Result) then
   begin
     PObjectIDERefresh(Sender);
-    SynMemo.Modified := False;
-    FSQLEditorStatusChange(FSQLEditor, []);
+    ActiveSynMemo.Modified := False;
+    FSQLEditorStatusChange(FSQLEditorSynMemo, []);
   end;
 end;
 
@@ -12286,131 +13031,47 @@ begin
 end;
 
 procedure TFClient.PSQLEditorRefresh(Sender: TObject);
-
-  function NewSynMemo(): TSynMemo;
-  begin
-    Result := TSynMemo.Create(FSQLEditor.Owner);
-
-    Result.Align := FSQLEditor.Align;
-    Result.BorderStyle := FSQLEditor.BorderStyle;
-    Result.HelpType := FSQLEditor.HelpType;
-    Result.HelpContext := FSQLEditor.HelpContext;
-    Result.Highlighter := FSQLEditor.Highlighter;
-    Result.Gutter.AutoSize := FSQLEditor.Gutter.AutoSize;
-    Result.Gutter.DigitCount := FSQLEditor.Gutter.DigitCount;
-    Result.Gutter.LeftOffset := FSQLEditor.Gutter.LeftOffset;
-    Result.Gutter.ShowLineNumbers := FSQLEditor.Gutter.ShowLineNumbers;
-    Result.Keystrokes := FSQLEditor.Keystrokes;
-    Result.MaxScrollWidth := FSQLEditor.MaxScrollWidth;
-    Result.OnChange := FSQLEditor.OnChange;
-    Result.OnDragDrop := FSQLEditor.OnDragDrop;
-    Result.OnDragOver := FSQLEditor.OnDragOver;
-    Result.OnEnter := FSQLEditor.OnEnter;
-    Result.OnExit := FSQLEditor.OnExit;
-    Result.OnSearchNotFound := FSQLEditor.OnSearchNotFound;
-    Result.OnStatusChange := FSQLEditor.OnStatusChange;
-    Result.PopupMenu := FSQLEditor.PopupMenu;
-    Result.RightEdge := FSQLEditor.RightEdge;
-    Result.ScrollHintFormat := FSQLEditor.ScrollHintFormat;
-    Result.SearchEngine := FSQLEditor.SearchEngine;
-
-    SynMemoApllyPreferences(Result);
-
-    Result.Parent := FSQLEditor.Parent;
-  end;
-
 var
-  Database: TCDatabase;
   Event: TCEvent;
   Routine: TCRoutine;
   Trigger: TCTrigger;
   View: TCView;
 begin
   if (Self.View = avObjectIDE) then
-  begin
-    Database := Client.DatabaseByName(SelectedDatabase);
-
     case (SelectedImageIndex) of
       iiView:
         begin
-          View := Database.ViewByName(SelectedNavigator);
-          if (not Assigned(View.SynMemo)) then
-            View.SynMemo := NewSynMemo();
-          SynMemo.Text := Trim(SQLWrapStmt(View.Stmt, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10
+          View := TCView(FNavigator.Selected.Data);
+          TViewDesktop(View.Desktop).SynMemo.Text := Trim(SQLWrapStmt(View.Stmt, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10
         end;
       iiProcedure,
       iiFunction:
         begin
-          if (SelectedImageIndex = iiProcedure) then
-            Routine := Database.ProcedureByName(SelectedNavigator)
-          else if (SelectedImageIndex = iiFunction) then
-            Routine := Database.FunctionByName(SelectedNavigator)
-          else
-            Routine := nil;
-          if (not Assigned(Routine.SynMemo)) then
-            Routine.SynMemo := NewSynMemo();
-          SynMemo.Text := Routine.Source + #13#10;
+          Routine := TCRoutine(FNavigator.Selected.Data);
+          TRoutineDesktop(Routine.Desktop).SynMemo.Text := Routine.Source + #13#10;
         end;
       iiEvent:
         begin
-          Event := Database.EventByName(SelectedNavigator);
-          if (not Assigned(Event.SynMemo)) then
-            Event.SynMemo := NewSynMemo();
-          SynMemo.Text := Event.Stmt + #13#10;
+          Event := TCEvent(FNavigator.Selected.Data);
+          TEventDesktop(Event.Desktop).SynMemo.Text := Event.Stmt + #13#10;
         end;
       iiTrigger:
         begin
-          Trigger := Database.TriggerByName(SelectedNavigator);
-          if (not Assigned(Trigger.SynMemo)) then
-            Trigger.SynMemo := NewSynMemo();
-          SynMemo.Text := Trigger.Stmt + #13#10;
+          Trigger := TCTrigger(FNavigator.Selected.Data);
+          TTriggerDesktop(Trigger.Desktop).SynMemo.Text := Trigger.Stmt + #13#10;
         end;
     end;
-  end;
 
-  if (Assigned(SynMemo) and Assigned(SynMemo.OnStatusChange)) then SynMemo.OnStatusChange(SynMemo, [scModified]);
+  if (Assigned(ActiveSynMemo.OnStatusChange)) then ActiveSynMemo.OnStatusChange(ActiveSynMemo, [scModified]);
 end;
 
 procedure TFClient.PWorkbenchRefresh(Sender: TObject);
-
-  function NewWorkbench(const ADatabase: TCDatabase): TWWorkbench;
-  begin
-    Result := TWWorkbench.Create(PWorkbench.Owner, ADatabase);
-    Result.Parent := PWorkbench;
-    Result.Align := alClient;
-    Result.BorderStyle := bsNone;
-    Result.DoubleBuffered := True;
-    Result.HelpContext := 1125;
-    Result.HideSelection := True;
-    Result.HorzScrollBar.Tracking := True;
-    Result.MultiSelect := True;
-    Result.OnChange := FWorkbenchChange;
-    Result.OnDblClick := ListViewDblClick;
-    Result.OnDragOver := FWorkbenchDragOver;
-    Result.OnDragDrop := FWorkbenchDragDrop;
-    Result.OnEnter := FWorkbenchEnter;
-    Result.OnExit := FWorkbenchExit;
-    Result.OnCursorMove := FWorkbenchCursorMove;
-    Result.OnMouseDown := FWorkbenchMouseDown;
-    Result.OnValidateControl := FWorkbenchValidateControl;
-    Result.OnValidateForeignKeys := FWorkbenchValidateForeignKeys;
-    Result.ParentFont := True;
-    Result.PopupMenu := MWorkbench;
-    Result.VertScrollBar.Tracking := True;
-
-    if (FileExists(Client.Account.DataPath + SelectedDatabase + PathDelim + 'Diagram.xml')) then
-      Result.LoadFromFile(Client.Account.DataPath + SelectedDatabase + PathDelim + 'Diagram.xml');
-  end;
-
 var
   Database: TCDatabase;
 begin
   Database := Client.DatabaseByName(SelectedDatabase);
   if (Assigned(Database)) then
-    if (not (Database.Workbench is TWWorkbench)) then
-      Database.Workbench := NewWorkbench(Database)
-    else
-      TWWorkbench(Database.Workbench).Refresh();
+    TDatabaseDesktop(Database.Desktop).Workbench.Refresh();
 end;
 
 function TFClient.RenameCItem(const CItem: TCItem; const NewName: string): Boolean;
@@ -12519,12 +13180,12 @@ begin
 
     if (Client.ErrorCode > 0) then
     begin
-      if ((Client.CommandText <> '') and Assigned(SynMemo) and (Length(SynMemo.Text) > Length(Client.CommandText) + 5)) then
+      if ((Client.CommandText <> '') and Assigned(ActiveSynMemo) and (Length(ActiveSynMemo.Text) > Length(Client.CommandText) + 5)) then
       begin
         Len := SQLStmtLength(Client.CommandText);
         SQLTrimStmt(Client.CommandText, 1, Len, StartingCommentLength, EndingCommentLength);
-        SynMemo.SelStart := aDRunExecuteSelStart + Client.ExecutedSQLLength + StartingCommentLength;
-        SynMemo.SelLength := Len - StartingCommentLength - EndingCommentLength;
+        ActiveSynMemo.SelStart := aDRunExecuteSelStart + Client.ExecutedSQLLength + StartingCommentLength;
+        ActiveSynMemo.SelLength := Len - StartingCommentLength - EndingCommentLength;
       end
     end
     else
@@ -12585,15 +13246,15 @@ begin
       SaveDialog.FileName := SQLEditor.Filename;
       SaveDialog.EncodingIndex := SaveDialog.Encodings.IndexOf(CodePageToEncoding(SQLEditor.CodePage));
     end;
-    Text := SynMemo.Text;
+    Text := ActiveSynMemo.Text;
   end
   else if (Sender = MainAction('aECopyToFile')) then
   begin
-    if (Window.ActiveControl = SynMemo) then
+    if (Window.ActiveControl = ActiveSynMemo) then
     begin
       SaveDialog.FileName := '';
-      Text := SynMemo.SelText;
-      if (Text = '') then Text := SynMemo.Text;
+      Text := ActiveSynMemo.SelText;
+      if (Text = '') then Text := ActiveSynMemo.Text;
     end
     else if (Window.ActiveControl = FLog) then
     begin
@@ -12654,7 +13315,7 @@ begin
       if (not Success) then
         MsgBox(SysErrorMessage(GetLastError()), Preferences.LoadStr(45), MB_OK + MB_ICONERROR)
       else if ((Sender = MainAction('aFSave')) or (Sender = MainAction('aFSaveAs'))) then
-        SynMemo.Modified := False;
+        ActiveSynMemo.Modified := False;
 
       CloseHandle(Handle);
     end;
@@ -12699,7 +13360,7 @@ procedure TFClient.SendQuery(Sender: TObject; const SQL: string);
 begin
   if (Assigned(ResultSet)) then
   begin
-    if ((Sender is TAction) and (Client.DatabaseByName(SelectedDatabase).Initialize() or Client.DatabaseByName(SelectedDatabase).InitializeSources())) then
+    if ((Sender is TAction) and Assigned(Client.DatabaseByName(SelectedDatabase)) and (Client.DatabaseByName(SelectedDatabase).Initialize() or Client.DatabaseByName(SelectedDatabase).InitializeSources())) then
       Wanted.Action := TAction(Sender)
     else
     begin
@@ -12806,7 +13467,7 @@ begin
 
     if ((URI.Param['view'] = 'browser') and (Node.ImageIndex in [iiBaseTable, iiSystemView, iiView])) then
       NewView := avDataBrowser
-    else if ((URI.Param['view'] = 'ide') and (Node.ImageIndex in [iiProcedure, iiFunction, iiTrigger, iiEvent])) then
+    else if ((URI.Param['view'] = 'ide') and (Node.ImageIndex in [iiView, iiProcedure, iiFunction, iiTrigger, iiEvent])) then
       NewView := avObjectIDE
     else if ((URI.Param['view'] = 'builder') and (Node.ImageIndex in [iiDatabase, iiSystemDatabase])) then
       NewView := avQueryBuilder
@@ -12843,8 +13504,8 @@ begin
           Table := Client.DatabaseByName(URI.Database).TableByName(URI.Table);
 
           FUDOffset.Position := 0;
-          FUDLimit.Position := Table.Desktop.Limit;
-          FLimitEnabled.Down := Table.Desktop.Limited;
+          FUDLimit.Position := TTableDesktop(Table.Desktop).Limit;
+          FLimitEnabled.Down := TTableDesktop(Table.Desktop).Limited;
 
           if (URI.Param['offset'] <> Null) then
           begin
@@ -12913,9 +13574,9 @@ begin
             FieldName := '';
           if (Assigned(Table.FieldByName(FieldName))) then
           begin
-            Table.Desktop.GridVisible[FieldName] := FGrid.Columns[I].Visible;
-            Table.Desktop.GridWidths[FieldName] := FGrid.Columns[I].Width;
-            Table.Desktop.ColumnIndices[I] := FGrid.Columns[I].Field.FieldNo - 1;
+            TTableDesktop(Table.Desktop).GridVisible[FieldName] := FGrid.Columns[I].Visible;
+            TTableDesktop(Table.Desktop).GridWidths[FieldName] := FGrid.Columns[I].Width;
+            TTableDesktop(Table.Desktop).ColumnIndices[I] := FGrid.Columns[I].Field.FieldNo - 1;
           end;
         end;
     end
@@ -13010,14 +13671,14 @@ var
 begin
   case (View) of
     avObjectBrowser:
-      for I := 0 to FList.Items.Count - 1 do
-        if (FList.Items[I].Caption = AItem) then
+      for I := 0 to ActiveListView.Items.Count - 1 do
+        if (ActiveListView.Items[I].Caption = AItem) then
         begin
-          FList.Selected := FList.Items[I];
-          FList.ItemFocused := FList.Selected;
+          ActiveListView.Selected := ActiveListView.Items[I];
+          ActiveListView.ItemFocused := ActiveListView.Selected;
 
-          if (Assigned(FList.ItemFocused) and (FList.ItemFocused.Position.Y > FList.ClientHeight)) then
-            FList.Scroll(0, (FList.ItemFocused.Index + 2) * (FList.Items[1].Top - FList.Items[0].Top) - (FList.ClientHeight - GetSystemMetrics(SM_CYHSCROLL)));
+          if (Assigned(ActiveListView.ItemFocused) and (ActiveListView.ItemFocused.Position.Y > ActiveListView.ClientHeight)) then
+            ActiveListView.Scroll(0, (ActiveListView.ItemFocused.Index + 2) * (ActiveListView.Items[1].Top - ActiveListView.Items[0].Top) - (ActiveListView.ClientHeight - GetSystemMetrics(SM_CYHSCROLL)));
         end;
   end;
 end;
@@ -13138,11 +13799,11 @@ begin
   while (Pos('  ', S) > 0) do
     S := ReplaceStr(S, '  ', ' ');
   if (S = 'SELECT *') then
-    FBuilderEditor.Lines.Text := ''
+    FBuilderSynMemo.Lines.Text := ''
   else
   begin
     if (Length(SQL) < 80) then SQL := SQLUnwrapStmt(SQL);
-    FBuilderEditor.Lines.Text := SQL + ';';
+    FBuilderSynMemo.Lines.Text := SQL + ';';
   end;
 
   FBuilderEditorStatusChange(FBuilder, [scModified]);
@@ -13182,10 +13843,10 @@ var
 begin
   DataSet := TMySQLQuery.Create(Self);
   DataSet.Connection := Client;
-  if (SynMemo.SelText <> '') then
-    DataSet.CommandText := 'HELP ' + SQLEscape(SynMemo.SelText)
-  else if (SynMemo.WordAtCursor <> '') then
-    DataSet.CommandText := 'HELP ' + SQLEscape(SynMemo.WordAtCursor)
+  if (ActiveSynMemo.SelText <> '') then
+    DataSet.CommandText := 'HELP ' + SQLEscape(ActiveSynMemo.SelText)
+  else if (ActiveSynMemo.WordAtCursor <> '') then
+    DataSet.CommandText := 'HELP ' + SQLEscape(ActiveSynMemo.WordAtCursor)
   else
     DataSet.CommandText := 'HELP ' + SQLEscape('CONTENTS');
   DataSet.Open();
@@ -13255,12 +13916,12 @@ begin
 
     Count := -1;
     case (View) of
-      avObjectBrowser: Count := FList.Items.Count;
+      avObjectBrowser: Count := ActiveListView.Items.Count;
       avDataBrowser: if (Assigned(FGrid.DataSource.DataSet) and FGrid.DataSource.DataSet.Active) then Count := FGrid.DataSource.DataSet.RecordCount;
       avObjectIDE,
       avSQLEditor:
-        if (Assigned(Window.ActiveControl) and (Window.ActiveControl = SynMemo)) then
-          Count := SynMemo.Lines.Count
+        if (Assigned(Window.ActiveControl) and (Window.ActiveControl = ActiveSynMemo)) then
+          Count := ActiveSynMemo.Lines.Count
         else if ((Window.ActiveControl = FGrid) and Assigned(FGrid.DataSource.DataSet)) then
           Count := FGrid.DataSource.DataSet.RecordCount;
       avQueryBuilder:
@@ -13270,16 +13931,16 @@ begin
             QueryBuilderWorkArea := FBuilderActiveWorkArea();
             if (Assigned(Window.ActiveControl) and Assigned(QueryBuilderWorkArea) and IsChild(QueryBuilderWorkArea.Handle, Window.ActiveControl.Handle)) then
               Count := FBuilderActiveWorkArea().ControlCount
-            else if (Window.ActiveControl = FBuilderEditor) then
-              Count := FBuilderEditor.Lines.Count;
+            else if (Window.ActiveControl = FBuilderSynMemo) then
+              Count := FBuilderSynMemo.Lines.Count;
           end;
         end;
     end;
 
     SelCount := -1;
-    if ((Window.ActiveControl = FList) and (FList.SelCount > 1)) then
-      SelCount := FList.SelCount
-    else if (Assigned(SynMemo) and (Window.ActiveControl = SynMemo)) then
+    if ((Window.ActiveControl = ActiveListView) and (ActiveListView.SelCount > 1)) then
+      SelCount := ActiveListView.SelCount
+    else if (Assigned(ActiveSynMemo) and (Window.ActiveControl = ActiveSynMemo)) then
       SelCount := 0
     else if ((Window.ActiveControl = FGrid) and (FGrid.SelectedRows.Count > 0)) then
       SelCount := FGrid.SelectedRows.Count;
@@ -13302,10 +13963,10 @@ begin
         Text := Preferences.LoadStr(691, IntToStr(Count), IntToStr(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).Rows))
       else
         Text := Preferences.LoadStr(691, IntToStr(Count), '~' + IntToStr(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).Rows))
-    else if (Assigned(SynMemo) and (Window.ActiveControl = SynMemo) and (Count >= 0)) then
+    else if (Assigned(ActiveSynMemo) and (Window.ActiveControl = ActiveSynMemo) and (Count >= 0)) then
       Text := IntToStr(Count) + ' ' + ReplaceStr(Preferences.LoadStr(600), '&', '')
     else if ((View = avQueryBuilder) and (Count >= 0)) then
-      if (Window.ActiveControl = FBuilderEditor) then
+      if (Window.ActiveControl = FBuilderSynMemo) then
         Text := IntToStr(Count) + ' ' + ReplaceStr(Preferences.LoadStr(600), '&', '')
       else
         Text := Preferences.LoadStr(687, IntToStr(Count))
@@ -13331,14 +13992,14 @@ begin
       StatusBar.Panels.Items[sbConnected].Text := Preferences.LoadStr(519) + ': ' + FormatDateTime(FormatSettings.ShortTimeFormat, Client.LatestConnect);
 
     try
-      if (Window.ActiveControl = FBuilderEditor) then
-        Text := IntToStr(FBuilderEditor.CaretXY.Line) + ':' + IntToStr(FBuilderEditor.CaretXY.Char)
-      else if (Assigned(SynMemo) and (Window.ActiveControl = SynMemo)) then
-        Text := IntToStr(SynMemo.CaretXY.Line) + ':' + IntToStr(SynMemo.CaretXY.Char)
-      else if ((Window.ActiveControl = FList) and Assigned(FList.ItemFocused) and Assigned(FList.Selected) and (FList.ItemFocused.ImageIndex = iiIndex)) then
-        Text := Preferences.LoadStr(377) + ': ' + IntToStr(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).IndexByCaption(FList.ItemFocused.Caption).Key)
-      else if ((Window.ActiveControl = FList) and (SelectedTable <> '') and Assigned(FList.ItemFocused) and Assigned(FList.Selected) and (FList.ItemFocused.ImageIndex = iiField)) then
-        Text := ReplaceStr(Preferences.LoadStr(164), '&', '') + ': ' + IntToStr(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).FieldByName(FList.ItemFocused.Caption).Index)
+      if (Window.ActiveControl = FBuilderSynMemo) then
+        Text := IntToStr(FBuilderSynMemo.CaretXY.Line) + ':' + IntToStr(FBuilderSynMemo.CaretXY.Char)
+      else if (Assigned(ActiveSynMemo) and (Window.ActiveControl = ActiveSynMemo)) then
+        Text := IntToStr(ActiveSynMemo.CaretXY.Line) + ':' + IntToStr(ActiveSynMemo.CaretXY.Char)
+      else if ((Window.ActiveControl = ActiveListView) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiIndex)) then
+        Text := Preferences.LoadStr(377) + ': ' + IntToStr(TCIndex(ActiveListView.ItemFocused.Data).Key)
+      else if ((Window.ActiveControl = ActiveListView) and (SelectedTable <> '') and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiField)) then
+        Text := ReplaceStr(Preferences.LoadStr(164), '&', '') + ': ' + IntToStr(TCTableField(ActiveListView.ItemFocused.Data).Index)
       else if ((Window.ActiveControl = FGrid) and Assigned(FGrid.SelectedField) and (FGrid.DataSource.DataSet.RecNo >= 0)) then
         Text := IntToStr(FGrid.DataSource.DataSet.RecNo + 1) + ':' + IntToStr(FGrid.SelectedField.FieldNo)
       else
@@ -13350,41 +14011,27 @@ begin
   end;
 end;
 
-procedure TFClient.StoreFListColumnWidths();
-var
-  I: Integer;
-  Index: Integer;
-begin
-  if (LastSelectedImageIndex >= 0) then
-  begin
-    Index := ContentWidthIndexFromImageIndex(LastSelectedImageIndex);
-    if ((0 <= Index) and (Index < Length(Client.Account.Desktop.ContentWidths))) then
-      for I := 0 to Min(FList.Columns.Count, Length(Client.Account.Desktop.ContentWidths[Index])) - 1 do
-        Client.Account.Desktop.ContentWidths[Index][I] := FList.Columns[I].Width;
-  end;
-end;
-
 procedure TFClient.SynMemoApllyPreferences(const SynMemo: TSynMemo);
 begin
-  if (SynMemo <> FSQLEditor) then
+  if (SynMemo <> FSQLEditorSynMemo) then
   begin
-    SynMemo.Font.Name := FSQLEditor.Font.Name;
-    SynMemo.Font.Style := FSQLEditor.Font.Style;
-    SynMemo.Font.Color := FSQLEditor.Font.Color;
-    SynMemo.Font.Size := FSQLEditor.Font.Size;
-    SynMemo.Font.Charset := FSQLEditor.Font.Charset;
-    SynMemo.Gutter.Font.Name := FSQLEditor.Gutter.Font.Name;
-    SynMemo.Gutter.Font.Style := FSQLEditor.Gutter.Font.Style;
-    SynMemo.Gutter.Font.Color := FSQLEditor.Gutter.Font.Color;
-    SynMemo.Gutter.Font.Size := FSQLEditor.Gutter.Font.Size;
-    SynMemo.Gutter.Font.Charset := FSQLEditor.Gutter.Font.Charset;
-    SynMemo.Gutter.Visible := FSQLEditor.Gutter.Visible;
-    SynMemo.Options := FSQLEditor.Options;
-    SynMemo.TabWidth := FSQLEditor.TabWidth;
-    SynMemo.RightEdge := FSQLEditor.RightEdge;
-    SynMemo.WantTabs := FSQLEditor.WantTabs;
-    SynMemo.ActiveLineColor := FSQLEditor.ActiveLineColor;
-    SynMemo.Highlighter := FSQLEditor.Highlighter;
+    SynMemo.Font.Name := FSQLEditorSynMemo.Font.Name;
+    SynMemo.Font.Style := FSQLEditorSynMemo.Font.Style;
+    SynMemo.Font.Color := FSQLEditorSynMemo.Font.Color;
+    SynMemo.Font.Size := FSQLEditorSynMemo.Font.Size;
+    SynMemo.Font.Charset := FSQLEditorSynMemo.Font.Charset;
+    SynMemo.Gutter.Font.Name := FSQLEditorSynMemo.Gutter.Font.Name;
+    SynMemo.Gutter.Font.Style := FSQLEditorSynMemo.Gutter.Font.Style;
+    SynMemo.Gutter.Font.Color := FSQLEditorSynMemo.Gutter.Font.Color;
+    SynMemo.Gutter.Font.Size := FSQLEditorSynMemo.Gutter.Font.Size;
+    SynMemo.Gutter.Font.Charset := FSQLEditorSynMemo.Gutter.Font.Charset;
+    SynMemo.Gutter.Visible := FSQLEditorSynMemo.Gutter.Visible;
+    SynMemo.Options := FSQLEditorSynMemo.Options;
+    SynMemo.TabWidth := FSQLEditorSynMemo.TabWidth;
+    SynMemo.RightEdge := FSQLEditorSynMemo.RightEdge;
+    SynMemo.WantTabs := FSQLEditorSynMemo.WantTabs;
+    SynMemo.ActiveLineColor := FSQLEditorSynMemo.ActiveLineColor;
+    SynMemo.Highlighter := FSQLEditorSynMemo.Highlighter;
   end;
 end;
 
@@ -13427,7 +14074,7 @@ begin
 
     Window.ActiveControl := TSynMemo(Sender);
   end
-  else if ((Source = FGrid) and (Sender = FSQLEditor)) then
+  else if ((Source = FGrid) and (Sender = FSQLEditorSynMemo)) then
   begin
     S := FGrid.SelectedField.AsString;
 
@@ -13457,18 +14104,18 @@ begin
 
   if (Accept) then
   begin
-    if ((Sender = SynMemo) and not SynMemo.AlwaysShowCaret) then
+    if ((Sender = ActiveSynMemo) and not ActiveSynMemo.AlwaysShowCaret) then
     begin
-      SynMemoBeforeDrag.SelStart := SynMemo.SelStart;
-      SynMemoBeforeDrag.SelLength := SynMemo.SelLength;
-      SynMemo.AlwaysShowCaret := True;
+      SynMemoBeforeDrag.SelStart := ActiveSynMemo.SelStart;
+      SynMemoBeforeDrag.SelLength := ActiveSynMemo.SelLength;
+      ActiveSynMemo.AlwaysShowCaret := True;
     end;
 
-    if (not FSQLEditor.Gutter.Visible) then
-      SynMemo.CaretX := (X) div SynMemo.CharWidth + 1
+    if (not FSQLEditorSynMemo.Gutter.Visible) then
+      ActiveSynMemo.CaretX := (X) div ActiveSynMemo.CharWidth + 1
     else
-      SynMemo.CaretX := (X - SynMemo.Gutter.RealGutterWidth(SynMemo.CharWidth)) div SynMemo.CharWidth + 1;
-    SynMemo.CaretY := (Y div SynMemo.LineHeight) + 1;
+      ActiveSynMemo.CaretX := (X - ActiveSynMemo.Gutter.RealGutterWidth(ActiveSynMemo.CharWidth)) div ActiveSynMemo.CharWidth + 1;
+    ActiveSynMemo.CaretY := (Y div ActiveSynMemo.LineHeight) + 1;
   end;
 end;
 
@@ -13612,6 +14259,11 @@ procedure TFClient.ToolBarTabsClick(Sender: TObject);
 begin
   Wanted.Clear();
 
+  if (Sender = mtObjectBrowser) then
+    if (mtObjectBrowser.Checked) then
+      Exclude(Preferences.ToolbarTabs, ttObjectBrowser)
+    else
+      Include(Preferences.ToolbarTabs, ttObjectBrowser);
   if (Sender = mtDataBrowser) then
     if (mtDataBrowser.Checked) then
       Exclude(Preferences.ToolbarTabs, ttDataBrowser)
@@ -13671,11 +14323,11 @@ end;
 
 procedure TFClient.TreeViewEndDrag(Sender, Target: TObject; X, Y: Integer);
 begin
-  if (SynMemo.AlwaysShowCaret) then
+  if (ActiveSynMemo.AlwaysShowCaret) then
   begin
-    SynMemo.SelStart := SynMemoBeforeDrag.SelStart;
-    SynMemo.SelLength := SynMemoBeforeDrag.SelLength;
-    SynMemo.AlwaysShowCaret := False;
+    ActiveSynMemo.SelStart := SynMemoBeforeDrag.SelStart;
+    ActiveSynMemo.SelLength := SynMemoBeforeDrag.SelLength;
+    ActiveSynMemo.AlwaysShowCaret := False;
   end;
 end;
 

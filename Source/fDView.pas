@@ -414,6 +414,8 @@ begin
     FCheckOptionCascade.Checked := False;
     FCheckOptionLocal.Checked := False;
 
+    FStmt.Lines.Text := 'SELECT 1;';
+
     FSource.Lines.Clear();
 
     PageControl.Visible := True;

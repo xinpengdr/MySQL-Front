@@ -47,15 +47,15 @@ type
       Selected: Boolean);
     procedure PopupMenuPopup(Sender: TObject);
   private
-    FSelected: TSAccount;
+    FSelected: TAAccount;
     procedure ListViewShowSortDirection(const ListView: TListView);
-    procedure SetFAccounts(const ASelected: TSAccount);
+    procedure SetFAccounts(const ASelected: TAAccount);
     procedure CMApplyAutosize(var Message: TMessage); message CM_APPLYAUTOSIZE;
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Open: Boolean;
     function Execute(): Boolean;
-    property Selected: TSAccount read FSelected;
+    property Selected: TAAccount read FSelected;
   end;
 
 function DAccounts(): TDAccounts;
@@ -307,7 +307,7 @@ end;
 procedure TDAccounts.FAccountsSelectItem(Sender: TObject; Item: TListItem;
   Selected: Boolean);
 var
-  Account: TSAccount;
+  Account: TAAccount;
 begin
   if (not Assigned(Item)) then
     Account := nil
@@ -367,7 +367,7 @@ begin
   ShowEnabledItems(PopupMenu.Items);
 end;
 
-procedure TDAccounts.SetFAccounts(const ASelected: TSAccount);
+procedure TDAccounts.SetFAccounts(const ASelected: TAAccount);
 var
   I: Integer;
   Item: TListItem;

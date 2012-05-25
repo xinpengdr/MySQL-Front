@@ -10,15 +10,15 @@ type
   TLogin = function(const Account: Pointer): Boolean of object;
 
 type
-  TSBookmarks = class;
-  TSDesktop = class;
-  TSConnection = class;
-  TSAccount = class;
-  TSAccounts = class;
+  TABookmarks = class;
+  TADesktop = class;
+  TAConnection = class;
+  TAAccount = class;
+  TAAccounts = class;
 
-  TSBookmark = class
+  TABookmark = class
   private
-    FBookmarks: TSBookmarks;
+    FBookmarks: TABookmarks;
     FURI: string;
     FXML: IXMLNode;
     function GetXML(): IXMLNode;
@@ -26,82 +26,80 @@ type
     property XML: IXMLNode read GetXML;
   public
     Caption: string;
-    property Bookmarks: TSBookmarks read FBookmarks;
+    property Bookmarks: TABookmarks read FBookmarks;
     property URI: string read FURI write FURI;
-    procedure Assign(const Source: TSBookmark); virtual;
-    constructor Create(const ABookmarks: TSBookmarks; const AXML: IXMLNode = nil); virtual;
+    procedure Assign(const Source: TABookmark); virtual;
+    constructor Create(const ABookmarks: TABookmarks; const AXML: IXMLNode = nil); virtual;
     procedure LoadFromXML(); virtual;
     procedure SaveToXML(); virtual;
   end;
 
-  TSBookmarks = class
+  TABookmarks = class
   private
     FXML: IXMLNode;
-    FBookmarks: array of TSBookmark;
-    FDesktop: TSDesktop;
-    function GetBookmark(Index: Integer): TSBookmark;
+    FBookmarks: array of TABookmark;
+    FDesktop: TADesktop;
+    function GetBookmark(Index: Integer): TABookmark;
     function GetDataPath(): TFileName;
     function GetXML(): IXMLNode;
   protected
-    property Desktop: TSDesktop read FDesktop;
+    property Desktop: TADesktop read FDesktop;
     property XML: IXMLNode read GetXML;
   public
-    property Bookmark[Index: Integer]: TSBookmark read GetBookmark; default;
+    property Bookmark[Index: Integer]: TABookmark read GetBookmark; default;
     property DataPath: TFileName read GetDataPath;
-    function AddBookmark(const NewBookmark: TSBookmark): Boolean; virtual;
-    function ByCaption(const Caption: string): TSBookmark; virtual;
+    function AddBookmark(const NewBookmark: TABookmark): Boolean; virtual;
+    function ByCaption(const Caption: string): TABookmark; virtual;
     procedure Clear(); virtual;
-    constructor Create(const ADesktop: TSDesktop);
+    constructor Create(const ADesktop: TADesktop);
     function Count(): Integer; virtual;
-    function DeleteBookmark(const Bookmark: TSBookmark): Boolean; virtual;
+    function DeleteBookmark(const Bookmark: TABookmark): Boolean; virtual;
     destructor Destroy(); override;
-    function IndexOf(const Bookmark: TSBookmark): Integer; virtual;
+    function IndexOf(const Bookmark: TABookmark): Integer; virtual;
     procedure LoadFromXML(); virtual;
-    procedure MoveBookmark(const Bookmark: TSBookmark; const NewIndex: Integer); virtual;
+    procedure MoveBookmark(const Bookmark: TABookmark; const NewIndex: Integer); virtual;
     procedure SaveToXML(); virtual;
-    function UpdateBookmark(const Bookmark, NewBookmark: TSBookmark): Boolean; virtual;
+    function UpdateBookmark(const Bookmark, NewBookmark: TABookmark): Boolean; virtual;
   end;
 
-  TSDesktop = class
+  TADesktop = class
+  type
+    TColumnWidthKind = (ckServer, ckDatabase, ckTable, ckHosts, ckProcesses, ckStati, ckUsers, ckVariables);
   private
     FAddress: string;
-    FBookmarks: TSBookmarks;
-    FAccount: TSAccount;
+    FBookmarks: TABookmarks;
+    FAccount: TAAccount;
     FXML: IXMLNode;
     function GetAddress(): string;
     function GetXML(): IXMLNode;
     procedure SetAddress(AAddress: string);
   protected
-    property Account: TSAccount read FAccount;
+    property Account: TAAccount read FAccount;
     property XML: IXMLNode read GetXML;
-    procedure Assign(const Source: TSDesktop); virtual;
+    procedure Assign(const Source: TADesktop); virtual;
     procedure LoadFromXML(); virtual;
     procedure SaveToXML(); virtual;
   public
     AddressMRU: TMRUList;
     BookmarksVisible: Boolean;
-    ContentWidths: array[0..7] of array [0..9] of Integer;
+    ColumnWidths: array [ckServer .. ckVariables] of array [0..7] of Integer;
     DataHeight, BlobHeight: Integer;
     EditorContent: string;
-    ExplorerVisible: Boolean;
     LogHeight: Integer;
     LogVisible: Boolean;
-    FoldersHeight: Integer;
-    FilesFilter: string;
     NavigatorVisible: Boolean;
     SelectorWitdth: Integer;
     SQLHistoryVisible: Boolean;
-    ToolBarRefresh: Integer;
     property Address: string read GetAddress write SetAddress;
-    property Bookmarks: TSBookmarks read FBookmarks;
-    constructor Create(const AAccount: TSAccount); overload; virtual;
+    property Bookmarks: TABookmarks read FBookmarks;
+    constructor Create(const AAccount: TAAccount); overload; virtual;
     destructor Destroy(); override;
   end;
 
-  TSConnection = class
+  TAConnection = class
   private
     FXML: IXMLNode;
-    FAccount: TSAccount;
+    FAccount: TAAccount;
     function GetXML(): IXMLNode;
   protected
     Section: string;
@@ -124,12 +122,12 @@ type
     SavePassword: Boolean;
     UseInformationSchema: Boolean;
     User: string;
-    property Account: TSAccount read FAccount;
-    procedure Assign(const Source: TSConnection); virtual;
-    constructor Create(const AAccount: TSAccount); virtual;
+    property Account: TAAccount read FAccount;
+    procedure Assign(const Source: TAConnection); virtual;
+    constructor Create(const AAccount: TAAccount); virtual;
   end;
 
-  TSAccount = class
+  TAAccount = class
   type
     TDefaultLimit = (dlOff = 0, dlRemember = 1, dlOn = 2);
     TEventProc = procedure (const ClassType: TClass) of object;
@@ -138,7 +136,7 @@ type
       AccountEventProc: TEventProc;
     end;
   private
-    FDesktop: TSDesktop;
+    FDesktop: TADesktop;
     FDesktopXMLDocument: IXMLDocument;
     FHistoryXMLDocument: IXMLDocument;
     FLastLogin: TDateTime;
@@ -146,11 +144,11 @@ type
     FDesktopCount: Integer;
     FDesktops: array of TDesktop;
     FXML: IXMLNode;
-    FAccounts: TSAccounts;
+    FAccounts: TAAccounts;
     Modified: Boolean;
     function GetBookmarksFilename(): TFileName;
     function GetDataPath(): TFileName;
-    function GetDesktop(): TSDesktop;
+    function GetDesktop(): TADesktop;
     function GetDesktopFilename(): TFileName;
     function GetDesktopXML(): IXMLNode;
     function GetHistoryFilename(): TFileName;
@@ -176,7 +174,7 @@ type
   public
     Startup: string;
     CacheSize: Integer;
-    Connection: TSConnection;
+    Connection: TAConnection;
     DefaultLimit: TDefaultLimit;
     DefaultSorting: Boolean;
     IconFetched: Boolean;
@@ -184,7 +182,7 @@ type
     ManualURL: string;
     ManualURLFetched: Boolean;
     property DataPath: TFileName read GetDataPath;
-    property Desktop: TSDesktop read GetDesktop;
+    property Desktop: TADesktop read GetDesktop;
     property DesktopCount: Integer read FDesktopCount write FDesktopCount;
     property DesktopXML: IXMLNode read GetDesktopXML;
     function Frame(): Pointer; virtual;
@@ -193,9 +191,9 @@ type
     property Index: Integer read GetIndex;
     property LastLogin: TDateTime read FLastLogin write SetLastLogin;
     property Name: string read GetName write SetName;
-    property Accounts: TSAccounts read FAccounts;
-    procedure Assign(const Source: TSAccount); virtual;
-    constructor Create(const AAccounts: TSAccounts; const AXML: IXMLNode = nil); virtual;
+    property Accounts: TAAccounts read FAccounts;
+    procedure Assign(const Source: TAAccount); virtual;
+    constructor Create(const AAccounts: TAAccounts; const AXML: IXMLNode = nil); virtual;
     destructor Destroy(); override;
     function GetDefaultDatabase(): string; virtual;
     procedure RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc); virtual;
@@ -204,45 +202,43 @@ type
     function FullAddress(const AAddress: string): string; virtual;
   end;
 
-  TSAccounts = class(TList)
+  TAAccounts = class(TList)
   private
     DefaultAccountName: string;
     FDBLogin: TLogin;
     FOnSQLError: TMySQLConnection.TErrorEvent;
     FXMLDocument: IXMLDocument;
     function GetDataPath(): TFileName;
-    function GetDefault(): TSAccount; inline;
+    function GetDefault(): TAAccount; inline;
     function GetFilename(): TFileName;
     function GetXML(): IXMLNode;
-    function GetFAccounts(Index: Integer): TSAccount; inline;
-    procedure SetDefault(const AAccount: TSAccount);
+    function GetFAccounts(Index: Integer): TAAccount; inline;
+    procedure SetDefault(const AAccount: TAAccount);
   protected
     Section: string;
     property DataPath: TFileName read GetDataPath;
     property Filename: TFileName read GetFilename;
     property XML: IXMLNode read GetXML;
   public
-    property Default: TSAccount read GetDefault write SetDefault;
+    property Default: TAAccount read GetDefault write SetDefault;
     property DBLogin: TLogin read FDBLogin;
     property OnSQLError: TMySQLConnection.TErrorEvent read FOnSQLError;
-    property Account[Index: Integer]: TSAccount read GetFAccounts; default;
-    procedure AddAccount(const NewAccount: TSAccount); virtual;
-    procedure AppendIconsToImageList(const AImageList: TImageList; const AAccount: TSAccount = nil); virtual;
+    property Account[Index: Integer]: TAAccount read GetFAccounts; default;
+    procedure AddAccount(const NewAccount: TAAccount); virtual;
+    procedure AppendIconsToImageList(const AImageList: TImageList; const AAccount: TAAccount = nil); virtual;
     procedure Clear(); override;
     constructor Create(const ADBLogin: TLogin; const AOnSQLError: TMySQLConnection.TErrorEvent);
-    function DeleteAccount(const AAccount: TSAccount): Boolean; virtual;
+    function DeleteAccount(const AAccount: TAAccount): Boolean; virtual;
     destructor Destroy(); override;
     procedure LoadFromXML(); virtual;
     procedure SaveToXML(); virtual;
-    function AccountByName(const AccountName: string): TSAccount; virtual;
-    function AccountByURI(const AURI: string): TSAccount; virtual;
-    procedure UpdateAccount(const Account, NewAccount: TSAccount); virtual;
+    function AccountByName(const AccountName: string): TAAccount; virtual;
+    function AccountByURI(const AURI: string): TAAccount; virtual;
+    procedure UpdateAccount(const Account, NewAccount: TAAccount); virtual;
   end;
 
-function HostIsLocalhost(const Host: string): Boolean;
-
 var
-  Accounts: TSAccounts;
+  Accounts: TAAccounts;
 
 implementation {***************************************************************}
 
@@ -319,52 +315,9 @@ begin
   end;
 end;
 
-function HostIsLocalhost(const Host: string): Boolean;
-type
-  PPInAddr = ^PInAddr;
-//var
-//  HostEnt: PHostEnt;
-//  HostName: array[0..255] of AnsiChar;
-//  Addr: PPInAddr;
-//  Addresses: TStringList;
-begin
-  Result := (lstrcmpi(PChar(Host), PChar(LOCAL_HOST)) = 0) or (Host = LOCAL_HOST_NAMEDPIPE);
+{ TABookmark ******************************************************************}
 
-//  if (not Result and ((WSAData.wVersion > 0) or (WSAStartup($0101, WSAData) = 0)) and (gethostname(@HostName[0], SizeOf(HostName)) = 0)) then
-//  begin
-//    Addresses := TStringList.Create();
-//
-//    HostEnt := gethostbyname(PAnsiChar(AnsiString(Host)));
-//
-//    if (Assigned(HostEnt)) then
-//    begin
-//      Addr := Pointer(HostEnt^.h_addr_list);
-//      while (Assigned(Addr^)) do
-//      begin
-//        Addresses.Add(string(inet_ntoa(Addr^^)));
-//        Result := Result or (string(inet_ntoa(Addr^^)) = '127.0.0.1');
-//        Inc(Addr);
-//      end;
-//
-//      HostEnt := GetHostByName(HostName);
-//      if (Assigned(HostEnt)) then
-//      begin
-//        Addr := Pointer(HostEnt^.h_addr_list);
-//        while (Assigned(Addr^)) do
-//        begin
-//          Result := Result or (Addresses.IndexOf(string(inet_ntoa(Addr^^))) >= 0);
-//          Inc(Addr);
-//        end;
-//      end;
-//    end;
-//
-//    Addresses.Free();
-//  end;
-end;
-
-{ TSBookmark ******************************************************************}
-
-procedure TSBookmark.Assign(const Source: TSBookmark);
+procedure TABookmark.Assign(const Source: TABookmark);
 begin
   if (not Assigned(Bookmarks) and Assigned(Source.Bookmarks)) then
     FBookmarks := Source.Bookmarks;
@@ -376,7 +329,7 @@ begin
     XML.Attributes['name'] := Caption;
 end;
 
-constructor TSBookmark.Create(const ABookmarks: TSBookmarks; const AXML: IXMLNode = nil);
+constructor TABookmark.Create(const ABookmarks: TABookmarks; const AXML: IXMLNode = nil);
 begin
   FBookmarks := ABookmarks;
   FXML := AXML;
@@ -385,7 +338,7 @@ begin
   FURI := '';
 end;
 
-function TSBookmark.GetXML(): IXMLNode;
+function TABookmark.GetXML(): IXMLNode;
 var
   I: Integer;
 begin
@@ -397,7 +350,7 @@ begin
   Result := FXML;
 end;
 
-procedure TSBookmark.LoadFromXML();
+procedure TABookmark.LoadFromXML();
 begin
   if (Assigned(XML)) then
   begin
@@ -406,7 +359,7 @@ begin
   end;
 end;
 
-procedure TSBookmark.SaveToXML();
+procedure TABookmark.SaveToXML();
 begin
   XML.OwnerDocument.Options := XML.OwnerDocument.Options + [doNodeAutoCreate];
 
@@ -416,9 +369,9 @@ begin
   XML.OwnerDocument.Options := XML.OwnerDocument.Options - [doNodeAutoCreate];
 end;
 
-{ TSBookmarks *****************************************************************}
+{ TABookmarks *****************************************************************}
 
-function TSBookmarks.AddBookmark(const NewBookmark: TSBookmark): Boolean;
+function TABookmarks.AddBookmark(const NewBookmark: TABookmark): Boolean;
 begin
   Result := IndexOf(NewBookmark) < 0;
 
@@ -426,14 +379,14 @@ begin
   begin
     SetLength(FBookmarks, Count + 1);
 
-    FBookmarks[Count - 1] := TSBookmark.Create(Self, XML.AddChild('bookmark'));
+    FBookmarks[Count - 1] := TABookmark.Create(Self, XML.AddChild('bookmark'));
     FBookmarks[Count - 1].Assign(NewBookmark);
 
     Desktop.Account.AccountEvent(ClassType);
   end;
 end;
 
-function TSBookmarks.ByCaption(const Caption: string): TSBookmark;
+function TABookmarks.ByCaption(const Caption: string): TABookmark;
 var
   I: Integer;
 begin
@@ -444,7 +397,7 @@ begin
       Result := FBookmarks[I];
 end;
 
-procedure TSBookmarks.Clear();
+procedure TABookmarks.Clear();
 var
   I: Integer;
 begin
@@ -453,12 +406,12 @@ begin
   SetLength(FBookmarks, 0);
 end;
 
-function TSBookmarks.Count(): Integer;
+function TABookmarks.Count(): Integer;
 begin
   Result := Length(FBookmarks);
 end;
 
-constructor TSBookmarks.Create(const ADesktop: TSDesktop);
+constructor TABookmarks.Create(const ADesktop: TADesktop);
 begin
   inherited Create();
 
@@ -468,7 +421,7 @@ begin
   SetLength(FBookmarks, 0);
 end;
 
-function TSBookmarks.DeleteBookmark(const Bookmark: TSBookmark): Boolean;
+function TABookmarks.DeleteBookmark(const Bookmark: TABookmark): Boolean;
 var
   I: Integer;
   Index: Integer;
@@ -490,24 +443,24 @@ begin
   end;
 end;
 
-destructor TSBookmarks.Destroy();
+destructor TABookmarks.Destroy();
 begin
   Clear();
 
   inherited;
 end;
 
-function TSBookmarks.GetBookmark(Index: Integer): TSBookmark;
+function TABookmarks.GetBookmark(Index: Integer): TABookmark;
 begin
   Result := FBookmarks[Index];
 end;
 
-function TSBookmarks.GetDataPath(): TFileName;
+function TABookmarks.GetDataPath(): TFileName;
 begin
   Result := Desktop.Account.DataPath;
 end;
 
-function TSBookmarks.GetXML(): IXMLNode;
+function TABookmarks.GetXML(): IXMLNode;
 begin
   if (not Assigned(FXML) and Assigned(Desktop.XML)) then
     FXML := XMLNode(Desktop.XML, 'bookmarks', True);
@@ -515,7 +468,7 @@ begin
   Result := FXML;
 end;
 
-function TSBookmarks.IndexOf(const Bookmark: TSBookmark): Integer;
+function TABookmarks.IndexOf(const Bookmark: TABookmark): Integer;
 var
   I: Integer;
 begin
@@ -527,7 +480,7 @@ begin
         Result := I;
 end;
 
-procedure TSBookmarks.LoadFromXML();
+procedure TABookmarks.LoadFromXML();
 var
   I: Integer;
 begin
@@ -538,17 +491,17 @@ begin
       if ((XML.ChildNodes[I].NodeName = 'bookmark') and not Assigned(ByCaption(XML.ChildNodes[I].Attributes['name']))) then
       begin
         SetLength(FBookmarks, Count + 1);
-        FBookmarks[Count - 1] := TSBookmark.Create(Self, XML.ChildNodes[I]);
+        FBookmarks[Count - 1] := TABookmark.Create(Self, XML.ChildNodes[I]);
 
         FBookmarks[Count - 1].LoadFromXML();
       end;
 end;
 
-procedure TSBookmarks.MoveBookmark(const Bookmark: TSBookmark; const NewIndex: Integer);
+procedure TABookmarks.MoveBookmark(const Bookmark: TABookmark; const NewIndex: Integer);
 var
   I: Integer;
   Index: Integer;
-  TempBookmark: TSBookmark;
+  TempBookmark: TABookmark;
 begin
   Index := IndexOf(Bookmark);
   TempBookmark := FBookmarks[Index];
@@ -587,7 +540,7 @@ begin
   end;
 end;
 
-procedure TSBookmarks.SaveToXML();
+procedure TABookmarks.SaveToXML();
 var
   I: Integer;
 begin
@@ -595,7 +548,7 @@ begin
     Bookmark[I].SaveToXML();
 end;
 
-function TSBookmarks.UpdateBookmark(const Bookmark, NewBookmark: TSBookmark): Boolean;
+function TABookmarks.UpdateBookmark(const Bookmark, NewBookmark: TABookmark): Boolean;
 begin
   Result := Assigned(Bookmark) and Assigned(NewBookmark);
 
@@ -610,36 +563,32 @@ begin
   end;
 end;
 
-{ TSDesktop *******************************************************************}
+{ TADesktop *******************************************************************}
 
-procedure TSDesktop.Assign(const Source: TSDesktop);
+procedure TADesktop.Assign(const Source: TADesktop);
 var
   I: Integer;
-  J: Integer;
+  Kind: TColumnWidthKind;
 begin
   Address := Account.FullAddress(Source.Account.PackAddress(Source.Address));
   BlobHeight := Source.BlobHeight;
   BookmarksVisible := Source.BookmarksVisible;
-  for I := 0 to Length(ContentWidths) - 1 do
-    for J := 0 to Length(ContentWidths[0]) - 1 do
-      ContentWidths[I][J] := Source.ContentWidths[I][J];
+  for Kind := ckServer to ckVariables do
+    for I := 0 to Length(ColumnWidths[Kind]) - 1 do
+      ColumnWidths[Kind, I] := Source.ColumnWidths[Kind, I];
   DataHeight := Source.DataHeight;
-  FilesFilter := Source.FilesFilter;
   EditorContent := Source.EditorContent;
-  ExplorerVisible := Source.ExplorerVisible;
-  FoldersHeight := Source.FoldersHeight;
   LogHeight := Source.LogHeight;
   LogVisible := Source.LogVisible;
   NavigatorVisible := Source.NavigatorVisible;
   SelectorWitdth := Source.SelectorWitdth;
   SQLHistoryVisible := Source.SQLHistoryVisible;
-  ToolBarRefresh := Source.ToolBarRefresh;
 end;
 
-constructor TSDesktop.Create(const AAccount: TSAccount);
+constructor TADesktop.Create(const AAccount: TAAccount);
 var
   I: Integer;
-  J: Integer;
+  Kind: TColumnWidthKind;
 begin
   inherited Create();
 
@@ -649,27 +598,23 @@ begin
   FAddress := '/';
   BlobHeight := 100;
   BookmarksVisible := False;
-  for I := 0 to Length(ContentWidths) - 1 do
-    for J := 0 to Length(ContentWidths[0]) - 1 do
-      ContentWidths[I][J] := -1;
+  for Kind := ckServer to ckVariables do
+    for I := 0 to Length(ColumnWidths[Kind]) - 1 do
+      ColumnWidths[Kind][I] := ColumnTextWidth;
   DataHeight := 150;
   EditorContent := '';
-  ExplorerVisible := False;
-  FilesFilter := '*.sql';
-  FoldersHeight := 100;
   NavigatorVisible := True;
   LogHeight := 80;
   LogVisible := False;
   SelectorWitdth := 150;
   SQLHistoryVisible := False;
-  ToolBarRefresh := 1;
 
   AddressMRU := TMRUList.Create(10);
 
-  FBookmarks := TSBookmarks.Create(Self);
+  FBookmarks := TABookmarks.Create(Self);
 end;
 
-destructor TSDesktop.Destroy();
+destructor TADesktop.Destroy();
 begin
   AddressMRU.Free();
   FBookmarks.Free();
@@ -677,12 +622,12 @@ begin
   inherited;
 end;
 
-function TSDesktop.GetAddress(): string;
+function TADesktop.GetAddress(): string;
 begin
   Result := Account.FullAddress(FAddress);
 end;
 
-function TSDesktop.GetXML(): IXMLNode;
+function TADesktop.GetXML(): IXMLNode;
 begin
   if (not Assigned(FXML)) then
     FXML := Account.DesktopXML;
@@ -690,7 +635,7 @@ begin
   Result := FXML;
 end;
 
-procedure TSDesktop.LoadFromXML();
+procedure TADesktop.LoadFromXML();
 begin
   if (Assigned(XML)) then
   begin
@@ -705,58 +650,53 @@ begin
     if (Assigned(XMLNode(XML, 'editor/content'))) then EditorContent := XMLNode(XML, 'editor/content').Text;
     if (Assigned(XMLNode(XML, 'log/height'))) then TryStrToInt(XMLNode(XML, 'log/height').Text, LogHeight);
     if (Assigned(XMLNode(XML, 'log/visible'))) then TryStrToBool(XMLNode(XML, 'log/visible').Text, LogVisible);
-    if (Assigned(XMLNode(XML, 'objects/server/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/name').Text, ContentWidths[0][0]);
-    if (Assigned(XMLNode(XML, 'objects/server/widths/size'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/size').Text, ContentWidths[0][1]);
-    if (Assigned(XMLNode(XML, 'objects/server/widths/count'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/count').Text, ContentWidths[0][2]);
-    if (Assigned(XMLNode(XML, 'objects/server/widths/created'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/created').Text, ContentWidths[0][3]);
-    if (Assigned(XMLNode(XML, 'objects/server/widths/extras'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/extras').Text, ContentWidths[0][4]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/name').Text, ContentWidths[1][0]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/type'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/type').Text, ContentWidths[1][1]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/recordcount'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/recordcount').Text, ContentWidths[1][2]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/size'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/size').Text, ContentWidths[1][3]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/updated'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/updated').Text, ContentWidths[1][4]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/extras'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/extras').Text, ContentWidths[1][5]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/comment').Text, ContentWidths[1][6]);
-    if (Assigned(XMLNode(XML, 'objects/table/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/name').Text, ContentWidths[2][0]);
-    if (Assigned(XMLNode(XML, 'objects/table/widths/type'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/type').Text, ContentWidths[2][1]);
-    if (Assigned(XMLNode(XML, 'objects/table/widths/null'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/null').Text, ContentWidths[2][2]);
-    if (Assigned(XMLNode(XML, 'objects/table/widths/default'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/default').Text, ContentWidths[2][3]);
-    if (Assigned(XMLNode(XML, 'objects/table/widths/extras'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/extras').Text, ContentWidths[2][4]);
-    if (Assigned(XMLNode(XML, 'objects/table/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/comment').Text, ContentWidths[2][5]);
-    if (Assigned(XMLNode(XML, 'objects/hosts/widths/host'))) then TryStrToInt(XMLNode(XML, 'objects/hosts/widths/host').Text, ContentWidths[3][0]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/id'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/id').Text, ContentWidths[4][0]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/user'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/user').Text, ContentWidths[4][1]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/host'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/host').Text, ContentWidths[4][2]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/database'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/database').Text, ContentWidths[4][3]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/command'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/command').Text, ContentWidths[4][4]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/statement'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/statement').Text, ContentWidths[4][5]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/time'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/time').Text, ContentWidths[4][6]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/state'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/state').Text, ContentWidths[4][7]);
-    if (Assigned(XMLNode(XML, 'objects/stati/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/stati/widths/name').Text, ContentWidths[5][0]);
-    if (Assigned(XMLNode(XML, 'objects/stati/widths/value'))) then TryStrToInt(XMLNode(XML, 'objects/stati/widths/value').Text, ContentWidths[5][1]);
-    if (Assigned(XMLNode(XML, 'objects/users/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/name').Text, ContentWidths[6][0]);
-    if (Assigned(XMLNode(XML, 'objects/users/widths/fullname'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/fullname').Text, ContentWidths[6][1]);
-    if (Assigned(XMLNode(XML, 'objects/users/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/comment').Text, ContentWidths[6][2]);
-    if (Assigned(XMLNode(XML, 'objects/variables/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/variables/widths/name').Text, ContentWidths[7][0]);
-    if (Assigned(XMLNode(XML, 'objects/variables/widths/value'))) then TryStrToInt(XMLNode(XML, 'objects/variables/widths/value').Text, ContentWidths[7][1]);
-    if (Assigned(XMLNode(XML, 'sidebar/explorer/folders/height'))) then TryStrToInt(XMLNode(XML, 'sidebar/explorer/folders/height').Text, FoldersHeight);
-    if (Assigned(XMLNode(XML, 'sidebar/explorer/files/filter'))) then FilesFilter := XMLNode(XML, 'sidebar/explorer/files/filter').Text;
+    if (Assigned(XMLNode(XML, 'objects/server/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/name').Text, ColumnWidths[ckServer][0]);
+    if (Assigned(XMLNode(XML, 'objects/server/widths/size'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/size').Text, ColumnWidths[ckServer][1]);
+    if (Assigned(XMLNode(XML, 'objects/server/widths/count'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/count').Text, ColumnWidths[ckServer][2]);
+    if (Assigned(XMLNode(XML, 'objects/server/widths/created'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/created').Text, ColumnWidths[ckServer][3]);
+    if (Assigned(XMLNode(XML, 'objects/server/widths/extras'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/extras').Text, ColumnWidths[ckServer][4]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/name').Text, ColumnWidths[ckDatabase][0]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/type'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/type').Text, ColumnWidths[ckDatabase][1]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/recordcount'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/recordcount').Text, ColumnWidths[ckDatabase][2]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/size'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/size').Text, ColumnWidths[ckDatabase][3]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/updated'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/updated').Text, ColumnWidths[ckDatabase][4]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/extras'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/extras').Text, ColumnWidths[ckDatabase][5]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/comment').Text, ColumnWidths[ckDatabase][6]);
+    if (Assigned(XMLNode(XML, 'objects/table/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/name').Text, ColumnWidths[ckTable][0]);
+    if (Assigned(XMLNode(XML, 'objects/table/widths/type'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/type').Text, ColumnWidths[ckTable][1]);
+    if (Assigned(XMLNode(XML, 'objects/table/widths/null'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/null').Text, ColumnWidths[ckTable][2]);
+    if (Assigned(XMLNode(XML, 'objects/table/widths/default'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/default').Text, ColumnWidths[ckTable][3]);
+    if (Assigned(XMLNode(XML, 'objects/table/widths/extras'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/extras').Text, ColumnWidths[ckTable][4]);
+    if (Assigned(XMLNode(XML, 'objects/table/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/comment').Text, ColumnWidths[ckTable][5]);
+    if (Assigned(XMLNode(XML, 'objects/hosts/widths/host'))) then TryStrToInt(XMLNode(XML, 'objects/hosts/widths/host').Text, ColumnWidths[ckHosts][0]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/id'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/id').Text, ColumnWidths[ckProcesses][0]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/user'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/user').Text, ColumnWidths[ckProcesses][1]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/host'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/host').Text, ColumnWidths[ckProcesses][2]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/database'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/database').Text, ColumnWidths[ckProcesses][3]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/command'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/command').Text, ColumnWidths[ckProcesses][4]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/statement'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/statement').Text, ColumnWidths[ckProcesses][5]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/time'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/time').Text, ColumnWidths[ckProcesses][6]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/state'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/state').Text, ColumnWidths[ckProcesses][7]);
+    if (Assigned(XMLNode(XML, 'objects/stati/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/stati/widths/name').Text, ColumnWidths[ckStati][0]);
+    if (Assigned(XMLNode(XML, 'objects/stati/widths/value'))) then TryStrToInt(XMLNode(XML, 'objects/stati/widths/value').Text, ColumnWidths[ckStati][1]);
+    if (Assigned(XMLNode(XML, 'objects/users/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/name').Text, ColumnWidths[ckUsers][0]);
+    if (Assigned(XMLNode(XML, 'objects/users/widths/fullname'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/fullname').Text, ColumnWidths[ckUsers][1]);
+    if (Assigned(XMLNode(XML, 'objects/users/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/comment').Text, ColumnWidths[ckUsers][2]);
+    if (Assigned(XMLNode(XML, 'objects/variables/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/variables/widths/name').Text, ColumnWidths[ckVariables][0]);
+    if (Assigned(XMLNode(XML, 'objects/variables/widths/value'))) then TryStrToInt(XMLNode(XML, 'objects/variables/widths/value').Text, ColumnWidths[ckVariables][1]);
     if (Assigned(XMLNode(XML, 'sidebar/width'))) then TryStrToInt(XMLNode(XML, 'sidebar/width').Text, SelectorWitdth);
     if (Assigned(XMLNode(XML, 'sidebar/visible'))) then
     begin
       NavigatorVisible := UpperCase(XMLNode(XML, 'sidebar/visible').Text) = 'NAVIGATOR';
       BookmarksVisible := not NavigatorVisible and (UpperCase(XMLNode(XML, 'sidebar/visible').Text) = 'BOOKMARKS');
-      ExplorerVisible := not NavigatorVisible and not BookmarksVisible and (UpperCase(XMLNode(XML, 'sidebar/visible').Text) = 'EXPLORER');
-      SQLHistoryVisible := not NavigatorVisible and not BookmarksVisible and not ExplorerVisible and (UpperCase(XMLNode(XML, 'sidebar/visible').Text) = 'SQL HISTORY');
+      SQLHistoryVisible := not NavigatorVisible and not BookmarksVisible and (UpperCase(XMLNode(XML, 'sidebar/visible').Text) = 'SQL HISTORY');
     end;
-    if (Assigned(XMLNode(XML, 'sidebar/visible'))) then
-      if (UpperCase(XMLNode(XML, 'sidebar/visible').Text) = 'ALL') then ToolBarRefresh := 1 else ToolBarRefresh := 0;
 
     Bookmarks.LoadFromXML();
   end;
 end;
 
-procedure TSDesktop.SaveToXML();
+procedure TADesktop.SaveToXML();
 begin
   XML.OwnerDocument.Options := XML.OwnerDocument.Options + [doNodeAutoCreate];
 
@@ -768,71 +708,63 @@ begin
   XMLNode(XML, 'editor/filename/mru').ChildNodes.Clear();
   XMLNode(XML, 'log/height').Text := IntToStr(LogHeight);
   XMLNode(XML, 'log/visible').Text := BoolToStr(LogVisible, True);
-  XMLNode(XML, 'objects/server/widths/name').Text := IntToStr(ContentWidths[0][0]);
-  XMLNode(XML, 'objects/server/widths/count').Text := IntToStr(ContentWidths[0][1]);
-  XMLNode(XML, 'objects/server/widths/size').Text := IntToStr(ContentWidths[0][2]);
-  XMLNode(XML, 'objects/server/widths/created').Text := IntToStr(ContentWidths[0][3]);
-  XMLNode(XML, 'objects/server/widths/extras').Text := IntToStr(ContentWidths[0][4]);
-  XMLNode(XML, 'objects/database/widths/name').Text := IntToStr(ContentWidths[1][0]);
-  XMLNode(XML, 'objects/database/widths/type').Text := IntToStr(ContentWidths[1][1]);
-  XMLNode(XML, 'objects/database/widths/recordcount').Text := IntToStr(ContentWidths[1][2]);
-  XMLNode(XML, 'objects/database/widths/size').Text := IntToStr(ContentWidths[1][3]);
-  XMLNode(XML, 'objects/database/widths/updated').Text := IntToStr(ContentWidths[1][4]);
-  XMLNode(XML, 'objects/database/widths/extras').Text := IntToStr(ContentWidths[1][5]);
-  XMLNode(XML, 'objects/database/widths/comment').Text := IntToStr(ContentWidths[1][6]);
-  XMLNode(XML, 'objects/table/widths/name').Text := IntToStr(ContentWidths[2][0]);
-  XMLNode(XML, 'objects/table/widths/type').Text := IntToStr(ContentWidths[2][1]);
-  XMLNode(XML, 'objects/table/widths/null').Text := IntToStr(ContentWidths[2][2]);
-  XMLNode(XML, 'objects/table/widths/default').Text := IntToStr(ContentWidths[2][3]);
-  XMLNode(XML, 'objects/table/widths/extras').Text := IntToStr(ContentWidths[2][4]);
-  XMLNode(XML, 'objects/table/widths/comment').Text := IntToStr(ContentWidths[2][5]);
-  XMLNode(XML, 'objects/hosts/widths/host').Text := IntToStr(ContentWidths[3][0]);
-  XMLNode(XML, 'objects/processes/widths/id').Text := IntToStr(ContentWidths[4][0]);
-  XMLNode(XML, 'objects/processes/widths/user').Text := IntToStr(ContentWidths[4][1]);
-  XMLNode(XML, 'objects/processes/widths/host').Text := IntToStr(ContentWidths[4][2]);
-  XMLNode(XML, 'objects/processes/widths/database').Text := IntToStr(ContentWidths[4][3]);
-  XMLNode(XML, 'objects/processes/widths/command').Text := IntToStr(ContentWidths[4][4]);
-  XMLNode(XML, 'objects/processes/widths/statement').Text := IntToStr(ContentWidths[4][5]);
-  XMLNode(XML, 'objects/processes/widths/time').Text := IntToStr(ContentWidths[4][6]);
-  XMLNode(XML, 'objects/processes/widths/state').Text := IntToStr(ContentWidths[4][7]);
-  XMLNode(XML, 'objects/stati/widths/name').Text := IntToStr(ContentWidths[5][0]);
-  XMLNode(XML, 'objects/stati/widths/value').Text := IntToStr(ContentWidths[5][1]);
-  XMLNode(XML, 'objects/users/widths/name').Text := IntToStr(ContentWidths[6][0]);
-  XMLNode(XML, 'objects/users/widths/fullname').Text := IntToStr(ContentWidths[6][1]);
-  XMLNode(XML, 'objects/users/widths/comment').Text := IntToStr(ContentWidths[6][2]);
-  XMLNode(XML, 'objects/variables/widths/name').Text := IntToStr(ContentWidths[5][0]);
-  XMLNode(XML, 'objects/variables/widths/value').Text := IntToStr(ContentWidths[5][1]);
-  XMLNode(XML, 'sidebar/explorer/folders/height').Text := IntToStr(FoldersHeight);
-  XMLNode(XML, 'sidebar/explorer/files/filter').Text := FilesFilter;
+  XMLNode(XML, 'objects/server/widths/name').Text := IntToStr(ColumnWidths[ckServer][0]);
+  XMLNode(XML, 'objects/server/widths/count').Text := IntToStr(ColumnWidths[ckServer][1]);
+  XMLNode(XML, 'objects/server/widths/size').Text := IntToStr(ColumnWidths[ckServer][2]);
+  XMLNode(XML, 'objects/server/widths/created').Text := IntToStr(ColumnWidths[ckServer][3]);
+  XMLNode(XML, 'objects/server/widths/extras').Text := IntToStr(ColumnWidths[ckServer][4]);
+  XMLNode(XML, 'objects/database/widths/name').Text := IntToStr(ColumnWidths[ckDatabase][0]);
+  XMLNode(XML, 'objects/database/widths/type').Text := IntToStr(ColumnWidths[ckDatabase][1]);
+  XMLNode(XML, 'objects/database/widths/recordcount').Text := IntToStr(ColumnWidths[ckDatabase][2]);
+  XMLNode(XML, 'objects/database/widths/size').Text := IntToStr(ColumnWidths[ckDatabase][3]);
+  XMLNode(XML, 'objects/database/widths/updated').Text := IntToStr(ColumnWidths[ckDatabase][4]);
+  XMLNode(XML, 'objects/database/widths/extras').Text := IntToStr(ColumnWidths[ckDatabase][5]);
+  XMLNode(XML, 'objects/database/widths/comment').Text := IntToStr(ColumnWidths[ckDatabase][6]);
+  XMLNode(XML, 'objects/table/widths/name').Text := IntToStr(ColumnWidths[ckTable][0]);
+  XMLNode(XML, 'objects/table/widths/type').Text := IntToStr(ColumnWidths[ckTable][1]);
+  XMLNode(XML, 'objects/table/widths/null').Text := IntToStr(ColumnWidths[ckTable][2]);
+  XMLNode(XML, 'objects/table/widths/default').Text := IntToStr(ColumnWidths[ckTable][3]);
+  XMLNode(XML, 'objects/table/widths/extras').Text := IntToStr(ColumnWidths[ckTable][4]);
+  XMLNode(XML, 'objects/table/widths/comment').Text := IntToStr(ColumnWidths[ckTable][5]);
+  XMLNode(XML, 'objects/hosts/widths/host').Text := IntToStr(ColumnWidths[ckHosts][0]);
+  XMLNode(XML, 'objects/processes/widths/id').Text := IntToStr(ColumnWidths[ckProcesses][0]);
+  XMLNode(XML, 'objects/processes/widths/user').Text := IntToStr(ColumnWidths[ckProcesses][1]);
+  XMLNode(XML, 'objects/processes/widths/host').Text := IntToStr(ColumnWidths[ckProcesses][2]);
+  XMLNode(XML, 'objects/processes/widths/database').Text := IntToStr(ColumnWidths[ckProcesses][3]);
+  XMLNode(XML, 'objects/processes/widths/command').Text := IntToStr(ColumnWidths[ckProcesses][4]);
+  XMLNode(XML, 'objects/processes/widths/statement').Text := IntToStr(ColumnWidths[ckProcesses][5]);
+  XMLNode(XML, 'objects/processes/widths/time').Text := IntToStr(ColumnWidths[ckProcesses][6]);
+  XMLNode(XML, 'objects/processes/widths/state').Text := IntToStr(ColumnWidths[ckProcesses][7]);
+  XMLNode(XML, 'objects/stati/widths/name').Text := IntToStr(ColumnWidths[ckStati][0]);
+  XMLNode(XML, 'objects/stati/widths/value').Text := IntToStr(ColumnWidths[ckStati][1]);
+  XMLNode(XML, 'objects/users/widths/name').Text := IntToStr(ColumnWidths[ckUsers][0]);
+  XMLNode(XML, 'objects/users/widths/fullname').Text := IntToStr(ColumnWidths[ckUsers][1]);
+  XMLNode(XML, 'objects/users/widths/comment').Text := IntToStr(ColumnWidths[ckUsers][2]);
+  XMLNode(XML, 'objects/variables/widths/name').Text := IntToStr(ColumnWidths[ckVariables][0]);
+  XMLNode(XML, 'objects/variables/widths/value').Text := IntToStr(ColumnWidths[ckVariables][1]);
   XMLNode(XML, 'sidebar/width').Text := IntToStr(SelectorWitdth);
   if (NavigatorVisible) then
     XMLNode(XML, 'sidebar/visible').Text := 'Navigator'
   else if (BookmarksVisible) then
     XMLNode(XML, 'sidebar/visible').Text := 'Bookmarks'
-  else if (ExplorerVisible) then
-    XMLNode(XML, 'sidebar/visible').Text := 'Explorer'
   else if (SQLHistoryVisible) then
     XMLNode(XML, 'sidebar/visible').Text := 'SQL History'
   else
     XMLNode(XML, 'sidebar/visible').Text := BoolToStr(False, True);
-  if (ToolBarRefresh = 0) then
-    XMLNode(XML, 'toolbar/refresh').Text := ''
-  else
-    XMLNode(XML, 'toolbar/refresh').Text := 'All';
 
   Bookmarks.SaveToXML();
 
   XML.OwnerDocument.Options := XML.OwnerDocument.Options - [doNodeAutoCreate];
 end;
 
-procedure TSDesktop.SetAddress(AAddress: string);
+procedure TADesktop.SetAddress(AAddress: string);
 begin
   FAddress := Account.PackAddress(AAddress);
 end;
 
-{ TSConnection ****************************************************************}
+{ TAConnection ****************************************************************}
 
-procedure TSConnection.Assign(const Source: TSConnection);
+procedure TAConnection.Assign(const Source: TAConnection);
 begin
   Charset := Source.Charset;
   Compression := Source.Compression;
@@ -851,7 +783,7 @@ begin
   User := Source.User;
 end;
 
-constructor TSConnection.Create(const AAccount: TSAccount);
+constructor TAConnection.Create(const AAccount: TAAccount);
 begin
   inherited Create();
 
@@ -875,7 +807,7 @@ begin
   User := '';
 end;
 
-function TSConnection.GetXML(): IXMLNode;
+function TAConnection.GetXML(): IXMLNode;
 begin
   if (not Assigned(FXML) and Assigned(Account.XML)) then
     FXML := XMLNode(Account.XML, 'connection');
@@ -883,7 +815,7 @@ begin
   Result := FXML;
 end;
 
-procedure TSConnection.LoadFromXML();
+procedure TAConnection.LoadFromXML();
 begin
   if (Assigned(XML)) then
   begin
@@ -910,7 +842,7 @@ begin
   end;
 end;
 
-procedure TSConnection.SaveToXML();
+procedure TAConnection.SaveToXML();
 begin
   XMLNode(XML, 'character_set').Text := Charset;
   XMLNode(XML, 'compression').Text := BoolToStr(Compression, True);
@@ -947,9 +879,9 @@ begin
   XMLNode(XML, 'user').Text := User;
 end;
 
-{ TSAccount *******************************************************************}
+{ TAAccount *******************************************************************}
 
-procedure TSAccount.Assign(const Source: TSAccount);
+procedure TAAccount.Assign(const Source: TAAccount);
 begin
   if (not Assigned(Accounts)) then FAccounts := Source.Accounts;
 
@@ -971,7 +903,7 @@ begin
     Desktop.Assign(Source.Desktop);
 end;
 
-constructor TSAccount.Create(const AAccounts: TSAccounts; const AXML: IXMLNode = nil);
+constructor TAAccount.Create(const AAccounts: TAAccounts; const AXML: IXMLNode = nil);
 begin
   FAccounts := AAccounts;
   FXML := AXML;
@@ -991,11 +923,11 @@ begin
   Modified := False;
   Startup := '';
 
-  Connection := TSConnection.Create(Self);
+  Connection := TAConnection.Create(Self);
   FDesktop := nil;
 end;
 
-destructor TSAccount.Destroy();
+destructor TAAccount.Destroy();
 begin
   if (Assigned(FDesktop)) then FDesktop.Free();
   Connection.Free();
@@ -1003,7 +935,7 @@ begin
   inherited;
 end;
 
-function TSAccount.Frame(): Pointer;
+function TAAccount.Frame(): Pointer;
 begin
   if (Length(FDesktops) = 0) then
     Result := nil
@@ -1011,7 +943,7 @@ begin
     Result := FDesktops[0].Control;
 end;
 
-function TSAccount.FullAddress(const AAddress: string): string;
+function TAAccount.FullAddress(const AAddress: string): string;
 var
   Buffer: array[0 .. INTERNET_MAX_URL_LENGTH] of Char;
   Size: Cardinal;
@@ -1042,7 +974,7 @@ begin
     Result := 'mysql:' + Result;
 end;
 
-function TSAccount.GetBookmarksFilename(): TFileName;
+function TAAccount.GetBookmarksFilename(): TFileName;
 begin
   if (not DirectoryExists(DataPath)) then
     Result := ''
@@ -1050,12 +982,12 @@ begin
     Result := DataPath + 'Bookmarks.xml';
 end;
 
-function TSAccount.GetDataPath(): TFileName;
+function TAAccount.GetDataPath(): TFileName;
 begin
   Result := Accounts.DataPath + ReplaceStr(Name, '/', '_') + PathDelim;
 end;
 
-function TSAccount.GetDefaultDatabase(): string;
+function TAAccount.GetDefaultDatabase(): string;
 var
   DatabaseNames: TCSVStrings;
   Found: Boolean;
@@ -1105,15 +1037,15 @@ begin
   end;
 end;
 
-function TSAccount.GetDesktop(): TSDesktop;
+function TAAccount.GetDesktop(): TADesktop;
 begin
   if (not Assigned(FDesktop) and Assigned(DesktopXML)) then
-    FDesktop := TSDesktop.Create(Self);
+    FDesktop := TADesktop.Create(Self);
 
   Result := FDesktop;
 end;
 
-function TSAccount.GetDesktopFilename(): TFileName;
+function TAAccount.GetDesktopFilename(): TFileName;
 begin
   if (not DirectoryExists(DataPath)) then
     Result := ''
@@ -1121,7 +1053,7 @@ begin
     Result := DataPath + 'Desktop.xml';
 end;
 
-function TSAccount.GetDesktopXML(): IXMLNode;
+function TAAccount.GetDesktopXML(): IXMLNode;
 begin
   if (not Assigned(FDesktopXMLDocument)) then
   begin
@@ -1145,7 +1077,7 @@ begin
   Result := FDesktopXMLDocument.DocumentElement;
 end;
 
-function TSAccount.GetHistoryFilename(): TFileName;
+function TAAccount.GetHistoryFilename(): TFileName;
 begin
   if (not DirectoryExists(DataPath)) then
     Result := ''
@@ -1153,7 +1085,7 @@ begin
     Result := DataPath + 'History.xml'
 end;
 
-function TSAccount.GetHistoryXML(): IXMLNode;
+function TAAccount.GetHistoryXML(): IXMLNode;
 begin
   if (not Assigned(FHistoryXMLDocument)) then
   begin
@@ -1181,7 +1113,7 @@ begin
   Result := FHistoryXMLDocument.DocumentElement;
 end;
 
-function TSAccount.GetIconFilename(): TFileName;
+function TAAccount.GetIconFilename(): TFileName;
 begin
   if (not DirectoryExists(DataPath)) then
     Result := ''
@@ -1189,12 +1121,12 @@ begin
     Result := DataPath + 'favicon.ico';
 end;
 
-function TSAccount.GetIndex(): Integer;
+function TAAccount.GetIndex(): Integer;
 begin
   Result := Accounts.IndexOf(Self);
 end;
 
-function TSAccount.GetName(): string;
+function TAAccount.GetName(): string;
 begin
   if (FName = '') and (Assigned(XML)) then
     FName := XML.Attributes['name'];
@@ -1202,7 +1134,7 @@ begin
   Result := FName;
 end;
 
-function TSAccount.GetXML(): IXMLNode;
+function TAAccount.GetXML(): IXMLNode;
 var
   I: Integer;
 begin
@@ -1221,7 +1153,7 @@ begin
   Result := FXML;
 end;
 
-procedure TSAccount.LoadFromXML();
+procedure TAAccount.LoadFromXML();
 begin
   if (Assigned(XML)) then
   begin
@@ -1246,7 +1178,7 @@ begin
   end;
 end;
 
-function TSAccount.PackAddress(const AAddress: string): string;
+function TAAccount.PackAddress(const AAddress: string): string;
 var
   URI: TUURI;
 begin
@@ -1257,7 +1189,7 @@ begin
 
     if (URI.Scheme = 'mysql') then
       Delete(Result, 1, Length('mysql') + 1);
-    if ((URI.Host = LowerCase(Connection.Host)) and ((URI.Port = 0) or (URI.Port = Connection.Port))) then
+    if (((URI.Host = LowerCase(Connection.Host)) or (URI.Host = LOCAL_HOST) and (Connection.Host = LOCAL_HOST_NAMEDPIPE)) and ((URI.Port = 0) or (URI.Port = Connection.Port))) then
     begin
       Delete(Result, 1, 2);
       if (Pos('/', Result) = 0) then
@@ -1271,14 +1203,14 @@ begin
   end;
 end;
 
-procedure TSAccount.RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc);
+procedure TAAccount.RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc);
 begin
   SetLength(FDesktops, Length(FDesktops) + 1);
   FDesktops[Length(FDesktops) - 1].Control := AControl;
   FDesktops[Length(FDesktops) - 1].AccountEventProc := AEventProc;
 end;
 
-procedure TSAccount.SaveToXML();
+procedure TAAccount.SaveToXML();
 begin
   if (Assigned(XML)) then
   begin
@@ -1313,7 +1245,7 @@ begin
  end;
 end;
 
-procedure TSAccount.AccountEvent(const ClassType: TClass);
+procedure TAAccount.AccountEvent(const ClassType: TClass);
 var
   I: Integer;
 begin
@@ -1322,14 +1254,14 @@ begin
       FDesktops[I].AccountEventProc(ClassType);
 end;
 
-procedure TSAccount.SetLastLogin(const ALastLogin: TDateTime);
+procedure TAAccount.SetLastLogin(const ALastLogin: TDateTime);
 begin
   FLastLogin := ALastLogin;
 
   Modified := True;
 end;
 
-procedure TSAccount.SetName(const AName: string);
+procedure TAAccount.SetName(const AName: string);
 begin
   Assert(not Assigned(FXML) or (AName = FXML.Attributes['name']));
 
@@ -1337,7 +1269,7 @@ begin
   FName := AName;
 end;
 
-procedure TSAccount.UnRegisterDesktop(const AControl: Pointer);
+procedure TAAccount.UnRegisterDesktop(const AControl: Pointer);
 var
   I: Integer;
   J: Integer;
@@ -1354,7 +1286,7 @@ begin
     end;
 end;
 
-function TSAccount.ValidDatabaseName(const ADatabaseName: string): Boolean;
+function TAAccount.ValidDatabaseName(const ADatabaseName: string): Boolean;
 var
   S: string;
   TempDatabaseName: string;
@@ -1378,20 +1310,20 @@ begin
       end;
 end;
 
-{ TSAccounts ******************************************************************}
+{ TAAccounts ******************************************************************}
 
-procedure TSAccounts.AddAccount(const NewAccount: TSAccount);
+procedure TAAccounts.AddAccount(const NewAccount: TAAccount);
 begin
   if (not Assigned(AccountByName(NewAccount.Name))) then
   begin
-    Add(TSAccount.Create(Self));
+    Add(TAAccount.Create(Self));
     Account[Count - 1].Assign(NewAccount);
 
     AppendIconsToImageList(Preferences.SmallImages, NewAccount);
   end;
 end;
 
-procedure TSAccounts.AppendIconsToImageList(const AImageList: TImageList; const AAccount: TSAccount = nil);
+procedure TAAccounts.AppendIconsToImageList(const AImageList: TImageList; const AAccount: TAAccount = nil);
 var
   I: Integer;
   Icon: TIcon;
@@ -1417,7 +1349,7 @@ begin
   end;
 end;
 
-procedure TSAccounts.Clear();
+procedure TAAccounts.Clear();
 begin
   while (Count > 0) do
   begin
@@ -1428,7 +1360,7 @@ begin
   inherited;
 end;
 
-constructor TSAccounts.Create(const ADBLogin: TLogin; const AOnSQLError: TMySQLConnection.TErrorEvent);
+constructor TAAccounts.Create(const ADBLogin: TLogin; const AOnSQLError: TMySQLConnection.TErrorEvent);
 begin
   inherited Create();
 
@@ -1442,7 +1374,7 @@ begin
   AppendIconsToImageList(Preferences.SmallImages);
 end;
 
-function TSAccounts.DeleteAccount(const AAccount: TSAccount): Boolean;
+function TAAccounts.DeleteAccount(const AAccount: TAAccount): Boolean;
 var
   I: Integer;
   Index: Integer;
@@ -1470,7 +1402,7 @@ begin
   Result := True;
 end;
 
-destructor TSAccounts.Destroy();
+destructor TAAccounts.Destroy();
 begin
   SaveToXML();
 
@@ -1479,27 +1411,27 @@ begin
   inherited;
 end;
 
-function TSAccounts.GetDataPath(): TFileName;
+function TAAccounts.GetDataPath(): TFileName;
 begin
   Result := Preferences.UserPath + 'Accounts' + PathDelim;
 end;
 
-function TSAccounts.GetDefault(): TSAccount;
+function TAAccounts.GetDefault(): TAAccount;
 begin
   Result := AccountByName(DefaultAccountName);
 end;
 
-function TSAccounts.GetFilename(): TFileName;
+function TAAccounts.GetFilename(): TFileName;
 begin
   Result := DataPath + 'Accounts.xml';
 end;
 
-function TSAccounts.GetFAccounts(Index: Integer): TSAccount;
+function TAAccounts.GetFAccounts(Index: Integer): TAAccount;
 begin
-  Result := TSAccount(Items[Index]);
+  Result := TAAccount(Items[Index]);
 end;
 
-function TSAccounts.GetXML(): IXMLNode;
+function TAAccounts.GetXML(): IXMLNode;
 begin
   if (not Assigned(FXMLDocument)) then
   begin
@@ -1520,7 +1452,7 @@ begin
   Result := FXMLDocument.DocumentElement;
 end;
 
-procedure TSAccounts.LoadFromXML();
+procedure TAAccounts.LoadFromXML();
 var
   I: Integer;
   Index: Integer;
@@ -1541,7 +1473,7 @@ begin
           if (lstrcmpi(PChar(string(XML.ChildNodes[I].Attributes['name'])), PChar(Account[J].Name)) <= 0) then
             Index := J;
 
-        Insert(Index, TSAccount.Create(Self, XML.ChildNodes[I]));
+        Insert(Index, TAAccount.Create(Self, XML.ChildNodes[I]));
         Account[Index].LoadFromXML();
       end;
     end;
@@ -1553,7 +1485,7 @@ begin
   end;
 end;
 
-procedure TSAccounts.SaveToXML();
+procedure TAAccounts.SaveToXML();
 var
   I: Integer;
 begin
@@ -1574,7 +1506,7 @@ begin
       FXMLDocument.SaveToFile(Filename);
 end;
 
-function TSAccounts.AccountByName(const AccountName: string): TSAccount;
+function TAAccounts.AccountByName(const AccountName: string): TAAccount;
 var
   I: Integer;
 begin
@@ -1585,13 +1517,13 @@ begin
       Result := Account[I];
 end;
 
-function TSAccounts.AccountByURI(const AURI: string): TSAccount;
+function TAAccounts.AccountByURI(const AURI: string): TAAccount;
 var
   Found: Integer;
   Host: string;
   I: Integer;
   Name: string;
-  NewAccount: TSAccount;
+  NewAccount: TAAccount;
   NewAccountName: string;
   URI: TUURI;
   URLComponents: TURLComponents;
@@ -1645,7 +1577,7 @@ begin
         Name := NewAccountName + ' (' + IntToStr(I) + ')';
       end;
 
-      NewAccount := TSAccount.Create(Self);
+      NewAccount := TAAccount.Create(Self);
       NewAccount.Name := Name;
       NewAccount.Connection.Host := URI.Host;
       NewAccount.Connection.Port := URI.Port;
@@ -1666,7 +1598,7 @@ begin
   end;
 end;
 
-procedure TSAccounts.SetDefault(const AAccount: TSAccount);
+procedure TAAccounts.SetDefault(const AAccount: TAAccount);
 begin
   if (not Assigned(AAccount)) then
     DefaultAccountName := ''
@@ -1674,7 +1606,7 @@ begin
     DefaultAccountName := AAccount.Name;
 end;
 
-procedure TSAccounts.UpdateAccount(const Account, NewAccount: TSAccount);
+procedure TAAccounts.UpdateAccount(const Account, NewAccount: TAAccount);
 begin
   if (Assigned(Account) and Assigned(NewAccount) and (not Assigned(AccountByName(NewAccount.Name)) or (NewAccount.Name = Account.Name))) then
   begin
