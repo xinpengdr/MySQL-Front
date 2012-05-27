@@ -99,7 +99,7 @@ var
 begin
   if (ModalResult = mrOk) then
   begin
-    NewPartition := TCPartition.Create(Table);
+    NewPartition := TCPartition.Create(Table.Partitions, Table);
     if (Assigned(Partition)) then
       NewPartition.Assign(Partition);
 

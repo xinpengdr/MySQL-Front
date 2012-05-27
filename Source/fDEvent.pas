@@ -274,7 +274,7 @@ var
 begin
   if (ModalResult = mrOk) then
   begin
-    NewEvent := TCEvent.Create(Database);
+    NewEvent := TCEvent.Create(Database.Events);
     if (Assigned(Event)) then
       NewEvent.Assign(Event);
 

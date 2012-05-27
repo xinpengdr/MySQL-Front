@@ -230,7 +230,7 @@ begin
   if (not InternetCrackUrl(PChar(URI), Length(URI), ICU_DECODE, URLComponents)) then
     Internet := nil
   else
-    Internet := InternetOpen(PChar(Application.Title + '/' + IntToStr(Preferences.VerMajor) + '.' + IntToStr(Preferences.VerMinor)), INTERNET_OPEN_TYPE_PRECONFIG, nil, nil, 0);
+    Internet := InternetOpen(PChar(Preferences.InternetAgent), INTERNET_OPEN_TYPE_PRECONFIG, nil, nil, 0);
 
   if (not Assigned(Internet)) then
     ReturnValue := 1

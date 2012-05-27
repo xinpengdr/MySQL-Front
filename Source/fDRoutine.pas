@@ -202,7 +202,7 @@ var
 begin
   if (ModalResult = mrOk) then
   begin
-    NewRoutine := TCRoutine.Create(Database);
+    NewRoutine := TCRoutine.Create(Database.Routines);
     if (Assigned(Routine)) then
       NewRoutine.Assign(Routine);
 

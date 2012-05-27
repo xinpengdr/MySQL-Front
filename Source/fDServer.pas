@@ -720,19 +720,8 @@ begin
 end;
 
 procedure TDServer.TSExtrasShow(Sender: TObject);
-var
-  Seconds: Int64;
-  StartTime: TDateTime;
 begin
-  Seconds := StrToInt64(Client.StatusByName('Uptime').Value);
-
-  StartTime := Now();
-  StartTime := StartTime - EncodeTime(0, 0, Seconds mod 60, 0); Seconds := Seconds div 60;
-  StartTime := StartTime - EncodeTime(0, Seconds mod 60, 0, 0); Seconds := Seconds div 60;
-  StartTime := StartTime - EncodeTime(Seconds mod 24, 0, 0, 0); Seconds := Seconds div 24;
-  StartTime := StartTime - Seconds;
-
-  FUptime.Caption := SysUtils.DateTimeToStr(StartTime, LocaleFormatSettings);
+  FUptime.Caption := SysUtils.DateTimeToStr(Client.StartTime, LocaleFormatSettings);
 
   FBShutdown.Enabled := Client.CanShutdown and (not Assigned(Client.UserRights) or Client.UserRights.RShutdown) and True;
   FBFlushHosts.Enabled := (not Assigned(Client.UserRights) or Client.UserRights.RReload) and True;

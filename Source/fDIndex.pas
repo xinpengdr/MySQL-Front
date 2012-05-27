@@ -309,7 +309,7 @@ begin
         Table.Indices[Index.Index].Assign(NewIndex)
     else
     begin
-      NewTable := TCBaseTable.Create(Database);
+      NewTable := TCBaseTable.Create(Database.Tables);
       NewTable.Assign(Table);
 
       if (not Assigned(Index)) then

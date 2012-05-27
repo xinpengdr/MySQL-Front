@@ -153,7 +153,7 @@ var
 begin
   if (ModalResult = mrOk) then
   begin
-    NewHostDatabase := TCHostDatabase.Create();
+    NewHostDatabase := TCHostDatabase.Create(Host.Databases);
     if (Assigned(HostDatabase)) then
       NewHostDatabase.Assign(HostDatabase);
 

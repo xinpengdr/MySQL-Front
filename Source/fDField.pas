@@ -571,7 +571,7 @@ begin
       NewTable := Table
     else
     begin
-      NewTable := TCBaseTable.Create(Database);
+      NewTable := TCBaseTable.Create(Database.Tables);
       NewTable.Assign(Table);
     end;
 

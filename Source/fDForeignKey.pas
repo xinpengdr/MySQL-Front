@@ -241,7 +241,7 @@ begin
         Table.ForeignKeys[ForeignKey.Index].Assign(NewForeignKey)
     else
     begin
-      NewTable := TCBaseTable.Create(Database);
+      NewTable := TCBaseTable.Create(Database.Tables);
       NewTable.Assign(Table);
 
       if (not Assigned(ForeignKey)) then

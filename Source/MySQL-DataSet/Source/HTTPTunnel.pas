@@ -19,7 +19,7 @@ const
   CR_HTTPTUNNEL_SERVER_ERROR               = 2209;
   CR_HTTPTUNNEL_REDIRECT                   = 2210;
 
-  MYSQL_OPT_HTTPTUNNEL_URL = 240;
+  MYSQL_OPT_HTTPTUNNEL_URL   = 240;
 
 type
   PPChar = ^PChar;
@@ -419,7 +419,7 @@ begin
   Result := 0;
 
   case (Integer(option)) of
-    MYSQL_OPT_HTTPTUNNEL_URL: URL := string(arg);
+    MYSQL_OPT_HTTPTUNNEL_URL: URL := DecodeString(RawByteString(arg));
     else Result := inherited options(option, arg);
   end;
 end;
@@ -480,7 +480,7 @@ var
 begin
   BytesRead := 0;
   repeat
-    Result := InternetReadFile(Request, @PChar(@Char(Buffer))[BytesRead], BytesToRead - BytesRead, Size);
+    Result := InternetReadFile(Request, @PAnsiChar(@AnsiChar(Buffer))[BytesRead], BytesToRead - BytesRead, Size);
     if (not Result) then
       Seterror(CR_SERVER_LOST)
     else

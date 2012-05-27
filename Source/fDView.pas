@@ -288,7 +288,7 @@ var
 begin
   if (ModalResult = mrOk) then
   begin
-    NewView := TCView.Create(Database);
+    NewView := TCView.Create(Database.Tables);
     if (Assigned(View)) then
       NewView.Assign(View);
 

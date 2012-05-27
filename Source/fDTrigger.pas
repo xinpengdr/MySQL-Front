@@ -195,7 +195,7 @@ var
 begin
   if (ModalResult = mrOk) then
   begin
-    NewTrigger := TCTrigger.Create(Table.Database);
+    NewTrigger := TCTrigger.Create(Table.Database.Triggers);
     if (Assigned(Trigger)) then
       NewTrigger.Assign(Trigger);
 

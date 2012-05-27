@@ -64,7 +64,7 @@ type
 
   TADesktop = class
   type
-    TColumnWidthKind = (ckServer, ckDatabase, ckTable, ckHosts, ckProcesses, ckStati, ckUsers, ckVariables);
+    TListViewKind = (lkServer, lkDatabase, lkTable, lkHosts, lkProcesses, lkStati, lkUsers, lkVariables);
   private
     FAddress: string;
     FBookmarks: TABookmarks;
@@ -82,7 +82,7 @@ type
   public
     AddressMRU: TMRUList;
     BookmarksVisible: Boolean;
-    ColumnWidths: array [ckServer .. ckVariables] of array [0..7] of Integer;
+    ColumnWidths: array [lkServer .. lkVariables] of array [0..7] of Integer;
     DataHeight, BlobHeight: Integer;
     EditorContent: string;
     LogHeight: Integer;
@@ -568,12 +568,12 @@ end;
 procedure TADesktop.Assign(const Source: TADesktop);
 var
   I: Integer;
-  Kind: TColumnWidthKind;
+  Kind: TListViewKind;
 begin
   Address := Account.FullAddress(Source.Account.PackAddress(Source.Address));
   BlobHeight := Source.BlobHeight;
   BookmarksVisible := Source.BookmarksVisible;
-  for Kind := ckServer to ckVariables do
+  for Kind := lkServer to lkVariables do
     for I := 0 to Length(ColumnWidths[Kind]) - 1 do
       ColumnWidths[Kind, I] := Source.ColumnWidths[Kind, I];
   DataHeight := Source.DataHeight;
@@ -588,7 +588,7 @@ end;
 constructor TADesktop.Create(const AAccount: TAAccount);
 var
   I: Integer;
-  Kind: TColumnWidthKind;
+  Kind: TListViewKind;
 begin
   inherited Create();
 
@@ -598,7 +598,7 @@ begin
   FAddress := '/';
   BlobHeight := 100;
   BookmarksVisible := False;
-  for Kind := ckServer to ckVariables do
+  for Kind := lkServer to lkVariables do
     for I := 0 to Length(ColumnWidths[Kind]) - 1 do
       ColumnWidths[Kind][I] := ColumnTextWidth;
   DataHeight := 150;
@@ -650,40 +650,40 @@ begin
     if (Assigned(XMLNode(XML, 'editor/content'))) then EditorContent := XMLNode(XML, 'editor/content').Text;
     if (Assigned(XMLNode(XML, 'log/height'))) then TryStrToInt(XMLNode(XML, 'log/height').Text, LogHeight);
     if (Assigned(XMLNode(XML, 'log/visible'))) then TryStrToBool(XMLNode(XML, 'log/visible').Text, LogVisible);
-    if (Assigned(XMLNode(XML, 'objects/server/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/name').Text, ColumnWidths[ckServer][0]);
-    if (Assigned(XMLNode(XML, 'objects/server/widths/size'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/size').Text, ColumnWidths[ckServer][1]);
-    if (Assigned(XMLNode(XML, 'objects/server/widths/count'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/count').Text, ColumnWidths[ckServer][2]);
-    if (Assigned(XMLNode(XML, 'objects/server/widths/created'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/created').Text, ColumnWidths[ckServer][3]);
-    if (Assigned(XMLNode(XML, 'objects/server/widths/extras'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/extras').Text, ColumnWidths[ckServer][4]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/name').Text, ColumnWidths[ckDatabase][0]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/type'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/type').Text, ColumnWidths[ckDatabase][1]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/recordcount'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/recordcount').Text, ColumnWidths[ckDatabase][2]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/size'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/size').Text, ColumnWidths[ckDatabase][3]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/updated'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/updated').Text, ColumnWidths[ckDatabase][4]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/extras'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/extras').Text, ColumnWidths[ckDatabase][5]);
-    if (Assigned(XMLNode(XML, 'objects/database/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/comment').Text, ColumnWidths[ckDatabase][6]);
-    if (Assigned(XMLNode(XML, 'objects/table/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/name').Text, ColumnWidths[ckTable][0]);
-    if (Assigned(XMLNode(XML, 'objects/table/widths/type'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/type').Text, ColumnWidths[ckTable][1]);
-    if (Assigned(XMLNode(XML, 'objects/table/widths/null'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/null').Text, ColumnWidths[ckTable][2]);
-    if (Assigned(XMLNode(XML, 'objects/table/widths/default'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/default').Text, ColumnWidths[ckTable][3]);
-    if (Assigned(XMLNode(XML, 'objects/table/widths/extras'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/extras').Text, ColumnWidths[ckTable][4]);
-    if (Assigned(XMLNode(XML, 'objects/table/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/comment').Text, ColumnWidths[ckTable][5]);
-    if (Assigned(XMLNode(XML, 'objects/hosts/widths/host'))) then TryStrToInt(XMLNode(XML, 'objects/hosts/widths/host').Text, ColumnWidths[ckHosts][0]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/id'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/id').Text, ColumnWidths[ckProcesses][0]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/user'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/user').Text, ColumnWidths[ckProcesses][1]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/host'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/host').Text, ColumnWidths[ckProcesses][2]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/database'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/database').Text, ColumnWidths[ckProcesses][3]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/command'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/command').Text, ColumnWidths[ckProcesses][4]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/statement'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/statement').Text, ColumnWidths[ckProcesses][5]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/time'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/time').Text, ColumnWidths[ckProcesses][6]);
-    if (Assigned(XMLNode(XML, 'objects/processes/widths/state'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/state').Text, ColumnWidths[ckProcesses][7]);
-    if (Assigned(XMLNode(XML, 'objects/stati/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/stati/widths/name').Text, ColumnWidths[ckStati][0]);
-    if (Assigned(XMLNode(XML, 'objects/stati/widths/value'))) then TryStrToInt(XMLNode(XML, 'objects/stati/widths/value').Text, ColumnWidths[ckStati][1]);
-    if (Assigned(XMLNode(XML, 'objects/users/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/name').Text, ColumnWidths[ckUsers][0]);
-    if (Assigned(XMLNode(XML, 'objects/users/widths/fullname'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/fullname').Text, ColumnWidths[ckUsers][1]);
-    if (Assigned(XMLNode(XML, 'objects/users/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/comment').Text, ColumnWidths[ckUsers][2]);
-    if (Assigned(XMLNode(XML, 'objects/variables/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/variables/widths/name').Text, ColumnWidths[ckVariables][0]);
-    if (Assigned(XMLNode(XML, 'objects/variables/widths/value'))) then TryStrToInt(XMLNode(XML, 'objects/variables/widths/value').Text, ColumnWidths[ckVariables][1]);
+    if (Assigned(XMLNode(XML, 'objects/server/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/name').Text, ColumnWidths[lkServer][0]);
+    if (Assigned(XMLNode(XML, 'objects/server/widths/size'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/size').Text, ColumnWidths[lkServer][1]);
+    if (Assigned(XMLNode(XML, 'objects/server/widths/count'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/count').Text, ColumnWidths[lkServer][2]);
+    if (Assigned(XMLNode(XML, 'objects/server/widths/created'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/created').Text, ColumnWidths[lkServer][3]);
+    if (Assigned(XMLNode(XML, 'objects/server/widths/extras'))) then TryStrToInt(XMLNode(XML, 'objects/server/widths/extras').Text, ColumnWidths[lkServer][4]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/name').Text, ColumnWidths[lkDatabase][0]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/type'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/type').Text, ColumnWidths[lkDatabase][1]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/recordcount'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/recordcount').Text, ColumnWidths[lkDatabase][2]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/size'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/size').Text, ColumnWidths[lkDatabase][3]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/updated'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/updated').Text, ColumnWidths[lkDatabase][4]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/extras'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/extras').Text, ColumnWidths[lkDatabase][5]);
+    if (Assigned(XMLNode(XML, 'objects/database/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/database/widths/comment').Text, ColumnWidths[lkDatabase][6]);
+    if (Assigned(XMLNode(XML, 'objects/table/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/name').Text, ColumnWidths[lkTable][0]);
+    if (Assigned(XMLNode(XML, 'objects/table/widths/type'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/type').Text, ColumnWidths[lkTable][1]);
+    if (Assigned(XMLNode(XML, 'objects/table/widths/null'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/null').Text, ColumnWidths[lkTable][2]);
+    if (Assigned(XMLNode(XML, 'objects/table/widths/default'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/default').Text, ColumnWidths[lkTable][3]);
+    if (Assigned(XMLNode(XML, 'objects/table/widths/extras'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/extras').Text, ColumnWidths[lkTable][4]);
+    if (Assigned(XMLNode(XML, 'objects/table/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/table/widths/comment').Text, ColumnWidths[lkTable][5]);
+    if (Assigned(XMLNode(XML, 'objects/hosts/widths/host'))) then TryStrToInt(XMLNode(XML, 'objects/hosts/widths/host').Text, ColumnWidths[lkHosts][0]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/id'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/id').Text, ColumnWidths[lkProcesses][0]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/user'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/user').Text, ColumnWidths[lkProcesses][1]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/host'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/host').Text, ColumnWidths[lkProcesses][2]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/database'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/database').Text, ColumnWidths[lkProcesses][3]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/command'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/command').Text, ColumnWidths[lkProcesses][4]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/statement'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/statement').Text, ColumnWidths[lkProcesses][5]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/time'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/time').Text, ColumnWidths[lkProcesses][6]);
+    if (Assigned(XMLNode(XML, 'objects/processes/widths/state'))) then TryStrToInt(XMLNode(XML, 'objects/processes/widths/state').Text, ColumnWidths[lkProcesses][7]);
+    if (Assigned(XMLNode(XML, 'objects/stati/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/stati/widths/name').Text, ColumnWidths[lkStati][0]);
+    if (Assigned(XMLNode(XML, 'objects/stati/widths/value'))) then TryStrToInt(XMLNode(XML, 'objects/stati/widths/value').Text, ColumnWidths[lkStati][1]);
+    if (Assigned(XMLNode(XML, 'objects/users/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/name').Text, ColumnWidths[lkUsers][0]);
+    if (Assigned(XMLNode(XML, 'objects/users/widths/fullname'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/fullname').Text, ColumnWidths[lkUsers][1]);
+    if (Assigned(XMLNode(XML, 'objects/users/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/comment').Text, ColumnWidths[lkUsers][2]);
+    if (Assigned(XMLNode(XML, 'objects/variables/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/variables/widths/name').Text, ColumnWidths[lkVariables][0]);
+    if (Assigned(XMLNode(XML, 'objects/variables/widths/value'))) then TryStrToInt(XMLNode(XML, 'objects/variables/widths/value').Text, ColumnWidths[lkVariables][1]);
     if (Assigned(XMLNode(XML, 'sidebar/width'))) then TryStrToInt(XMLNode(XML, 'sidebar/width').Text, SelectorWitdth);
     if (Assigned(XMLNode(XML, 'sidebar/visible'))) then
     begin
@@ -708,40 +708,40 @@ begin
   XMLNode(XML, 'editor/filename/mru').ChildNodes.Clear();
   XMLNode(XML, 'log/height').Text := IntToStr(LogHeight);
   XMLNode(XML, 'log/visible').Text := BoolToStr(LogVisible, True);
-  XMLNode(XML, 'objects/server/widths/name').Text := IntToStr(ColumnWidths[ckServer][0]);
-  XMLNode(XML, 'objects/server/widths/count').Text := IntToStr(ColumnWidths[ckServer][1]);
-  XMLNode(XML, 'objects/server/widths/size').Text := IntToStr(ColumnWidths[ckServer][2]);
-  XMLNode(XML, 'objects/server/widths/created').Text := IntToStr(ColumnWidths[ckServer][3]);
-  XMLNode(XML, 'objects/server/widths/extras').Text := IntToStr(ColumnWidths[ckServer][4]);
-  XMLNode(XML, 'objects/database/widths/name').Text := IntToStr(ColumnWidths[ckDatabase][0]);
-  XMLNode(XML, 'objects/database/widths/type').Text := IntToStr(ColumnWidths[ckDatabase][1]);
-  XMLNode(XML, 'objects/database/widths/recordcount').Text := IntToStr(ColumnWidths[ckDatabase][2]);
-  XMLNode(XML, 'objects/database/widths/size').Text := IntToStr(ColumnWidths[ckDatabase][3]);
-  XMLNode(XML, 'objects/database/widths/updated').Text := IntToStr(ColumnWidths[ckDatabase][4]);
-  XMLNode(XML, 'objects/database/widths/extras').Text := IntToStr(ColumnWidths[ckDatabase][5]);
-  XMLNode(XML, 'objects/database/widths/comment').Text := IntToStr(ColumnWidths[ckDatabase][6]);
-  XMLNode(XML, 'objects/table/widths/name').Text := IntToStr(ColumnWidths[ckTable][0]);
-  XMLNode(XML, 'objects/table/widths/type').Text := IntToStr(ColumnWidths[ckTable][1]);
-  XMLNode(XML, 'objects/table/widths/null').Text := IntToStr(ColumnWidths[ckTable][2]);
-  XMLNode(XML, 'objects/table/widths/default').Text := IntToStr(ColumnWidths[ckTable][3]);
-  XMLNode(XML, 'objects/table/widths/extras').Text := IntToStr(ColumnWidths[ckTable][4]);
-  XMLNode(XML, 'objects/table/widths/comment').Text := IntToStr(ColumnWidths[ckTable][5]);
-  XMLNode(XML, 'objects/hosts/widths/host').Text := IntToStr(ColumnWidths[ckHosts][0]);
-  XMLNode(XML, 'objects/processes/widths/id').Text := IntToStr(ColumnWidths[ckProcesses][0]);
-  XMLNode(XML, 'objects/processes/widths/user').Text := IntToStr(ColumnWidths[ckProcesses][1]);
-  XMLNode(XML, 'objects/processes/widths/host').Text := IntToStr(ColumnWidths[ckProcesses][2]);
-  XMLNode(XML, 'objects/processes/widths/database').Text := IntToStr(ColumnWidths[ckProcesses][3]);
-  XMLNode(XML, 'objects/processes/widths/command').Text := IntToStr(ColumnWidths[ckProcesses][4]);
-  XMLNode(XML, 'objects/processes/widths/statement').Text := IntToStr(ColumnWidths[ckProcesses][5]);
-  XMLNode(XML, 'objects/processes/widths/time').Text := IntToStr(ColumnWidths[ckProcesses][6]);
-  XMLNode(XML, 'objects/processes/widths/state').Text := IntToStr(ColumnWidths[ckProcesses][7]);
-  XMLNode(XML, 'objects/stati/widths/name').Text := IntToStr(ColumnWidths[ckStati][0]);
-  XMLNode(XML, 'objects/stati/widths/value').Text := IntToStr(ColumnWidths[ckStati][1]);
-  XMLNode(XML, 'objects/users/widths/name').Text := IntToStr(ColumnWidths[ckUsers][0]);
-  XMLNode(XML, 'objects/users/widths/fullname').Text := IntToStr(ColumnWidths[ckUsers][1]);
-  XMLNode(XML, 'objects/users/widths/comment').Text := IntToStr(ColumnWidths[ckUsers][2]);
-  XMLNode(XML, 'objects/variables/widths/name').Text := IntToStr(ColumnWidths[ckVariables][0]);
-  XMLNode(XML, 'objects/variables/widths/value').Text := IntToStr(ColumnWidths[ckVariables][1]);
+  XMLNode(XML, 'objects/server/widths/name').Text := IntToStr(ColumnWidths[lkServer][0]);
+  XMLNode(XML, 'objects/server/widths/count').Text := IntToStr(ColumnWidths[lkServer][1]);
+  XMLNode(XML, 'objects/server/widths/size').Text := IntToStr(ColumnWidths[lkServer][2]);
+  XMLNode(XML, 'objects/server/widths/created').Text := IntToStr(ColumnWidths[lkServer][3]);
+  XMLNode(XML, 'objects/server/widths/extras').Text := IntToStr(ColumnWidths[lkServer][4]);
+  XMLNode(XML, 'objects/database/widths/name').Text := IntToStr(ColumnWidths[lkDatabase][0]);
+  XMLNode(XML, 'objects/database/widths/type').Text := IntToStr(ColumnWidths[lkDatabase][1]);
+  XMLNode(XML, 'objects/database/widths/recordcount').Text := IntToStr(ColumnWidths[lkDatabase][2]);
+  XMLNode(XML, 'objects/database/widths/size').Text := IntToStr(ColumnWidths[lkDatabase][3]);
+  XMLNode(XML, 'objects/database/widths/updated').Text := IntToStr(ColumnWidths[lkDatabase][4]);
+  XMLNode(XML, 'objects/database/widths/extras').Text := IntToStr(ColumnWidths[lkDatabase][5]);
+  XMLNode(XML, 'objects/database/widths/comment').Text := IntToStr(ColumnWidths[lkDatabase][6]);
+  XMLNode(XML, 'objects/table/widths/name').Text := IntToStr(ColumnWidths[lkTable][0]);
+  XMLNode(XML, 'objects/table/widths/type').Text := IntToStr(ColumnWidths[lkTable][1]);
+  XMLNode(XML, 'objects/table/widths/null').Text := IntToStr(ColumnWidths[lkTable][2]);
+  XMLNode(XML, 'objects/table/widths/default').Text := IntToStr(ColumnWidths[lkTable][3]);
+  XMLNode(XML, 'objects/table/widths/extras').Text := IntToStr(ColumnWidths[lkTable][4]);
+  XMLNode(XML, 'objects/table/widths/comment').Text := IntToStr(ColumnWidths[lkTable][5]);
+  XMLNode(XML, 'objects/hosts/widths/host').Text := IntToStr(ColumnWidths[lkHosts][0]);
+  XMLNode(XML, 'objects/processes/widths/id').Text := IntToStr(ColumnWidths[lkProcesses][0]);
+  XMLNode(XML, 'objects/processes/widths/user').Text := IntToStr(ColumnWidths[lkProcesses][1]);
+  XMLNode(XML, 'objects/processes/widths/host').Text := IntToStr(ColumnWidths[lkProcesses][2]);
+  XMLNode(XML, 'objects/processes/widths/database').Text := IntToStr(ColumnWidths[lkProcesses][3]);
+  XMLNode(XML, 'objects/processes/widths/command').Text := IntToStr(ColumnWidths[lkProcesses][4]);
+  XMLNode(XML, 'objects/processes/widths/statement').Text := IntToStr(ColumnWidths[lkProcesses][5]);
+  XMLNode(XML, 'objects/processes/widths/time').Text := IntToStr(ColumnWidths[lkProcesses][6]);
+  XMLNode(XML, 'objects/processes/widths/state').Text := IntToStr(ColumnWidths[lkProcesses][7]);
+  XMLNode(XML, 'objects/stati/widths/name').Text := IntToStr(ColumnWidths[lkStati][0]);
+  XMLNode(XML, 'objects/stati/widths/value').Text := IntToStr(ColumnWidths[lkStati][1]);
+  XMLNode(XML, 'objects/users/widths/name').Text := IntToStr(ColumnWidths[lkUsers][0]);
+  XMLNode(XML, 'objects/users/widths/fullname').Text := IntToStr(ColumnWidths[lkUsers][1]);
+  XMLNode(XML, 'objects/users/widths/comment').Text := IntToStr(ColumnWidths[lkUsers][2]);
+  XMLNode(XML, 'objects/variables/widths/name').Text := IntToStr(ColumnWidths[lkVariables][0]);
+  XMLNode(XML, 'objects/variables/widths/value').Text := IntToStr(ColumnWidths[lkVariables][1]);
   XMLNode(XML, 'sidebar/width').Text := IntToStr(SelectorWitdth);
   if (NavigatorVisible) then
     XMLNode(XML, 'sidebar/visible').Text := 'Navigator'

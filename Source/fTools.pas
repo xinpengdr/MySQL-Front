@@ -1935,7 +1935,7 @@ var
   NewField: TCBaseTableField;
   NewTable: TCBaseTable;
 begin
-  NewTable := TCBaseTable.Create(Database);
+  NewTable := TCBaseTable.Create(Database.Tables);
 
   for I := 0 to Length(FileFields) - 1 do
   begin
@@ -2664,7 +2664,7 @@ var
 begin
   SetLength(SourceFields, 0);
 
-  NewTable := TCBaseTable.Create(Database);
+  NewTable := TCBaseTable.Create(Database.Tables);
   NewTable.DefaultCharset := Charset;
   NewTable.Collation := Collation;
   NewTable.Engine := Client.EngineByName(Engine);
@@ -3050,7 +3050,7 @@ begin
   begin
     SQL := UTF8ToString(sqlite3_column_text(Stmt, 0));
 
-    NewTable := TCBaseTable.Create(Database, Item.TableName);
+    NewTable := TCBaseTable.Create(Database.Tables, Item.TableName);
     NewTable.DefaultCharset := Charset;
     NewTable.Collation := Collation;
     NewTable.Engine := Client.EngineByName(Engine);
@@ -6969,7 +6969,7 @@ begin
       begin
         if (not Assigned(NewTable)) then
         begin
-          NewTable := TCBaseTable.Create(TargetDatabase);
+          NewTable := TCBaseTable.Create(TargetDatabase.Tables);
           NewTable.Assign(TargetTable);
         end;
 
@@ -7011,7 +7011,7 @@ begin
     TargetTable := nil;
   end;
 
-  NewTargetTable := TCBaseTable.Create(TargetDatabase);
+  NewTargetTable := TCBaseTable.Create(TargetDatabase.Tables);
 
   if (not Assigned(TargetTable)) then
   begin
@@ -7161,7 +7161,7 @@ begin
       for I := 0 to SourceDatabase.Triggers.Count - 1 do
         if ((Success = daSuccess) and (SourceDatabase.Triggers[I].Table = SourceTable) and not Assigned(TargetDatabase.TriggerByName(SourceDatabase.Triggers[I].Name))) then
         begin
-          NewTrigger := TCTrigger.Create(TargetDatabase);
+          NewTrigger := TCTrigger.Create(TargetDatabase.Tables);
           NewTrigger.Assign(SourceDatabase.Triggers[I]);
           while ((Success = daSuccess) and not TargetDatabase.AddTrigger(NewTrigger)) do
             DoError(DatabaseError(TargetDatabase.Client), ToolsItem(Target));

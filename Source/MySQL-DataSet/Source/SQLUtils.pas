@@ -56,6 +56,7 @@ function SQLParseEnd(const Handle: TSQLParse): Boolean;
 function SQLParseGetIndex(const Handle: TSQLParse): Integer;
 function SQLParseKeyword(var Handle: TSQLParse; const Keyword: PChar; const IncrementIndex: Boolean = True): Boolean;
 function SQLParseObjectName(var Handle: TSQLParse; var DatabaseName: string; out ObjectName: string): Boolean;
+function SQLParseRest(var Handle: TSQLParse): string;
 function SQLParseValue(var Handle: TSQLParse; const TrimAfterValue: Boolean = True): string;
 function SQLSingleStmt(const SQL: string): Boolean;
 procedure SQLSplitValues(const Text: string; out Values: TSQLStrings);
@@ -1565,6 +1566,18 @@ begin
     ObjectName := SQLParseValue(Handle);
   end;
   Result := (ObjectName <> '');
+end;
+
+function SQLParseRest(var Handle: TSQLParse): string;
+var
+  Len: Integer;
+begin
+  Len := Handle.Len;
+  while ((Len > 0) and CharInSet(Handle.Pos[Len - 1], [' ', #9, #10, #13])) do
+    Dec(Len);
+  SetString(Result, Handle.Pos, Len);
+  Handle.Pos := @Handle.Pos[Len];
+  Dec(Handle.Len, Len);
 end;
 
 function SQLParseValue(var Handle: TSQLParse; const TrimAfterValue: Boolean = True): string;

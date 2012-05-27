@@ -160,7 +160,7 @@ type
 
     TSynchroThread = class(TThread)
     type
-      TState = (ssClose, ssConnecting, ssReady, ssExecutingSQL, ssResult, ssReceivingData, ssNextResult, ssDisconnecting);
+      TState = (ssClose, ssConnecting, ssReady, ssExecutingSQL, ssResult, ssReceivingData, ssNextResult, ssDisconnecting, ssError);
     private
       FConnection: TMySQLConnection;
       ExecuteE: TEvent;
@@ -1763,7 +1763,7 @@ begin
   begin
     if (Assigned(ResultHandle)) then
     begin
-      while (Assigned(Connection.Lib.mysql_fetch_row(ResultHandle))) do ;
+      while ((Connection.Lib.mysql_errno(LibHandle) = 0) and Assigned(Connection.Lib.mysql_fetch_row(ResultHandle))) do ;
       Connection.Lib.mysql_free_result(ResultHandle);
       ResultHandle := nil;
     end;
@@ -1857,7 +1857,7 @@ begin
           Connection.SyncHandleResult(Self);
           if (State in [ssNextResult, ssExecutingSQL]) then
             ExecuteE.SetEvent()
-          else if (State = ssReady) then
+          else if (State in [ssReady, ssError]) then
             Connection.SyncExecutedSQL(Self);
         end;
       ssDisconnecting:
@@ -2135,7 +2135,13 @@ end;
 
 procedure TMySQLConnection.DoError(const AErrorCode: Integer; const AErrorMessage: string);
 begin
-  if ((AErrorCode = CR_IPSOCK_ERROR) or (AErrorCode = CR_UNKNOWN_HOST) or (AErrorCode = CR_SERVER_GONE_ERROR) or (AErrorCode = CR_SERVER_LOST) or (AErrorCode = CR_SERVER_OLD)) then
+  if ((AErrorCode = CR_UNKNOWN_HOST)
+    or (AErrorCode = CR_SERVER_OLD)) then
+    Close()
+  else if ((AErrorCode = CR_IPSOCK_ERROR)
+    or (AErrorCode = CR_SERVER_GONE_ERROR)
+    or (AErrorCode = CR_SERVER_HANDSHAKE_ERR)
+    or (AErrorCode = CR_SERVER_LOST)) then
     Close();
 
   FErrorCode := AErrorCode; FErrorMessage := AErrorMessage;
@@ -2302,7 +2308,7 @@ begin
   Lib.mysql_options(SynchroThread.LibHandle, MYSQL_OPT_READ_TIMEOUT, my_char(RawByteString(IntToStr(NET_WAIT_TIMEOUT))));
   Lib.mysql_options(SynchroThread.LibHandle, MYSQL_OPT_WRITE_TIMEOUT, my_char(RawByteString(IntToStr(NET_WAIT_TIMEOUT))));
   Lib.mysql_options(SynchroThread.LibHandle, MYSQL_SET_CHARSET_NAME, my_char(RawByteString(FCharset)));
-  if (Compression) then
+  if (Compression and (LibraryType <> ltHTTP)) then // ToDo: Enable Compression for HTTP Tunnel
     Lib.mysql_options(SynchroThread.LibHandle, MYSQL_OPT_COMPRESS, nil);
   if (LibraryType = ltHTTP) then
     Lib.mysql_options(SynchroThread.LibHandle, enum_mysql_option(MYSQL_OPT_HTTPTUNNEL_URL), my_char(LibEncode(LibraryName)));
@@ -2315,7 +2321,7 @@ begin
     ClientFlag := ClientFlag or CLIENT_CONNECT_WITH_DB;
   if (Assigned(Lib.mysql_more_results) and Assigned(Lib.mysql_next_result)) then
     ClientFlag := ClientFlag or CLIENT_MULTI_STATEMENTS or CLIENT_MULTI_RESULTS;
-  if (Compression) then
+  if (Compression and (LibraryType <> ltHTTP)) then // ToDo: Enable Compression for HTTP Tunnel
     ClientFlag := ClientFlag or CLIENT_COMPRESS;
 
   SynchroThread.Success := Assigned(Lib.mysql_real_connect(SynchroThread.LibHandle,
@@ -2441,12 +2447,15 @@ begin
   FExecutionTime := SynchroThread.Time;
 
   if (Assigned(Lib.mysql_get_server_status)) then
-    FAutoCommit := Lib.mysql_get_server_status(Handle) and SERVER_STATUS_AUTOCOMMIT <> 0;
+    FAutoCommit := Lib.mysql_get_server_status(SynchroThread.LibHandle) and SERVER_STATUS_AUTOCOMMIT <> 0;
 
-  if (Lib.mysql_errno(Handle) = 0) then
+  if (Lib.mysql_errno(SynchroThread.LibHandle) = 0) then
     SynchroThread.SQL := '';
 
   DoAfterExecuteSQL();
+
+  if ((Lib.mysql_errno(SynchroThread.LibHandle) = CR_SERVER_HANDSHAKE_ERR)) then
+    SyncDisconncting(SynchroThread);
 end;
 
 function TMySQLConnection.SyncExecuteSQL(const SynchroThread: TSynchroThread; Synchron: Boolean = False): Boolean;
@@ -2575,7 +2584,7 @@ begin
     WriteMonitor(@SynchroThread.SQL[SynchroThread.SQLStmtIndex], StmtLength, ttRequest);
 
     SynchroThread.RunAction(ssExecutingSQL, Synchron);
-    if (Synchron or not UseSynchroThread()) then
+    if ((Synchron or not UseSynchroThread()) and Assigned(SynchroThread.LibHandle)) then
       Result := Lib.mysql_errno(SynchroThread.LibHandle) = 0
     else
       Result := False;
@@ -3053,7 +3062,7 @@ end;
 
 function TMySQLConnection.ExecuteSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean;
 begin
-  if (Assigned(SynchroThread) and (SynchroThread.State <> ssReady)) then
+  if (Assigned(SynchroThread) and not (SynchroThread.State in [ssClose, ssReady])) then
     Terminate();
   if (not Assigned(SynchroThread)) then
     FSynchroThread := TSynchroThread.Create(Self);
@@ -3244,7 +3253,7 @@ end;
 
 procedure TMySQLConnection.SendSQL(const SQL: string; const OnResult: TResultEvent = nil);
 begin
-  if (Assigned(SynchroThread) and (SynchroThread.State <> ssReady)) then
+  if (Assigned(SynchroThread) and not (SynchroThread.State in [ssClose, ssReady])) then
     Terminate();
   if (not Assigned(SynchroThread)) then
     FSynchroThread := TSynchroThread.Create(Self);

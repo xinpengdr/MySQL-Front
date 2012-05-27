@@ -308,6 +308,7 @@ type
   type
     TToolbarTabs = set of (ttObjectBrowser, ttDataBrowser, ttObjectIDE, ttQueryBuilder, ttSQLEditor, ttDiagram);
   private
+    FInternetAgent: string;
     FLanguage: TPLanguage;
     FLargeImages: TImageList;
     FSmallImages: TImageList;
@@ -393,6 +394,7 @@ type
     UpdateChecked: TDateTime;
     SetupProgram: TFileName;
     SetupProgramInstalled: Boolean;
+    property InternetAgent: string read FInternetAgent;
     property Language: TPLanguage read GetLanguage;
     property LanguagePath: TFileName read GetLanguagePath;
     property LargeImages: TImageList read FLargeImages;
@@ -1396,6 +1398,7 @@ begin
 
   KeyBase := SysUtils.LoadStr(1003);
   GetVersion(FVerMajor, FVerMinor, FVerPatch, FVerBuild);
+  FInternetAgent := SysUtils.LoadStr(1000) + '/' + IntToStr(VerMajor) + '.' + IntToStr(VerMinor);
   SHGetFolderPath(Application.Handle, CSIDL_PERSONAL, 0, 0, @Foldername);
   Path := IncludeTrailingPathDelimiter(PChar(@Foldername));
   if ((FileExists(ExtractFilePath(Application.ExeName) + '\Desktop.xml')) or (SHGetFolderPath(Application.Handle, CSIDL_APPDATA, 0, 0, @Foldername) <> S_OK)) then

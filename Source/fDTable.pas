@@ -1246,7 +1246,7 @@ begin
 
   if (Length(TableNames) = 0) then
   begin
-    NewTable := TCBaseTable.Create(Database);
+    NewTable := TCBaseTable.Create(Database.Tables);
     if (Assigned(Table)) then
       NewTable.Assign(Table);
 

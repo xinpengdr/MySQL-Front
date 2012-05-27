@@ -2225,7 +2225,7 @@ begin
           res.CurrentRow^.Row^[I] := @ReadFileBuffer.Mem[ReadFileBuffer.Offset];
           SetFilePointer(res.CurrentRow^.Lengths^[I], FILE_CURRENT);
         end;
-    if (ReadFileBuffer.Offset <> ReadFileBuffer.Offset) then
+    if ((errno() = 0) and (ReadFileBuffer.Offset <> ReadFileBuffer.Offset)) then
       Seterror(CR_SERVER_HANDSHAKE_ERR);
     if (errno() <> 0) then
       Result := -1
