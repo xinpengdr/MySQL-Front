@@ -331,6 +331,7 @@ type
     procedure Assign(const Source: TCIndices); virtual;
     constructor Create(const ATable: TCBaseTable); reintroduce; virtual;
     procedure DeleteIndex(const AIndex: TCIndex); virtual;
+    function IndexByName(const Name: string): Integer; override;
     property Index[Index: Integer]: TCIndex read GetIndex; default;
     property Primary: TCIndex read GetPrimary;
     property Table: TCBaseTable read FTable;
@@ -421,6 +422,7 @@ type
     procedure Assign(const Source: TCTableFields); virtual;
     constructor Create(const ATable: TCTable);
     procedure DeleteField(const AField: TCTableField); virtual;
+    function IndexByName(const Name: string): Integer; override;
     function IndexOf(const AField: TCTableField): Integer; virtual;
     property Field[Index: Integer]: TCTableField read GetField; default;
     property Table: TCTable read FTable;
@@ -484,6 +486,7 @@ type
     procedure Clear(); override;
     constructor Create(const ATable: TCBaseTable); reintroduce; virtual;
     procedure DeleteForeignKey(const AForeignKey: TCForeignKey); virtual;
+    function IndexByName(const Name: string): Integer; override;
     procedure InsertForeignKey(const Index: Integer; const NewForeignKey: TCForeignKey); virtual;
     property Client: TCClient read GetClient;
     property ForeignKey[Index: Integer]: TCForeignKey read GetForeignKey; default;
@@ -522,7 +525,7 @@ type
     procedure BeforeScroll(DataSet: TDataSet);
     function GetDataSet(): TCTableDataSet;
     function GetIndex(): Integer;
-    function GetTables(): TCTables;
+    function GetTables(): TCTables; inline;
   protected
     function GetFields(): TCTableFields; virtual;
     procedure SetName(const AName: string); override;
@@ -1976,7 +1979,7 @@ var
 begin
   Result := -1;
 
-  if ((Self is TCTables) or (Self is TCDatabases) and (Client.LowerCaseTableNames = 0)) then
+  if (((Self is TCTables) or (Self is TCDatabases)) and (Client.LowerCaseTableNames = 0)) then
     strcmp := lstrcmp
   else
     strcmp := lstrcmpi;
@@ -1986,10 +1989,10 @@ begin
   while (Left <= Right) do
   begin
     Mid := (Right - Left) div 2 + Left;
-    case (strcmp(PChar(Name), PChar(Item[Mid].Name))) of
-      -1: Right := Mid - 1;
+    case (strcmp(PChar(Item[Mid].Name), PChar(Name))) of
+      -1: Left := Mid + 1;
       0: begin Result := Mid; break; end;
-      1: Left := Mid + 1;
+      1: Right := Mid - 1;
     end;
   end;
 end;
@@ -2054,12 +2057,22 @@ begin
 end;
 
 function TCEntities.InsertIndex(const Name: string; out Index: Integer): Boolean;
+type
+  Tstrcmp = function (lpString1, lpString2: PWideChar): Integer; stdcall;
 var
   Left: Integer;
+  Mid: Integer;
   Right: Integer;
+  strcmp: Tstrcmp;
 begin
   Result := True;
-  if ((Count = 0) or (NameCmp(Name, Item[Count - 1].Name) > 0)) then
+
+  if (((Self is TCTables) or (Self is TCDatabases)) and (Client.LowerCaseTableNames = 0)) then
+    strcmp := lstrcmp
+  else
+    strcmp := lstrcmpi;
+
+  if ((Count = 0) or (strcmp(PChar(Item[Count - 1].Name), PChar(Name)) < 0)) then
     Index := Count
   else
   begin
@@ -2067,11 +2080,11 @@ begin
     Right := Count - 1;
     while (Left <= Right) do
     begin
-      Index := (Right - Left) div 2 + Left;
-      case (NameCmp(Name, Item[Index].Name)) of
-        -1: Right := Index - 1;
-        0: begin Result := False; break; end;
-        1: Left := Index + 1;
+      Mid := (Right - Left) div 2 + Left;
+      case (strcmp(PChar(Item[Mid].Name), PChar(Name))) of
+        -1: begin Left := Mid + 1;  Index := Mid + 1; end;
+        0: begin Result := False; Index := Mid; break; end;
+        1: begin Right := Mid - 1; Index := Mid; end;
       end;
     end;
   end;
@@ -2549,6 +2562,19 @@ begin
     Result := nil;
 end;
 
+function TCIndices.IndexByName(const Name: string): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+  for I := 0 to Count - 1 do
+    if (NameCmp(Item[I].Name, Name) = 0) then
+    begin
+      Result := I;
+      break;
+    end;
+end;
+
 { TCField *********************************************************************}
 
 procedure TCField.Assign(const Source: TCField);
@@ -2991,6 +3017,19 @@ begin
   Result := TCTableField(Items[Index]);
 end;
 
+function TCTableFields.IndexByName(const Name: string): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+  for I := 0 to Count - 1 do
+    if (NameCmp(Item[I].Name, Name) = 0) then
+    begin
+      Result := I;
+      break;
+    end;
+end;
+
 function TCTableFields.IndexOf(const AField: TCTableField): Integer;
 var
   I: Integer;
@@ -3231,6 +3270,19 @@ end;
 function TCForeignKeys.GetForeignKey(Index: Integer): TCForeignKey;
 begin
   Result := TCForeignKey(Items[Index]);
+end;
+
+function TCForeignKeys.IndexByName(const Name: string): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+  for I := 0 to Count - 1 do
+    if (NameCmp(Item[I].Name, Name) = 0) then
+    begin
+      Result := I;
+      break;
+    end;
 end;
 
 procedure TCForeignKeys.InsertForeignKey(const Index: Integer; const NewForeignKey: TCForeignKey);
@@ -3652,6 +3704,8 @@ end;
 
 procedure TCTable.Invalidate();
 begin
+  inherited;
+
   FActual := False;
 end;
 
@@ -4036,7 +4090,6 @@ begin
 
   inherited;
 
-  FActualStatus := False;
   FPackIndices := piDefault;
 end;
 
@@ -4166,7 +4219,7 @@ end;
 
 function TCBaseTable.GetCollation(): string;
 begin
-  if ((FCollation = '') and (FDataSize < 0) and (Source <> '')) then
+  if (not Actual and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := FCollation;
@@ -4174,7 +4227,7 @@ end;
 
 function TCBaseTable.GetComment(): string;
 begin
-  if ((FComment = '') and (FDataSize < 0) and (Source <> '')) then
+  if (not Actual and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := FComment;
@@ -4182,7 +4235,7 @@ end;
 
 function TCBaseTable.GetDefaultCharset(): string;
 begin
-  if ((FDefaultCharset = '') and (FDataSize < 0) and (Source <> '')) then
+  if (not Actual and (FDefaultCharset = '') and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := FDefaultCharset;
@@ -4198,7 +4251,7 @@ end;
 
 function TCBaseTable.GetEngine(): TCEngine;
 begin
-  if (not Assigned(FEngine) and (FDataSize < 0) and (Source <> '')) then
+  if (not Actual and not Assigned(FEngine) and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := FEngine;
@@ -4206,7 +4259,7 @@ end;
 
 function TCBaseTable.GetForeignKeys(): TCForeignKeys;
 begin
-  if ((Name <> '') and not FForeignKeys.Actual and (Source <> '')) then
+  if (not Actual and (Source <> '')) then
     FForeignKeys.ParseCreateTable(Source);
 
   Result := FForeignKeys;
@@ -4214,7 +4267,7 @@ end;
 
 function TCBaseTable.GetFields(): TCTableFields;
 begin
-  if (not Actual and (TList(FFields).Count = 0) and (Name <> '') and (Source <> '')) then
+  if (not Actual and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := inherited GetFields();
@@ -4227,7 +4280,7 @@ end;
 
 function TCBaseTable.GetIndices(): TCIndices;
 begin
-  if (not Actual and (TList(FFields).Count = 0) and (Name <> '') and (Source <> '')) then
+  if (not Actual and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := FIndices;
@@ -4235,7 +4288,7 @@ end;
 
 function TCBaseTable.GetPartitions(): TCPartitions;
 begin
-  if (not Actual and (TList(FFields).Count = 0) and (Name <> '')) then
+  if (not Actual and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := FPartitions;
@@ -4402,9 +4455,14 @@ var
   Pos: Integer;
   S: string;
 begin
-  if (Assigned(FFields) and (FFields.Count = 0) and SQLCreateParse(Parse, PChar(SQL), Length(SQL), Database.Client.ServerVersion)) then
+  if (Assigned(FFields) and SQLCreateParse(Parse, PChar(SQL), Length(SQL), Client.ServerVersion)) then
   begin
     FActual := True;
+
+    Indices.Clear();
+    Fields.Clear();
+    if (Assigned(ForeignKeys)) then
+      ForeignKeys.Clear();
 
     Pos := 1;
 
@@ -4810,6 +4868,7 @@ end;
 procedure TCView.Invalidate();
 begin
   inherited;
+
   Fields.Invalidate()
 end;
 
@@ -5037,7 +5096,9 @@ begin
 
     while (DeleteList.Count > 0) do
     begin
-      TCItem(DeleteList.Items[0]).Free();
+      Index := IndexOf(DeleteList.Items[0]);
+      Item[Index].Free();
+      Delete(Index);
       DeleteList.Delete(0);
     end;
     DeleteList.Free();
@@ -5103,7 +5164,9 @@ begin
 
     while (DeleteList.Count > 0) do
     begin
-      TCItem(DeleteList.Items[0]).Free();
+      Index := IndexOf(DeleteList.Items[0]);
+      Item[Index].Free();
+      Delete(Index);
       DeleteList.Delete(0);
     end;
     DeleteList.Free();
@@ -5848,7 +5911,9 @@ begin
 
   while (DeleteList.Count > 0) do
   begin
-    TCItem(DeleteList.Items[0]).Free();
+    Index := IndexOf(DeleteList.Items[0]);
+    Item[Index].Free();
+    Delete(Index);
     DeleteList.Delete(0);
   end;
   DeleteList.Free();
@@ -6140,7 +6205,9 @@ begin
 
   while (DeleteList.Count > 0) do
   begin
-    TCItem(DeleteList.Items[0]).Free();
+    Index := IndexOf(DeleteList.Items[0]);
+    Item[Index].Free();
+    Delete(Index);
     DeleteList.Delete(0);
   end;
   DeleteList.Free();
@@ -6185,9 +6252,10 @@ procedure TCTriggers.Invalidate();
 var
   I: Integer;
 begin
+  inherited;
+
   for I := 0 to Count - 1 do
     Trigger[I].Invalidate();
-  inherited;
 end;
 
 function TCTriggers.SQLGetItems(const Name: string = ''): string;
@@ -6457,7 +6525,9 @@ begin
 
   while (DeleteList.Count > 0) do
   begin
-    TCItem(DeleteList.Items[0]).Free();
+    Index := IndexOf(DeleteList.Items[0]);
+    Item[Index].Free();
+    Delete(Index);
     DeleteList.Delete(0);
   end;
   DeleteList.Free();
@@ -7147,7 +7217,7 @@ end;
 
 procedure TCDatabase.Invalidate();
 begin
-  inherited Invalidate;
+  inherited;
 
   if (Assigned(Events)) then
     Events.Invalidate();
@@ -8183,7 +8253,9 @@ begin
 
   while (DeleteList.Count > 0) do
   begin
-    TCItem(DeleteList.Items[0]).Free();
+    Index := IndexOf(DeleteList.Items[0]);
+    Item[Index].Free();
+    Delete(Index);
     DeleteList.Delete(0);
   end;
   DeleteList.Free();
@@ -8427,7 +8499,9 @@ begin
 
   while (DeleteList.Count > 0) do
   begin
-    TCItem(DeleteList.Items[0]).Free();
+    Index := IndexOf(DeleteList.Items[0]);
+    Item[Index].Free();
+    Delete(Index);
     DeleteList.Delete(0);
   end;
   DeleteList.Free();
@@ -8498,7 +8572,9 @@ begin
 
   while (DeleteList.Count > 0) do
   begin
-    TCItem(DeleteList.Items[0]).Free();
+    Index := IndexOf(DeleteList.Items[0]);
+    Item[Index].Free();
+    Delete(Index);
     DeleteList.Delete(0);
   end;
   DeleteList.Free();
@@ -8625,7 +8701,9 @@ begin
 
   while (DeleteList.Count > 0) do
   begin
-    TCItem(DeleteList.Items[0]).Free();
+    Index := IndexOf(DeleteList.Items[0]);
+    Item[Index].Free();
+    Delete(Index);
     DeleteList.Delete(0);
   end;
   DeleteList.Free();
@@ -8759,7 +8837,9 @@ begin
 
   while (DeleteList.Count > 0) do
   begin
-    TCItem(DeleteList.Items[0]).Free();
+    Index := IndexOf(DeleteList.Items[0]);
+    Item[Index].Free();
+    Delete(Index);
     DeleteList.Delete(0);
   end;
   DeleteList.Free();
@@ -8963,7 +9043,9 @@ begin
 
   while (DeleteList.Count > 0) do
   begin
-    TCItem(DeleteList.Items[0]).Free();
+    Index := IndexOf(DeleteList.Items[0]);
+    Item[Index].Free();
+    Delete(Index);
     DeleteList.Delete(0);
   end;
   DeleteList.Free();
@@ -9077,7 +9159,9 @@ begin
 
   while (DeleteList.Count > 0) do
   begin
-    TCItem(DeleteList.Items[0]).Free();
+    Index := IndexOf(DeleteList.Items[0]);
+    Item[Index].Free();
+    Delete(Index);
     DeleteList.Delete(0);
   end;
   DeleteList.Free();
@@ -9179,7 +9263,9 @@ begin
 
   while (DeleteList.Count > 0) do
   begin
-    TCItem(DeleteList.Items[0]).Free();
+    Index := IndexOf(DeleteList.Items[0]);
+    Item[Index].Free();
+    Delete(Index);
     DeleteList.Delete(0);
   end;
   DeleteList.Free();
@@ -9791,7 +9877,9 @@ begin
 
   while (DeleteList.Count > 0) do
   begin
-    TCItem(DeleteList.Items[0]).Free();
+    Index := IndexOf(DeleteList.Items[0]);
+    Item[Index].Free();
+    Delete(Index);
     DeleteList.Delete(0);
   end;
   DeleteList.Free();
@@ -10074,7 +10162,9 @@ begin
 
   while (DeleteList.Count > 0) do
   begin
-    TCItem(DeleteList.Items[0]).Free();
+    Index := IndexOf(DeleteList.Items[0]);
+    Item[Index].Free();
+    Delete(Index);
     DeleteList.Delete(0);
   end;
   DeleteList.Free();
@@ -10168,7 +10258,7 @@ begin
   if (not Assigned(Processes) and ((ServerVersion < 50000) or not Assigned(UserRights) or UserRights.RProcess)) then
     FProcesses := TCProcesses.Create(Self);
 
-  ExecuteEvent(ceBuild, User);
+  ExecuteEvent(ceBuild, User, Users);
 end;
 
 procedure TCClient.ConnectChange(Sender: TObject; Connecting: Boolean);
@@ -11572,7 +11662,7 @@ begin
                       Table.Database.Tables.Add(Table, True);
                     end;
 
-                    Table.Clear();
+                    Table.Invalidate();
                     ExecuteEvent(ceAltered, Database, Database.Tables, Table);
                   end;
                 end;
