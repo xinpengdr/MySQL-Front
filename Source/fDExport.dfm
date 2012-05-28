@@ -24,7 +24,7 @@ object DExport: TDExport
     Top = 0
     Width = 341
     Height = 281
-    ActivePage = TSHTMLOptions
+    ActivePage = TSExecute
     HotTrack = True
     Style = tsFlatButtons
     TabOrder = 0
@@ -33,10 +33,6 @@ object DExport: TDExport
       Caption = 'TSODBCSelect'
       TabVisible = False
       OnShow = TSODBCSelectShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GODBCSelect: TGroupBox_Ext
         Left = 4
         Top = 0
@@ -75,10 +71,6 @@ object DExport: TDExport
       TabVisible = False
       OnHide = TSOptionsHide
       OnShow = TSSQLOptionsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GSQLWhat: TGroupBox_Ext
         Left = 4
         Top = 0
@@ -201,10 +193,6 @@ object DExport: TDExport
       TabVisible = False
       OnHide = TSOptionsHide
       OnShow = TSCSVOptionsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GCSVOptions: TGroupBox_Ext
         Left = 4
         Top = 0
@@ -342,10 +330,6 @@ object DExport: TDExport
       TabVisible = False
       OnHide = TSXMLOptionsHide
       OnShow = TSXMLOptionsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GXMLHow: TGroupBox_Ext
         Left = 4
         Top = 0
@@ -657,10 +641,6 @@ object DExport: TDExport
       TabVisible = False
       OnHide = TSOptionsHide
       OnShow = TSHTMLOptionsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GHTMLWhat: TGroupBox_Ext
         Left = 4
         Top = 0
@@ -764,10 +744,6 @@ object DExport: TDExport
       Caption = 'TSFields'
       TabVisible = False
       OnShow = TSFieldsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GFields: TGroupBox_Ext
         Left = 4
         Top = 0
@@ -845,10 +821,6 @@ object DExport: TDExport
       Caption = 'TSExecute'
       TabVisible = False
       OnShow = TSExecuteShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GProgress: TGroupBox_Ext
         Left = 4
         Top = 0
@@ -870,21 +842,21 @@ object DExport: TDExport
           Height = 13
           Caption = 'FLProgressRecords'
         end
-        object FEntieredTables: TLabel
-          Left = 158
+        object FDoneTables: TLabel
+          Left = 171
           Top = 40
-          Width = 77
+          Width = 64
           Height = 13
           Alignment = taRightJustify
-          Caption = 'FEntieredTables'
+          Caption = 'FDoneTables'
         end
-        object FEntieredRecords: TLabel
-          Left = 150
+        object FDoneRecords: TLabel
+          Left = 163
           Top = 64
-          Width = 85
+          Width = 72
           Height = 13
           Alignment = taRightJustify
-          Caption = 'FEntieredRecords'
+          Caption = 'FDoneRecords'
         end
         object FLProgressTime: TLabel
           Left = 8
@@ -893,53 +865,53 @@ object DExport: TDExport
           Height = 13
           Caption = 'FLProgressTime'
         end
-        object FEntieredTime: TLabel
-          Left = 167
+        object FDoneTime: TLabel
+          Left = 180
           Top = 88
-          Width = 68
+          Width = 55
           Height = 13
           Alignment = taRightJustify
-          Caption = 'FEntieredTime'
-        end
-        object FLEntiered: TLabel
-          Left = 184
-          Top = 16
-          Width = 51
-          Height = 13
-          Alignment = taRightJustify
-          Caption = 'FLEntiered'
+          Caption = 'FDoneTime'
         end
         object FLDone: TLabel
-          Left = 278
+          Left = 197
           Top = 16
           Width = 38
           Height = 13
           Alignment = taRightJustify
           Caption = 'FLDone'
         end
-        object FDoneTables: TLabel
-          Left = 253
+        object FLEntiered: TLabel
+          Left = 265
+          Top = 16
+          Width = 51
+          Height = 13
+          Alignment = taRightJustify
+          Caption = 'FLEntiered'
+        end
+        object FEntieredTables: TLabel
+          Left = 240
           Top = 40
-          Width = 64
+          Width = 77
           Height = 13
           Alignment = taRightJustify
-          Caption = 'FDoneTables'
+          Caption = 'FEntieredTables'
         end
-        object FDoneRecords: TLabel
-          Left = 245
+        object FEntieredRecords: TLabel
+          Left = 232
           Top = 64
-          Width = 72
+          Width = 85
           Height = 13
           Alignment = taRightJustify
-          Caption = 'FDoneRecords'
+          Caption = 'FEntieredRecords'
         end
-        object FDoneTime: TLabel
-          Left = 262
+        object FEntieredTime: TLabel
+          Left = 249
           Top = 88
-          Width = 55
+          Width = 68
           Height = 13
           Alignment = taRightJustify
-          Caption = 'FDoneTime'
+          Caption = 'FEntieredTime'
         end
         object FLErrors: TLabel
           Left = 8

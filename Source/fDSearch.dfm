@@ -212,10 +212,6 @@ object DSearch: TDSearch
       ImageIndex = 2
       TabVisible = False
       OnShow = TSExecuteShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         333
         279)
@@ -244,60 +240,8 @@ object DSearch: TDSearch
           Height = 13
           Caption = 'FLProgressRecords'
         end
-        object FEntieredTables: TLabel
-          Left = 158
-          Top = 40
-          Width = 77
-          Height = 13
-          Alignment = taRightJustify
-          Anchors = [akTop, akRight]
-          Caption = 'FEntieredTables'
-        end
-        object FEntieredRecords: TLabel
-          Left = 150
-          Top = 64
-          Width = 85
-          Height = 13
-          Alignment = taRightJustify
-          Anchors = [akTop, akRight]
-          Caption = 'FEntieredRecords'
-        end
-        object FLProgressTime: TLabel
-          Left = 8
-          Top = 88
-          Width = 76
-          Height = 13
-          Caption = 'FLProgressTime'
-        end
-        object FEntieredTime: TLabel
-          Left = 167
-          Top = 88
-          Width = 68
-          Height = 13
-          Alignment = taRightJustify
-          Anchors = [akTop, akRight]
-          Caption = 'FEntieredTime'
-        end
-        object FLEntiered: TLabel
-          Left = 184
-          Top = 16
-          Width = 51
-          Height = 13
-          Alignment = taRightJustify
-          Anchors = [akTop, akRight]
-          Caption = 'FLEntiered'
-        end
-        object FLDone: TLabel
-          Left = 278
-          Top = 16
-          Width = 38
-          Height = 13
-          Alignment = taRightJustify
-          Anchors = [akTop, akRight]
-          Caption = 'FLDone'
-        end
         object FDoneTables: TLabel
-          Left = 253
+          Left = 171
           Top = 40
           Width = 64
           Height = 13
@@ -306,7 +250,7 @@ object DSearch: TDSearch
           Caption = 'FDoneTables'
         end
         object FDoneRecords: TLabel
-          Left = 244
+          Left = 163
           Top = 64
           Width = 72
           Height = 13
@@ -314,14 +258,66 @@ object DSearch: TDSearch
           Anchors = [akTop, akRight]
           Caption = 'FDoneRecords'
         end
+        object FLProgressTime: TLabel
+          Left = 8
+          Top = 88
+          Width = 76
+          Height = 13
+          Caption = 'FLProgressTime'
+        end
         object FDoneTime: TLabel
-          Left = 261
+          Left = 180
           Top = 88
           Width = 55
           Height = 13
           Alignment = taRightJustify
           Anchors = [akTop, akRight]
           Caption = 'FDoneTime'
+        end
+        object FLDone: TLabel
+          Left = 197
+          Top = 16
+          Width = 38
+          Height = 13
+          Alignment = taRightJustify
+          Anchors = [akTop, akRight]
+          Caption = 'FLDone'
+        end
+        object FLEntiered: TLabel
+          Left = 265
+          Top = 16
+          Width = 51
+          Height = 13
+          Alignment = taRightJustify
+          Anchors = [akTop, akRight]
+          Caption = 'FLEntiered'
+        end
+        object FEntieredTables: TLabel
+          Left = 240
+          Top = 40
+          Width = 77
+          Height = 13
+          Alignment = taRightJustify
+          Anchors = [akTop, akRight]
+          Caption = 'FEntieredTables'
+        end
+        object FEntieredRecords: TLabel
+          Left = 231
+          Top = 64
+          Width = 85
+          Height = 13
+          Alignment = taRightJustify
+          Anchors = [akTop, akRight]
+          Caption = 'FEntieredRecords'
+        end
+        object FEntieredTime: TLabel
+          Left = 248
+          Top = 88
+          Width = 68
+          Height = 13
+          Alignment = taRightJustify
+          Anchors = [akTop, akRight]
+          Caption = 'FEntieredTime'
         end
         object FLErrors: TLabel
           Left = 8

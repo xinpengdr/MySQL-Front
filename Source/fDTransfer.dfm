@@ -145,10 +145,6 @@ object DTransfer: TDTransfer
       ImageIndex = 1
       TabVisible = False
       OnShow = TSExecuteShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         436
         279)
@@ -177,60 +173,8 @@ object DTransfer: TDTransfer
           Height = 13
           Caption = 'FLProgressRecords'
         end
-        object FEntieredTables: TLabel
-          Left = 262
-          Top = 40
-          Width = 77
-          Height = 13
-          Alignment = taRightJustify
-          Anchors = [akTop, akRight]
-          Caption = 'FEntieredTables'
-        end
-        object FEntieredRecords: TLabel
-          Left = 254
-          Top = 64
-          Width = 85
-          Height = 13
-          Alignment = taRightJustify
-          Anchors = [akTop, akRight]
-          Caption = 'FEntieredRecords'
-        end
-        object FLProgressTime: TLabel
-          Left = 8
-          Top = 88
-          Width = 76
-          Height = 13
-          Caption = 'FLProgressTime'
-        end
-        object FEntieredTime: TLabel
-          Left = 271
-          Top = 88
-          Width = 68
-          Height = 13
-          Alignment = taRightJustify
-          Anchors = [akTop, akRight]
-          Caption = 'FEntieredTime'
-        end
-        object FLEntiered: TLabel
-          Left = 289
-          Top = 16
-          Width = 51
-          Height = 13
-          Alignment = taRightJustify
-          Anchors = [akTop, akRight]
-          Caption = 'FLEntiered'
-        end
-        object FLDone: TLabel
-          Left = 381
-          Top = 16
-          Width = 38
-          Height = 13
-          Alignment = taRightJustify
-          Anchors = [akTop, akRight]
-          Caption = 'FLDone'
-        end
         object FDoneTables: TLabel
-          Left = 355
+          Left = 275
           Top = 40
           Width = 64
           Height = 13
@@ -239,7 +183,7 @@ object DTransfer: TDTransfer
           Caption = 'FDoneTables'
         end
         object FDoneRecords: TLabel
-          Left = 347
+          Left = 267
           Top = 64
           Width = 72
           Height = 13
@@ -247,14 +191,66 @@ object DTransfer: TDTransfer
           Anchors = [akTop, akRight]
           Caption = 'FDoneRecords'
         end
+        object FLProgressTime: TLabel
+          Left = 8
+          Top = 88
+          Width = 76
+          Height = 13
+          Caption = 'FLProgressTime'
+        end
         object FDoneTime: TLabel
-          Left = 364
+          Left = 284
           Top = 88
           Width = 55
           Height = 13
           Alignment = taRightJustify
           Anchors = [akTop, akRight]
           Caption = 'FDoneTime'
+        end
+        object FLDone: TLabel
+          Left = 302
+          Top = 16
+          Width = 38
+          Height = 13
+          Alignment = taRightJustify
+          Anchors = [akTop, akRight]
+          Caption = 'FLDone'
+        end
+        object FLEntiered: TLabel
+          Left = 368
+          Top = 16
+          Width = 51
+          Height = 13
+          Alignment = taRightJustify
+          Anchors = [akTop, akRight]
+          Caption = 'FLEntiered'
+        end
+        object FEntieredTables: TLabel
+          Left = 342
+          Top = 40
+          Width = 77
+          Height = 13
+          Alignment = taRightJustify
+          Anchors = [akTop, akRight]
+          Caption = 'FEntieredTables'
+        end
+        object FEntieredRecords: TLabel
+          Left = 334
+          Top = 64
+          Width = 85
+          Height = 13
+          Alignment = taRightJustify
+          Anchors = [akTop, akRight]
+          Caption = 'FEntieredRecords'
+        end
+        object FEntieredTime: TLabel
+          Left = 351
+          Top = 88
+          Width = 68
+          Height = 13
+          Alignment = taRightJustify
+          Anchors = [akTop, akRight]
+          Caption = 'FEntieredTime'
         end
         object FLErrors: TLabel
           Left = 8

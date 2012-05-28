@@ -45,7 +45,7 @@ object DImport: TDImport
     Top = 0
     Width = 341
     Height = 281
-    ActivePage = TSTables
+    ActivePage = TSExecute
     Style = tsButtons
     TabOrder = 0
     TabStop = False
@@ -579,10 +579,6 @@ object DImport: TDImport
       Caption = 'TSExecute'
       TabVisible = False
       OnShow = TSExecuteShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GErrorMessages: TGroupBox_Ext
         Left = 4
         Top = 176
@@ -638,21 +634,21 @@ object DImport: TDImport
           Height = 13
           Caption = 'FLProgressTime'
         end
-        object FLEntiered: TLabel
-          Left = 184
-          Top = 16
-          Width = 51
-          Height = 13
-          Alignment = taRightJustify
-          Caption = 'FLEntiered'
-        end
         object FLDone: TLabel
-          Left = 278
+          Left = 197
           Top = 16
           Width = 38
           Height = 13
           Alignment = taRightJustify
           Caption = 'FLDone'
+        end
+        object FLEntiered: TLabel
+          Left = 265
+          Top = 16
+          Width = 51
+          Height = 13
+          Alignment = taRightJustify
+          Caption = 'FLEntiered'
         end
         object FLProgressRecords: TLabel
           Left = 8
@@ -661,37 +657,37 @@ object DImport: TDImport
           Height = 13
           Caption = 'FLProgressRecords'
         end
-        object FEntieredRecords: TLabel
-          Left = 150
-          Top = 64
-          Width = 85
-          Height = 13
-          Alignment = taRightJustify
-          Caption = 'FEntieredRecords'
-        end
         object FDoneRecords: TLabel
-          Left = 245
+          Left = 163
           Top = 64
           Width = 72
           Height = 13
           Alignment = taRightJustify
           Caption = 'FDoneRecords'
         end
-        object FEntieredTime: TLabel
-          Left = 167
-          Top = 88
-          Width = 68
+        object FEntieredRecords: TLabel
+          Left = 232
+          Top = 64
+          Width = 85
           Height = 13
           Alignment = taRightJustify
-          Caption = 'FEntieredTime'
+          Caption = 'FEntieredRecords'
         end
         object FDoneTime: TLabel
-          Left = 262
+          Left = 180
           Top = 88
           Width = 55
           Height = 13
           Alignment = taRightJustify
           Caption = 'FDoneTime'
+        end
+        object FEntieredTime: TLabel
+          Left = 249
+          Top = 88
+          Width = 68
+          Height = 13
+          Alignment = taRightJustify
+          Caption = 'FEntieredTime'
         end
         object FLErrors: TLabel
           Left = 8
@@ -715,21 +711,21 @@ object DImport: TDImport
           Height = 13
           Caption = 'FLProgressTables'
         end
-        object FEntieredTables: TLabel
-          Left = 158
-          Top = 40
-          Width = 77
-          Height = 13
-          Alignment = taRightJustify
-          Caption = 'FEntieredTables'
-        end
         object FDoneTables: TLabel
-          Left = 253
+          Left = 171
           Top = 40
           Width = 64
           Height = 13
           Alignment = taRightJustify
           Caption = 'FDoneTables'
+        end
+        object FEntieredTables: TLabel
+          Left = 240
+          Top = 40
+          Width = 77
+          Height = 13
+          Alignment = taRightJustify
+          Caption = 'FEntieredTables'
         end
         object FProgressBar: TProgressBar
           Left = 8

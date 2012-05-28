@@ -370,42 +370,44 @@ begin
 
       Connection := InternetConnect(Handle, URLComponents.lpszHostName, URLComponents.nPort, URLComponents.lpszUserName, URLComponents.lpszPassword, INTERNET_SERVICE_HTTP, 0, Cardinal(Self));
       if (not Assigned(Connection)) then
-        Seterror(CR_HTTPTUNNEL_CONN_ERROR, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_CONN_ERROR - CR_HTTPTUNNEL_UNKNOWN_ERROR], [URL, 0])));
-
-      Direction := idWrite;
-
-      Command := AnsiChar(COM_CONNECT);
-      WriteFile(@Command, SizeOf(Command));
-      if (lstrcmpi(URLComponents.lpszHostName, PChar(string(fhost))) = 0) then
-        WriteFile(LOCAL_HOST)
+        Seterror(CR_HTTPTUNNEL_CONN_ERROR, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_CONN_ERROR - CR_HTTPTUNNEL_UNKNOWN_ERROR], [URL, 0])))
       else
-        WriteFile(RawByteString(fhost));
-      WriteFile(RawByteString(fuser));
-      WriteFile(RawByteString(fpasswd));
-      WriteFile(RawByteString(fdb));
-      WriteFile(RawByteString(fcharacter_set_name));
-      WriteFile(fport, 2);
-      WriteFile(fclient_flag, 4);
-      WriteFile(ftimeout, 2);
-      FlushFileBuffers();
-
-      if (ExecuteHTTPRequest(True, ftimeout)) then
       begin
-        StrPCopy(@Buffer, 'MF-Version'); Size := SizeOf(Buffer); Index := 0;
-        if (not HttpQueryInfo(Request, HTTP_QUERY_CUSTOM, @Buffer, Size, Index) or (StrToInt(Buffer) < RequiredTunnelVersion)) then
-          Seterror(CR_HTTPTUNNEL_OLD, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_OLD - CR_HTTPTUNNEL_UNKNOWN_ERROR], [URL])))
+        Direction := idWrite;
+
+        Command := AnsiChar(COM_CONNECT);
+        WriteFile(@Command, SizeOf(Command));
+        if (lstrcmpi(URLComponents.lpszHostName, PChar(string(fhost))) = 0) then
+          WriteFile(LOCAL_HOST)
         else
+          WriteFile(RawByteString(fhost));
+        WriteFile(RawByteString(fuser));
+        WriteFile(RawByteString(fpasswd));
+        WriteFile(RawByteString(fdb));
+        WriteFile(RawByteString(fcharacter_set_name));
+        WriteFile(fport, 2);
+        WriteFile(fclient_flag, 4);
+        WriteFile(ftimeout, 2);
+        FlushFileBuffers();
+
+        if (ExecuteHTTPRequest(True, ftimeout)) then
         begin
-          Size := SizeOf(Buffer); Index := 0;
+          StrPCopy(@Buffer, 'MF-Version'); Size := SizeOf(Buffer); Index := 0;
+          if (not HttpQueryInfo(Request, HTTP_QUERY_CUSTOM, @Buffer, Size, Index) or (StrToInt(Buffer) < RequiredTunnelVersion)) then
+            Seterror(CR_HTTPTUNNEL_OLD, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_OLD - CR_HTTPTUNNEL_UNKNOWN_ERROR], [URL])))
+          else
+          begin
+            Size := SizeOf(Buffer); Index := 0;
 
-          StrPCopy(@Buffer, 'MF-SID'); Size := SizeOf(Buffer); Index := 0;
-          if (HttpQueryInfo(Request, HTTP_QUERY_CUSTOM, @Buffer, Size, Index)) then
-            SetString(SID, PChar(@Buffer), Size);
+            StrPCopy(@Buffer, 'MF-SID'); Size := SizeOf(Buffer); Index := 0;
+            if (HttpQueryInfo(Request, HTTP_QUERY_CUSTOM, @Buffer, Size, Index)) then
+              SetString(SID, PChar(@Buffer), Size);
 
 
-          Direction := idRead;
+            Direction := idRead;
 
-          IOType := TMYSQL_IO.TType(Integer(High(TMYSQL_IO.TType)) + 1);
+            IOType := TMYSQL_IO.TType(Integer(High(TMYSQL_IO.TType)) + 1);
+          end;
         end;
       end;
     until (errno() <> CR_HTTPTUNNEL_REDIRECT);
@@ -480,11 +482,15 @@ var
 begin
   BytesRead := 0;
   repeat
-    Result := InternetReadFile(Request, @PAnsiChar(@AnsiChar(Buffer))[BytesRead], BytesToRead - BytesRead, Size);
+    if (BytesRead > 0) then
+      Write;
+    Result := InternetReadFile(Request, @my_char(@Buffer)[BytesRead], BytesToRead - BytesRead, Size);
     if (not Result) then
       Seterror(CR_SERVER_LOST)
     else
       Inc(BytesRead, Size);
+    if (BytesRead < BytesToRead) then
+      Write;
   until (not Result or (Size = 0) or (BytesRead = BytesToRead));
 end;
 

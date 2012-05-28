@@ -499,6 +499,7 @@ type
     procedure CMUpdateToolbar(var Message: TCMUpdateToolBar); message CM_UPDATETOOLBAR;
     procedure WMCopyData(var Msg: TWMCopyData); message WM_COPYDATA;
     procedure WMDrawItem(var Message: TWMDrawItem); message WM_DRAWITEM;
+    procedure WMHelp(var Message: TWMHelp); message WM_HELP;
     property ActiveTab: TFClient read GetActiveTab write SetActiveTab;
   protected
     procedure ApplicationException(Sender: TObject; E: Exception);
@@ -2370,6 +2371,12 @@ begin
   if ((Control is TTabControl) and TTabControl(Control).OwnerDraw) then
     Control.Perform(Message.Msg + CN_BASE, TMessage(Message).WParam, TMessage(Message).LParam)
   else
+    inherited;
+end;
+
+procedure TWWindow.WMHelp(var Message: TWMHelp);
+begin
+  if (Message.HelpInfo.iContextType = HELPINFO_MENUITEM) then
     inherited;
 end;
 

@@ -1555,7 +1555,7 @@ begin
       if ((TablesXML.ChildNodes[I].NodeName = 'table') and not Assigned(Database.TableByName(TablesXML.ChildNodes[I].Attributes['name']))) then
         TablesXML.ChildNodes.Delete(I);
 
-  if (Database.Tables.Actual) then
+  if (Database.Tables.Valid) then
     XMLNode(XML, 'tables', True).Attributes['count'] := IntToStr(Database.Tables.Count);
 end;
 
@@ -1623,8 +1623,13 @@ end;
 
 procedure TFClient.TWanted.SetInitialize(const AInitialize: TCClient.TInitialize);
 begin
-  Clear();
-  FInitialize := AInitialize;
+  if (not FClient.Client.InUse) then
+    AInitialize()
+  else
+  begin
+    Clear();
+    FInitialize := AInitialize;
+  end;
 end;
 
 procedure TFClient.TWanted.Synchronize();
@@ -2267,17 +2272,9 @@ begin
       LastObjectIDEAddress := Address;
 
     if (Client.Account.PackAddress(Address) = '/') then
-    begin
-      Wanted.Initialize := Client.Databases.Initialize;
-      if (not Client.InUse) then
-        Wanted.Execute();
-    end
+      Wanted.Initialize := Client.Databases.Initialize
     else if (Client.Account.PackAddress(Address) = '/?system=processes') then
-    begin
       Wanted.Initialize := Client.Processes.Initialize;
-      if (not Client.InUse) then
-        Wanted.Execute();
-    end;
   end;
 end;
 
@@ -3911,8 +3908,11 @@ begin
   if ((Window.ActiveControl = ActiveSynMemo) and (Client.ServerVersion >= 40100)) then
   begin
     CallHelp := False;
+
     SQLHelp();
-  end;
+  end
+  else
+    CallHelp := True;
 
   Result := True;
 end;
@@ -4369,9 +4369,6 @@ begin
           ActiveWorkbench.EndUpdate();
         end;
     end;
-
-  if (Assigned(ClientEvent) and (ClientEvent.EventType = ceCreated) and (ClientEvent.CItem is TCDBObject)) then
-    Wanted.Initialize := TCDBObject(ClientEvent.CItem).Initialize;
 end;
 
 procedure TFClient.CMActivateFGrid(var Message: TMessage);
@@ -7819,9 +7816,9 @@ begin
       end;
 
       Node.HasChildren := (Node.Count > 0)
-        or not Database.Tables.Actual or (Database.Tables.Count > 0)
-        or (Assigned(Database.Routines) and ((Database.Routines.Count > 0) or not Database.Routines.Actual))
-        or (Assigned(Database.Events) and ((Database.Events.Count > 0) or not Database.Events.Actual));
+        or not Database.Tables.Valid or (Database.Tables.Count > 0)
+        or (Assigned(Database.Routines) and ((Database.Routines.Count > 0) or not Database.Routines.Valid))
+        or (Assigned(Database.Events) and ((Database.Events.Count > 0) or not Database.Events.Valid));
     end;
   end
   else if (ClientEvent.Sender is TCTable) then
@@ -8057,11 +8054,12 @@ begin
       ceStatus:
         ClientRefresh(ClientEvent);
       ceAltered:
+        // ToDo: ceAltered
+        // Innerhalb vom Import ein Problem!
+        // Innerhalb vom Object Browser - muss Initialize aufgerufen werden!
+        // Wie lösen?
         if (ClientEvent.CItem is TCObject) then
-          if (not Client.InUse) then
-            TCObject(ClientEvent.CItem).Initialize()
-          else
-            Wanted.Initialize := TCObject(ClientEvent.CItem).Initialize;
+          Wanted.Initialize := TCObject(ClientEvent.CItem).Initialize;
       ceInitialize:
         Wanted.Initialize := ClientEvent.Initialize;
       ceMonitor:
@@ -10409,7 +10407,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         Item.SubItems.Add(ReplaceStr(Preferences.LoadStr(738), '&', ''))
       else
         Item.SubItems.Add('???');
-      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ActualStatus) then
+      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ValidStatus) then
         Item.SubItems.Add('')
       else if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(TCTable(Data)).Rows < 0)) then
         Item.SubItems.Add('???')
@@ -10419,17 +10417,17 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         Item.SubItems.Add(FormatFloat('#,##0', TCBaseTable(TCTable(Data)).Rows, LocaleFormatSettings))
       else
         Item.SubItems.Add('');
-      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ActualStatus) then
+      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ValidStatus) then
         Item.SubItems.Add('')
       else if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize < 0)) then
         Item.SubItems.Add('???')
       else if ((TCTable(Data) is TCBaseTable)) then
         Item.SubItems.Add(SizeToStr(TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize + 1))
-      else if ((TCTable(Data) is TCView) and TCView(TCTable(Data)).ActualSource) then
+      else if ((TCTable(Data) is TCView) and TCView(TCTable(Data)).ValidSource) then
         Item.SubItems.Add(SizeToStr(Length(TCView(TCTable(Data)).Source)))
       else
         Item.SubItems.Add('');
-      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ActualStatus) then
+      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ValidStatus) then
         Item.SubItems.Add('')
       else if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(TCTable(Data)).Updated <= 0)) then
         Item.SubItems.Add('???')
@@ -10465,7 +10463,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         rtFunction: Item.SubItems.Add('Function');
       end;
       Item.SubItems.Add('');
-      if (not TCRoutine(Data).ActualSource) then
+      if (not TCRoutine(Data).ValidSource) then
         Item.SubItems.Add('')
       else
         Item.SubItems.Add(SizeToStr(Length(TCRoutine(Data).Source)));
@@ -10486,7 +10484,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
       Item.Caption := TCEvent(Data).Name;
       Item.SubItems.Add('TCEvent(Data)');
       Item.SubItems.Add('');
-      if (not TCEvent(Data).ActualSource) then
+      if (not TCEvent(Data).ValidSource) then
         Item.SubItems.Add('')
       else
         Item.SubItems.Add(SizeToStr(Length(TCEvent(Data).Source)));

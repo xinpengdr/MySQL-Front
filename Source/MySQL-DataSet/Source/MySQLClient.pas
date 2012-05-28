@@ -1595,7 +1595,7 @@ function TMySQL_File.ReceivePacket(): Boolean;
               Result := Result and ReallocBuffer(PacketBuffer, PacketOffset + UncompressedSize);
 
             try
-              ZDecompress(@PacketBuffer.Mem[PacketOffset + NET_HEADER_SIZE + COMP_HEADER_SIZE], UncompressedSize, DecompressBuffer, DecompressedSize);
+              ZDecompress(@PacketBuffer.Mem[PacketOffset + NET_HEADER_SIZE + COMP_HEADER_SIZE], PacketBuffer.TotalSize - (PacketOffset + NET_HEADER_SIZE + COMP_HEADER_SIZE), DecompressBuffer, DecompressedSize);
               Move(DecompressBuffer^, PacketBuffer.Mem[PacketOffset], UncompressedSize);
               FreeMem(DecompressBuffer);
             except
