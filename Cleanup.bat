@@ -17,8 +17,8 @@ CD "%CleanRootPath%"
 
 if exist "%CleanPublishPath%" RMDIR /S /Q "%CleanPublishPath%"
 if exist "%CleanTempPath%" RMDIR /S /Q "%CleanTempPath%"
-mkdir "%CleanTempPath%"
-copy "%CleanSourcePath%\FastMM\FastMM_FullDebugMode.dll" "%CleanTempPath%" > nul
+MKDIR "%CleanTempPath%"
+COPY "%CleanSourcePath%\FastMM\FastMM_FullDebugMode.dll" "%CleanTempPath%" > nul
 
 for /D /R %%I in (*) do (
   if exist "%%I\__history" RMDIR /S /Q %%I\__history"

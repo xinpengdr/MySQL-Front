@@ -323,7 +323,7 @@ end;
 
 procedure TDView.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if (Event.EventType in [ceBuild, ceUpdated]) then
+  if (Event.EventType in [ceBuild]) then
     Initialized();
 end;
 

@@ -176,14 +176,11 @@ end;
 
 procedure TDForeignKey.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType = ceBuild) and (Event.Sender = Database.Tables)
-    or (Event.EventType = ceUpdated) and (Event.CItem = Table)) then
+  if ((Event.EventType = ceBuild) and (Event.Sender = Database.Tables)) then
     FTableChange(Event.Sender)
-  else if ((Event.EventType = ceBuild) and (Event.Sender = Table.Client.Databases)
-    or (Event.EventType = ceUpdated) and (Event.CItem = SelectedParentDatabase)) then
+  else if ((Event.EventType = ceBuild) and (Event.Sender = Table.Client.Databases)) then
     FParentDatabaseChange(Event.Sender)
-  else if ((Event.EventType = ceBuild) and (Event.Sender = SelectedParentDatabase.Tables)
-    or (Event.EventType = ceUpdated) and (Event.CItem = SelectedParentTable)) then
+  else if ((Event.EventType = ceBuild) and (Event.Sender = SelectedParentDatabase.Tables)) then
     FParentTableChange(Event.Sender);
 end;
 

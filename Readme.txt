@@ -29,7 +29,7 @@ https://launchpad.net/dcr/
 Note: MPHexEditor was developed by Markus Stephany, who stopped his work.
 Later on the Delphi Code Revival project worked on it - but seems not
 very long. Inside this project there is a own transformation from Delphi 7
-to Delphi 2010.
+to Delphi XE2.
 
 
 Tools to build the setup program:
@@ -73,3 +73,5 @@ Building the setup program:
 ===========================
 
 The Setup Program will be built with the Built_Setup.bat file.
+
+With Cleanup.bat all temporary files can be deleted easily.

@@ -4085,30 +4085,26 @@ begin
     case (View) of
       avObjectBrowser,
       avObjectIDE:
-        begin
-          case (SelectedImageIndex) of
-            iiServer: Client.Clear();
-            iiDatabase,
-            iiSystemDatabase: Client.DatabaseByName(SelectedDatabase).Clear();
-            iiBaseTable,
-            iiSystemView:
-              begin
-                Client.DatabaseByName(SelectedDatabase).TableByName(SelectedTable).Clear();
-                Client.DatabaseByName(SelectedDatabase).Triggers.Clear();
-              end;
-            iiView: Client.DatabaseByName(SelectedDatabase).TableByName(SelectedTable).Clear();
-            iiProcedure: Client.DatabaseByName(SelectedDatabase).ProcedureByName(SelectedNavigator).Clear();
-            iiFunction: Client.DatabaseByName(SelectedDatabase).FunctionByName(SelectedNavigator).Clear();
-            iiEvent: Client.DatabaseByName(SelectedDatabase).EventByName(SelectedNavigator).Clear();
-            iiTrigger: Client.DatabaseByName(SelectedDatabase).TriggerByName(SelectedNavigator).Clear();
-            iiHosts: Client.Hosts.Clear();
-            iiProcesses: Client.Processes.Clear();
-            iiStati: Client.Stati.Clear();
-            iiUsers: Client.Users.Clear();
-            iiVariables: Client.Variables.Clear();
-          end;
-
-          Address := Address;
+        case (SelectedImageIndex) of
+          iiServer: Client.Refresh();
+          iiDatabase,
+          iiSystemDatabase: Client.DatabaseByName(SelectedDatabase).Refresh();
+          iiBaseTable,
+          iiSystemView:
+            begin
+              Client.DatabaseByName(SelectedDatabase).TableByName(SelectedTable).Refresh();
+              Client.DatabaseByName(SelectedDatabase).Triggers.Refresh();
+            end;
+          iiView: Client.DatabaseByName(SelectedDatabase).TableByName(SelectedTable).Refresh();
+          iiProcedure: Client.DatabaseByName(SelectedDatabase).ProcedureByName(SelectedNavigator).Refresh();
+          iiFunction: Client.DatabaseByName(SelectedDatabase).FunctionByName(SelectedNavigator).Refresh();
+          iiEvent: Client.DatabaseByName(SelectedDatabase).EventByName(SelectedNavigator).Refresh();
+          iiTrigger: Client.DatabaseByName(SelectedDatabase).TriggerByName(SelectedNavigator).Refresh();
+          iiHosts: Client.Hosts.Refresh();
+          iiProcesses: Client.Processes.Refresh();
+          iiStati: Client.Stati.Refresh();
+          iiUsers: Client.Users.Refresh();
+          iiVariables: Client.Variables.Refresh();
         end;
       avDataBrowser,
       avQueryBuilder,
@@ -4294,7 +4290,7 @@ begin
   OldAddress := Address;
 
   if (Assigned(ClientEvent)) then
-    if (ClientEvent.EventType in [ceBuild, ceUpdated, ceCreated, ceDroped, ceAltered]) then
+    if (ClientEvent.EventType in [ceBuild, ceCreated, ceDroped, ceAltered]) then
       FNavigatorRefresh(ClientEvent);
 
   if (Assigned(ClientEvent)) then
@@ -8048,7 +8044,6 @@ begin
   if (not (csDestroying in ComponentState)) then
     case (ClientEvent.EventType) of
       ceBuild,
-      ceUpdated,
       ceCreated,
       ceDroped,
       ceAltered,
@@ -9720,34 +9715,18 @@ procedure TFClient.ListViewCompare(Sender: TObject; Item1: TListItem;
   Item2: TListItem; Data: Integer; var Compare: Integer);
 const
   GroupSort = Chr(iiDatabase) + Chr(0) + Chr(iiTable) + Chr(iiProcedure) + Chr(iiEvent) + Chr(iiIndex) + Chr(iiField) + Chr(iiForeignKey) + Chr(iiTrigger) + Chr(iiHost) + Chr(iiProcess) + Chr(iiStatus) + Chr(iiUser) + Chr(iiVariable);
-  iiServerSort = Chr(iiDatabase) + Chr(iiHosts) + Chr(iiProcesses) + Chr(iiStati) + Chr(iiUsers) + Chr(iiVariables);
-  iiDatabaseSort = Chr(iiBaseTable) + Chr(iiView) + Chr(iiProcedure) + Chr(iiFunction) + Chr(iiEvent);
-  iiTableSort = Chr(iiIndex) + Chr(iiField) + Chr(iiForeignKey) + Chr(iiTrigger);
-  SourceImageIndex = Chr(iiSystemDatabase) + Chr(iiFunction);
-  DestImageIndex = Chr(iiDatabase) + Chr(iiProcedure);
 var
-  ImageIndex1: Integer;
-  ImageIndex2: Integer;
   String1: string;
   String2: string;
   SortRec: ^TListViewSortRec;
 begin
   SortRec := @TListViewSortRec(Pointer(Data)^);
 
-  ImageIndex1 := Item1.ImageIndex;
-  ImageIndex2 := Item2.ImageIndex;
-  if (Pos(Chr(ImageIndex1), SourceImageIndex) > 0) then ImageIndex1 := Ord(DestImageIndex[Pos(Chr(ImageIndex1), SourceImageIndex)]);
-  if (Pos(Chr(ImageIndex2), SourceImageIndex) > 0) then ImageIndex2 := Ord(DestImageIndex[Pos(Chr(ImageIndex2), SourceImageIndex)]);
-
   Compare := 0;
   if (Item1.GroupID <> Item2.GroupID) then
     Compare := Sign(Pos(Chr(Item1.GroupID), GroupSort) - Pos(Chr(Item2.GroupID), GroupSort))
-  else if ((ImageIndex1 <> ImageIndex2) and not ((ImageIndex1 in [iiBaseTable, iiSystemView, iiView]) and (ImageIndex2 in [iiBaseTable, iiSystemView, iiView]))) then
-    case (SortRec^.Kind) of
-      lkServer: Compare := Sign(Pos(Chr(ImageIndex1), iiServerSort) - Pos(Chr(ImageIndex2), iiServerSort));
-      lkDatabase: Compare := Sign(Pos(Chr(ImageIndex1), iiDatabaseSort) - Pos(Chr(ImageIndex2), iiDatabaseSort));
-      lkTable: Compare := Sign(Pos(Chr(ImageIndex1), iiTableSort) - Pos(Chr(ImageIndex2), iiTableSort));
-    end
+  else if (SortRec^.Order = 0) then
+    Compare := Sign(TCItem(Item1.Data).Index - TCItem(Item2.Data).Index)
   else
   begin
     if ((SortRec^.Index = 0) or (SortRec^.Index > Item1.SubItems.Count) or (SortRec^.Index > Item2.SubItems.Count)) then
@@ -9843,9 +9822,9 @@ begin
     end;
 
     if (Compare = 0) then
-      Compare := Sign(lstrcmp(PChar(String1), PChar(String2)));
+      Compare := Sign(lstrcmpi(PChar(String1), PChar(String2)));
     if (Compare = 0) then
-      Compare := Sign(lstrcmp(PChar(Item1.Caption), PChar(Item2.Caption)));
+      Compare := Sign(lstrcmpi(PChar(Item1.Caption), PChar(Item2.Caption)));
 
     Compare := ListViewSortData[SortRec^.Kind].Order * Compare;
   end;
@@ -10127,6 +10106,8 @@ begin
     ListView.Columns[2].Caption := Preferences.LoadStr(71);
     ListView.Columns[3].Caption := Preferences.LoadStr(72);
     ListView.Columns[4].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
+    if (Client.ServerVersion >= 40100) then
+      ListView.Columns[5].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
   end
   else if (TObject(Data) is TCView) then
   begin
@@ -10703,33 +10684,52 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
   procedure InsertItem(const Data: TObject);
   var
     Item: TListItem;
-    ItemIndex: Integer;
+    Index: Integer;
+    Left: Integer;
+    Mid: Integer;
+    Right: Integer;
   begin
-    ItemIndex := 0;
-    while ((ItemIndex < ListView.Items.Count) and (ListView.Items[ItemIndex].Data <> Data)) do
-      Inc(ItemIndex);
+    Index := 0;
+    while ((Index < ListView.Items.Count) and (ListView.Items[Index].Data <> Data)) do
+      Inc(Index);
 
-    if (ItemIndex = ListView.Items.Count) then
+    if (Index = ListView.Items.Count) then
     begin
       Item := TListItem.Create(ListView.Items);
       Item.Data := Data;
       UpdateItem(Item, Data);
-      ItemIndex := 0;
-      while ((ItemIndex < ListView.Items.Count)
-        and (Compare(Kind, ListView.Items[ItemIndex], Item) < 0)) do
-        Inc(ItemIndex);
+
+      if (ListView.Items.Count > 0) then
+      begin
+        Left := 0;
+        Right := ListView.Items.Count - 1;
+        while (Left <= Right) do
+        begin
+          Mid := (Right - Left) div 2 + Left;
+          case (Compare(Kind, Item, ListView.Items[Mid])) of
+            -1: Right := Mid - 1;
+            0: begin Index := Mid; break; end;
+            1: Left := Mid + 1;
+          end;
+        end;
+      end;
+
       Item.Free();
     end;
 
-    if ((ItemIndex = ListView.Items.Count) or (ListView.Items[ItemIndex].Data <> Data)) then
+    if (Index = ListView.Items.Count) then
     begin
-      if (ItemIndex < ListView.Items.Count) then
-        Item := ListView.Items.Insert(ItemIndex)
-      else
-        Item := ListView.Items.Add();
+      Item := ListView.Items.Add();
       Item.Data := Data;
-      UpdateItem(Item, Data);
-    end;
+    end
+    else if (ListView.Items[Index].Data <> Data) then
+    begin
+      Item := ListView.Items.Insert(Index);
+      Item.Data := Data;
+    end
+    else
+      Item := ListView.Items[Index];
+    UpdateItem(Item, Data);
   end;
 
   procedure UpdateGroup(const GroupID: Integer; const CItems: TCItems);
@@ -10750,7 +10750,6 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         end;
       ceCreated:
         InsertItem(ClientEvent.CItem);
-      ceUpdated,
       ceAltered:
         for I := 0 to ListView.Items.Count - 1 do
           if (ListView.Items[I].Data = ClientEvent.CItem) then
@@ -13049,7 +13048,7 @@ begin
         end;
     end;
 
-  if (Assigned(ActiveSynMemo.OnStatusChange)) then ActiveSynMemo.OnStatusChange(ActiveSynMemo, [scModified]);
+  if (Assigned(ActiveSynMemo) and Assigned(ActiveSynMemo.OnStatusChange)) then ActiveSynMemo.OnStatusChange(ActiveSynMemo, [scModified]);
 end;
 
 procedure TFClient.PWorkbenchRefresh(Sender: TObject);
