@@ -2,7 +2,7 @@ object FClient: TFClient
   Left = 0
   Top = 0
   Width = 591
-  Height = 710
+  Height = 712
   Align = alClient
   Constraints.MinHeight = 300
   Constraints.MinWidth = 200
@@ -12,7 +12,7 @@ object FClient: TFClient
   ExplicitHeight = 304
   object SLog: TSplitter_Ext
     Left = 0
-    Top = 662
+    Top = 664
     Width = 591
     Height = 4
     Cursor = crVSplit
@@ -31,7 +31,7 @@ object FClient: TFClient
     Left = 120
     Top = 27
     Width = 4
-    Height = 635
+    Height = 637
     AutoSnap = False
     Color = clBtnFace
     ParentColor = False
@@ -46,7 +46,7 @@ object FClient: TFClient
     Left = 0
     Top = 27
     Width = 120
-    Height = 635
+    Height = 637
     Align = alLeft
     BevelOuter = bvNone
     Color = clWindow
@@ -59,7 +59,7 @@ object FClient: TFClient
       Left = 0
       Top = 0
       Width = 120
-      Height = 635
+      Height = 637
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -71,7 +71,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 631
+        Height = 633
         HelpContext = 1112
         Align = alClient
         BorderStyle = bsNone
@@ -103,7 +103,7 @@ object FClient: TFClient
       Left = 0
       Top = 0
       Width = 120
-      Height = 635
+      Height = 637
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -115,7 +115,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 631
+        Height = 633
         HelpContext = 1082
         Align = alClient
         BorderStyle = bsNone
@@ -144,7 +144,7 @@ object FClient: TFClient
       Left = 0
       Top = 0
       Width = 120
-      Height = 635
+      Height = 637
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -157,7 +157,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 631
+        Height = 633
         HelpContext = 1038
         Align = alClient
         BorderStyle = bsNone
@@ -198,7 +198,7 @@ object FClient: TFClient
   end
   object PLog: TPanel_Ext
     Left = 0
-    Top = 666
+    Top = 668
     Width = 591
     Height = 44
     Align = alBottom
@@ -255,7 +255,7 @@ object FClient: TFClient
     Left = 124
     Top = 27
     Width = 467
-    Height = 635
+    Height = 637
     Align = alClient
     BevelOuter = bvNone
     Color = clWindow
@@ -267,7 +267,7 @@ object FClient: TFClient
     ExplicitHeight = 229
     object SResult: TSplitter_Ext
       Left = 0
-      Top = 419
+      Top = 421
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -286,7 +286,7 @@ object FClient: TFClient
     end
     object SBlob: TSplitter_Ext
       Left = 0
-      Top = 572
+      Top = 574
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -409,7 +409,7 @@ object FClient: TFClient
     end
     object PResult: TPanel_Ext
       Left = 0
-      Top = 442
+      Top = 444
       Width = 467
       Height = 130
       Align = alBottom
@@ -704,7 +704,7 @@ object FClient: TFClient
         Left = 43
         Top = 1
         Width = 15
-        Height = 21
+        Height = 22
         Associate = FOffset
         Max = 2147483647
         TabOrder = 1
@@ -726,7 +726,7 @@ object FClient: TFClient
         Left = 95
         Top = 1
         Width = 15
-        Height = 21
+        Height = 22
         Associate = FLimit
         Min = 1
         Max = 2147483647
@@ -913,7 +913,7 @@ object FClient: TFClient
     end
     object PBlob: TPanel_Ext
       Left = 0
-      Top = 576
+      Top = 578
       Width = 467
       Height = 59
       Align = alBottom
@@ -1143,7 +1143,7 @@ object FClient: TFClient
     end
     object SBResult: TStatusBar
       Left = 0
-      Top = 423
+      Top = 425
       Width = 467
       Height = 19
       Panels = <

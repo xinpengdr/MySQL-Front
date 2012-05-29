@@ -678,8 +678,6 @@ type
       function GetGridXML(FieldName: string): IXMLNode;
       function GetLimit(): Integer;
       function GetLimited(): Boolean;
-      function GetListView(): TListView;
-      function GetListViewCreated(): Boolean; inline;
       function GetTable(): TCTable; inline;
       function GetXML(): IXMLNode;
       procedure SetColumnIndex(Index: Integer; const Value: Integer);
@@ -695,6 +693,7 @@ type
     public
       procedure AddFilter(const AFilter: string);
       constructor Create(const AFClient: TFClient; const ATable: TCTable);
+      procedure CreateListView(); virtual;
       destructor Destroy(); override;
       property Columns: Integer read GetColunns;
       property ColumnIndices[Index: Integer]: Integer read GetColumnIndex write SetColumnIndex;
@@ -704,8 +703,7 @@ type
       property GridWidths[FieldName: string]: Integer read GetGridWidth write SetGridWidth;
       property Limit: Integer read GetLimit write SetLimit;
       property Limited: Boolean read GetLimited write SetLimited;
-      property ListView: TListView read GetListView;
-      property ListViewCreated: Boolean read GetListViewCreated;
+      property ListView: TListView read FListView write FListView;
       property Table: TCTable read GetTable;
       property XML: IXMLNode read GetXML;
     end;
@@ -758,8 +756,6 @@ type
       FFClient: TFClient;
       FXML: IXMLNode;
       function GetDatabase(): TCDatabase; inline;
-      function GetListView(): TListView;
-      function GetListViewCreated(): Boolean; inline;
       function GetWorkbench(): TWWorkbench;
       function GetXML(): IXMLNode;
     protected
@@ -769,12 +765,12 @@ type
     public
       procedure CloseQuery(Sender: TObject; var CanClose: Boolean);
       constructor Create(const AFClient: TFClient; const ADatabase: TCDatabase);
+      procedure CreateListView(); virtual;
       destructor Destroy(); override;
       function TableCount(): Integer; override;
       procedure SaveToXML(); override;
       property Database: TCDatabase read GetDatabase;
-      property ListView: TListView read GetListView;
-      property ListViewCreated: Boolean read GetListViewCreated;
+      property ListView: TListView read FListView write FListView;
       property Workbench: TWWorkbench read GetWorkbench;
       property XML: IXMLNode read GetXML;
     end;
@@ -1166,6 +1162,15 @@ begin
   FXML := nil;
 end;
 
+procedure TFClient.TTableDesktop.CreateListView();
+begin
+  if (not Assigned(FListView)) then
+  begin
+    FClient.CreateListView(Table, Table, FListView);
+    Table.Tables.PushBuildEvent(Table);
+  end;
+end;
+
 destructor TFClient.TTableDesktop.Destroy();
 begin
   inherited;
@@ -1293,19 +1298,6 @@ begin
   end;
 
   Result := FXML;
-end;
-
-function TFClient.TTableDesktop.GetListView(): TListView;
-begin
-  if (not Assigned(FListView)) then
-    FClient.CreateListView(Table, Table, FListView);
-
-  Result := FListView;
-end;
-
-function TFClient.TTableDesktop.GetListViewCreated(): Boolean;
-begin
-  Result := Assigned(FListView);
 end;
 
 function TFClient.TTableDesktop.GetTable(): TCTable;
@@ -1486,6 +1478,19 @@ begin
   FXML := nil;
 end;
 
+procedure TFClient.TDatabaseDesktop.CreateListView();
+begin
+  if (not Assigned(FListView)) then
+  begin
+    FClient.CreateListView(Database, Database, FListView);
+    Database.Tables.PushBuildEvent(Database);
+    if (Assigned(Database.Routines)) then
+      Database.Routines.PushBuildEvent(Database);
+    if (Assigned(Database.Events)) then
+      Database.Events.PushBuildEvent(Database);
+  end;
+end;
+
 destructor TFClient.TDatabaseDesktop.Destroy();
 begin
   if (Assigned(FListView)) then
@@ -1532,22 +1537,6 @@ begin
   end;
 
   Result := FXML;
-end;
-
-function TFClient.TDatabaseDesktop.GetListView(): TListView;
-begin
-  if (not Assigned(FListView)) then
-  begin
-    FClient.CreateListView(Database, Database, FListView);
-    Database.PushBuildEvents(nil);
-  end;
-
-  Result := FListView;
-end;
-
-function TFClient.TDatabaseDesktop.GetListViewCreated(): Boolean;
-begin
-  Result := Assigned(FListView);
 end;
 
 function TFClient.TDatabaseDesktop.GetWorkbench(): TWWorkbench;
@@ -4312,15 +4301,12 @@ begin
     if (ClientEvent.Sender is TCDatabase) then
     begin
       ListViewRefresh(ClientEvent, lkServer, FServerListView);
-      if (TDatabaseDesktop(TCDatabase(ClientEvent.Sender).Desktop).ListViewCreated) then
-        ListViewRefresh(ClientEvent, lkDatabase, TDatabaseDesktop(TCDatabase(ClientEvent.Sender).Desktop).FListView);
+      ListViewRefresh(ClientEvent, lkDatabase, TDatabaseDesktop(TCDatabase(ClientEvent.Sender).Desktop).FListView);
     end
     else if (ClientEvent.Sender is TCTable) then
     begin
-      if (TDatabaseDesktop(TCTable(ClientEvent.Sender).Database.Desktop).ListViewCreated) then
-        ListViewRefresh(ClientEvent, lkDatabase, TDatabaseDesktop(TCTable(ClientEvent.Sender).Database.Desktop).ListView);
-      if (TTableDesktop(TCTable(ClientEvent.Sender).Desktop).ListViewCreated) then
-        ListViewRefresh(ClientEvent, lkTable, TTableDesktop(TCTable(ClientEvent.Sender).Desktop).ListView);
+      ListViewRefresh(ClientEvent, lkDatabase, TDatabaseDesktop(TCTable(ClientEvent.Sender).Database.Desktop).ListView);
+      ListViewRefresh(ClientEvent, lkTable, TTableDesktop(TCTable(ClientEvent.Sender).Desktop).ListView);
     end
     else if (ClientEvent.CItems is TCHosts) then
     begin
@@ -5560,7 +5546,7 @@ begin
 
   SetWindowLong(ListView_GetHeader(ListView.Handle), GWL_STYLE, GetWindowLong(ListView_GetHeader(FServerListView.Handle), GWL_STYLE) or HDS_DRAGDROP);
 
-  PListView.InsertControl(ListView);
+  ListView.Parent := PListView;
 
   ListView.Perform(CM_PARENTCOLORCHANGED, 0, 0);
   ListView.Perform(CM_PARENTFONTCHANGED, 0, 0);
@@ -8080,10 +8066,6 @@ begin
       ceStatus:
         ClientRefresh(ClientEvent);
       ceAltered:
-        // ToDo: ceAltered
-        // Innerhalb vom Import ein Problem!
-        // Innerhalb vom Object Browser - muss Update aufgerufen werden!
-        // Wie lösen?
         if (ClientEvent.CItem is TCObject) then
           Wanted.Update := TCObject(ClientEvent.CItem).Update;
       ceInitialize:
@@ -9239,7 +9221,6 @@ begin
         end;
       end;
 {
-ToDo: Implement this...
     for I := 0 to Database.Tables.Count - 1 do
       if ((Database.Tables[I] is TCBaseTable) and (Database.Tables[I] <> Table)) then
         for J := 0 to TCBaseTable(Database.Tables[I]).ForeignKeys.Count - 1 do
@@ -9276,10 +9257,20 @@ begin
     case (FNavigator.Selected.ImageIndex) of
       iiServer: Result := FServerListView;
       iiDatabase,
-      iiSystemDatabase: Result := TDatabaseDesktop(TCDatabase(FNavigator.Selected.Data).Desktop).ListView;
+      iiSystemDatabase:
+        begin
+          if (not Assigned(TDatabaseDesktop(TCDatabase(FNavigator.Selected.Data).Desktop).ListView)) then
+            TDatabaseDesktop(TCDatabase(FNavigator.Selected.Data).Desktop).CreateListView();
+          Result := TDatabaseDesktop(TCDatabase(FNavigator.Selected.Data).Desktop).ListView;
+        end;
       iiBaseTable,
       iiSystemView,
-      iiView: Result := TTableDesktop(TCTable(FNavigator.Selected.Data).Desktop).ListView;
+      iiView:
+        begin
+          if (not Assigned(TTableDesktop(TCTable(FNavigator.Selected.Data).Desktop).ListView)) then
+            TTableDesktop(TCTable(FNavigator.Selected.Data).Desktop).CreateListView();
+          Result := TTableDesktop(TCTable(FNavigator.Selected.Data).Desktop).ListView;
+        end;
       iiHosts:
         begin
           if (not Assigned(HostsListView)) then
@@ -11210,11 +11201,7 @@ begin
             MainAction('aDEditField').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField);
             MainAction('aDEditForeignKey').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiForeignKey);
             MainAction('aDEditTrigger').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiTrigger);
-try
             MainAction('aDEmpty').Enabled := (ActiveListView.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex = iiField) and (BaseTable.FieldByName(Item.Caption).NullAllowed);
-except
-            MainAction('aDEmpty').Enabled := (ActiveListView.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex = iiField) and (BaseTable.FieldByName(Item.Caption).NullAllowed);
-end;
             aDDelete.Enabled := (ActiveListView.SelCount >= 1);
 
             for I := 0 to ActiveListView.Items.Count - 1 do

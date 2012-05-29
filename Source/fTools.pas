@@ -3958,7 +3958,10 @@ var
 begin
   DoFileCreate(Filename);
 
-  Content := Content + '# Host: ' + Client.Host;
+  if (Client.Host = LOCAL_HOST_NAMEDPIPE) then
+    Content := Content + '# Host: ' + LOCAL_HOST
+  else
+    Content := Content + '# Host: ' + Client.Host;
   if (Client.Port <> MYSQL_PORT) then
     Content := Content + ':' + IntToStr(Client.Port);
   Content := Content + '  (Version: ' + Client.ServerVersionStr + ')' + #13#10;

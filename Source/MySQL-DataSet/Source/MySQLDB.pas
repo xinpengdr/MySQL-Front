@@ -2314,7 +2314,7 @@ begin
   Lib.mysql_options(SynchroThread.LibHandle, MYSQL_OPT_READ_TIMEOUT, my_char(RawByteString(IntToStr(NET_WAIT_TIMEOUT))));
   Lib.mysql_options(SynchroThread.LibHandle, MYSQL_OPT_WRITE_TIMEOUT, my_char(RawByteString(IntToStr(NET_WAIT_TIMEOUT))));
   Lib.mysql_options(SynchroThread.LibHandle, MYSQL_SET_CHARSET_NAME, my_char(RawByteString(FCharset)));
-  if (Compression) then // ToDo: Enable Compression for HTTP Tunnel
+  if (Compression) then
     Lib.mysql_options(SynchroThread.LibHandle, MYSQL_OPT_COMPRESS, nil);
   if (LibraryType = ltHTTP) then
   begin
@@ -2331,7 +2331,7 @@ begin
     ClientFlag := ClientFlag or CLIENT_CONNECT_WITH_DB;
   if (Assigned(Lib.mysql_more_results) and Assigned(Lib.mysql_next_result)) then
     ClientFlag := ClientFlag or CLIENT_MULTI_STATEMENTS or CLIENT_MULTI_RESULTS;
-  if (Compression) then // ToDo: Enable Compression for HTTP Tunnel
+  if (Compression) then
     ClientFlag := ClientFlag or CLIENT_COMPRESS;
 
   SynchroThread.Success := Assigned(Lib.mysql_real_connect(SynchroThread.LibHandle,

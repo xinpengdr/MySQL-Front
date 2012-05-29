@@ -1252,8 +1252,6 @@ begin
     if (NewTabIndex >= 0) then
       Perform(CM_ACTIVATETAB, 0, LPARAM(Tabs[NewTabIndex]));
 
-// ToDo:    Message.Tab.Visible := False;
-//    PWorkSpace.RemoveControl(Message.Tab);
     Message.Tab.Free();
 
     TBTabControl.Visible := Preferences.TabsVisible or not Preferences.TabsVisible and (Tabs.Count >= 2);

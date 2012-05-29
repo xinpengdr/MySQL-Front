@@ -55,6 +55,7 @@ type
   TCEvent = class;
   TCEvents = class;
   TCDatabase = class;
+  TCDatabases = class;
   TCVariable = class;
   TCVariables = class;
   TCUserRight = class;
@@ -875,7 +876,7 @@ type
 
   TCTriggers = class(TCDBObjects)
   private
-    function GetTrigger(Index: Integer): TCTrigger;
+    function GetTrigger(Index: Integer): TCTrigger; inline;
   protected
     function Add(const AEntity: TCEntity; const ExecuteEvent: Boolean = False): Integer; override;
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean; override;
@@ -963,6 +964,7 @@ type
     function GetCollation(): string;
     function GetCount(): Integer;
     function GetCreated(): TDateTime;
+    function GetDatabases(): TCDatabases; inline;
     function GetPrefetchObjects(): Boolean;
     function GetSize(): Int64;
     function GetUpdated(): TDateTime;
@@ -1024,6 +1026,7 @@ type
     property Count: Integer read GetCount;
     property Collation: string read GetCollation write FCollation;
     property Created: TDateTime read GetCreated;
+    property Databases: TCDatabases read GetDatabases;
     property Events: TCEvents read FEvents;
     property Routines: TCRoutines read FRoutines;
     property Size: Int64 read GetSize;
@@ -6168,7 +6171,7 @@ begin
       Trigger[Index].FValid := True;
 
       if (Database.Client.ServerVersion < 50121) then
-        Trigger[Index].FSource := Trigger[Index].GetSourceEx();
+        Trigger[Index].SetSource(Trigger[Index].GetSourceEx());
     until (not DataSet.FindNext());
 
   Result := inherited;
@@ -6908,6 +6911,13 @@ begin
   for I := 0 to Tables.Count - 1 do
     if ((Tables[I] is TCBaseTable) and (TCBaseTable(Tables[I]).Created >= 0) and ((Result = 0) or (Result > TCBaseTable(Tables[I]).Created))) then
       Result := TCBaseTable(Tables[I]).Created;
+end;
+
+function TCDatabase.GetDatabases(): TCDatabases;
+begin
+  Assert(CItems is TCDatabases);
+
+  Result := TCDatabases(CItems);
 end;
 
 function TCDatabase.GetDefaultCharset(): string;
@@ -11658,7 +11668,7 @@ begin
       until (not SQLParseChar(Parse, ','))
     else if (SQLParseKeyword(Parse, 'GRANT')) then
       begin
-        while (not SQLParseEnd(Parse) and not SQLParseKeyword(Parse, 'TO', False)) do
+        while (not SQLParseChar(Parse, ';') and not SQLParseEnd(Parse) and not SQLParseKeyword(Parse, 'TO', False)) do
           SQLParseValue(Parse);
         if (SQLParseKeyword(Parse, 'TO')) then
           repeat
@@ -11666,7 +11676,7 @@ begin
             User := UserByName(ObjectName);
             if (Assigned(User)) then
               ExecuteEvent(ceAltered, Self, Users, User);
-            while (not SQLParseEnd(Parse) and not SQLParseKeyword(Parse, 'REQUIRE', False) and not SQLParseKeyword(Parse, 'WITH', False) and not SQLParseChar(Parse, ',', False)) do
+            while (not SQLParseChar(Parse, ';') and not SQLParseEnd(Parse) and not SQLParseKeyword(Parse, 'REQUIRE', False) and not SQLParseKeyword(Parse, 'WITH', False) and not SQLParseChar(Parse, ',', False)) do
               SQLParseValue(Parse);
           until (not SQLParseChar(Parse, ','));
       end
@@ -11685,7 +11695,9 @@ begin
     else if (SQLParseKeyword(Parse, 'DROP USER')) then
       repeat
         ObjectName := SQLParseValue(Parse);
-        Users.Delete(TCUser.Create(Users, ObjectName));
+        User := UserByName(ObjectName);
+        if (Assigned(User)) then
+          Users.Delete(User);
       until (not SQLParseChar(Parse, ','))
 end;
 
