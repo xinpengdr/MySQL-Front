@@ -412,7 +412,7 @@ begin
 
   if (not Assigned(SelectedParentDatabase)) then
     FParentTable.Cursor := crDefault
-  else if (SelectedParentDatabase.Initialize()) then
+  else if (SelectedParentDatabase.Update()) then
     FParentTable.Cursor := crSQLWait
   else
   begin
@@ -435,7 +435,7 @@ begin
 
   if (not Assigned(SelectedParentTable)) then
     FParentFields.Cursor := crDefault
-  else if (SelectedParentDatabase.Initialize(SelectedParentTable)) then
+  else if (SelectedParentDatabase.Update(SelectedParentTable)) then
     FParentFields.Cursor := crSQLWait
   else
   begin
@@ -457,7 +457,7 @@ begin
 
   if (not Assigned(Table)) then
     FFields.Cursor := crDefault
-  else if (Table.Initialize()) then
+  else if (Table.Update()) then
     FFields.Cursor := crSQLWait
   else
   begin

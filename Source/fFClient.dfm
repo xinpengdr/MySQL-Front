@@ -2,27 +2,17 @@ object FClient: TFClient
   Left = 0
   Top = 0
   Width = 591
-  Height = 708
+  Height = 710
   Align = alClient
   Constraints.MinHeight = 300
   Constraints.MinWidth = 200
-  DoubleBuffered = False
-  Color = clWindow
-  Font.Charset = DEFAULT_CHARSET
-  Font.Color = clWindowText
-  Font.Height = -11
-  Font.Name = 'Tahoma'
-  Font.Style = []
-  ParentColor = False
-  ParentDoubleBuffered = False
-  ParentFont = False
   TabOrder = 0
   Visible = False
   OnResize = FormResize
   ExplicitHeight = 304
   object SLog: TSplitter_Ext
     Left = 0
-    Top = 660
+    Top = 662
     Width = 591
     Height = 4
     Cursor = crVSplit
@@ -41,7 +31,7 @@ object FClient: TFClient
     Left = 120
     Top = 27
     Width = 4
-    Height = 633
+    Height = 635
     AutoSnap = False
     Color = clBtnFace
     ParentColor = False
@@ -56,7 +46,7 @@ object FClient: TFClient
     Left = 0
     Top = 27
     Width = 120
-    Height = 633
+    Height = 635
     Align = alLeft
     BevelOuter = bvNone
     Color = clWindow
@@ -69,7 +59,7 @@ object FClient: TFClient
       Left = 0
       Top = 0
       Width = 120
-      Height = 633
+      Height = 635
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -81,7 +71,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 629
+        Height = 631
         HelpContext = 1112
         Align = alClient
         BorderStyle = bsNone
@@ -113,7 +103,7 @@ object FClient: TFClient
       Left = 0
       Top = 0
       Width = 120
-      Height = 633
+      Height = 635
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -125,7 +115,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 629
+        Height = 631
         HelpContext = 1082
         Align = alClient
         BorderStyle = bsNone
@@ -154,7 +144,7 @@ object FClient: TFClient
       Left = 0
       Top = 0
       Width = 120
-      Height = 633
+      Height = 635
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -167,7 +157,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 629
+        Height = 631
         HelpContext = 1038
         Align = alClient
         BorderStyle = bsNone
@@ -208,7 +198,7 @@ object FClient: TFClient
   end
   object PLog: TPanel_Ext
     Left = 0
-    Top = 664
+    Top = 666
     Width = 591
     Height = 44
     Align = alBottom
@@ -265,7 +255,7 @@ object FClient: TFClient
     Left = 124
     Top = 27
     Width = 467
-    Height = 633
+    Height = 635
     Align = alClient
     BevelOuter = bvNone
     Color = clWindow
@@ -277,7 +267,7 @@ object FClient: TFClient
     ExplicitHeight = 229
     object SResult: TSplitter_Ext
       Left = 0
-      Top = 417
+      Top = 419
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -296,7 +286,7 @@ object FClient: TFClient
     end
     object SBlob: TSplitter_Ext
       Left = 0
-      Top = 570
+      Top = 572
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -419,7 +409,7 @@ object FClient: TFClient
     end
     object PResult: TPanel_Ext
       Left = 0
-      Top = 440
+      Top = 442
       Width = 467
       Height = 130
       Align = alBottom
@@ -702,7 +692,7 @@ object FClient: TFClient
         Left = 0
         Top = 1
         Width = 43
-        Height = 21
+        Height = 22
         Ctl3D = True
         ParentCtl3D = False
         TabOrder = 0
@@ -724,7 +714,7 @@ object FClient: TFClient
         Left = 59
         Top = 1
         Width = 36
-        Height = 21
+        Height = 22
         Ctl3D = True
         ParentCtl3D = False
         TabOrder = 2
@@ -766,7 +756,7 @@ object FClient: TFClient
         Left = 142
         Top = 1
         Width = 442
-        Height = 21
+        Height = 22
         Anchors = [akLeft, akTop, akRight]
         Constraints.MinWidth = 123
         TabOrder = 5
@@ -864,7 +854,7 @@ object FClient: TFClient
         TabOrder = 1
         TitleFont.Charset = DEFAULT_CHARSET
         TitleFont.Color = clWindowText
-        TitleFont.Height = -11
+        TitleFont.Height = -12
         TitleFont.Name = 'Tahoma'
         TitleFont.Style = []
         OnColEnter = DBGridColEnter
@@ -923,7 +913,7 @@ object FClient: TFClient
     end
     object PBlob: TPanel_Ext
       Left = 0
-      Top = 574
+      Top = 576
       Width = 467
       Height = 59
       Align = alBottom
@@ -950,8 +940,7 @@ object FClient: TFClient
         Top = 2
         Width = 463
         Height = 23
-        ButtonHeight = 21
-        ButtonWidth = 86
+        ButtonWidth = 97
         Color = clBtnFace
         ParentColor = False
         ParentShowHint = False
@@ -971,7 +960,7 @@ object FClient: TFClient
           Style = tbsCheck
         end
         object tbBlobRTF: TToolButton
-          Left = 65
+          Left = 74
           Top = 0
           Action = aVBlobRTF
           AutoSize = True
@@ -981,7 +970,7 @@ object FClient: TFClient
           Style = tbsCheck
         end
         object tbBlobHTML: TToolButton
-          Left = 127
+          Left = 143
           Top = 0
           Action = aVBlobHTML
           AutoSize = True
@@ -991,7 +980,7 @@ object FClient: TFClient
           Style = tbsCheck
         end
         object tbBlobImage: TToolButton
-          Left = 189
+          Left = 213
           Top = 0
           Action = aVBlobImage
           AutoSize = True
@@ -1001,7 +990,7 @@ object FClient: TFClient
           Style = tbsCheck
         end
         object tbBlobHexEditor: TToolButton
-          Left = 262
+          Left = 295
           Top = 0
           Action = aVBlobHexEditor
           AutoSize = True
@@ -1011,10 +1000,10 @@ object FClient: TFClient
           Style = tbsCheck
         end
         object tbBlobSpacer: TPanel_Ext
-          Left = 352
+          Left = 396
           Top = 0
           Width = 49
-          Height = 21
+          Height = 22
           BevelOuter = bvNone
           ParentBackground = False
           ParentShowHint = False
@@ -1022,10 +1011,10 @@ object FClient: TFClient
           TabOrder = 1
         end
         object FBlobSearch: TEdit
-          Left = 401
+          Left = 445
           Top = 0
           Width = 136
-          Height = 21
+          Height = 22
           AutoSize = False
           TabOrder = 0
           OnChange = FBlobSearchChange
@@ -1154,7 +1143,7 @@ object FClient: TFClient
     end
     object SBResult: TStatusBar
       Left = 0
-      Top = 421
+      Top = 423
       Width = 467
       Height = 19
       Panels = <
@@ -1249,7 +1238,9 @@ object FClient: TFClient
       Width = 465
       Height = 27
       BevelOuter = bvNone
+      DoubleBuffered = False
       ParentBackground = False
+      ParentDoubleBuffered = False
       TabOrder = 1
       object ToolBar: TToolBar
         Left = 0
@@ -1259,11 +1250,13 @@ object FClient: TFClient
         Align = alClient
         AutoSize = True
         BorderWidth = 2
-        ButtonHeight = 19
-        ButtonWidth = 93
+        ButtonHeight = 20
+        ButtonWidth = 105
         Color = clBtnFace
+        DoubleBuffered = False
         List = True
         ParentColor = False
+        ParentDoubleBuffered = False
         PopupMenu = MToolBar
         ShowCaptions = True
         TabOrder = 0
@@ -1278,7 +1271,7 @@ object FClient: TFClient
           Style = tbsCheck
         end
         object tbDataBrowser: TToolButton
-          Left = 97
+          Left = 109
           Top = 0
           AutoSize = True
           Caption = 'tbDataBrowser'
@@ -1287,7 +1280,7 @@ object FClient: TFClient
           Style = tbsCheck
         end
         object tbObjectIDE: TToolButton
-          Left = 185
+          Left = 206
           Top = 0
           AutoSize = True
           Caption = 'tbObjectIDE'
@@ -1296,7 +1289,7 @@ object FClient: TFClient
           Visible = False
         end
         object tbQueryBuilder: TToolButton
-          Left = 255
+          Left = 285
           Top = 0
           AutoSize = True
           Caption = 'tbQueryBuilder'
@@ -1305,7 +1298,7 @@ object FClient: TFClient
           Style = tbsCheck
         end
         object tbSQLEditor: TToolButton
-          Left = 343
+          Left = 382
           Top = 0
           AutoSize = True
           Caption = 'tbSQLEditor'
@@ -1314,7 +1307,7 @@ object FClient: TFClient
           Style = tbsCheck
         end
         object tbDiagram: TToolButton
-          Left = 416
+          Left = 464
           Top = 0
           AutoSize = True
           Caption = 'tbDiagram'

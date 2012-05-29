@@ -425,7 +425,7 @@ begin
   begin
     FName.Text := View.Name;
 
-    PageControl.Visible := not View.Initialize();
+    PageControl.Visible := not View.Update();
     FSQLWait.Visible := not PageControl.Visible;
     if (PageControl.Visible) then
       Initialized();

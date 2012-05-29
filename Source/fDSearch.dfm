@@ -212,6 +212,10 @@ object DSearch: TDSearch
       ImageIndex = 2
       TabVisible = False
       OnShow = TSExecuteShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         333
         279)

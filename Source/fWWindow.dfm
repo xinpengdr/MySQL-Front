@@ -26,18 +26,20 @@ object WWindow: TWWindow
   TextHeight = 14
   object PWorkSpace: TPanel_Ext
     Left = 0
-    Top = 121
+    Top = 124
     Width = 691
-    Height = 318
+    Height = 315
     Align = alClient
     BevelOuter = bvNone
     Color = clAppWorkSpace
     ParentBackground = False
     TabOrder = 5
+    ExplicitTop = 121
+    ExplicitHeight = 318
   end
   object TabControl: TTabControl
     Left = 0
-    Top = 93
+    Top = 96
     Width = 691
     Height = 28
     Align = alTop
@@ -62,12 +64,13 @@ object WWindow: TWWindow
     OnMouseUp = TabControlMouseUp
     OnResize = TabControlResize
     OnStartDrag = TabControlStartDrag
+    ExplicitTop = 93
   end
   object PAddressBar: TPanel_Ext
     Left = 0
     Top = 64
     Width = 691
-    Height = 29
+    Height = 32
     Align = alTop
     AutoSize = True
     BevelOuter = bvNone
@@ -78,7 +81,6 @@ object WWindow: TWWindow
       Left = 0
       Top = 0
       Width = 691
-      Height = 29
       AutoSize = True
       BorderWidth = 2
       EdgeBorders = [ebBottom]
@@ -1376,6 +1378,11 @@ object WWindow: TWWindow
       Category = 'Bookmark'
       Caption = 'aBookmark'
     end
+    object aHFeedback: TAction
+      Category = 'Help'
+      Caption = 'Send Feedback...'
+      OnExecute = aHFeedbackExecute
+    end
   end
   object OpenDialog: TOpenDialog_Ext
     Options = [ofReadOnly, ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
@@ -1873,6 +1880,9 @@ object WWindow: TWWindow
       end
       object miHUpdate: TMenuItem
         Action = aHUpdate
+      end
+      object miHFeedback: TMenuItem
+        Action = aHFeedback
       end
       object N19: TMenuItem
         Caption = '-'

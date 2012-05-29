@@ -75,13 +75,11 @@ begin
 
   if (Control is TListView) then
   begin
-    Control.DoubleBuffered := True;
     SendMessage(Control.Handle, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
     SendMessage(Control.Handle, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_COLUMNSNAPPOINTS, LVS_EX_COLUMNSNAPPOINTS);
   end
   else if (Control is TTreeView) then
   begin
-    Control.DoubleBuffered := True;
     if ((ComCtl32MajorVersion > 4) or (ComCtl32MinorVersion >= 71)) then
       SendMessage(Control.Handle, TVM_SETITEMHEIGHT, GetSystemMetrics(SM_CYSMICON) + 2, 0);
     if (CheckWin32Version(6)) then
@@ -93,17 +91,12 @@ begin
   end
   else if (Control is TUpDown) then
   begin
-    Control.DoubleBuffered := True;
     if (Assigned(TUpDown(Control).Associate) and (TUpDown(Control).Associate is TEdit)) then
       SetWindowLong(TEdit(TUpDown(Control).Associate).Handle, GWL_STYLE, GetWindowLong(TEdit(TUpDown(Control).Associate).Handle, GWL_STYLE) or ES_NUMBER or ES_RIGHT);
   end
-  else if ((Control is TCustomEdit) and not (Control is TCustomRichEdit)) then
-  begin
-    Control.DoubleBuffered := True;
-  end
   else if (Control is TToolbar) then
   begin
-    Control.DoubleBuffered := True;
+    Control.DoubleBuffered := False;
     if (CheckWin32Version(6)) then
       for I := 0 to TToolbar(Control).ButtonCount - 1 do
         if (TToolbar(Control).Buttons[I].Style = tbsSeparator) then
@@ -112,11 +105,7 @@ begin
           TToolbar(Control).Buttons[I].Enabled := False;
           TToolbar(Control).Buttons[I].Style := tbsButton;
         end;
-  end
-  else if (Control is TPageControl) then
-    Control.DoubleBuffered := True
-  else if (Control is TGroupBox) then
-    Control.DoubleBuffered := True
+  end;
 end;
 
 procedure TForm_Ext.CMSysFontChanged(var Message: TMessage);
@@ -144,6 +133,7 @@ constructor TForm_Ext.Create(AOwner: TComponent);
 begin
   inherited;
 
+  DoubleBuffered := True;
   MouseDownPoint := Point(-1, -1);
 end;
 

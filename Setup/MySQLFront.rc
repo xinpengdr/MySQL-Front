@@ -69,4 +69,5 @@ BEGIN
   1003 "{BuildRegistry}"
   1004 "{BuildInternetHomepage}"
   1005 "{BuildInternetPadFile}"
+  1006 "{BuildInternetMail}"
 END

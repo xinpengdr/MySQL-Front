@@ -969,7 +969,7 @@ begin
     repeat
       if ((Index = DBObjects.Count) or (TCDBObject(DBObjects[Index]).Database <> Database)) then
       begin
-        SQLWait := Database.InitializeSources(Objects);
+        SQLWait := Database.UpdateSources(Objects);
         Objects.Clear();
       end
       else

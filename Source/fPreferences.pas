@@ -1398,6 +1398,11 @@ begin
 
   KeyBase := SysUtils.LoadStr(1003);
   GetVersion(FVerMajor, FVerMinor, FVerPatch, FVerBuild);
+  {$IFDEF Debug}
+  if (SysUtils.LoadStr(1000) = '') then
+    FInternetAgent := 'MySQL-Front'
+  else
+  {$ENDIF}
   FInternetAgent := SysUtils.LoadStr(1000) + '/' + IntToStr(VerMajor) + '.' + IntToStr(VerMinor);
   SHGetFolderPath(Application.Handle, CSIDL_PERSONAL, 0, 0, @Foldername);
   Path := IncludeTrailingPathDelimiter(PChar(@Foldername));

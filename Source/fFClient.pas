@@ -679,6 +679,7 @@ type
       function GetLimit(): Integer;
       function GetLimited(): Boolean;
       function GetListView(): TListView;
+      function GetListViewCreated(): Boolean; inline;
       function GetTable(): TCTable; inline;
       function GetXML(): IXMLNode;
       procedure SetColumnIndex(Index: Integer; const Value: Integer);
@@ -704,6 +705,7 @@ type
       property Limit: Integer read GetLimit write SetLimit;
       property Limited: Boolean read GetLimited write SetLimited;
       property ListView: TListView read GetListView;
+      property ListViewCreated: Boolean read GetListViewCreated;
       property Table: TCTable read GetTable;
       property XML: IXMLNode read GetXML;
     end;
@@ -757,6 +759,7 @@ type
       FXML: IXMLNode;
       function GetDatabase(): TCDatabase; inline;
       function GetListView(): TListView;
+      function GetListViewCreated(): Boolean; inline;
       function GetWorkbench(): TWWorkbench;
       function GetXML(): IXMLNode;
     protected
@@ -771,6 +774,7 @@ type
       procedure SaveToXML(); override;
       property Database: TCDatabase read GetDatabase;
       property ListView: TListView read GetListView;
+      property ListViewCreated: Boolean read GetListViewCreated;
       property Workbench: TWWorkbench read GetWorkbench;
       property XML: IXMLNode read GetXML;
     end;
@@ -781,23 +785,23 @@ type
       FAddress: string;
       FClient: TFClient;
       FFNavigatorNodeExpand: string;
-      FInitialize: TCClient.TInitialize;
+      FUpdate: TCClient.TUpdate;
       procedure Clear();
       function GetNothing(): Boolean;
       procedure SetAction(const AAction: TAction);
       procedure SetAddress(const AAddress: string);
       procedure SetFNavigatorNodeExpand(const ANode: string);
-      procedure SetInitialize(const AInitialize: TCClient.TInitialize);
+      procedure SetUpdate(const AUpdate: TCClient.TUpdate);
     protected
       procedure Synchronize();
     public
+      constructor Create(const AFClient: TFClient);
+      procedure Execute();
       property Action: TAction read FAction write SetAction;
       property Address: string read FAddress write SetAddress;
       property FNavigatorNodeExpand: string read FFNavigatorNodeExpand write SetFNavigatorNodeExpand;
-      property Initialize: TCClient.TInitialize read FInitialize write SetInitialize;
+      property Update: TCClient.TUpdate read FUpdate write SetUpdate;
       property Nothing: Boolean read GetNothing;
-      constructor Create(const AFClient: TFClient);
-      procedure Execute();
     end;
 
   private
@@ -1299,6 +1303,11 @@ begin
   Result := FListView;
 end;
 
+function TFClient.TTableDesktop.GetListViewCreated(): Boolean;
+begin
+  Result := Assigned(FListView);
+end;
+
 function TFClient.TTableDesktop.GetTable(): TCTable;
 begin
   Result := TCTable(CObject);
@@ -1536,6 +1545,11 @@ begin
   Result := FListView;
 end;
 
+function TFClient.TDatabaseDesktop.GetListViewCreated(): Boolean;
+begin
+  Result := Assigned(FListView);
+end;
+
 function TFClient.TDatabaseDesktop.GetWorkbench(): TWWorkbench;
 begin
   if (not Assigned(FWorkbench)) then
@@ -1573,7 +1587,7 @@ procedure TFClient.TWanted.Clear();
 begin
   FAction := nil;
   FAddress := '';
-  FInitialize := nil;
+  FUpdate := nil;
   FFNavigatorNodeExpand := '';
 end;
 
@@ -1621,15 +1635,12 @@ begin
   FFNavigatorNodeExpand := ANode;
 end;
 
-procedure TFClient.TWanted.SetInitialize(const AInitialize: TCClient.TInitialize);
+procedure TFClient.TWanted.SetUpdate(const AUpdate: TCClient.TUpdate);
 begin
+  Clear();
+  FUpdate := AUpdate;
   if (not FClient.Client.InUse) then
-    AInitialize()
-  else
-  begin
-    Clear();
-    FInitialize := AInitialize;
-  end;
+    Update();
 end;
 
 procedure TFClient.TWanted.Synchronize();
@@ -1651,9 +1662,9 @@ begin
     Clear();
     FClient.Address := TempAddress;
   end
-  else if (Assigned(Initialize)) then
+  else if (Assigned(Update)) then
   begin
-    if (not Initialize()) then
+    if (not Update()) then
       Clear();
   end
   else if (Assigned(FClient.AddressToNavigatorNode(FFNavigatorNodeExpand))) then
@@ -2272,9 +2283,9 @@ begin
       LastObjectIDEAddress := Address;
 
     if (Client.Account.PackAddress(Address) = '/') then
-      Wanted.Initialize := Client.Databases.Initialize
+      Wanted.Update := Client.Databases.Update
     else if (Client.Account.PackAddress(Address) = '/?system=processes') then
-      Wanted.Initialize := Client.Processes.Initialize;
+      Wanted.Update := Client.Processes.Update;
   end;
 end;
 
@@ -2313,7 +2324,7 @@ begin
     MessageBeep(MB_ICONERROR)
   else
   begin
-    AllowChange := not Client.Initialize();
+    AllowChange := not Client.Update();
     if (AllowChange) then
       if (URI.Database <> '') then
       begin
@@ -2322,10 +2333,10 @@ begin
           NotFound := True
         else
         begin
-          AllowChange := not Database.Initialize();
+          AllowChange := not Database.Update();
           if (AllowChange) then
             if (URI.Param['view'] = 'editor') then
-              AllowChange := not Database.InitializeSources()
+              AllowChange := not Database.UpdateSources()
             else
             begin
               if (URI.Table <> '') then
@@ -2342,7 +2353,7 @@ begin
                 DBObject := nil;
 
               if (Assigned(DBObject)) then
-                AllowChange := not DBObject.Initialize()
+                AllowChange := not DBObject.Update()
               else if ((URI.Table = '') and (URI.Param['objecttype'] = Null)) then
                 AllowChange := True
               else
@@ -3274,7 +3285,7 @@ begin
   else if (Window.ActiveControl = ActiveWorkbench) then
   begin
     Database := Client.DatabaseByName(SelectedDatabase);
-    if (Database.Initialize(Database.Tables)) then
+    if (Database.Update(Database.Tables)) then
       Wanted.Action := TAction(Sender)
     else
       for I := 0 to ActiveWorkbench.Tables.Count - 1 do
@@ -3289,7 +3300,7 @@ begin
           if (ActiveListView.Items[I].Selected) then
           begin
             Database := TCDatabase(ActiveListView.Items[I].Data);
-            if (Database.Initialize()) then
+            if (Database.Update()) then
               Wanted.Action := TAction(Sender)
             else if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
             begin
@@ -3307,7 +3318,7 @@ begin
       iiDatabase:
         begin
           Database := Client.DatabaseByName(SelectedDatabase);
-          if (Database.Initialize()) then
+          if (Database.Update()) then
             Wanted.Action := TAction(Sender)
           else if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
           begin
@@ -3319,7 +3330,7 @@ begin
                 TableNames[Length(TableNames) - 1] := ActiveListView.Items[I].Caption;
               end;
 
-            if ((Sender is TAction) and Database.Initialize()) then
+            if ((Sender is TAction) and Database.Update()) then
               Wanted.Action := TAction(Sender)
             else
               for I := 0 to ActiveListView.Items.Count - 1 do
@@ -3341,7 +3352,7 @@ begin
       iiBaseTable:
         begin
           Database := Client.DatabaseByName(SelectedDatabase);
-          if (Database.Initialize(Database.Triggers)) then
+          if (Database.Update(Database.Triggers)) then
             Wanted.Action := TAction(Sender)
           else if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
             for I := 0 to ActiveListView.Items.Count - 1 do
@@ -3354,7 +3365,7 @@ begin
   begin
     Database := TCDatabase(FocusedCItem);
     if (not (Database is TCSystemDatabase)) then
-      if (Database.Initialize()) then
+      if (Database.Update()) then
         Wanted.Action := TAction(Sender)
       else
       begin
@@ -3372,7 +3383,7 @@ begin
   begin
     Table := TCBaseTable(FocusedCItem);
     Database := Table.Database;
-    if (Table.Initialize() or Assigned(Database.Triggers) and Database.Initialize(Database.Triggers)) then
+    if (Table.Update() or Assigned(Database.Triggers) and Database.Update(Database.Triggers)) then
       Wanted.Action := TAction(Sender)
     else
     begin
@@ -3387,14 +3398,14 @@ begin
   else if (FocusedCItem is TCDBObject) then
   begin
     Database := TCDBObject(FocusedCItem).Database;
-    if (Database.Initialize()) then
+    if (Database.Update()) then
       Wanted.Action := TAction(Sender)
     else
       DExport.DBObjects.Add(FocusedCItem);
   end
   else if (Assigned(FocusedCItem) and (FocusedCItem is TCDBObject)) then
   begin
-    if (TCDBObject(FocusedCItem).Initialize()) then
+    if (TCDBObject(FocusedCItem).Update()) then
       Wanted.Action := TAction(Sender)
     else
       DExport.DBObjects.Add(FocusedCItem);
@@ -3404,7 +3415,7 @@ begin
     Initialized := False;
     for I := 0 to DExport.Client.Databases.Count - 1 do
       if ((Client.TableNameCmp(Client.Databases[I].Name, 'mysql') <> 0) and not (Client.Databases[I] is TCSystemDatabase)) then
-        Initialized := Initialized or Client.Databases[I].Initialize();
+        Initialized := Initialized or Client.Databases[I].Update();
 
     if (Initialized and (Sender is TAction)) then
       Wanted.Action := TAction(Sender)
@@ -3802,7 +3813,7 @@ begin
   StatusBar.Panels.Items[sbMessage].Text := Msg;
   SetTimer(Handle, tiStatusBar, 5000, nil);
 
-  if (Assigned(Wanted.Action) or (Wanted.Address <> '') or Assigned(Wanted.Initialize)) then
+  if (Assigned(Wanted.Action) or (Wanted.Address <> '') or Assigned(Wanted.Update)) then
     Wanted.Execute();
 end;
 
@@ -4085,26 +4096,29 @@ begin
     case (View) of
       avObjectBrowser,
       avObjectIDE:
-        case (SelectedImageIndex) of
-          iiServer: Client.Refresh();
-          iiDatabase,
-          iiSystemDatabase: Client.DatabaseByName(SelectedDatabase).Refresh();
-          iiBaseTable,
-          iiSystemView:
-            begin
-              Client.DatabaseByName(SelectedDatabase).TableByName(SelectedTable).Refresh();
-              Client.DatabaseByName(SelectedDatabase).Triggers.Refresh();
-            end;
-          iiView: Client.DatabaseByName(SelectedDatabase).TableByName(SelectedTable).Refresh();
-          iiProcedure: Client.DatabaseByName(SelectedDatabase).ProcedureByName(SelectedNavigator).Refresh();
-          iiFunction: Client.DatabaseByName(SelectedDatabase).FunctionByName(SelectedNavigator).Refresh();
-          iiEvent: Client.DatabaseByName(SelectedDatabase).EventByName(SelectedNavigator).Refresh();
-          iiTrigger: Client.DatabaseByName(SelectedDatabase).TriggerByName(SelectedNavigator).Refresh();
-          iiHosts: Client.Hosts.Refresh();
-          iiProcesses: Client.Processes.Refresh();
-          iiStati: Client.Stati.Refresh();
-          iiUsers: Client.Users.Refresh();
-          iiVariables: Client.Variables.Refresh();
+        begin
+          case (SelectedImageIndex) of
+            iiServer: Client.Invalidate();
+            iiDatabase,
+            iiSystemDatabase: Client.DatabaseByName(SelectedDatabase).Invalidate();
+            iiBaseTable,
+            iiSystemView:
+              begin
+                Client.DatabaseByName(SelectedDatabase).TableByName(SelectedTable).Invalidate();
+                Client.DatabaseByName(SelectedDatabase).Triggers.Invalidate();
+              end;
+            iiView: Client.DatabaseByName(SelectedDatabase).TableByName(SelectedTable).Invalidate();
+            iiProcedure: Client.DatabaseByName(SelectedDatabase).ProcedureByName(SelectedNavigator).Invalidate();
+            iiFunction: Client.DatabaseByName(SelectedDatabase).FunctionByName(SelectedNavigator).Invalidate();
+            iiEvent: Client.DatabaseByName(SelectedDatabase).EventByName(SelectedNavigator).Invalidate();
+            iiTrigger: Client.DatabaseByName(SelectedDatabase).TriggerByName(SelectedNavigator).Invalidate();
+            iiHosts: Client.Hosts.Invalidate();
+            iiProcesses: Client.Processes.Invalidate();
+            iiStati: Client.Stati.Invalidate();
+            iiUsers: Client.Users.Invalidate();
+            iiVariables: Client.Variables.Invalidate();
+          end;
+          Address := Address;
         end;
       avDataBrowser,
       avQueryBuilder,
@@ -4298,12 +4312,15 @@ begin
     if (ClientEvent.Sender is TCDatabase) then
     begin
       ListViewRefresh(ClientEvent, lkServer, FServerListView);
-      ListViewRefresh(ClientEvent, lkDatabase, TDatabaseDesktop(TCDatabase(ClientEvent.Sender).Desktop).FListView);
+      if (TDatabaseDesktop(TCDatabase(ClientEvent.Sender).Desktop).ListViewCreated) then
+        ListViewRefresh(ClientEvent, lkDatabase, TDatabaseDesktop(TCDatabase(ClientEvent.Sender).Desktop).FListView);
     end
     else if (ClientEvent.Sender is TCTable) then
     begin
-      ListViewRefresh(ClientEvent, lkDatabase, TDatabaseDesktop(TCTable(ClientEvent.Sender).Database.Desktop).ListView);
-      ListViewRefresh(ClientEvent, lkTable, TTableDesktop(TCTable(ClientEvent.Sender).Desktop).ListView);
+      if (TDatabaseDesktop(TCTable(ClientEvent.Sender).Database.Desktop).ListViewCreated) then
+        ListViewRefresh(ClientEvent, lkDatabase, TDatabaseDesktop(TCTable(ClientEvent.Sender).Database.Desktop).ListView);
+      if (TTableDesktop(TCTable(ClientEvent.Sender).Desktop).ListViewCreated) then
+        ListViewRefresh(ClientEvent, lkTable, TTableDesktop(TCTable(ClientEvent.Sender).Desktop).ListView);
     end
     else if (ClientEvent.CItems is TCHosts) then
     begin
@@ -5510,6 +5527,8 @@ begin
 end;
 
 procedure TFClient.CreateListView(const Sender: TObject; const Data: TCustomData; out ListView: TListView);
+var
+  NonClientMetrics: TNonClientMetrics;
 begin
   ListView := TListView.Create(FServerListView.Owner);
 
@@ -5541,11 +5560,20 @@ begin
 
   SetWindowLong(ListView_GetHeader(ListView.Handle), GWL_STYLE, GetWindowLong(ListView_GetHeader(FServerListView.Handle), GWL_STYLE) or HDS_DRAGDROP);
 
-try
+  PListView.InsertControl(ListView);
+
+  ListView.Perform(CM_PARENTCOLORCHANGED, 0, 0);
+  ListView.Perform(CM_PARENTFONTCHANGED, 0, 0);
+  ListView.Perform(CM_PARENTSHOWHINTCHANGED, 0, 0);
+  ListView.Perform(CM_PARENTBIDIMODECHANGED, 0, 0);
+  ListView.Perform(CM_PARENTDOUBLEBUFFEREDCHANGED, 0, 0);
+  ListView.Perform(CM_PARENTTABLETOPTIONSCHANGED, 0, 0);
+
+  NonClientMetrics.cbSize := SizeOf(NonClientMetrics);
+  if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, SizeOf(NonClientMetrics), @NonClientMetrics, 0)) then
+    Window.ApplyWinAPIUpdates(ListView, NonClientMetrics.lfStatusFont);
+
   ListViewInitialize(Sender, ListView, Data);
-except
-  ListViewInitialize(Sender, ListView, Data);
-end;
 end;
 
 function TFClient.CreateSynMemo(): TSynMemo;
@@ -6093,8 +6121,6 @@ begin
   FreeAndNil(GIFImage);
 
   FLog.Lines.Clear();
-
-  Parent := nil;
 
   FreeAndNil(CloseButton);
 
@@ -7533,7 +7559,7 @@ begin
       iiSystemDatabase:
         begin
           Database := Client.DatabaseByName(Node.Text);
-          AllowExpansion := not Database.Initialize();
+          AllowExpansion := not Database.Update();
         end;
       iiBaseTable,
       iiSystemView,
@@ -7541,7 +7567,7 @@ begin
         begin
           Database := Client.DatabaseByName(Node.Parent.Text);
           Table := Database.TableByName(Node.Text);
-          AllowExpansion := not Table.Initialize();
+          AllowExpansion := not Table.Update();
         end;
     end;
 
@@ -8056,12 +8082,12 @@ begin
       ceAltered:
         // ToDo: ceAltered
         // Innerhalb vom Import ein Problem!
-        // Innerhalb vom Object Browser - muss Initialize aufgerufen werden!
+        // Innerhalb vom Object Browser - muss Update aufgerufen werden!
         // Wie lösen?
         if (ClientEvent.CItem is TCObject) then
-          Wanted.Initialize := TCObject(ClientEvent.CItem).Initialize;
+          Wanted.Update := TCObject(ClientEvent.CItem).Update;
       ceInitialize:
-        Wanted.Initialize := ClientEvent.Initialize;
+        Wanted.Update := ClientEvent.Update;
       ceMonitor:
         Perform(CM_POST_MONITOR, 0, 0)
       else
@@ -8260,7 +8286,7 @@ begin
 
     Database := Client.DatabaseByName(SelectedDatabase);
     if (Assigned(Database)) then
-      if (Database.Initialize()) then
+      if (Database.Update()) then
         Database := nil;
 
     StringList := TStringList.Create();
@@ -9132,13 +9158,13 @@ begin
     SetLength(Objects, Workbench.Tables.Count);
     for I := 0 to Workbench.Tables.Count - 1 do
       Objects[I] := Database.BaseTableByName(Workbench.Tables[I].Caption);
-    Database.Initialize();
+    Database.Update();
   end
   else if (Control is TWTable) then
   begin
     Table := Database.BaseTableByName(TWTable(Control).Caption);
     if (Assigned(Table)) then
-      Table.Initialize();
+      Table.Update();
   end
   else if (Control is TWForeignKey) then
   begin
@@ -9162,7 +9188,7 @@ begin
           ForeignKey := Table.ForeignKeyByName(TWForeignKey(Control).Caption);
           ParentTable := Client.DatabaseByName(ForeignKey.Parent.DatabaseName).BaseTableByName(ForeignKey.Parent.TableName);
           if (Assigned(ForeignKey)) then
-            ParentTable.Initialize();
+            ParentTable.Update();
         end
         else
         begin
@@ -13363,7 +13389,7 @@ procedure TFClient.SendQuery(Sender: TObject; const SQL: string);
 begin
   if (Assigned(ResultSet)) then
   begin
-    if ((Sender is TAction) and Assigned(Client.DatabaseByName(SelectedDatabase)) and (Client.DatabaseByName(SelectedDatabase).Initialize() or Client.DatabaseByName(SelectedDatabase).InitializeSources())) then
+    if ((Sender is TAction) and Assigned(Client.DatabaseByName(SelectedDatabase)) and (Client.DatabaseByName(SelectedDatabase).Update() or Client.DatabaseByName(SelectedDatabase).UpdateSources())) then
       Wanted.Action := TAction(Sender)
     else
     begin

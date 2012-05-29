@@ -218,6 +218,7 @@ type
     FErrorMessage: string;
     FHost: string;
     FHostInfo: string;
+    FHTTPAgent: string;
     FIdentifierQuoted: Boolean;
     FIdentifierQuoter: Char;
     FInTransaction: Boolean;
@@ -342,6 +343,7 @@ type
     property CommandText: string read GetCommandText;
     property DateTime: TDateTime read GetDateTime;
     property HostInfo: string read FHostInfo;
+    property HTTPAgent: string read FHTTPAgent write FHTTPAgent;
     property ErrorCode: Integer read GetErrorCode;
     property ErrorMessage: string read GetErrorMessage;
     property ExecutedSQLLength: Integer read FExecutedSQLLength;
@@ -2138,11 +2140,15 @@ begin
   if ((AErrorCode = CR_UNKNOWN_HOST)
     or (AErrorCode = CR_SERVER_OLD)) then
     Close()
-  else if ((AErrorCode = CR_IPSOCK_ERROR)
+  else if ((AErrorCode = CR_UNKNOWN_ERROR)
+    or (AErrorCode = CR_IPSOCK_ERROR)
     or (AErrorCode = CR_SERVER_GONE_ERROR)
     or (AErrorCode = CR_SERVER_HANDSHAKE_ERR)
     or (AErrorCode = CR_SERVER_LOST)) then
-    Close();
+    if (not Assigned(SynchroThread)) then
+      SyncDisconncted(nil)
+    else
+      SynchroThread.RunAction(ssDisconnecting);
 
   FErrorCode := AErrorCode; FErrorMessage := AErrorMessage;
 
@@ -2311,7 +2317,11 @@ begin
   if (Compression) then // ToDo: Enable Compression for HTTP Tunnel
     Lib.mysql_options(SynchroThread.LibHandle, MYSQL_OPT_COMPRESS, nil);
   if (LibraryType = ltHTTP) then
+  begin
     Lib.mysql_options(SynchroThread.LibHandle, enum_mysql_option(MYSQL_OPT_HTTPTUNNEL_URL), my_char(LibEncode(LibraryName)));
+    if (HTTPAgent <> '') then
+      Lib.mysql_options(SynchroThread.LibHandle, enum_mysql_option(MYSQL_OPT_HTTPTUNNEL_AGENT), my_char(LibEncode(HTTPAgent)));
+  end;
 
   if (Assigned(Lib.mysql_set_local_infile_handler)) then
     Lib.mysql_set_local_infile_handler(SynchroThread.LibHandle, @MySQLDB.local_infile_init, @MySQLDB.local_infile_read, @MySQLDB.local_infile_end, @MySQLDB.local_infile_error, Self);
@@ -2438,6 +2448,9 @@ procedure TMySQLConnection.SyncDisconncted(const SynchroThread: TSynchroThread);
 begin
   FThreadId := 0;
   FConnected := False;
+
+  if (Assigned(SynchroThread)) then
+    SynchroThread.State := ssClose;
 
   if Assigned(AfterDisconnect) then AfterDisconnect(Self);
 end;
@@ -3001,6 +3014,7 @@ begin
   FDatabaseName := '';
   FExecutionTime := 0;
   FHost := '';
+  FHTTPAgent := '';
   FIdentifierQuoted := True;
   FIdentifierQuoter := '`';
   FInTransaction := False;

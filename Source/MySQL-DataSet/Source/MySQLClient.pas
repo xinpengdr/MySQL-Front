@@ -1554,8 +1554,10 @@ function TMySQL_File.ReceivePacket(): Boolean;
     PacketOffset, Size, VIOSize: my_uint;
     UncompressedSize: my_uint;
     Nr: Byte;
-    DecompressBuffer: Pointer;
-    DecompressedSize: Integer;
+    DecompressBuffer: record
+      Mem: Pointer;
+      Size: Integer;
+    end;
   begin
     BytesRead := 0;
 
@@ -1595,9 +1597,10 @@ function TMySQL_File.ReceivePacket(): Boolean;
               Result := Result and ReallocBuffer(PacketBuffer, PacketOffset + UncompressedSize);
 
             try
-              ZDecompress(@PacketBuffer.Mem[PacketOffset + NET_HEADER_SIZE + COMP_HEADER_SIZE], PacketBuffer.TotalSize - (PacketOffset + NET_HEADER_SIZE + COMP_HEADER_SIZE), DecompressBuffer, DecompressedSize);
-              Move(DecompressBuffer^, PacketBuffer.Mem[PacketOffset], UncompressedSize);
-              FreeMem(DecompressBuffer);
+              DecompressBuffer.Mem := nil;
+              ZDecompress(@PacketBuffer.Mem[PacketOffset + NET_HEADER_SIZE + COMP_HEADER_SIZE], MAX_ALLOWED_PACKET, DecompressBuffer.Mem, DecompressBuffer.Size);
+              MoveMemory(@PacketBuffer.Mem[PacketOffset], DecompressBuffer.Mem, DecompressBuffer.Size);
+              FreeMem(DecompressBuffer.Mem);
             except
               on E: EOutOfMemory do
                 begin Seterror(CR_OUT_OF_MEMORY); Result := False; end;
@@ -1650,38 +1653,39 @@ begin
         Offset := PacketBuffer.Offset; if (Index > 0) then Inc(Offset,  NET_HEADER_SIZE + my_uint(Index) * MAX_PACKET_LENGTH);
       end;
 
-      if (Offset + NET_HEADER_SIZE > PacketBuffer.Size) then
-        Size := 0
-      else
-      begin
-        FillChar(Size, SizeOf(Size), #0);
-        Move(PacketBuffer.Mem[Offset + 0], Size, 3);
-        Move(PacketBuffer.Mem[Offset + 3], Nr, 1);
-
-        if (not Compress and (Nr <> PacketNr)) then
-          Seterror(CR_SERVER_LOST)
-        else if (Size > MAX_PACKET_LENGTH) then
-          Seterror(CR_NET_PACKET_TOO_LARGE)
+      if (Result) then
+        if (Offset + NET_HEADER_SIZE > PacketBuffer.Size) then
+          Size := 0
         else
         begin
-          PacketNr := (PacketNr + 1) and $FF;
+          FillChar(Size, SizeOf(Size), #0);
+          Move(PacketBuffer.Mem[Offset + 0], Size, 3);
+          Move(PacketBuffer.Mem[Offset + 3], Nr, 1);
 
-          if (Offset + NET_HEADER_SIZE + Size > PacketBuffer.TotalSize) then
-            ReallocBuffer(PacketBuffer, Offset + NET_HEADER_SIZE + Size);
-
-          if (Offset + NET_HEADER_SIZE + Size > PacketBuffer.Size) then
+          if (not Compress and (Nr <> PacketNr)) then
+            Seterror(CR_SERVER_LOST)
+          else if (Size > MAX_PACKET_LENGTH) then
+            Seterror(CR_NET_PACKET_TOO_LARGE)
+          else
           begin
-            Receive(Offset + NET_HEADER_SIZE + Size - PacketBuffer.Size, VIOSize);
-            Offset := PacketBuffer.Offset; if (Index > 0) then Inc(Offset,  NET_HEADER_SIZE + my_uint(Index) * MAX_PACKET_LENGTH);
-          end;
+            PacketNr := (PacketNr + 1) and $FF;
 
-          if (Offset + NET_HEADER_SIZE + Size <= PacketBuffer.Size) then
-            if (Index > 0) then
+            if (Offset + NET_HEADER_SIZE + Size > PacketBuffer.TotalSize) then
+              ReallocBuffer(PacketBuffer, Offset + NET_HEADER_SIZE + Size);
+
+            if (Offset + NET_HEADER_SIZE + Size > PacketBuffer.Size) then
             begin
-              Move(PacketBuffer.Mem[Offset + NET_HEADER_SIZE], PacketBuffer.Mem[Offset], PacketBuffer.Size - Offset);
-              Dec(PacketBuffer.Size, NET_HEADER_SIZE);
+              Receive(Offset + NET_HEADER_SIZE + Size - PacketBuffer.Size, VIOSize);
+              Offset := PacketBuffer.Offset; if (Index > 0) then Inc(Offset,  NET_HEADER_SIZE + my_uint(Index) * MAX_PACKET_LENGTH);
             end;
-        end;
+
+            if (Offset + NET_HEADER_SIZE + Size <= PacketBuffer.Size) then
+              if (Index > 0) then
+              begin
+                Move(PacketBuffer.Mem[Offset + NET_HEADER_SIZE], PacketBuffer.Mem[Offset], PacketBuffer.Size - Offset);
+                Dec(PacketBuffer.Size, NET_HEADER_SIZE);
+              end;
+          end;
       end;
     until (not Result or (VIOSize = 0) or (Size <> MAX_PACKET_LENGTH));
 

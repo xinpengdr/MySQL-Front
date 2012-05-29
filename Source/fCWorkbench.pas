@@ -2066,7 +2066,7 @@ begin
       Objects[Length(Objects) - 1] := Table.Table;
     end;
 
-  Workbench.Database.Initialize();
+  Workbench.Database.Update();
 end;
 
 procedure TWTables.SaveToXML(const XML: IXMLNode);

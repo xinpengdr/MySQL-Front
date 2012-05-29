@@ -1,9 +1,9 @@
 <?php
 	#
 	# HTTP tunneling script
-	# This script will be used by the Windows GUI "{MakeInfoName}"
-	# {MakeInfoHomepage}
-	# {MakeInfoName} Version {MakeVerStrFull}
+	# This script will be used by the Windows GUI "{BuildName}"
+	# {BuildInternetHomepage}
+	# {BuildName} Version {BuildVerStrFull}
 	#
 	
 	/****************************************************************************/

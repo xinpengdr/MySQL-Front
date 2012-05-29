@@ -20,12 +20,14 @@ const
   CR_HTTPTUNNEL_REDIRECT                   = 2210;
 
   MYSQL_OPT_HTTPTUNNEL_URL   = 240;
+  MYSQL_OPT_HTTPTUNNEL_AGENT = 241;
 
 type
   PPChar = ^PChar;
 
   MYSQL = class (MySQLClient.MYSQL)
   private
+    Agent: string;
     Connection: HInternet;
     Handle: HInternet;
     LastRequest: TDateTime;
@@ -114,6 +116,12 @@ begin
   if (Assigned(Connection)) then
     InternetCloseHandle(Connection);
 
+  if (Assigned(Handle)) then
+  begin
+    InternetSetStatusCallback(Handle, nil);
+    InternetCloseHandle(Handle);
+  end;
+
   ReallocBuffer(SendBuffer, 0);
 
   SID := '';
@@ -125,7 +133,9 @@ constructor MYSQL.Create();
 begin
   inherited;
 
+  Agent := Application.Title;
   Connection := nil;
+  Handle := nil;
   LastRequest := 0;
   SecurityFlags := SECURITY_FLAG_IGNORE_REVOCATION or SECURITY_FLAG_IGNORE_UNKNOWN_CA or SECURITY_FLAG_IGNORE_WRONG_USAGE or SECURITY_FLAG_IGNORE_CERT_CN_INVALID or SECURITY_FLAG_IGNORE_CERT_DATE_INVALID;
 
@@ -144,25 +154,11 @@ begin
 
   ResponseReceived := TEvent.Create(nil, False, False, '');
   RequestComplete := TEvent.Create(nil, True, False, '');
-
-  Handle := InternetOpen(PChar(Application.Title), INTERNET_OPEN_TYPE_PRECONFIG, nil, nil, 0);
-
-  if (not Assigned(Handle)) then
-    Seterror(CR_SOCKET_CREATE_ERROR);
-
-  if (errno() = 0) then
-    InternetSetStatusCallback(Handle, @InternetStatusCallback);
 end;
 
 destructor MYSQL.Destroy();
 begin
   inherited;
-
-  if (Assigned(Handle)) then
-  begin
-    InternetSetStatusCallback(Handle, nil);
-    InternetCloseHandle(Handle);
-  end;
 
   ResponseReceived.Free();
   RequestComplete.Free();
@@ -347,70 +343,79 @@ begin
   Result := AType = itTCPIP;
   if (Result) then
   begin
-    L := ftimeout * 1000;
-    InternetSetOption(Handle, INTERNET_OPTION_CONNECT_TIMEOUT, @L, SizeOf(L));
+    Handle := InternetOpen(PChar(Agent), INTERNET_OPEN_TYPE_PRECONFIG, nil, nil, 0);
 
-    L := NET_WAIT_TIMEOUT * 1000;
-    InternetSetOption(Handle, INTERNET_OPTION_RECEIVE_TIMEOUT, @L, SizeOf(L));
-    L := NET_WRITE_TIMEOUT * 1000;
-    InternetSetOption(Handle, INTERNET_OPTION_SEND_TIMEOUT, @L, SizeOf(L));
+    if (not Assigned(Handle)) then
+      Seterror(CR_SOCKET_CREATE_ERROR)
+    else
+    begin
+      InternetSetStatusCallback(Handle, @InternetStatusCallback);
 
-    repeat
-      Seterror(0);
-      if (Assigned(Connection)) then
-        InternetCloseHandle(Connection);
+      L := ftimeout * 1000;
+      InternetSetOption(Handle, INTERNET_OPTION_CONNECT_TIMEOUT, @L, SizeOf(L));
 
-      URLComponents.dwSchemeLength := INTERNET_MAX_SCHEME_LENGTH;
-      URLComponents.dwHostNameLength := INTERNET_MAX_HOST_NAME_LENGTH;
-      URLComponents.dwUserNameLength := INTERNET_MAX_USER_NAME_LENGTH;
-      URLComponents.dwPasswordLength := INTERNET_MAX_PASSWORD_LENGTH;
-      URLComponents.dwUrlPathLength := INTERNET_MAX_PATH_LENGTH;
-      URLComponents.dwExtraInfoLength := 256;
-      InternetCrackUrl(PChar(URL), Length(URL), ICU_DECODE, URLComponents);
+      L := NET_WAIT_TIMEOUT * 1000;
+      InternetSetOption(Handle, INTERNET_OPTION_RECEIVE_TIMEOUT, @L, SizeOf(L));
+      L := NET_WRITE_TIMEOUT * 1000;
+      InternetSetOption(Handle, INTERNET_OPTION_SEND_TIMEOUT, @L, SizeOf(L));
 
-      Connection := InternetConnect(Handle, URLComponents.lpszHostName, URLComponents.nPort, URLComponents.lpszUserName, URLComponents.lpszPassword, INTERNET_SERVICE_HTTP, 0, Cardinal(Self));
-      if (not Assigned(Connection)) then
-        Seterror(CR_HTTPTUNNEL_CONN_ERROR, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_CONN_ERROR - CR_HTTPTUNNEL_UNKNOWN_ERROR], [URL, 0])))
-      else
-      begin
-        Direction := idWrite;
+      repeat
+        Seterror(0);
+        if (Assigned(Connection)) then
+          InternetCloseHandle(Connection);
 
-        Command := AnsiChar(COM_CONNECT);
-        WriteFile(@Command, SizeOf(Command));
-        if (lstrcmpi(URLComponents.lpszHostName, PChar(string(fhost))) = 0) then
-          WriteFile(LOCAL_HOST)
+        URLComponents.dwSchemeLength := INTERNET_MAX_SCHEME_LENGTH;
+        URLComponents.dwHostNameLength := INTERNET_MAX_HOST_NAME_LENGTH;
+        URLComponents.dwUserNameLength := INTERNET_MAX_USER_NAME_LENGTH;
+        URLComponents.dwPasswordLength := INTERNET_MAX_PASSWORD_LENGTH;
+        URLComponents.dwUrlPathLength := INTERNET_MAX_PATH_LENGTH;
+        URLComponents.dwExtraInfoLength := 256;
+        InternetCrackUrl(PChar(URL), Length(URL), ICU_DECODE, URLComponents);
+
+        Connection := InternetConnect(Handle, URLComponents.lpszHostName, URLComponents.nPort, URLComponents.lpszUserName, URLComponents.lpszPassword, INTERNET_SERVICE_HTTP, 0, Cardinal(Self));
+        if (not Assigned(Connection)) then
+          Seterror(CR_HTTPTUNNEL_CONN_ERROR, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_CONN_ERROR - CR_HTTPTUNNEL_UNKNOWN_ERROR], [URL, 0])))
         else
-          WriteFile(RawByteString(fhost));
-        WriteFile(RawByteString(fuser));
-        WriteFile(RawByteString(fpasswd));
-        WriteFile(RawByteString(fdb));
-        WriteFile(RawByteString(fcharacter_set_name));
-        WriteFile(fport, 2);
-        WriteFile(fclient_flag, 4);
-        WriteFile(ftimeout, 2);
-        FlushFileBuffers();
-
-        if (ExecuteHTTPRequest(True, ftimeout)) then
         begin
-          StrPCopy(@Buffer, 'MF-Version'); Size := SizeOf(Buffer); Index := 0;
-          if (not HttpQueryInfo(Request, HTTP_QUERY_CUSTOM, @Buffer, Size, Index) or (StrToInt(Buffer) < RequiredTunnelVersion)) then
-            Seterror(CR_HTTPTUNNEL_OLD, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_OLD - CR_HTTPTUNNEL_UNKNOWN_ERROR], [URL])))
+          Direction := idWrite;
+
+          Command := AnsiChar(COM_CONNECT);
+          WriteFile(@Command, SizeOf(Command));
+          if (lstrcmpi(URLComponents.lpszHostName, PChar(string(fhost))) = 0) then
+            WriteFile(LOCAL_HOST)
           else
+            WriteFile(RawByteString(fhost));
+          WriteFile(RawByteString(fuser));
+          WriteFile(RawByteString(fpasswd));
+          WriteFile(RawByteString(fdb));
+          WriteFile(RawByteString(fcharacter_set_name));
+          WriteFile(fport, 2);
+          WriteFile(fclient_flag, 4);
+          WriteFile(ftimeout, 2);
+          FlushFileBuffers();
+
+          if (ExecuteHTTPRequest(True, ftimeout)) then
           begin
-            Size := SizeOf(Buffer); Index := 0;
+            StrPCopy(@Buffer, 'MF-Version'); Size := SizeOf(Buffer); Index := 0;
+            if (not HttpQueryInfo(Request, HTTP_QUERY_CUSTOM, @Buffer, Size, Index) or (StrToInt(Buffer) < RequiredTunnelVersion)) then
+              Seterror(CR_HTTPTUNNEL_OLD, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_OLD - CR_HTTPTUNNEL_UNKNOWN_ERROR], [URL])))
+            else
+            begin
+              Size := SizeOf(Buffer); Index := 0;
 
-            StrPCopy(@Buffer, 'MF-SID'); Size := SizeOf(Buffer); Index := 0;
-            if (HttpQueryInfo(Request, HTTP_QUERY_CUSTOM, @Buffer, Size, Index)) then
-              SetString(SID, PChar(@Buffer), Size);
+              StrPCopy(@Buffer, 'MF-SID'); Size := SizeOf(Buffer); Index := 0;
+              if (HttpQueryInfo(Request, HTTP_QUERY_CUSTOM, @Buffer, Size, Index)) then
+                SetString(SID, PChar(@Buffer), Size);
 
 
-            Direction := idRead;
+              Direction := idRead;
 
-            IOType := TMYSQL_IO.TType(Integer(High(TMYSQL_IO.TType)) + 1);
+              IOType := TMYSQL_IO.TType(Integer(High(TMYSQL_IO.TType)) + 1);
+            end;
           end;
         end;
-      end;
-    until (errno() <> CR_HTTPTUNNEL_REDIRECT);
+      until (errno() <> CR_HTTPTUNNEL_REDIRECT);
+    end;
 
     Result := errno() = 0;
   end;
@@ -422,6 +427,7 @@ begin
 
   case (Integer(option)) of
     MYSQL_OPT_HTTPTUNNEL_URL: URL := DecodeString(RawByteString(arg));
+    MYSQL_OPT_HTTPTUNNEL_AGENT: Agent := DecodeString(RawByteString(arg));
     else Result := inherited options(option, arg);
   end;
 end;

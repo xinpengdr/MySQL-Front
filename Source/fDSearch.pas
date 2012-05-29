@@ -640,7 +640,7 @@ begin
           begin
             Client := GetClient(Node.Index);
             if (Assigned(Client)) then
-              if (Client.Initialize() and Client.Asynchron) then
+              if (Client.Update() and Client.Asynchron) then
                 WantedNodeExpand := Node
               else
               begin
@@ -658,7 +658,7 @@ begin
           begin
             Client := GetClient(Node.Parent.Index);
             Database := Client.DatabaseByName(Node.Text);
-            if (Database.Initialize(Database.Tables) and Client.Asynchron) then
+            if (Database.Update(Database.Tables) and Client.Asynchron) then
               WantedNodeExpand := Node
             else
             begin
@@ -677,7 +677,7 @@ begin
             Client := GetClient(Node.Parent.Parent.Index);
             Database := Client.DatabaseByName(Node.Parent.Text);
             Table := Database.BaseTableByName(Node.Text);
-            if (Database.InitializeSources(Table) and Client.Asynchron) then
+            if (Database.UpdateSources(Table) and Client.Asynchron) then
               WantedNodeExpand := Node
             else
             begin
@@ -839,32 +839,32 @@ procedure TDSearch.TSExecuteShow(Sender: TObject);
     case (Node.ImageIndex) of
       iiServer:
         begin
-          WantedExecute := Client.Initialize() and Client.Asynchron;
+          WantedExecute := Client.Update() and Client.Asynchron;
           if (not WantedExecute) then
             for I := 0 to Client.Databases.Count - 1 do
               if (not WantedExecute and not (Client.Databases[I] is TCSystemDatabase)) then
               begin
                 Database := Client.Databases[I];
-                WantedExecute := Database.Initialize(Database.Tables) and Client.Asynchron;
+                WantedExecute := Database.Update(Database.Tables) and Client.Asynchron;
                 if (not WantedExecute) then
                 begin
                   for J := 0 to Database.Tables.Count - 1 do
                     if (Database.Tables[J] is TCBaseTable) then
                       Objects.Add(Database.Tables[J]);
-                  WantedExecute := Database.InitializeSources(Objects) and Client.Asynchron;
+                  WantedExecute := Database.UpdateSources(Objects) and Client.Asynchron;
                 end;
               end;
         end;
       iiDatabase:
         begin
           Database := Client.DatabaseByName(Node.Text);
-          WantedExecute := Database.Initialize(Database.Tables) and Client.Asynchron;
+          WantedExecute := Database.Update(Database.Tables) and Client.Asynchron;
           if (not WantedExecute) then
           begin
             for J := 0 to Database.Tables.Count - 1 do
               if (Database.Tables[J] is TCBaseTable) then
                 Objects.Add(Database.Tables[J]);
-            WantedExecute := Database.InitializeSources(Objects) and Client.Asynchron;
+            WantedExecute := Database.UpdateSources(Objects) and Client.Asynchron;
           end;
         end;
       iiBaseTable:
@@ -873,7 +873,7 @@ procedure TDSearch.TSExecuteShow(Sender: TObject);
           for J := 0 to Database.Tables.Count - 1 do
             if (Node.Parent.Item[J].Selected) then
               Objects.Add(Database.Tables[J]);
-          WantedExecute := Database.InitializeSources(Objects) and Client.Asynchron;
+          WantedExecute := Database.UpdateSources(Objects) and Client.Asynchron;
         end;
     end;
     Objects.Free();
