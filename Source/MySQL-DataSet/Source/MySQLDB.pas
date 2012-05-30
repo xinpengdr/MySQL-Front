@@ -4533,8 +4533,8 @@ begin
 
   if (Mode in [bmRead, bmReadWrite]) then
   begin
-    Empty := not Assigned(TMySQLDataSet.PInternRecordBuffer(Field.DataSet.ActiveBuffer())^.NewData^.LibRow^[Field.FieldNo - 1]);
-    if (Empty or (TMySQLDataSet.PInternRecordBuffer(Field.DataSet.ActiveBuffer())^.NewData^.LibLengths^[Field.FieldNo - 1] = 0)) then
+    Empty := not Assigned(TMySQLDataSet.PExternRecordBuffer(Field.DataSet.ActiveBuffer())^.InternRecordBuffer^.NewData^.LibRow^[Field.FieldNo - 1]);
+    if (Empty or (TMySQLDataSet.PExternRecordBuffer(Field.DataSet.ActiveBuffer())^.InternRecordBuffer^.NewData^.LibLengths^[Field.FieldNo - 1] = 0)) then
       SetSize(0)
     else
       TMySQLDataSet(Field.DataSet).GetFieldData(Field, Self, TMySQLDataSet.PExternRecordBuffer(Field.DataSet.ActiveBuffer())^.InternRecordBuffer^.NewData);

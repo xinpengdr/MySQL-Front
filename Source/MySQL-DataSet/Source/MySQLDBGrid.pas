@@ -179,7 +179,7 @@ var
   Rect: TRect;
   StringList: TStringList;
 begin
-  if (not (Columns[FMouseMoveCell.X].Field.DataType in BinaryDataTypes) and not EditorMode) then
+  if ((0 <= FMouseMoveCell.X) and (FMouseMoveCell.X < FieldCount) and not (Columns[FMouseMoveCell.X].Field.DataType in BinaryDataTypes) and not EditorMode) then
   begin
     if (not Assigned(FHintWindow)) then
     begin
@@ -862,11 +862,10 @@ begin
 
   Cell := MouseCoord(X, Y);
   if (not ShowHint and not ParentShowHint or (Hint = '')) then
-    if (((FMouseMoveCell.X >= 0) or (FMouseMoveCell.Y >= 1)) and ((Cell.X < 0) or (Cell.Y <= 1))) then
+    if (((FMouseMoveCell.X >= 0) or (FMouseMoveCell.Y >= 1)) and ((Cell.X < 0) or (Cell.Y < 1))) then
     begin
       FMouseMoveCell.X := -1; FMouseMoveCell.Y := -1;
       ReleaseCapture();
-      KillTimer(Handle, tiShowHint);
       if (Assigned(FHintWindow)) then
         FreeAndNil(FHintWindow);
     end
@@ -1274,8 +1273,11 @@ begin
         ActivateHint();
       end;
     tiHideHint:
-      if (Assigned(FHintWindow)) then
-        FreeAndNil(FHintWindow);
+      begin
+        KillTimer(Handle, Message.TimerID);
+        if (Assigned(FHintWindow)) then
+          FreeAndNil(FHintWindow);
+      end;
   end;
 end;
 

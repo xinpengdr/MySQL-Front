@@ -529,10 +529,8 @@ type
     function GetIndex(): Integer;
     function GetTables(): TCTables; inline;
   protected
-    function GetComment(): string; virtual; abstract;
     function GetFields(): TCTableFields; virtual;
     function OpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean; virtual;
-    procedure SetComment(const AComment: string); virtual; abstract;
     procedure SetName(const AName: string); override;
     property SourceParsed: Boolean read FSourceParsed;
   public
@@ -547,7 +545,6 @@ type
     procedure Invalidate(); override;
     function Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean; virtual;
     function Update(): Boolean; override;
-    property Comment: string read GetComment write SetComment;
     property DataSet: TCTableDataSet read GetDataSet;
     property Fields: TCTableFields read GetFields;
     property Index: Integer read GetIndex;
@@ -603,6 +600,7 @@ type
     FAutoIncrement: LargeInt; // 0 -> unknown
     FChecked: TDateTime;
     FCollation: string;
+    FComment: string;
     FCreated: TDateTime;
     FDataSize: Int64;
     FDefaultCharset: string;
@@ -621,6 +619,7 @@ type
     FUpdated: TDateTime;
     function GetAutoIncrementField(): TCBaseTableField;
     function GetCollation(): string;
+    function GetComment(): string;
     function GetDefaultCharset(): string;
     function GetDefaultCodePage(): Cardinal;
     function GetEngine(): TCEngine;
@@ -631,14 +630,11 @@ type
     function GetPrimaryIndex(): TCIndex;
     procedure SetDefaultCharset(const ADefaultCharset: string);
   protected
-    FComment: string;
     FValidStatus: Boolean;
     procedure BuildStatus(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean); virtual;
     function GetBaseTableFields(): TCBaseTableFields; virtual;
     function GetFields(): TCTableFields; override;
-    function GetComment(): string; override;
     procedure ParseCreateTable(const SQL: string); virtual;
-    procedure SetComment(const AComment: string); override;
     procedure SetSource(const ADataSet: TMySQLQuery); overload; override;
     function SQLGetSource(): string; override;
   public
@@ -668,6 +664,7 @@ type
     property AutoIncrementField: TCBaseTableField read GetAutoIncrementField;
     property Checked: TDateTime read FChecked write FChecked;
     property Collation: string read GetCollation write FCollation;
+    property Comment: string read FComment write FComment;
     property Created: TDateTime read FCreated;
     property DataSize: Int64 read FDataSize;
     property DefaultCharset: string read GetDefaultCharset write SetDefaultCharset;
@@ -705,10 +702,8 @@ type
     function ParseCreateView(const SQL: string; const RemoveDefiner: Boolean = False; const RemoveDatabaseName: Boolean = False): string;
   protected
     FComment: string;
-    function GetComment(): string; override;
     function GetValid(): Boolean; override;
     function GetViewFields(): TCViewFields; virtual;
-    procedure SetComment(const AComment: string); override;
     procedure SetSource(const ADataSet: TMySQLQuery); overload; override;
     procedure SetSource(const ASource: string); override;
     function SQLGetSource(): string; override;
@@ -4789,11 +4784,6 @@ begin
   Result := Database.Client.ExecuteSQL('REPAIR TABLE ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(Name) + ';');
 end;
 
-procedure TCBaseTable.SetComment(const AComment: string);
-begin
-  FComment := AComment;
-end;
-
 procedure TCBaseTable.SetDefaultCharset(const ADefaultCharset: string);
 begin
   FDefaultCharset := LowerCase(ADefaultCharset);
@@ -4858,11 +4848,6 @@ begin
   FCheckOption := voNone;
   FSecurity := seDefiner;
   FStmt := '';
-end;
-
-function TCView.GetComment(): string;
-begin
-  Result := FComment;
 end;
 
 function TCView.GetValid(): Boolean;
@@ -4980,11 +4965,6 @@ begin
 
     FStmt := Copy(SQL, SQLParseGetIndex(Parse), Len) + ';';
   end;
-end;
-
-procedure TCView.SetComment(const AComment: string);
-begin
-  FComment := AComment;
 end;
 
 procedure TCView.SetSource(const ADataSet: TMySQLQuery);
@@ -5158,12 +5138,6 @@ begin
           begin
             BaseTable := TCBaseTable(Table[Index]);
             BaseTable.BuildStatus(DataSet, UseInformationSchema);
-          end
-          else if (Table[Index] is TCView) then
-          begin
-            View := TCView(Table[Index]);
-            if (UpperCase(DataSet.FieldByName('TABLE_COMMENT').AsString) <> 'VIEW') then
-              View.Comment := DataSet.FieldByName('TABLE_COMMENT').AsString;
           end;
 
           Client.ExecuteEvent(ceStatus, Database, Self, Table[Index]);

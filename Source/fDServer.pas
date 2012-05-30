@@ -545,7 +545,7 @@ begin
       SendMessage(ListView_GetHeader(ListView.Handle), HDM_SETITEM, I, LParam(@HDItem));
     end;
 
-  if (ComCtl32MajorVersion >= 6) then
+  if ((ComCtl32MajorVersion >= 6) and not CheckWin32Version(6, 1)) then
     SendMessage(ListView.Handle, LVM_SETSELECTEDCOLUMN, Column.Index, 0);
 end;
 

@@ -98,7 +98,7 @@ begin
   begin
     if (CheckWin32Version(6)) then
       for I := 0 to TToolbar(Control).ButtonCount - 1 do
-        if (TToolbar(Control).Buttons[I].Style = tbsSeparator) then
+        if (not StyleServices.Enabled and (TToolbar(Control).Buttons[I].Style = tbsSeparator)) then
         begin
           TToolbar(Control).Buttons[I].AutoSize := True;
           TToolbar(Control).Buttons[I].Enabled := False;

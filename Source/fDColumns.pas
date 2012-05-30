@@ -89,7 +89,7 @@ begin
     SendMessage(ListView_GetHeader(FColumns.Handle), HDM_SETITEM, 0, LParam(@HDItem));
   end;
 
-  if (ComCtl32MajorVersion >= 6) then
+  if ((ComCtl32MajorVersion >= 6) and not CheckWin32Version(6, 1)) then
     SendMessage(FColumns.Handle, LVM_SETSELECTEDCOLUMN, 0, 0);
 end;
 

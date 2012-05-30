@@ -6673,24 +6673,25 @@ procedure TFClient.FGridDblClick(Sender: TObject);
 begin
   Wanted.Clear();
 
-  if (not (FGrid.SelectedField.DataType in [ftWideMemo, ftBlob])) then
-    FGrid.EditorMode := True
-  else if (aVBlobText.Visible) then
-  begin
-    aVBlobText.Checked := True;
-    aVBlobExecute(nil);
-    FText.SelStart := FText.SelStart + FText.SelLength;
-    SendMessage(FText.Handle, WM_VSCROLL, SB_BOTTOM, 0);
-    Window.ActiveControl := FText;
-  end
-  else
-  begin
-    aVBlobHexEditor.Checked := True;
-    aVBlobExecute(nil);
-    FHexEditor.SelStart := FHexEditor.DataSize - 1;
-    SendMessage(FHexEditor.Handle, WM_VSCROLL, SB_BOTTOM, 0);
-    Window.ActiveControl := FHexEditor;
-  end;
+  if (FGrid.DataSource.DataSet.CanModify) then
+    if (not (FGrid.SelectedField.DataType in [ftWideMemo, ftBlob])) then
+      FGrid.EditorMode := True
+    else if (aVBlobText.Visible) then
+    begin
+      aVBlobText.Checked := True;
+      aVBlobExecute(nil);
+      FText.SelStart := FText.SelStart + FText.SelLength;
+      SendMessage(FText.Handle, WM_VSCROLL, SB_BOTTOM, 0);
+      Window.ActiveControl := FText;
+    end
+    else
+    begin
+      aVBlobHexEditor.Checked := True;
+      aVBlobExecute(nil);
+      FHexEditor.SelStart := FHexEditor.DataSize - 1;
+      SendMessage(FHexEditor.Handle, WM_VSCROLL, SB_BOTTOM, 0);
+      Window.ActiveControl := FHexEditor;
+    end;
 end;
 
 procedure TFClient.FGridEditButtonClick(Sender: TObject);
@@ -7624,35 +7625,6 @@ begin
   begin
     Node := FNavigator.Items.getFirstNode();
 
-    if (Node.Count = 0) then
-    begin
-      if (Assigned(Client.Hosts)) then
-      begin
-        Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(335));
-        Child.Data := Client.Hosts;
-        Child.ImageIndex := iiHosts;
-      end;
-      if (Assigned(Client.Processes)) then
-      begin
-        Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(24));
-        Child.Data := Client.Processes;
-        Child.ImageIndex := iiProcesses
-      end;
-      Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(23));
-      Child.Data := Client.Stati;
-      Child.ImageIndex := iiStati;
-      if (Assigned(Client.Users)) then
-      begin
-        Child := FNavigator.Items.AddChild(Node, ReplaceStr(Preferences.LoadStr(561), '&', ''));
-        Child.Data := Client.Users;
-        Child.ImageIndex := iiUsers;
-      end;
-      Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(22));
-      Child.Data := Client.Variables;
-      Child.ImageIndex := iiVariables;
-      Node.Expand(False);
-    end;
-
     if (ClientEvent.EventType in [ceBuild, ceDroped]) then
     begin
       Child := Node.getFirstChild();
@@ -7904,7 +7876,38 @@ begin
     end;
   end
   else
-    Node := nil;
+  begin
+    Node := FNavigator.Items.getFirstNode();
+
+    if (Node.Count = 0) then
+    begin
+      if (Assigned(Client.Hosts)) then
+      begin
+        Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(335));
+        Child.Data := Client.Hosts;
+        Child.ImageIndex := iiHosts;
+      end;
+      if (Assigned(Client.Processes)) then
+      begin
+        Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(24));
+        Child.Data := Client.Processes;
+        Child.ImageIndex := iiProcesses
+      end;
+      Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(23));
+      Child.Data := Client.Stati;
+      Child.ImageIndex := iiStati;
+      if (Assigned(Client.Users)) then
+      begin
+        Child := FNavigator.Items.AddChild(Node, ReplaceStr(Preferences.LoadStr(561), '&', ''));
+        Child.Data := Client.Users;
+        Child.ImageIndex := iiUsers;
+      end;
+      Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(22));
+      Child.Data := Client.Variables;
+      Child.ImageIndex := iiVariables;
+      Node.Expand(False);
+    end;
+  end;
 
   FNavigator.Items.EndUpdate();
 
@@ -10470,7 +10473,8 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         S := S + TCBaseTable(TCTable(Data)).Collation;
       end;
       Item.SubItems.Add(S);
-      Item.SubItems.Add(TCTable(Data).Comment);
+      if (Data is TCBaseTable) then
+        Item.SubItems.Add(TCBaseTable(Data).Comment);
     end
     else if (Data is TCRoutine) then
     begin
@@ -11342,7 +11346,7 @@ var
   Table: TCTable;
   TableName: string;
 begin
-  if (SQLCreateParse(Parse, PChar(ASQL[System.Pos('FROM', UpperCase(ASQL))]), Length(ASQL) - System.Pos('FROM', UpperCase(ASQL)) + 1, Client.ServerVersion) and SQLParseKeyword(Parse, 'FROM')) then
+  if (SQLCreateParse(Parse, PChar(@ASQL[System.Pos('FROM', UpperCase(ASQL))]), Length(ASQL) - System.Pos('FROM', UpperCase(ASQL)) + 1, Client.ServerVersion) and SQLParseKeyword(Parse, 'FROM')) then
   begin
     TableName := SQLParseValue(Parse);
     if (not SQLParseChar(Parse, '.')) then
@@ -13593,21 +13597,24 @@ begin
       Table := Database.TableByName(TableName);
 
       if (Assigned(Table)) then
-        for I := 0 to FGrid.Columns.Count - 1 do
-        begin
-          if ((Table is TCBaseTable) and GetFieldInfo(FGrid.Columns[I].Field.Origin, FieldInfo)) then
-            FieldName := FieldInfo.OriginalFieldName
-          else if (Table is TCView) then
-            FieldName := FGrid.Columns[I].Field.DisplayName
-          else
-            FieldName := '';
-          if (Assigned(Table.FieldByName(FieldName))) then
+        if (Table is TCSystemView) then
+          FGrid.ReadOnly := True
+        else
+          for I := 0 to FGrid.Columns.Count - 1 do
           begin
-            TTableDesktop(Table.Desktop).GridVisible[FieldName] := FGrid.Columns[I].Visible;
-            TTableDesktop(Table.Desktop).GridWidths[FieldName] := FGrid.Columns[I].Width;
-            TTableDesktop(Table.Desktop).ColumnIndices[I] := FGrid.Columns[I].Field.FieldNo - 1;
+            if ((Table is TCBaseTable) and GetFieldInfo(FGrid.Columns[I].Field.Origin, FieldInfo)) then
+              FieldName := FieldInfo.OriginalFieldName
+            else if (Table is TCView) then
+              FieldName := FGrid.Columns[I].Field.DisplayName
+            else
+              FieldName := '';
+            if (Assigned(Table.FieldByName(FieldName))) then
+            begin
+              TTableDesktop(Table.Desktop).GridVisible[FieldName] := FGrid.Columns[I].Visible;
+              TTableDesktop(Table.Desktop).GridWidths[FieldName] := FGrid.Columns[I].Width;
+              TTableDesktop(Table.Desktop).ColumnIndices[I] := FGrid.Columns[I].Field.FieldNo - 1;
+            end;
           end;
-        end;
     end
     else if (Assigned(LastDataSource.ResultSet)) then
     begin
