@@ -1879,7 +1879,11 @@ begin
     SynchronizingThreads.Delete(Index);
   SynchronizingThreadsCS.Leave();
 
-  inherited;
+  try
+    inherited;
+  except
+    // ToDo: Cannot terminate an externally created thread.
+  end;
 
   if (ExecuteE.WaitFor(IGNORE) = wrSignaled) then
   begin
@@ -2853,10 +2857,7 @@ begin
     if (SynchroThread.Terminated) then
       LibRow := nil
     else
-    begin
-      Sleep(100);
       LibRow := Lib.mysql_fetch_row(SynchroThread.ResultHandle);
-    end;
 
     TerminateCS.Enter();
     if (not SynchroThread.Terminated and Assigned(SynchroThread.DataSet)) then
