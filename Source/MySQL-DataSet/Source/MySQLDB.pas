@@ -330,7 +330,6 @@ type
     function local_infile_error(const local_infile: Plocal_infile; const error_msg: my_char; const error_msg_len: my_uint): my_int; virtual;
     function local_infile_init(var local_infile: Plocal_infile; const filename: my_char): my_int; virtual;
     function local_infile_read(const local_infile: Plocal_infile; buf: my_char; const buf_len: my_uint): my_int; virtual;
-    procedure OpenDataSets(); virtual;
     procedure RollbackTransaction(); virtual;
     procedure SendSQL(const SQL: string; const OnResult: TResultEvent = nil); virtual;
     function Shutdown(): Boolean; virtual;
@@ -409,6 +408,7 @@ type
     FRowsAffected: Integer;
     FWarningCount: Integer;
     HoldFieldDefs: Boolean;
+    SynchroThread: TMySQLConnection.TSynchroThread;
   protected
     FCommandText: string;
     FCommandType: TCommandType;
@@ -1879,11 +1879,7 @@ begin
     SynchronizingThreads.Delete(Index);
   SynchronizingThreadsCS.Leave();
 
-  try
-    inherited;
-  except
-    // ToDo: Cannot terminate an externally created thread.
-  end;
+  inherited;
 
   if (ExecuteE.WaitFor(IGNORE) = wrSignaled) then
   begin
@@ -2746,28 +2742,34 @@ var
   S: String;
   StmtLength: Integer;
 begin
-  if (SynchroThread.State = ssResult) then
+  if (SynchroThread.Terminated) then
   begin
-    if (Assigned(SynchroThread.ResultHandle)) then
-      while (Assigned(Lib.mysql_fetch_row(SynchroThread.ResultHandle))) do ;
-  end
-  else if (Assigned(SynchroThread.DataSet)) then
-  begin
-    if (Assigned(SynchroThread.DataSet.AfterReceivingRecords) and not SynchroThread.DataSet.HoldFieldDefs) then
-      SynchroThread.DataSet.AfterReceivingRecords(SynchroThread.DataSet);
-    SynchroThread.DataSet := nil;
-  end;
-
-  if (Assigned(SynchroThread.ResultHandle)) then
-  begin
-    S := '--> ' + IntToStr(Lib.mysql_num_rows(SynchroThread.ResultHandle)) + ' Record(s) received';
+    S := '----> Connection Terminated <----';
     WriteMonitor(PChar(S), Length(S), ttInfo);
+  end
+  else
+  begin
+    if (SynchroThread.State = ssResult) then
+    begin
+      if (Assigned(SynchroThread.ResultHandle)) then
+        while (Assigned(Lib.mysql_fetch_row(SynchroThread.ResultHandle))) do ;
+    end
+    else if (Assigned(SynchroThread.DataSet)) then
+    begin
+      if (Assigned(SynchroThread.DataSet.AfterReceivingRecords) and not SynchroThread.DataSet.HoldFieldDefs) then
+        SynchroThread.DataSet.AfterReceivingRecords(SynchroThread.DataSet);
+      SynchroThread.DataSet := nil;
+    end;
 
-    Lib.mysql_free_result(SynchroThread.ResultHandle);
-    SynchroThread.ResultHandle := nil;
-  end;
+    if (Assigned(SynchroThread.ResultHandle)) then
+    begin
+      S := '--> ' + IntToStr(Lib.mysql_num_rows(SynchroThread.ResultHandle)) + ' Record(s) received';
+      WriteMonitor(PChar(S), Length(S), ttInfo);
 
-  if (not SynchroThread.Terminated) then
+      Lib.mysql_free_result(SynchroThread.ResultHandle);
+      SynchroThread.ResultHandle := nil;
+    end;
+
     if (MultiStatements and (Lib.mysql_more_results(SynchroThread.LibHandle) <> 0)) then
     begin
       if (SynchroThread.SQLStmtInPacket + 1 < Integer(SynchroThread.SQLStmtsInPackets[SynchroThread.SQLPacket])) then
@@ -2810,6 +2812,7 @@ begin
       else
         SynchroThread.State := ssReady;
     end;
+  end;
 end;
 
 procedure TMySQLConnection.SyncNextResult(const SynchroThread: TSynchroThread);
@@ -3253,10 +3256,6 @@ begin
     Inc(local_infile^.Position, Size);
     Result := Size;
   end;
-end;
-
-procedure TMySQLConnection.OpenDataSets();
-begin
 end;
 
 procedure TMySQLConnection.RollbackTransaction();
@@ -3952,8 +3951,9 @@ procedure TMySQLQuery.InternalClose();
 begin
   if (not (Self is TMySQLDataSet)) then
   begin
-    if (Assigned(Connection.SynchroThread)) then
-      Connection.SyncHandledResult(Connection.SynchroThread);
+    if (Assigned(SynchroThread)) then
+      Connection.SyncHandledResult(SynchroThread);
+    SynchroThread := nil;
     FHandle := nil;
   end;
 
@@ -4314,17 +4314,18 @@ end;
 
 function TMySQLQuery.InternalOpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
 begin
-  if (Assigned(FHandle)) then
-    Assert(not Assigned(FHandle));
+  Assert(not Assigned(FHandle));
 
 
-  FHandle := Connection.SynchroThread.ResultHandle;
+  SynchroThread := Connection.SynchroThread;
+
+  FHandle := SynchroThread.ResultHandle;
 
   InternalInitFieldDefs();
   BindFields(True);
 
   if (not (Self is TMySQLDataSet)) then
-    Connection.SyncOpenQuery(Connection.SynchroThread, Self);
+    Connection.SyncOpenQuery(SynchroThread, Self);
 
   Result := False;
 end;
@@ -4356,7 +4357,7 @@ begin
           Connection.SendSQL(TMySQLTable(Self).SQLSelect(), InternalOpenEvent);
         end;
 
-        if ((State <> dsOpening) and (Connection.Lib.mysql_errno(Connection.SynchroThread.LibHandle) = 0) and (FieldCount > 0)) then
+        if ((State <> dsOpening) and (Connection.Lib.mysql_errno(SynchroThread.LibHandle) = 0) and (FieldCount > 0)) then
           inherited;
       end
       else
@@ -4414,6 +4415,7 @@ begin
   FConnection := nil;
   FDatabaseName := '';
   FTableName := '';
+  SynchroThread := nil;
 
   FIndexDefs := TIndexDefs.Create(Self);
   FRecNo := -1;
@@ -5368,9 +5370,9 @@ var
   I: Integer;
 begin
   Connection.TerminateCS.Enter();
-  if (IsCursorOpen() and Assigned(RecordReceived) and Assigned(Connection.SynchroThread) and (Connection.SynchroThread.DataSet = Self)) then
+  if (IsCursorOpen() and Assigned(RecordReceived) and Assigned(SynchroThread) and (SynchroThread.DataSet = Self)) then
   begin
-    Connection.SynchroThread.DataSet := nil;
+    SynchroThread.DataSet := nil;
     FHandle := nil;
   end;
   Connection.TerminateCS.Leave();
@@ -5523,13 +5525,9 @@ var
   FieldName: string;
   Pos: Integer;
 begin
-  if (Assigned(FHandle)) then
-    Write
-  else
-  begin
-  Connection.SynchroThread.DataSet := Self;
-
   inherited;
+
+  SynchroThread.DataSet := Self;
 
   for Field in Fields do
     Field.Tag := Field.Tag and not ftSortedField;
@@ -5564,13 +5562,12 @@ begin
 
   FRecordReceived := TEvent.Create(nil, False, False, '');
 
-  Connection.SyncOpenDataSet(Connection.SynchroThread, Self);
+  Connection.SyncOpenDataSet(SynchroThread, Self);
 
   if (Connection.UseSynchroThread() and (State = dsOpening)) then
     OpenCursorComplete();
 
   Result := False;
-  end;
 end;
 
 procedure TMySQLDataSet.InternalPost();
@@ -5653,8 +5650,8 @@ end;
 
 function TMySQLDataSet.InternalRefreshEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
 begin
-  Connection.SynchroThread.DataSet := Self;
-  Connection.SyncReceivingData(Connection.SynchroThread);
+  SynchroThread.DataSet := Self;
+  Connection.SyncReceivingData(SynchroThread);
 
   Result := False;
 end;

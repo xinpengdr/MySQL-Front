@@ -2376,8 +2376,8 @@ begin
 
         if (not Assigned(DBObject)) then
           NotFound := True
-        else
-          DBObject.Update();
+        else if (DBObject.Update() and (URI.Param['view'] = 'browser')) then
+          AllowChange := False;
       end;
     end;
 
@@ -4371,9 +4371,9 @@ begin
 
   if ((OldAddress <> '') and (Address <> OldAddress)) then
     Wanted.Address := OldAddress
-  else if (Assigned(FNavigator.Selected)) then
-    PContentRefresh(Sender);
-
+//  else if (Assigned(FNavigator.Selected)) then
+//    PContentRefresh(Sender);
+;
 
   if (PContent.Visible and Assigned(TempActiveControl) and TempActiveControl.Visible) then
   begin
@@ -4434,8 +4434,6 @@ var
   I: Integer;
 begin
   DataSet := TDataSet(Message.wParam);
-
-  Client.OpenDataSets();
 
   if ((View = avDataBrowser) and (DataSet is TCTableDataSet) and (TCTableDataSet(DataSet).DatabaseName = SelectedDatabase) and (TCTableDataSet(DataSet).CommandText = SelectedTable)) then
   begin
