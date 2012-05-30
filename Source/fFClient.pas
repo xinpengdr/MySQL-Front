@@ -1125,6 +1125,123 @@ begin
   inherited Create(ACObject);
 end;
 
+{ TFClient.TDatabaseDesktop ***************************************************}
+
+procedure TFClient.TDatabaseDesktop.CloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  if (Assigned(FWorkbench) and FWorkbench.Modified) then
+    try
+      SysUtils.ForceDirectories(ExtractFilePath(FClient.Client.Account.DataPath + Database.Name));
+      FWorkbench.SaveToFile(FClient.Client.Account.DataPath + Database.Name + PathDelim + 'Diagram.xml');
+    except
+      raise EInOutError.Create(SysErrorMessage(GetLastError()) + '  (' + FClient.Client.Account.DataPath + Database.Name + ')');
+    end;
+end;
+
+constructor TFClient.TDatabaseDesktop.Create(const AFClient: TFClient; const ADatabase: TCDatabase);
+begin
+  FFClient := AFClient;
+
+  inherited Create(ADatabase);
+
+  FXML := nil;
+end;
+
+procedure TFClient.TDatabaseDesktop.CreateListView();
+begin
+  if (not Assigned(FListView)) then
+  begin
+    FClient.CreateListView(Database, Database, FListView);
+    if (Database.Valid) then
+    begin
+      Database.Tables.PushBuildEvent(Database);
+      if (Assigned(Database.Routines)) then
+        Database.Routines.PushBuildEvent(Database);
+      if (Assigned(Database.Events)) then
+        Database.Events.PushBuildEvent(Database);
+    end;
+  end;
+end;
+
+destructor TFClient.TDatabaseDesktop.Destroy();
+begin
+  if (Assigned(FListView)) then
+  begin
+    FListView.Items.BeginUpdate();
+    FListView.Items.Clear();
+    FListView.Items.EndUpdate();
+    FListView.Free();
+  end;
+  if (Assigned(FWorkbench)) then
+    FWorkbench.Free();
+
+  inherited;
+end;
+
+function TFClient.TDatabaseDesktop.GetDatabase(): TCDatabase;
+begin
+  Result := TCDatabase(CObject);
+end;
+
+function TFClient.TDatabaseDesktop.GetXML(): IXMLNode;
+var
+  I: Integer;
+  Node: IXMLNode;
+begin
+  if (not Assigned(FXML) and Assigned(FClient.Client.Account.DesktopXML)) then
+  begin
+    Node := XMLNode(FClient.Client.Account.DesktopXML, 'browser/databases', True);
+
+    for I := 0 to Node.ChildNodes.Count - 1 do
+      if ((Node.NodeName = 'database') and (lstrcmpi(PChar(string(Node.ChildNodes[I].Attributes['name'])), PChar(Database.Name)) = 0)) then
+        FXML := Node.ChildNodes[I];
+
+    if (not Assigned(FXML)) then
+    begin
+      FXML := Node.AddChild('database');
+      try
+        FXML.Attributes['name'] := Database.Name;
+      except
+        Node.ChildNodes.Delete(Node.ChildNodes.IndexOf(FXML));
+        FXML := nil;
+      end;
+    end;
+  end;
+
+  Result := FXML;
+end;
+
+function TFClient.TDatabaseDesktop.GetWorkbench(): TWWorkbench;
+begin
+  if (not Assigned(FWorkbench)) then
+    FWorkbench := FClient.CreateWorkbench(Database);
+
+  Result := FWorkbench;
+end;
+
+procedure TFClient.TDatabaseDesktop.SaveToXML();
+var
+  TablesXML: IXMLNode;
+  I: Integer;
+begin
+  TablesXML := XMLNode(XML, 'tables');
+  if (Assigned(TablesXML)) then
+    for I := TablesXML.ChildNodes.Count - 1 downto 0 do
+      if ((TablesXML.ChildNodes[I].NodeName = 'table') and not Assigned(Database.TableByName(TablesXML.ChildNodes[I].Attributes['name']))) then
+        TablesXML.ChildNodes.Delete(I);
+
+  if (Database.Tables.Valid) then
+    XMLNode(XML, 'tables', True).Attributes['count'] := IntToStr(Database.Tables.Count);
+end;
+
+function TFClient.TDatabaseDesktop.TableCount(): Integer;
+begin
+  Result := -1;
+
+  if (Assigned(XMLNode(XML, 'tables'))) then
+    TryStrToInt(XMLNode(XML, 'tables').Attributes['count'], Result);
+end;
+
 { TFClient.TTableDesktop ******************************************************}
 
 procedure TFClient.TTableDesktop.AddFilter(const AFilter: string);
@@ -1168,7 +1285,8 @@ begin
   if (not Assigned(FListView)) then
   begin
     FClient.CreateListView(Table, Table, FListView);
-    Table.Tables.PushBuildEvent(Table);
+    if (Table.Valid) then
+      Table.Tables.PushBuildEvent(Table);
   end;
 end;
 
@@ -1407,7 +1525,7 @@ begin
   Result := FSynMemo;
 end;
 
-{ TFClient.TEventDesktop *******************************************************}
+{ TFClient.TEventDesktop ******************************************************}
 
 constructor TFClient.TEventDesktop.Create(const AFClient: TFClient; const AEvent: TCEvent);
 begin
@@ -1455,120 +1573,6 @@ begin
     FSynMemo := FClient.CreateSynMemo();
 
   Result := FSynMemo;
-end;
-
-{ TFClient.TDatabaseDesktop ***************************************************}
-
-procedure TFClient.TDatabaseDesktop.CloseQuery(Sender: TObject; var CanClose: Boolean);
-begin
-  if (Assigned(FWorkbench) and FWorkbench.Modified) then
-    try
-      SysUtils.ForceDirectories(ExtractFilePath(FClient.Client.Account.DataPath + Database.Name));
-      FWorkbench.SaveToFile(FClient.Client.Account.DataPath + Database.Name + PathDelim + 'Diagram.xml');
-    except
-      raise EInOutError.Create(SysErrorMessage(GetLastError()) + '  (' + FClient.Client.Account.DataPath + Database.Name + ')');
-    end;
-end;
-
-constructor TFClient.TDatabaseDesktop.Create(const AFClient: TFClient; const ADatabase: TCDatabase);
-begin
-  FFClient := AFClient;
-
-  inherited Create(ADatabase);
-
-  FXML := nil;
-end;
-
-procedure TFClient.TDatabaseDesktop.CreateListView();
-begin
-  if (not Assigned(FListView)) then
-  begin
-    FClient.CreateListView(Database, Database, FListView);
-    Database.Tables.PushBuildEvent(Database);
-    if (Assigned(Database.Routines)) then
-      Database.Routines.PushBuildEvent(Database);
-    if (Assigned(Database.Events)) then
-      Database.Events.PushBuildEvent(Database);
-  end;
-end;
-
-destructor TFClient.TDatabaseDesktop.Destroy();
-begin
-  if (Assigned(FListView)) then
-  begin
-    FListView.Items.BeginUpdate();
-    FListView.Items.Clear();
-    FListView.Items.EndUpdate();
-    FListView.Free();
-  end;
-  if (Assigned(FWorkbench)) then
-    FWorkbench.Free();
-
-  inherited;
-end;
-
-function TFClient.TDatabaseDesktop.GetDatabase(): TCDatabase;
-begin
-  Result := TCDatabase(CObject);
-end;
-
-function TFClient.TDatabaseDesktop.GetXML(): IXMLNode;
-var
-  I: Integer;
-  Node: IXMLNode;
-begin
-  if (not Assigned(FXML) and Assigned(FClient.Client.Account.DesktopXML)) then
-  begin
-    Node := XMLNode(FClient.Client.Account.DesktopXML, 'browser/databases', True);
-
-    for I := 0 to Node.ChildNodes.Count - 1 do
-      if ((Node.NodeName = 'database') and (lstrcmpi(PChar(string(Node.ChildNodes[I].Attributes['name'])), PChar(Database.Name)) = 0)) then
-        FXML := Node.ChildNodes[I];
-
-    if (not Assigned(FXML)) then
-    begin
-      FXML := Node.AddChild('database');
-      try
-        FXML.Attributes['name'] := Database.Name;
-      except
-        Node.ChildNodes.Delete(Node.ChildNodes.IndexOf(FXML));
-        FXML := nil;
-      end;
-    end;
-  end;
-
-  Result := FXML;
-end;
-
-function TFClient.TDatabaseDesktop.GetWorkbench(): TWWorkbench;
-begin
-  if (not Assigned(FWorkbench)) then
-    FWorkbench := FClient.CreateWorkbench(Database);
-
-  Result := FWorkbench;
-end;
-
-procedure TFClient.TDatabaseDesktop.SaveToXML();
-var
-  TablesXML: IXMLNode;
-  I: Integer;
-begin
-  TablesXML := XMLNode(XML, 'tables');
-  if (Assigned(TablesXML)) then
-    for I := TablesXML.ChildNodes.Count - 1 downto 0 do
-      if ((TablesXML.ChildNodes[I].NodeName = 'table') and not Assigned(Database.TableByName(TablesXML.ChildNodes[I].Attributes['name']))) then
-        TablesXML.ChildNodes.Delete(I);
-
-  if (Database.Tables.Valid) then
-    XMLNode(XML, 'tables', True).Attributes['count'] := IntToStr(Database.Tables.Count);
-end;
-
-function TFClient.TDatabaseDesktop.TableCount(): Integer;
-begin
-  Result := -1;
-
-  if (Assigned(XMLNode(XML, 'tables'))) then
-    TryStrToInt(XMLNode(XML, 'tables').Attributes['count'], Result);
 end;
 
 { TFClient.TWanted ************************************************************}
@@ -6977,13 +6981,15 @@ begin
             FGrid.Columns[I].Width := Preferences.GridMaxColumnWidth;
 
 
-        if (FGrid.Columns[I].Field.IsIndexField) then
-          FGrid.Columns[I].Font.Style := FGrid.Columns[I].Font.Style + [fsBold]
-        else
-          FGrid.Columns[I].Font.Style := FGrid.Columns[I].Font.Style - [fsBold];
-
         if (Assigned(FGrid.Columns[I].Field)) then
+        begin
+          if (FGrid.Columns[I].Field.IsIndexField) then
+            FGrid.Columns[I].Font.Style := FGrid.Columns[I].Font.Style + [fsBold]
+          else
+            FGrid.Columns[I].Font.Style := FGrid.Columns[I].Font.Style - [fsBold];
+
           FGrid.Columns[I].Field.OnSetText := FieldSetText;
+        end;
       end;
 
       FGrid.DataSource.DataSet.EnableControls();
@@ -10442,7 +10448,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         else
           Item.SubItems.Add(SizeToStr(TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize + 1))
       else
-        if (not TCView(TCTable(Data)).ValidSource) then
+        if (not TCView(TCTable(Data)).Valid) then
           Item.SubItems.Add('')
         else
           Item.SubItems.Add(SizeToStr(Length(TCView(TCTable(Data)).Source)));
@@ -10459,11 +10465,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         S := S + TCBaseTable(TCTable(Data)).Collation;
       end;
       Item.SubItems.Add(S);
-
-      if ((TCTable(Data) is TCBaseTable)) then
-        Item.SubItems.Add(TCBaseTable(TCTable(Data)).Comment)
-      else
-        Item.SubItems.Add(TCView(TCTable(Data)).Comment);
+      Item.SubItems.Add(TCTable(Data).Comment);
     end
     else if (Data is TCRoutine) then
     begin
@@ -10478,12 +10480,12 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         rtFunction: Item.SubItems.Add('Function');
       end;
       Item.SubItems.Add('');
-      if (not TCRoutine(Data).ValidSource) then
+      if (not TCRoutine(Data).Valid) then
         Item.SubItems.Add('')
       else
         Item.SubItems.Add(SizeToStr(Length(TCRoutine(Data).Source)));
       if (TCRoutine(Data).Modified = 0) then
-        Item.SubItems.Add('???')
+        Item.SubItems.Add('')
       else
         Item.SubItems.Add(SysUtils.DateTimeToStr(TCRoutine(Data).Modified, LocaleFormatSettings));
       if (not Assigned(TCRoutine(Data).FunctionResult) or (TCRoutine(Data).FunctionResult.Charset = '') or (TCRoutine(Data).FunctionResult.Charset = TCRoutine(Data).Database.DefaultCharset)) then
@@ -10499,12 +10501,12 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
       Item.Caption := TCEvent(Data).Name;
       Item.SubItems.Add('TCEvent(Data)');
       Item.SubItems.Add('');
-      if (not TCEvent(Data).ValidSource) then
+      if (not TCEvent(Data).Valid) then
         Item.SubItems.Add('')
       else
         Item.SubItems.Add(SizeToStr(Length(TCEvent(Data).Source)));
       if (TCEvent(Data).Updated = 0) then
-        Item.SubItems.Add('???')
+        Item.SubItems.Add('')
       else
         Item.SubItems.Add(SysUtils.DateTimeToStr(TCEvent(Data).Updated, LocaleFormatSettings));
       Item.SubItems.Add('');
@@ -10761,6 +10763,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
   procedure UpdateGroup(const GroupID: Integer; const CItems: TCItems);
   var
     Count: Integer;
+    Header: string;
     I: Integer;
     Index: Integer;
     J: Integer;
@@ -10792,17 +10795,17 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
             UpdateItem(ListView.Items[I], ClientEvent.CItem);
     end;
 
-    if (Assigned(GroupByGroupID(GroupID))) then
+    if (ClientEvent.EventType in [ceBuild, ceCreated, ceDroped, ceStatus]) then
       case (GroupID) of
         iiDatabase:
-          GroupByGroupID(iiDatabase).Header := ReplaceStr(Preferences.LoadStr(265) + ' (' + IntToStr(ClientEvent.CItems.Count) + ')', '&', '');
+          GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(265) + ' (' + IntToStr(ClientEvent.CItems.Count) + ')', '&', '');
         iiTable:
           begin
-            S := ReplaceStr(Preferences.LoadStr(234), '&', '');
+            Header := ReplaceStr(Preferences.LoadStr(234), '&', '');
             if (Client.ServerVersion >= 50001) then
-              S := S + ' + ' + ReplaceStr(Preferences.LoadStr(873), '&', '');
-            S := S + ' (' + IntToStr(ClientEvent.CItems.Count) + ')';
-            GroupByGroupID(GroupID).Header := S;
+              Header := Header + ' + ' + ReplaceStr(Preferences.LoadStr(873), '&', '');
+            Header := Header + ' (' + IntToStr(ClientEvent.CItems.Count) + ')';
+            GroupByGroupID(GroupID).Header := Header;
           end;
         iiProcedure:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(874) + ' + ' + Preferences.LoadStr(875), '&', '') + ' (' + IntToStr(ClientEvent.CItems.Count) + ')';
@@ -10924,14 +10927,15 @@ begin
         UpdateGroup(iiUser, ClientEvent.CItems);
       lkVariables:
         UpdateGroup(iiVariable, ClientEvent.CItems);
-      else
-        raise ERangeError.Create(SRangeError);
     end;
 
-    if (not Assigned(ListView.ItemFocused) and (ListView.Items.Count > 0)) then
-      ListView.ItemFocused := ListView.Items[0];
-    if ((Window.ActiveControl = ListView) and Assigned(ListView.OnSelectItem)) then
-      ListView.OnSelectItem(nil, ListView.Selected, Assigned(ListView.Selected));
+    if (ClientEvent.EventType = ceBuild) then
+    begin
+      if (not Assigned(ListView.ItemFocused) and (ListView.Items.Count > 0)) then
+        ListView.ItemFocused := ListView.Items[0];
+      if ((Window.ActiveControl = ListView) and Assigned(ListView.OnSelectItem)) then
+        ListView.OnSelectItem(nil, ListView.Selected, Assigned(ListView.Selected));
+    end;
 
     ListView.Columns.EndUpdate();
 

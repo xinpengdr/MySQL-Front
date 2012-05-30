@@ -211,11 +211,13 @@ type
     FValidSource: Boolean;
     function GetDesktop(): TDesktop; virtual;
     function GetSource(): string; virtual;
+    function GetValid(): Boolean; virtual;
     function GetValidSource(): Boolean; virtual;
     procedure SetName(const AName: string); override;
     procedure SetSource(const AField: TField); overload; virtual;
     procedure SetSource(const ADataSet: TMySQLQuery); overload; virtual; abstract;
     procedure SetSource(const ASource: string); overload; virtual;
+    property ValidSource: Boolean read GetValidSource;
   public
     procedure Assign(const Source: TCObject); reintroduce; virtual;
     procedure Clear(); virtual;
@@ -226,7 +228,7 @@ type
     property Client: TCClient read FClient;
     property Desktop: TDesktop read GetDesktop;
     property Source: string read GetSource;
-    property ValidSource: Boolean read GetValidSource;
+    property Valid: Boolean read GetValid;
   end;
 
   TCObjects = class(TCEntities)
@@ -476,7 +478,7 @@ type
     function GetClient(): TCClient; inline;
     function GetForeignKey(Index: Integer): TCForeignKey;
   protected
-    Valid: Boolean;
+    FValid: Boolean;
     function GetCount(): Integer; override;
     procedure ParseCreateTable(const SQL: string); virtual;
   public
@@ -490,6 +492,7 @@ type
     property Client: TCClient read GetClient;
     property ForeignKey[Index: Integer]: TCForeignKey read GetForeignKey; default;
     property Table: TCBaseTable read FTable;
+    property Valid: Boolean read FValid;
   end;
 
   TCTableDataSet = class(TMySQLTable)
@@ -509,7 +512,7 @@ type
     FDataSet: TCTableDataSet;
     FFields: TCTableFields;
     FFilterSQL: string;
-    FValid: Boolean;
+    FSourceParsed: Boolean;
     procedure AfterCancel(DataSet: TDataSet);
     procedure AfterClose(DataSet: TDataSet);
     procedure AfterOpen(DataSet: TDataSet);
@@ -526,9 +529,11 @@ type
     function GetIndex(): Integer;
     function GetTables(): TCTables; inline;
   protected
+    function GetComment(): string; virtual; abstract;
     function GetFields(): TCTableFields; virtual;
+    procedure SetComment(const AComment: string); virtual; abstract;
     procedure SetName(const AName: string); override;
-    property Valid: Boolean read FValid;
+    property SourceParsed: Boolean read FSourceParsed;
   public
     procedure Assign(const Source: TCTable); reintroduce; virtual;
     procedure Clear(); override;
@@ -541,6 +546,7 @@ type
     procedure Invalidate(); override;
     function Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean; virtual;
     function Update(): Boolean; override;
+    property Comment: string read GetComment write SetComment;
     property DataSet: TCTableDataSet read GetDataSet;
     property Fields: TCTableFields read GetFields;
     property Index: Integer read GetIndex;
@@ -596,7 +602,6 @@ type
     FAutoIncrement: LargeInt; // 0 -> unknown
     FChecked: TDateTime;
     FCollation: string;
-    FComment: string;
     FCreated: TDateTime;
     FDataSize: Int64;
     FDefaultCharset: string;
@@ -615,7 +620,6 @@ type
     FUpdated: TDateTime;
     function GetAutoIncrementField(): TCBaseTableField;
     function GetCollation(): string;
-    function GetComment(): string;
     function GetDefaultCharset(): string;
     function GetDefaultCodePage(): Cardinal;
     function GetEngine(): TCEngine;
@@ -626,11 +630,14 @@ type
     function GetPrimaryIndex(): TCIndex;
     procedure SetDefaultCharset(const ADefaultCharset: string);
   protected
+    FComment: string;
     FValidStatus: Boolean;
     procedure BuildStatus(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean); virtual;
     function GetBaseTableFields(): TCBaseTableFields; virtual;
     function GetFields(): TCTableFields; override;
+    function GetComment(): string; override;
     procedure ParseCreateTable(const SQL: string); virtual;
+    procedure SetComment(const AComment: string); override;
     procedure SetSource(const ADataSet: TMySQLQuery); overload; override;
     function SQLGetSource(): string; override;
   public
@@ -660,7 +667,6 @@ type
     property AutoIncrementField: TCBaseTableField read GetAutoIncrementField;
     property Checked: TDateTime read FChecked write FChecked;
     property Collation: string read GetCollation write FCollation;
-    property Comment: string read GetComment write FComment;
     property Created: TDateTime read FCreated;
     property DataSize: Int64 read FDataSize;
     property DefaultCharset: string read GetDefaultCharset write SetDefaultCharset;
@@ -692,14 +698,16 @@ type
   private
     FAlgorithm: TAlgorithm;
     FCheckOption: TCheckOption;
-    FComment: string;
     FDefiner: string;
     FSecurity: TCSecurity;
     FStmt: string;
     function ParseCreateView(const SQL: string; const RemoveDefiner: Boolean = False; const RemoveDatabaseName: Boolean = False): string;
   protected
-    function GetValidSource(): Boolean; override;
+    FComment: string;
+    function GetComment(): string; override;
+    function GetValid(): Boolean; override;
     function GetViewFields(): TCViewFields; virtual;
+    procedure SetComment(const AComment: string); override;
     procedure SetSource(const ADataSet: TMySQLQuery); overload; override;
     procedure SetSource(const ASource: string); override;
     function SQLGetSource(): string; override;
@@ -711,7 +719,6 @@ type
     procedure Invalidate(); override;
     property Algorithm: TAlgorithm read FAlgorithm write FAlgorithm;
     property CheckOption: TCheckOption read FCheckOption write FCheckOption;
-    property Comment: string read FComment write FComment;
     property Definer: string read FDefiner;
     property Fields: TCViewFields read GetViewFields;
     property Security: TCSecurity read FSecurity write FSecurity;
@@ -847,10 +854,10 @@ type
     FStmt: string;
     FTableName: string;
     FTiming: TTiming;
-    FValid: Boolean;
+    xFValid: Boolean;
     procedure SetSource(const ADataSet: TMySQLQuery); overload; override;
     function SQLGetSource(): string; override;
-    property Valid: Boolean read FValid;
+    property xValid: Boolean read xFValid;
   public
     procedure Assign(const Source: TCTrigger); reintroduce; virtual;
     procedure Clear(); override;
@@ -968,13 +975,13 @@ type
     function GetPrefetchObjects(): Boolean;
     function GetSize(): Int64;
     function GetUpdated(): TDateTime;
-    function GetValid(): Boolean;
     function GetValidSources(): Boolean;
     procedure ParseCreateDatabase(const SQL: string);
     procedure SetDefaultCharset(const ADefaultCharset: string);
   protected
     function Build(const DataSet: TMySQLQuery): Boolean; virtual;
     function GetSource(): string; override;
+    function GetValid(): Boolean; override;
     function GetValidSource(): Boolean; override;
     procedure SetName(const AName: string); override;
     procedure SetSource(const ADataSet: TMySQLQuery); override;
@@ -1033,7 +1040,6 @@ type
     property Tables: TCTables read FTables;
     property Triggers: TCTriggers read FTriggers;
     property Updated: TDateTime read GetUpdated;
-    property Valid: Boolean read GetValid;
     property ValidSources: Boolean read GetValidSources;
   end;
 
@@ -2175,6 +2181,11 @@ begin
   Result := FSource;
 end;
 
+function TCObject.GetValid(): Boolean;
+begin
+  Result := ValidSource;
+end;
+
 function TCObject.GetValidSource(): Boolean;
 begin
   Result := FValidSource;
@@ -3216,21 +3227,21 @@ begin
     AddForeignKey(Source.ForeignKey[I]);
     ForeignKey[I].Created := Source.ForeignKey[I].Created;
   end;
-  Valid := Source.Valid;
+  FValid := Source.Valid;
 end;
 
 procedure TCForeignKeys.Clear();
 begin
   inherited;
 
-  Valid := False;
+  FValid := False;
 end;
 
 constructor TCForeignKeys.Create(const ATable: TCBaseTable);
 begin
   inherited Create(ATable.Client);
 
-  Valid := False;
+  FValid := False;
 
   FTable := ATable;
 end;
@@ -3373,7 +3384,7 @@ begin
         FreeAndNil(NewForeignKey);
       end;
 
-    Valid := True;
+    FValid := True;
   end;
 end;
 
@@ -3503,7 +3514,7 @@ begin
 
   if (not Assigned(FDatabase)) then FDatabase := Source.Database;
 
-  FValid := Source.Valid;
+  FSourceParsed := Source.SourceParsed;
 
   if (Assigned(FDataSet)) then
     FreeAndNil(FDataSet);
@@ -3555,7 +3566,7 @@ begin
   if (Assigned(FFields)) then
     FFields.Clear();
 
-  FValid := False;
+  FSourceParsed := False;
 end;
 
 function TCTable.CountRecords(): Integer;
@@ -3692,7 +3703,7 @@ procedure TCTable.Invalidate();
 begin
   inherited;
 
-  FValid := False;
+  FSourceParsed := False;
 end;
 
 function TCTable.Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean;
@@ -3943,11 +3954,11 @@ begin
   FUpdated := TCBaseTable(Source).Updated;
   FValidStatus := TCBaseTable(Source).ValidStatus;
 
-  if (Valid) then
+  if (SourceParsed) then
   begin
     FIndices.Assign(TCBaseTable(Source).Indices);
 
-    FForeignKeys.Valid := True; // Do not allow GetSource!
+    FForeignKeys.FValid := True; // Do not allow GetSource!
     FForeignKeys.Assign(TCBaseTable(Source).ForeignKeys);
 
     if (Assigned(FPartitions) and (not Assigned(Database) or (Database.Client.ServerVersion < 50107))) then
@@ -4210,7 +4221,7 @@ end;
 
 function TCBaseTable.GetCollation(): string;
 begin
-  if (not Valid and (Source <> '')) then
+  if (not SourceParsed and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := FCollation;
@@ -4218,7 +4229,7 @@ end;
 
 function TCBaseTable.GetComment(): string;
 begin
-  if (not Valid and (Source <> '')) then
+  if (not SourceParsed and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := FComment;
@@ -4226,7 +4237,7 @@ end;
 
 function TCBaseTable.GetDefaultCharset(): string;
 begin
-  if (not Valid and (FDefaultCharset = '') and (Source <> '')) then
+  if (not SourceParsed and (FDefaultCharset = '') and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := FDefaultCharset;
@@ -4242,7 +4253,7 @@ end;
 
 function TCBaseTable.GetEngine(): TCEngine;
 begin
-  if (not Valid and not Assigned(FEngine) and (Source <> '')) then
+  if (not SourceParsed and not Assigned(FEngine) and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := FEngine;
@@ -4250,7 +4261,7 @@ end;
 
 function TCBaseTable.GetForeignKeys(): TCForeignKeys;
 begin
-  if (not Valid and (Source <> '')) then
+  if (not SourceParsed and (Source <> '')) then
     FForeignKeys.ParseCreateTable(Source);
 
   Result := FForeignKeys;
@@ -4258,7 +4269,7 @@ end;
 
 function TCBaseTable.GetFields(): TCTableFields;
 begin
-  if (not Valid and (Source <> '')) then
+  if (not SourceParsed and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := inherited GetFields();
@@ -4271,7 +4282,7 @@ end;
 
 function TCBaseTable.GetIndices(): TCIndices;
 begin
-  if (not Valid and (Source <> '')) then
+  if (not SourceParsed and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := FIndices;
@@ -4279,7 +4290,7 @@ end;
 
 function TCBaseTable.GetPartitions(): TCPartitions;
 begin
-  if (not Valid and (Source <> '')) then
+  if (not SourceParsed and (Source <> '')) then
     ParseCreateTable(Source);
 
   Result := FPartitions;
@@ -4448,7 +4459,7 @@ var
 begin
   if (Assigned(FFields) and SQLCreateParse(Parse, PChar(SQL), Length(SQL), Client.ServerVersion)) then
   begin
-    FValid := True;
+    FSourceParsed := True;
 
     Indices.Clear();
     Fields.Clear();
@@ -4772,6 +4783,11 @@ begin
   Result := Database.Client.ExecuteSQL('REPAIR TABLE ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(Name) + ';');
 end;
 
+procedure TCBaseTable.SetComment(const AComment: string);
+begin
+  FComment := AComment;
+end;
+
 procedure TCBaseTable.SetDefaultCharset(const ADefaultCharset: string);
 begin
   FDefaultCharset := LowerCase(ADefaultCharset);
@@ -4838,9 +4854,14 @@ begin
   FStmt := '';
 end;
 
-function TCView.GetValidSource(): Boolean;
+function TCView.GetComment(): string;
 begin
-  Result := inherited and Fields.Valid;
+  Result := FComment;
+end;
+
+function TCView.GetValid(): Boolean;
+begin
+  Result := inherited GetValid() and Fields.Valid;
 end;
 
 function TCView.GetViewFields(): TCViewFields;
@@ -4875,7 +4896,7 @@ begin
     Result := ''
   else
   begin
-    FValid := True;
+    FSourceParsed := True;
 
     Result := SQL;
 
@@ -4953,6 +4974,11 @@ begin
 
     FStmt := Copy(SQL, SQLParseGetIndex(Parse), Len) + ';';
   end;
+end;
+
+procedure TCView.SetComment(const AComment: string);
+begin
+  FComment := AComment;
 end;
 
 procedure TCView.SetSource(const ADataSet: TMySQLQuery);
@@ -5131,7 +5157,7 @@ begin
           begin
             View := TCView(Table[Index]);
             if (UpperCase(DataSet.FieldByName('TABLE_COMMENT').AsString) <> 'VIEW') then
-              View.Comment := DataSet.FieldByName('TABLE_COMMENT').AsString;
+              View.FComment := DataSet.FieldByName('TABLE_COMMENT').AsString;
           end;
 
           Client.ExecuteEvent(ceStatus, Database, Self, Table[Index]);
@@ -5951,7 +5977,7 @@ begin
   OldSource := '';
   FStmt := '';
   FTiming := ttAfter;
-  FValid := False;
+  xFValid := False;
 end;
 
 destructor TCTrigger.Destroy();
@@ -6024,7 +6050,7 @@ end;
 
 procedure TCTrigger.Invalidate();
 begin
-  FValid := False;
+  xFValid := False;
 end;
 
 procedure TCTrigger.SetSource(const ADataSet: TMySQLQuery);
@@ -6168,7 +6194,7 @@ begin
         else if (UpperCase(DataSet.FieldByName('ACTION_TIMING').AsString) = 'AFTER') then
           Trigger[Index].FTiming := ttAfter;
       end;
-      Trigger[Index].FValid := True;
+      Trigger[Index].xFValid := True;
 
       if (Database.Client.ServerVersion < 50121) then
         Trigger[Index].SetSource(Trigger[Index].GetSourceEx());
@@ -6548,8 +6574,8 @@ end;
 
 function TCDatabase.AddTable(const NewTable: TCBaseTable): Boolean;
 begin
-  NewTable.FForeignKeys.Valid := True;
-  NewTable.FValid := True;
+  NewTable.FForeignKeys.FValid := True;
+  NewTable.FSourceParsed := True;
   Result := UpdateTable(nil, NewTable);
 end;
 
@@ -7667,12 +7693,12 @@ begin
   begin
     if (not TCDBObject(Param).ValidSource) then
       SQL := SQL + TCDBObject(Param).SQLGetSource();
-    if ((Param is TCBaseTable) and not TCTable(Param).Valid) then
+    if ((Param is TCBaseTable) and not TCBaseTable(Param).ValidStatus) then
       SQL := SQL + Tables.SQLGetItems(TCTable(Param).Name);
   end
   else if (Param is TCTrigger) then
   begin
-    if (not TCTrigger(Param).Valid) then
+    if (not TCTrigger(Param).xValid) then
       SQL := SQL + Triggers.SQLGetItems(TCTrigger(Param).Name);
   end
   else
@@ -7855,11 +7881,9 @@ begin
   if (Param is TCDBObject) then
   begin
     if (not TCDBObject(Param).ValidSource) then
-    begin
       SQL := SQL + TCDBObject(Param).SQLGetSource();
-      if (Param is TCView) then
-        FetchViewFields := True;
-    end;
+    if (Param is TCView) then
+      FetchViewFields := FetchViewFields or TCView(Param).Valid;
   end
   else if (Param is TList) then
   begin
@@ -7883,14 +7907,9 @@ begin
     for I := 0 to Tables.Count - 1 do
       if (not Tables[I].ValidSource and (not Assigned(Param) or (TCDBObject(Param) <> Tables[I])) and PrefetchObjects) then
       begin
-        if (not (Tables[I] is TCView)) then
-          SQL := SQL + Tables[I].SQLGetSource()
-        else
-        begin
-          if (not TCView(Tables[I]).FValidSource) then
-            SQL := SQL + Tables[I].SQLGetSource();
-          FetchViewFields := True;
-        end;
+        SQL := SQL + Tables[I].SQLGetSource();
+        if (Tables[I] is TCView) then
+          FetchViewFields := FetchViewFields or TCView(Tables[I]).Valid;
       end;
     if (Assigned(Routines)) then
       for I := 0 to Routines.Count - 1 do
@@ -11544,7 +11563,9 @@ begin
                       Table.Database.Invalidate();
                       ExecuteEvent(ceAltered, Self, Databases, Database);
                     end
-                    else if (Table.Valid or Table.ValidSource) then
+                    else if (Table.ValidSource
+                      or (Table is TCBaseTable) and TCBaseTable(Table).ValidStatus
+                      or (Table is TCView) and TCView(Table).Valid) then
                     begin
                       Table.Invalidate();
                       ExecuteEvent(ceAltered, Table.Database, Table.Database.Tables, Table);
