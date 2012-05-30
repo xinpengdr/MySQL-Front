@@ -243,6 +243,7 @@ type
     MSQLHistory: TPopupMenu;
     mtDataBrowser: TMenuItem;
     mtDiagram: TMenuItem;
+    mtObjectBrowser: TMenuItem;
     MText: TPopupMenu;
     mtObjectIDE: TMenuItem;
     MToolBar: TPopupMenu;
@@ -339,6 +340,7 @@ type
     PSQLEditor: TPanel_Ext;
     PSQLHistory: TPanel_Ext;
     PToolBar: TPanel_Ext;
+    PToolBarBlob: TPanel;
     PWorkbench: TPanel_Ext;
     SaveDialog: TSaveDialog_Ext;
     SBlob: TSplitter_Ext;
@@ -380,7 +382,6 @@ type
     ToolBarFilterEnabled: TToolBar;
     ToolBarLimitEnabled: TToolBar;
     ToolBarQuickSearchEnabled: TToolBar;
-    mtObjectBrowser: TMenuItem;
     procedure aBAddExecute(Sender: TObject);
     procedure aBDeleteExecute(Sender: TObject);
     procedure aBEditExecute(Sender: TObject);
@@ -5600,7 +5601,6 @@ begin
   Result.Parent := PWorkbench;
   Result.Align := alClient;
   Result.BorderStyle := bsNone;
-  Result.DoubleBuffered := True;
   Result.HelpContext := 1125;
   Result.HideSelection := True;
   Result.HorzScrollBar.Tracking := True;
@@ -10423,11 +10423,11 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
       else if ((TCTable(Data) is TCView)) then
         Item.SubItems.Add(ReplaceStr(Preferences.LoadStr(738), '&', ''))
       else
-        Item.SubItems.Add('???');
+        Item.SubItems.Add('');
       if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ValidStatus) then
         Item.SubItems.Add('')
       else if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(TCTable(Data)).Rows < 0)) then
-        Item.SubItems.Add('???')
+        Item.SubItems.Add('')
       else if ((TCTable(Data) is TCBaseTable) and Assigned(TCBaseTable(TCTable(Data)).Engine) and (UpperCase(TCBaseTable(TCTable(Data)).Engine.Name) = 'INNODB')) then
         Item.SubItems.Add('~' + FormatFloat('#,##0', TCBaseTable(TCTable(Data)).Rows, LocaleFormatSettings))
       else if ((TCTable(Data) is TCBaseTable)) then
@@ -10436,22 +10436,20 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         Item.SubItems.Add('');
       if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ValidStatus) then
         Item.SubItems.Add('')
-      else if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize < 0)) then
-        Item.SubItems.Add('???')
-      else if ((TCTable(Data) is TCBaseTable)) then
-        Item.SubItems.Add(SizeToStr(TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize + 1))
-      else if ((TCTable(Data) is TCView) and TCView(TCTable(Data)).ValidSource) then
-        Item.SubItems.Add(SizeToStr(Length(TCView(TCTable(Data)).Source)))
+      else if (TCTable(Data) is TCBaseTable) then
+        if ((TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize < 0)) then
+          Item.SubItems.Add('')
+        else
+          Item.SubItems.Add(SizeToStr(TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize + 1))
       else
-        Item.SubItems.Add('');
-      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ValidStatus) then
+        if (not TCView(TCTable(Data)).ValidSource) then
+          Item.SubItems.Add('')
+        else
+          Item.SubItems.Add(SizeToStr(Length(TCView(TCTable(Data)).Source)));
+      if (not (TCTable(Data) is TCBaseTable) or not TCBaseTable(TCTable(Data)).ValidStatus or (TCBaseTable(TCTable(Data)).Updated <= 0)) then
         Item.SubItems.Add('')
-      else if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(TCTable(Data)).Updated <= 0)) then
-        Item.SubItems.Add('???')
-      else if ((TCTable(Data) is TCBaseTable)) then
-        Item.SubItems.Add(SysUtils.DateTimeToStr(TCBaseTable(TCTable(Data)).Updated, LocaleFormatSettings))
       else
-        Item.SubItems.Add('');
+        Item.SubItems.Add(SysUtils.DateTimeToStr(TCBaseTable(TCTable(Data)).Updated, LocaleFormatSettings));
       S := '';
       if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(TCTable(Data)).DefaultCharset <> '') and (TCBaseTable(TCTable(Data)).DefaultCharset <> TCBaseTable(TCTable(Data)).Database.DefaultCharset)) then
         S := S + TCBaseTable(TCTable(Data)).DefaultCharset;
@@ -10764,6 +10762,8 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
   var
     Count: Integer;
     I: Integer;
+    Index: Integer;
+    J: Integer;
     S: string;
   begin
     case (ClientEvent.EventType) of
@@ -10786,6 +10786,10 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         for I := ListView.Items.Count - 1 downto 0 do
           if (ListView.Items[I].Data = ClientEvent.CItem) then
             ListView.Items.Delete(I);
+      ceStatus:
+        for I := 0 to ListView.Items.Count - 1 do
+          if (ListView.Items[I].Data = ClientEvent.CItem) then
+            UpdateItem(ListView.Items[I], ClientEvent.CItem);
     end;
 
     if (Assigned(GroupByGroupID(GroupID))) then
@@ -13633,7 +13637,6 @@ begin
     FGrid.DataSource.DataSet.OnDeleteError := SQLError;
     FGrid.DataSource.DataSet.OnEditError := SQLError;
     FGrid.DataSource.DataSet.OnPostError := SQLError;
-    FGrid.DoubleBuffered := True;
 
     if (Assigned(ResultSet)) then
     begin

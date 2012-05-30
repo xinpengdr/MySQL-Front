@@ -2,17 +2,16 @@ object FClient: TFClient
   Left = 0
   Top = 0
   Width = 591
-  Height = 712
+  Height = 304
   Align = alClient
   Constraints.MinHeight = 300
   Constraints.MinWidth = 200
   TabOrder = 0
   Visible = False
   OnResize = FormResize
-  ExplicitHeight = 304
   object SLog: TSplitter_Ext
     Left = 0
-    Top = 664
+    Top = 256
     Width = 591
     Height = 4
     Cursor = crVSplit
@@ -31,7 +30,7 @@ object FClient: TFClient
     Left = 120
     Top = 27
     Width = 4
-    Height = 637
+    Height = 229
     AutoSnap = False
     Color = clBtnFace
     ParentColor = False
@@ -46,7 +45,7 @@ object FClient: TFClient
     Left = 0
     Top = 27
     Width = 120
-    Height = 637
+    Height = 229
     Align = alLeft
     BevelOuter = bvNone
     Color = clWindow
@@ -54,24 +53,22 @@ object FClient: TFClient
     ParentBackground = False
     TabOrder = 0
     OnResize = PSideBarResize
-    ExplicitHeight = 229
     object PSQLHistory: TPanel_Ext
       Left = 0
       Top = 0
       Width = 120
-      Height = 637
+      Height = 229
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
       ParentBackground = False
       TabOrder = 2
       Visible = False
-      ExplicitHeight = 229
       object FSQLHistory: TTreeView_Ext
         Left = 2
         Top = 2
         Width = 116
-        Height = 633
+        Height = 225
         HelpContext = 1112
         Align = alClient
         BorderStyle = bsNone
@@ -96,26 +93,24 @@ object FClient: TFClient
         OnKeyPress = FSQLHistoryKeyPress
         OnMouseDown = TreeViewMouseDown
         OnMouseUp = TreeViewMouseUp
-        ExplicitHeight = 225
       end
     end
     object PBookmarks: TPanel_Ext
       Left = 0
       Top = 0
       Width = 120
-      Height = 637
+      Height = 229
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
       ParentBackground = False
       TabOrder = 1
       Visible = False
-      ExplicitHeight = 229
       object FBookmarks: TListView
         Left = 2
         Top = 2
         Width = 116
-        Height = 633
+        Height = 225
         HelpContext = 1082
         Align = alClient
         BorderStyle = bsNone
@@ -137,14 +132,13 @@ object FClient: TFClient
         OnExit = FBookmarksExit
         OnDragDrop = FBookmarksDragDrop
         OnDragOver = FBookmarksDragOver
-        ExplicitHeight = 225
       end
     end
     object PNavigator: TPanel_Ext
       Left = 0
       Top = 0
       Width = 120
-      Height = 637
+      Height = 229
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -152,12 +146,11 @@ object FClient: TFClient
       ParentBackground = False
       TabOrder = 0
       Visible = False
-      ExplicitHeight = 229
       object FNavigator: TTreeView_Ext
         Left = 2
         Top = 2
         Width = 116
-        Height = 633
+        Height = 225
         HelpContext = 1038
         Align = alClient
         BorderStyle = bsNone
@@ -192,13 +185,12 @@ object FClient: TFClient
         OnKeyPress = FNavigatorKeyPress
         OnMouseDown = TreeViewMouseDown
         OnMouseUp = TreeViewMouseUp
-        ExplicitHeight = 225
       end
     end
   end
   object PLog: TPanel_Ext
     Left = 0
-    Top = 668
+    Top = 260
     Width = 591
     Height = 44
     Align = alBottom
@@ -207,7 +199,6 @@ object FClient: TFClient
     ParentBackground = False
     TabOrder = 2
     OnResize = PLogResize
-    ExplicitTop = 260
     object FLog: TRichEdit
       Left = 19
       Top = 2
@@ -255,7 +246,7 @@ object FClient: TFClient
     Left = 124
     Top = 27
     Width = 467
-    Height = 637
+    Height = 229
     Align = alClient
     BevelOuter = bvNone
     Color = clWindow
@@ -264,10 +255,9 @@ object FClient: TFClient
     ParentBackground = False
     TabOrder = 1
     OnResize = PContentResize
-    ExplicitHeight = 229
     object SResult: TSplitter_Ext
       Left = 0
-      Top = 421
+      Top = 13
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -286,7 +276,7 @@ object FClient: TFClient
     end
     object SBlob: TSplitter_Ext
       Left = 0
-      Top = 574
+      Top = 166
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -409,7 +399,7 @@ object FClient: TFClient
     end
     object PResult: TPanel_Ext
       Left = 0
-      Top = 444
+      Top = 36
       Width = 467
       Height = 130
       Align = alBottom
@@ -419,7 +409,6 @@ object FClient: TFClient
       TabOrder = 5
       Visible = False
       OnResize = PSideBarResize
-      ExplicitTop = 36
       object PResultHeader: TPanel_Ext
         Left = 0
         Top = 0
@@ -913,7 +902,7 @@ object FClient: TFClient
     end
     object PBlob: TPanel_Ext
       Left = 0
-      Top = 578
+      Top = 170
       Width = 467
       Height = 59
       Align = alBottom
@@ -923,7 +912,6 @@ object FClient: TFClient
       ParentBackground = False
       TabOrder = 6
       Visible = False
-      ExplicitTop = 170
       object FImage: TImage
         Left = 2
         Top = 27
@@ -935,90 +923,102 @@ object FClient: TFClient
         Proportional = True
         ExplicitWidth = 315
       end
-      object ToolBarBlob: TToolBar
+      object PToolBarBlob: TPanel
         Left = 2
         Top = 2
         Width = 463
         Height = 23
-        ButtonWidth = 97
-        Color = clBtnFace
-        ParentColor = False
-        ParentShowHint = False
-        ShowCaptions = True
-        ShowHint = True
-        TabOrder = 0
-        Wrapable = False
-        OnResize = ToolBarBlobResize
-        object tbBlobText: TToolButton
+        Align = alTop
+        AutoSize = True
+        BevelOuter = bvNone
+        DoubleBuffered = False
+        ParentDoubleBuffered = False
+        TabOrder = 4
+        object ToolBarBlob: TToolBar
           Left = 0
           Top = 0
-          Action = aVBlobText
-          AutoSize = True
-          Grouped = True
+          Width = 463
+          Height = 23
+          ButtonWidth = 97
+          Color = clBtnFace
+          ParentColor = False
           ParentShowHint = False
-          ShowHint = False
-          Style = tbsCheck
-        end
-        object tbBlobRTF: TToolButton
-          Left = 74
-          Top = 0
-          Action = aVBlobRTF
-          AutoSize = True
-          Grouped = True
-          ParentShowHint = False
-          ShowHint = False
-          Style = tbsCheck
-        end
-        object tbBlobHTML: TToolButton
-          Left = 143
-          Top = 0
-          Action = aVBlobHTML
-          AutoSize = True
-          Grouped = True
-          ParentShowHint = False
-          ShowHint = False
-          Style = tbsCheck
-        end
-        object tbBlobImage: TToolButton
-          Left = 213
-          Top = 0
-          Action = aVBlobImage
-          AutoSize = True
-          Grouped = True
-          ParentShowHint = False
-          ShowHint = False
-          Style = tbsCheck
-        end
-        object tbBlobHexEditor: TToolButton
-          Left = 295
-          Top = 0
-          Action = aVBlobHexEditor
-          AutoSize = True
-          Grouped = True
-          ParentShowHint = False
-          ShowHint = False
-          Style = tbsCheck
-        end
-        object tbBlobSpacer: TPanel_Ext
-          Left = 396
-          Top = 0
-          Width = 49
-          Height = 22
-          BevelOuter = bvNone
-          ParentBackground = False
-          ParentShowHint = False
-          ShowHint = False
-          TabOrder = 1
-        end
-        object FBlobSearch: TEdit
-          Left = 445
-          Top = 0
-          Width = 136
-          Height = 22
-          AutoSize = False
+          ShowCaptions = True
+          ShowHint = True
           TabOrder = 0
-          OnChange = FBlobSearchChange
-          OnKeyPress = FBlobSearchKeyPress
+          Wrapable = False
+          OnResize = ToolBarBlobResize
+          object tbBlobText: TToolButton
+            Left = 0
+            Top = 0
+            Action = aVBlobText
+            AutoSize = True
+            Grouped = True
+            ParentShowHint = False
+            ShowHint = False
+            Style = tbsCheck
+          end
+          object tbBlobRTF: TToolButton
+            Left = 74
+            Top = 0
+            Action = aVBlobRTF
+            AutoSize = True
+            Grouped = True
+            ParentShowHint = False
+            ShowHint = False
+            Style = tbsCheck
+          end
+          object tbBlobHTML: TToolButton
+            Left = 143
+            Top = 0
+            Action = aVBlobHTML
+            AutoSize = True
+            Grouped = True
+            ParentShowHint = False
+            ShowHint = False
+            Style = tbsCheck
+          end
+          object tbBlobImage: TToolButton
+            Left = 213
+            Top = 0
+            Action = aVBlobImage
+            AutoSize = True
+            Grouped = True
+            ParentShowHint = False
+            ShowHint = False
+            Style = tbsCheck
+          end
+          object tbBlobHexEditor: TToolButton
+            Left = 295
+            Top = 0
+            Action = aVBlobHexEditor
+            AutoSize = True
+            Grouped = True
+            ParentShowHint = False
+            ShowHint = False
+            Style = tbsCheck
+          end
+          object tbBlobSpacer: TPanel_Ext
+            Left = 396
+            Top = 0
+            Width = 49
+            Height = 22
+            BevelOuter = bvNone
+            ParentBackground = False
+            ParentShowHint = False
+            ShowHint = False
+            TabOrder = 1
+          end
+          object FBlobSearch: TEdit
+            Left = 445
+            Top = 0
+            Width = 136
+            Height = 22
+            AutoSize = False
+            TabOrder = 0
+            OnChange = FBlobSearchChange
+            OnKeyPress = FBlobSearchKeyPress
+          end
         end
       end
       object FText: TMemo_Ext
@@ -1031,7 +1031,7 @@ object FClient: TFClient
         HideSelection = False
         PopupMenu = MText
         ScrollBars = ssVertical
-        TabOrder = 1
+        TabOrder = 0
         WantTabs = True
         OnChange = FTextChange
         OnEnter = FTextEnter
@@ -1055,7 +1055,7 @@ object FClient: TFClient
         ParentFont = False
         ReadOnly = True
         ScrollBars = ssBoth
-        TabOrder = 2
+        TabOrder = 1
         WordWrap = False
         OnChange = FRTFChange
         OnEnter = FRTFEnter
@@ -1089,7 +1089,7 @@ object FClient: TFClient
         OnKeyPress = FHexEditorKeyPress
         ParentFont = False
         PopupMenu = MHexEditor
-        TabOrder = 4
+        TabOrder = 3
         BytesPerRow = 16
         BytesPerColumn = 1
         Translation = tkAsIs
@@ -1123,7 +1123,7 @@ object FClient: TFClient
         Align = alTop
         BevelOuter = bvNone
         ParentBackground = False
-        TabOrder = 3
+        TabOrder = 2
       end
     end
     object PWorkbench: TPanel_Ext
@@ -1143,7 +1143,7 @@ object FClient: TFClient
     end
     object SBResult: TStatusBar
       Left = 0
-      Top = 425
+      Top = 17
       Width = 467
       Height = 19
       Panels = <
@@ -1168,7 +1168,6 @@ object FClient: TFClient
       ParentFont = True
       UseSystemFont = False
       Visible = False
-      ExplicitTop = 17
     end
   end
   object PHeader: TPanel_Ext
@@ -1189,7 +1188,9 @@ object FClient: TFClient
       Width = 120
       Height = 27
       BevelOuter = bvNone
+      DoubleBuffered = False
       ParentBackground = False
+      ParentDoubleBuffered = False
       ParentShowHint = False
       ShowHint = False
       TabOrder = 0
@@ -1198,13 +1199,12 @@ object FClient: TFClient
       OnMouseUp = PanelMouseUp
       OnPaint = PanelPaint
       object TBSideBar: TToolBar
-        Left = 0
-        Top = 0
-        Width = 77
-        Height = 30
+        Left = 2
+        Top = 2
+        Width = 69
+        Height = 22
         Align = alNone
         AutoSize = True
-        BorderWidth = 2
         ParentShowHint = False
         ShowHint = True
         TabOrder = 0
@@ -1243,17 +1243,16 @@ object FClient: TFClient
       ParentDoubleBuffered = False
       TabOrder = 1
       object ToolBar: TToolBar
-        Left = 0
-        Top = 0
-        Width = 465
-        Height = 27
-        Align = alClient
+        Left = 2
+        Top = 2
+        Width = 530
+        Height = 20
+        Align = alNone
         AutoSize = True
-        BorderWidth = 2
         ButtonHeight = 20
         ButtonWidth = 105
         Color = clBtnFace
-        DoubleBuffered = False
+        DoubleBuffered = True
         List = True
         ParentColor = False
         ParentDoubleBuffered = False

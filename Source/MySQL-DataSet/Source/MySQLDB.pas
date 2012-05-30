@@ -8,9 +8,8 @@ uses
   MySQLConsts;
 
 const
-  CR_USER_CANCEL      = 2300;
-  CR_SET_NAMES        = 2301;
-  CR_SERVER_OLD       = 2302;
+  CR_SET_NAMES  = 2300;
+  CR_SERVER_OLD = 2301;
 
 type
   TMySQLMonitor = class;

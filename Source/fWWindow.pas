@@ -1956,7 +1956,6 @@ begin
     CR_HTTPTUNNEL_INVALID_SERVER_RESPONSE,
     CR_HTTPTUNNEL_INVALID_CONTENT_TYPE_ERROR,
     CR_IPSOCK_ERROR: Msg := ErrorMessage;
-    CR_USER_CANCEL: Msg := '';
     CR_SET_NAMES: Msg := Preferences.LoadStr(878, ErrorMessage);
     CR_SERVER_OLD: Msg := Preferences.LoadStr(696, '3.23.20');
     else Msg := Preferences.LoadStr(165, IntToStr(ErrorCode), ErrorMessage);

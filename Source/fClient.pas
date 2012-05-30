@@ -721,7 +721,7 @@ type
   TCTables = class(TCDBObjects)
   private
     FValidNames: Boolean;
-    function GetTable(Index: Integer): TCTable;
+    function GetTable(Index: Integer): TCTable; inline;
   protected
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean): Boolean; override;
     procedure BuildViewFields(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean); virtual;

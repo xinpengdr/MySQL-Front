@@ -96,7 +96,6 @@ begin
   end
   else if (Control is TToolbar) then
   begin
-    Control.DoubleBuffered := False;
     if (CheckWin32Version(6)) then
       for I := 0 to TToolbar(Control).ButtonCount - 1 do
         if (TToolbar(Control).Buttons[I].Style = tbsSeparator) then
