@@ -144,6 +144,7 @@ type
     TSTable: TTabSheet;
     TSTables: TTabSheet;
     TSTriggers: TTabSheet;
+    PSQLWait: TPanel;
     procedure aPCreateFieldExecute(Sender: TObject);
     procedure aPCreateForeignKeyExecute(Sender: TObject);
     procedure aPCreateIndexExecute(Sender: TObject);
@@ -209,9 +210,11 @@ type
     FCreatedName: string;
     NewTable: TCBaseTable;
     RecordCount: Integer;
+    procedure Built();
     procedure FFieldsRefresh(Sender: TObject);
     procedure FForeignKeysRefresh(Sender: TObject);
     procedure FIndicesRefresh(Sender: TObject);
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure FPartitionsRefresh(Sender: TObject);
   protected
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
@@ -573,9 +576,86 @@ begin
   end;
 end;
 
+procedure TDTable.Built();
+var
+  Engine: TCEngine;
+  I: Integer;
+  Index: Integer;
+begin
+  if (Length(TableNames) = 0) then
+  begin
+    NewTable.Assign(Table);
+
+    FName.Text := NewTable.Name;
+
+    FDefaultCharset.ItemIndex := FDefaultCharset.Items.IndexOf(NewTable.DefaultCharset); FDefaultCharsetChange(Self);
+    FCollation.ItemIndex := FCollation.Items.IndexOf(NewTable.Collation);
+
+    FComment.Text := SQLUnwrapStmt(NewTable.Comment);
+
+    if (not Assigned(NewTable.Engine)) then
+      FEngine.ItemIndex := -1
+    else
+      FEngine.ItemIndex := FEngine.Items.IndexOf(NewTable.Engine.Name);
+    FEngineChange(Self);
+
+    FRowType.ItemIndex := Integer(NewTable.RowType);
+    FAutoIncrement.Visible := NewTable.AutoIncrement > 0; FLAutoIncrement.Visible := FAutoIncrement.Visible;
+    FAutoIncrement.Text := IntToStr(NewTable.AutoIncrement);
+
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
+
+    ActiveControl := FName;
+  end
+  else
+  begin
+    FTablesCount.Caption := IntToStr(Length(TableNames));
+    FDatabase.Text := Database.Name;
+
+    Engine := Database.BaseTableByName(TableNames[0]).Engine;
+    for I := 1 to Length(TableNames) - 1 do
+      if (Database.BaseTableByName(TableNames[I]).Engine <> Engine) then
+        Engine := nil;
+    if (FTablesEngine.Style = csDropDown) then
+      FTablesEngine.Text := NewTable.Engine.Name
+    else if (Assigned(Engine)) then
+      FTablesEngine.ItemIndex := FTablesEngine.Items.IndexOf(Engine.Name);
+
+    Index := -1;
+    for I := 0 to FDefaultCharset.Items.Count - 1 do
+      if (lstrcmpi(PChar(FDefaultCharset.Items[I]), PChar(Database.BaseTableByName(TableNames[0]).DefaultCharset)) = 0) then
+        Index := I;
+    for I := 1 to Length(TableNames) - 1 do
+      if ((Index >= 0) and (lstrcmpi(PChar(FDefaultCharset.Items[Index]), PChar(Database.BaseTableByName(TableNames[I]).DefaultCharset)) <> 0)) then
+        Index := -1;
+    FTablesCharset.ItemIndex := Index;
+
+    Index := -1;
+    for I := 0 to FCollation.Items.Count - 1 do
+      if (lstrcmpi(PChar(FCollation.Items[I]), PChar(Database.BaseTableByName(TableNames[0]).Collation)) = 0) then
+        Index := FCollation.Items.IndexOf(FCollation.Items[I]);
+    for I := 1 to Length(TableNames) - 1 do
+      if ((Index >= 0) and (lstrcmpi(PChar(FCollation.Items[Index]), PChar(Database.BaseTableByName(TableNames[I]).Collation)) <> 0)) then
+        Index := -1;
+    if (Assigned(Database.Client.CharsetByName(FTablesCharset.Text)) and Assigned(Database.Client.CharsetByName(FTablesCharset.Text).DefaultCollation) and (FTablesCollation.Items[Index] <> Database.Client.CharsetByName(FTablesCharset.Text).DefaultCollation.Name)) then
+      FTablesCollation.ItemIndex := Index;
+
+    Index := FTablesRowType.Items.IndexOf(Database.BaseTableByName(TableNames[0]).DBRowTypeStr());
+    for I := 1 to Length(TableNames) - 1 do
+      if (FTablesRowType.Items.IndexOf(Database.BaseTableByName(TableNames[I]).DBRowTypeStr()) <> Index) then
+        Index := 0;
+    FTablesRowType.ItemIndex := Index;
+
+    ActiveControl := FTablesEngine;
+  end;
+end;
+
 procedure TDTable.CMChangePreferences(var Message: TMessage);
 begin
   Preferences.SmallImages.GetIcon(iiBaseTable, Icon);
+
+  PSQLWait.Caption := Preferences.LoadStr(882);
 
   aPUp.Caption := Preferences.LoadStr(563);
   aPDown.Caption := Preferences.LoadStr(564);
@@ -1066,6 +1146,12 @@ begin
   mlDProperties.Default := mlDProperties.Enabled;
 end;
 
+procedure TDTable.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if (Event.EventType in [ceBuild]) then
+    Built();
+end;
+
 procedure TDTable.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   I: Integer;
@@ -1156,7 +1242,9 @@ end;
 
 procedure TDTable.FormHide(Sender: TObject);
 begin
-  PageControl.ActivePage := nil; // TSInformationsShow soll nicht vorzeitig aufgerufen werden
+  Database.Client.UnRegisterEventProc(FormClientEvent);
+
+  PageControl.ActivePage := nil; // TSInformationsShow soll beim nächsten Öffnen nicht vorzeitig aufgerufen werden
 
   if (Assigned(NewTable)) then
     FreeAndNil(NewTable);
@@ -1180,18 +1268,21 @@ begin
   FReferenced.Items.BeginUpdate();
   FReferenced.Items.Clear();
   FReferenced.Items.EndUpdate();
+
+  FSource.Lines.Clear();
 end;
 
 procedure TDTable.FormShow(Sender: TObject);
 var
-  Engine: TCEngine;
   I: Integer;
-  Index: Integer;
+  List: TList;
   NewColumn: TCIndexColumn;
   NewField: TCBaseTableField;
   NewIndex: TCIndex;
   TableName: string;
 begin
+  Database.Client.RegisterEventProc(FormClientEvent);
+
   if (Length(Tablenames) > 0) then
   begin
     Caption := Preferences.LoadStr(107);
@@ -1247,8 +1338,10 @@ begin
   if (Length(TableNames) = 0) then
   begin
     NewTable := TCBaseTable.Create(Database.Tables);
-    if (Assigned(Table)) then
-      NewTable.Assign(Table);
+
+    TSTable.TabVisible := (Length(TableNames) = 0);
+    TSTables.TabVisible := (Length(TableNames) > 0);
+    PageControl.ActivePage := TSTable;
 
     if (not Assigned(Table)) then
     begin
@@ -1294,86 +1387,44 @@ begin
       FCollation.ItemIndex := FCollation.Items.IndexOf(Database.Collation);
 
       FComment.Text := '';
+
+      if (not Assigned(NewTable.Engine)) then
+        FEngine.ItemIndex := -1
+      else
+        FEngine.ItemIndex := FEngine.Items.IndexOf(NewTable.Engine.Name);
+      FEngineChange(Sender);
+
+      FRowType.ItemIndex := Integer(NewTable.RowType);
+      FAutoIncrement.Visible := NewTable.AutoIncrement > 0; FLAutoIncrement.Visible := FAutoIncrement.Visible;
+      FAutoIncrement.Text := IntToStr(NewTable.AutoIncrement);
     end
     else
     begin
-      FName.Text := NewTable.Name;
+      PageControl.Visible := not Table.Update();
+      PSQLWait.Visible := not PageControl.Visible;
 
-      FDefaultCharset.ItemIndex := FDefaultCharset.Items.IndexOf(NewTable.DefaultCharset); FDefaultCharsetChange(Sender);
-      FCollation.ItemIndex := FCollation.Items.IndexOf(NewTable.Collation);
-
-      FComment.Text := SQLUnwrapStmt(NewTable.Comment);
+      if (PageControl.Visible) then
+        Built();
     end;
-
-    if (not Assigned(NewTable.Engine)) then
-      FEngine.ItemIndex := -1
-    else
-      FEngine.ItemIndex := FEngine.Items.IndexOf(NewTable.Engine.Name);
-    FEngineChange(Sender);
-
-    FRowType.ItemIndex := Integer(NewTable.RowType);
-    FAutoIncrement.Visible := NewTable.AutoIncrement > 0; FLAutoIncrement.Visible := FAutoIncrement.Visible;
-    FAutoIncrement.Text := IntToStr(NewTable.AutoIncrement);
   end
   else
   begin
-    FTablesCount.Caption := IntToStr(Length(TableNames));
-    FDatabase.Text := Database.Name;
+    List := TList.Create();
+    for I := 0 to Length(TableNames) - 1 do
+      List.Add(Database.TableByName(TableNames[I]));
+    List.Free();
 
-    Engine := Database.BaseTableByName(TableNames[0]).Engine;
-    for I := 1 to Length(TableNames) - 1 do
-      if (Database.BaseTableByName(TableNames[I]).Engine <> Engine) then
-        Engine := nil;
-    if (FTablesEngine.Style = csDropDown) then
-      FTablesEngine.Text := NewTable.Engine.Name
-    else if (Assigned(Engine)) then
-      FTablesEngine.ItemIndex := FTablesEngine.Items.IndexOf(Engine.Name);
+    TSTable.TabVisible := (Length(TableNames) = 0);
+    TSTables.TabVisible := (Length(TableNames) > 0);
+    PageControl.ActivePage := TSTables;
+    PageControl.Visible := not Database.UpdateSources(List);
+    PSQLWait.Visible := not PageControl.Visible;
 
-    Index := -1;
-    for I := 0 to FDefaultCharset.Items.Count - 1 do
-      if (lstrcmpi(PChar(FDefaultCharset.Items[I]), PChar(Database.BaseTableByName(TableNames[0]).DefaultCharset)) = 0) then
-        Index := I;
-    for I := 1 to Length(TableNames) - 1 do
-      if ((Index >= 0) and (lstrcmpi(PChar(FDefaultCharset.Items[Index]), PChar(Database.BaseTableByName(TableNames[I]).DefaultCharset)) <> 0)) then
-        Index := -1;
-    FTablesCharset.ItemIndex := Index;
-
-    Index := -1;
-    for I := 0 to FCollation.Items.Count - 1 do
-      if (lstrcmpi(PChar(FCollation.Items[I]), PChar(Database.BaseTableByName(TableNames[0]).Collation)) = 0) then
-        Index := FCollation.Items.IndexOf(FCollation.Items[I]);
-    for I := 1 to Length(TableNames) - 1 do
-      if ((Index >= 0) and (lstrcmpi(PChar(FCollation.Items[Index]), PChar(Database.BaseTableByName(TableNames[I]).Collation)) <> 0)) then
-        Index := -1;
-    if (Assigned(Database.Client.CharsetByName(FTablesCharset.Text)) and Assigned(Database.Client.CharsetByName(FTablesCharset.Text).DefaultCollation) and (FTablesCollation.Items[Index] <> Database.Client.CharsetByName(FTablesCharset.Text).DefaultCollation.Name)) then
-      FTablesCollation.ItemIndex := Index;
-
-    Index := FTablesRowType.Items.IndexOf(Database.BaseTableByName(TableNames[0]).DBRowTypeStr());
-    for I := 1 to Length(TableNames) - 1 do
-      if (FTablesRowType.Items.IndexOf(Database.BaseTableByName(TableNames[I]).DBRowTypeStr()) <> Index) then
-        Index := 0;
-    FTablesRowType.ItemIndex := Index;
+    if (PageControl.Visible) then
+      Built();
   end;
 
-  FFields.Items.BeginUpdate();
-  FFields.Items.Clear();
-  FFields.Items.EndUpdate();
-  FIndices.Items.BeginUpdate();
-  FIndices.Items.Clear();
-  FIndices.Items.EndUpdate();
-  FForeignKeys.Items.BeginUpdate();
-  FForeignKeys.Items.Clear();
-  FForeignKeys.Items.EndUpdate();
-  FTriggers.Items.BeginUpdate();
-  FTriggers.Items.Clear();
-  FTriggers.Items.EndUpdate();
-  FReferenced.Items.BeginUpdate();
-  FReferenced.Items.Clear();
-  FReferenced.Items.EndUpdate();
-
   DTableService.Parent := TForm(Self);
-
-  FSource.Lines.Clear();
 
 
   FDefaultCharset.Visible := Database.Client.ServerVersion >= 40101; FLDefaultCharset.Visible := FDefaultCharset.Visible;
@@ -1382,9 +1433,6 @@ begin
   FTablesCollation.Visible := Database.Client.ServerVersion >= 40101; FLTablesCollation.Visible := FTablesCollation.Visible;
   GRecords.Visible := Assigned(Table);
 
-  PageControl.ActivePage := nil;
-  TSTable.TabVisible := (Length(TableNames) = 0);
-  TSTables.TabVisible := (Length(TableNames) > 0);
   TSInformations.TabVisible := Assigned(Table) and (Table.DataSize >= 0) or (Length(TableNames) > 0);
   TSFields.TabVisible := (Length(TableNames) = 0);
   TSIndices.TabVisible := (Length(TableNames) = 0);
@@ -1394,19 +1442,7 @@ begin
   TSExtras.TabVisible := Assigned(Table) or (Length(TableNames) > 0);
   TSSource.TabVisible := Assigned(Table) or (Length(TableNames) > 0);
 
-  ActiveControl := FBCancel;
-  if (Length(TableNames) = 0) then
-  begin
-    PageControl.ActivePage := TSTable;
-    ActiveControl := FName;
-  end
-  else
-  begin
-    PageControl.ActivePage := TSTables;
-    ActiveControl := FTablesEngine;
-  end;
-
-  FBOk.Enabled := not Assigned(Table) and (Length(Tablenames) = 0) and True;
+  FBOk.Enabled := not Assigned(Table) and (Length(Tablenames) = 0) and PageControl.Visible;
   FBCancel.Caption := Preferences.LoadStr(30);
 end;
 

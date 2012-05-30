@@ -50,7 +50,7 @@ type
     TSInformations: TTabSheet;
     TSSource: TTabSheet;
     TSFields: TTabSheet;
-    FSQLWait: TPanel;
+    PSQLWait: TPanel;
     procedure FAlgorithmSelect(Sender: TObject);
     procedure FBHelpClick(Sender: TObject);
     procedure FCheckOptionCascadeClick(Sender: TObject);
@@ -73,9 +73,9 @@ type
     procedure FSourceChange(Sender: TObject);
   private
     RecordCount: Integer;
+    procedure Built();
     procedure FBOkCheckEnabled(Sender: TObject);
     procedure FormClientEvent(const Event: TCClient.TEvent);
-    procedure Initialized();
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Database: TCDatabase;
@@ -109,11 +109,71 @@ end;
 
 { TDView **********************************************************************}
 
+procedure TDView.Built();
+var
+  I: Integer;
+  Item: TListItem;
+  ViewField: TCViewField;
+begin
+  FName.Text := View.Name;
+
+  case (View.Algorithm) of
+    vaUndefined: FAlgorithm.ItemIndex := 0;
+    vaMerge: FAlgorithm.ItemIndex := 1;
+    vaTemptable: FAlgorithm.ItemIndex := 2;
+    else FAlgorithm.Text := '';
+  end;
+
+  case (View.Security) of
+    seDefiner: FSecurityDefiner.Checked := True;
+    seInvoker: FSecurityInvoker.Checked := True;
+  end;
+
+  FCheckOption.Checked := View.CheckOption <> voNone;
+  FCheckOptionCascade.Checked := View.CheckOption = voCascaded;
+  FCheckOptionLocal.Checked := View.CheckOption = voLocal;
+
+  FStmt.Lines.Text := Trim(SQLWrapStmt(View.Stmt, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10;
+
+  FDefiner.Caption := View.Definer;
+
+  FFields.Items.BeginUpdate();
+  for I := 0 to View.Fields.Count - 1 do
+  begin
+    ViewField := TCViewField(View.Fields[I]);
+    Item := FFields.Items.Add();
+    Item.Caption := ViewField.Name;
+    if (ViewField.FieldType <> mfUnknown) then
+    begin
+      Item.SubItems.Add(ViewField.DBTypeStr());
+      if (ViewField.NullAllowed) then
+        Item.SubItems.Add(Preferences.LoadStr(74))
+      else
+        Item.SubItems.Add(Preferences.LoadStr(75));
+      if (ViewField.AutoIncrement) then
+        Item.SubItems.Add('<auto_increment>')
+      else
+        Item.SubItems.Add(ViewField.Default);
+      if (ViewField.Charset <> View.Database.DefaultCharset) then
+        Item.SubItems.Add(ViewField.Charset);
+    end;
+    Item.ImageIndex := iiViewField;
+  end;
+  FFields.Items.EndUpdate();
+
+  FSource.Lines.Text := View.Source + #13#10;
+
+  TSSource.TabVisible := Assigned(View);
+
+  PageControl.Visible := True;
+  PSQLWait.Visible := not PageControl.Visible;
+end;
+
 procedure TDView.CMChangePreferences(var Message: TMessage);
 begin
   Preferences.SmallImages.GetIcon(iiView, Icon);
 
-  FSQLWait.Caption := Preferences.LoadStr(882);
+  PSQLWait.Caption := Preferences.LoadStr(882);
 
   TSBasics.Caption := Preferences.LoadStr(108);
   GBasics.Caption := Preferences.LoadStr(85);
@@ -324,11 +384,13 @@ end;
 procedure TDView.FormClientEvent(const Event: TCClient.TEvent);
 begin
   if (Event.EventType in [ceBuild]) then
-    Initialized();
+    Built();
 end;
 
 procedure TDView.FormCreate(Sender: TObject);
 begin
+  FFields.SmallImages := Preferences.SmallImages;
+
   FStmt.Highlighter := MainHighlighter;
   FSource.Highlighter := MainHighlighter;
 
@@ -419,18 +481,15 @@ begin
     FSource.Lines.Clear();
 
     PageControl.Visible := True;
-    FSQLWait.Visible := not PageControl.Visible;
+    PSQLWait.Visible := not PageControl.Visible;
   end
   else
   begin
-    FName.Text := View.Name;
-
     PageControl.Visible := not View.Update();
-    FSQLWait.Visible := not PageControl.Visible;
-    if (PageControl.Visible) then
-      Initialized();
+    PSQLWait.Visible := not PageControl.Visible;
 
-    FDefiner.Caption := View.Definer;
+    if (PageControl.Visible) then
+      Built();
   end;
 
   TSInformations.TabVisible := Assigned(View);
@@ -471,60 +530,6 @@ begin
   FBOkCheckEnabled(Sender);
   TSFields.TabVisible := False;
   TSSource.TabVisible := False;
-end;
-
-procedure TDView.Initialized();
-var
-  I: Integer;
-  Item: TListItem;
-  ViewField: TCViewField;
-begin
-  case (View.Algorithm) of
-    vaUndefined: FAlgorithm.ItemIndex := 0;
-    vaMerge: FAlgorithm.ItemIndex := 1;
-    vaTemptable: FAlgorithm.ItemIndex := 2;
-    else FAlgorithm.Text := '';
-  end;
-
-  case (View.Security) of
-    seDefiner: FSecurityDefiner.Checked := True;
-    seInvoker: FSecurityInvoker.Checked := True;
-  end;
-
-  FCheckOption.Checked := View.CheckOption <> voNone;
-  FCheckOptionCascade.Checked := View.CheckOption = voCascaded;
-  FCheckOptionLocal.Checked := View.CheckOption = voLocal;
-
-  FStmt.Lines.Text := Trim(SQLWrapStmt(View.Stmt, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10;
-
-  FFields.Items.BeginUpdate();
-  for I := 0 to View.Fields.Count - 1 do
-  begin
-    ViewField := TCViewField(View.Fields[I]);
-    Item := FFields.Items.Add();
-    Item.Caption := ViewField.Name;
-    if (ViewField.FieldType <> mfUnknown) then
-    begin
-      Item.SubItems.Add(ViewField.DBTypeStr());
-      if (ViewField.NullAllowed) then
-        Item.SubItems.Add(Preferences.LoadStr(74))
-      else
-        Item.SubItems.Add(Preferences.LoadStr(75));
-      if (ViewField.AutoIncrement) then
-        Item.SubItems.Add('<auto_increment>')
-      else
-        Item.SubItems.Add(ViewField.Default);
-      if (ViewField.Charset <> View.Database.DefaultCharset) then
-        Item.SubItems.Add(ViewField.Charset);
-    end;
-    Item.ImageIndex := iiViewField;
-  end;
-  FFields.Items.EndUpdate();
-
-  FSource.Lines.Text := View.Source + #13#10;
-
-  PageControl.Visible := True;
-  FSQLWait.Visible := not PageControl.Visible;
 end;
 
 procedure TDView.TSInformationsShow(Sender: TObject);

@@ -154,7 +154,6 @@ object FClient: TFClient
         HelpContext = 1038
         Align = alClient
         BorderStyle = bsNone
-        ChangeDelay = 50
         DragMode = dmAutomatic
         HideSelection = False
         HotTrack = True

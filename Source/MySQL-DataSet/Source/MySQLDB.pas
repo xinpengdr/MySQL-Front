@@ -607,6 +607,7 @@ type
 
   TMySQLTable = class(TMySQLDataSet)
   private
+    FAsynchron: Boolean;
     FAutomaticLoadNextRecords: Boolean;
     FLimit: Integer;
     FLimitedDataReceived: Boolean;
@@ -622,9 +623,11 @@ type
     procedure InternalOpen(); override;
     procedure SetCommandText(const ACommandText: string); override;
     function SQLSelect(const IgnoreLimit: Boolean = False): string; virtual;
+    property Asynchron: Boolean read FAsynchron write FAsynchron;
   public
     constructor Create(AOwner: TComponent); override;
     function LoadNextRecords(const AllRecords: Boolean = False): Boolean; virtual;
+    procedure OpenAsynchron(const OnResult: TMySQLConnection.TResultEvent); virtual;
     procedure Sort(const ASortDef: TIndexDef); override;
     property CommandText: string read FCommandText write FCommandText;
     property LimitedDataReceived: Boolean read FLimitedDataReceived;
@@ -2583,6 +2586,8 @@ begin
   end
   else
   begin
+    DoBeforeExecuteSQL();
+
     SynchroThread.SQLStmt := 0;
     SynchroThread.SQLStmtIndex := 1;
     SynchroThread.SQLPacket := 0;
@@ -2643,8 +2648,6 @@ begin
       StartTime := Now();
       SynchroThread.Success := Lib.mysql_real_query(SynchroThread.LibHandle, my_char(LibSQL), LibLength) = 0;
       SynchroThread.Time := SynchroThread.Time + Now() - StartTime;
-
-//      Sleep(200);
     end;
 
     if (SynchroThread.Success and not SynchroThread.Terminated) then
@@ -2760,48 +2763,49 @@ begin
     SynchroThread.ResultHandle := nil;
   end;
 
-  if (MultiStatements and (Lib.mysql_more_results(SynchroThread.LibHandle) <> 0)) then
-  begin
-    if (SynchroThread.SQLStmtInPacket + 1 < Integer(SynchroThread.SQLStmtsInPackets[SynchroThread.SQLPacket])) then
+  if (not SynchroThread.Terminated) then
+    if (MultiStatements and (Lib.mysql_more_results(SynchroThread.LibHandle) <> 0)) then
+    begin
+      if (SynchroThread.SQLStmtInPacket + 1 < Integer(SynchroThread.SQLStmtsInPackets[SynchroThread.SQLPacket])) then
+      begin
+        Inc(FExecutedSQLLength, Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]));
+        Inc(FExecutedStmts);
+
+        Inc(SynchroThread.SQLStmtIndex, Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]));
+        Inc(SynchroThread.SQLStmt);
+        Inc(SynchroThread.SQLStmtInPacket);
+
+        StmtLength := Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]);
+        WriteMonitor(@SynchroThread.SQL[SynchroThread.SQLStmtIndex], StmtLength, ttRequest);
+      end;
+
+      SynchroThread.State := ssNextResult;
+    end
+    else
     begin
       Inc(FExecutedSQLLength, Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]));
       Inc(FExecutedStmts);
 
       Inc(SynchroThread.SQLStmtIndex, Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]));
       Inc(SynchroThread.SQLStmt);
-      Inc(SynchroThread.SQLStmtInPacket);
+      Inc(SynchroThread.SQLPacket);
+      SynchroThread.SQLStmtInPacket := 0;
 
-      StmtLength := Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]);
-      WriteMonitor(@SynchroThread.SQL[SynchroThread.SQLStmtIndex], StmtLength, ttRequest);
+      if (SynchroThread.SQLPacket < SynchroThread.SQLStmtsInPackets.Count) then
+      begin
+        SynchroThread.SQLLastStmtInPacket := SynchroThread.SQLStmt + Integer(SynchroThread.SQLStmtsInPackets[SynchroThread.SQLPacket]);
+
+        S := '# ' + SysUtils.DateTimeToStr(Now() + TimeDiff, FormatSettings);
+        WriteMonitor(PChar(S), Length(S), ttTime);
+
+        StmtLength := Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]);
+        WriteMonitor(@SynchroThread.SQL[SynchroThread.SQLStmtIndex], StmtLength, ttRequest);
+
+        SynchroThread.State := ssExecutingSQL;
+      end
+      else
+        SynchroThread.State := ssReady;
     end;
-
-    SynchroThread.State := ssNextResult;
-  end
-  else
-  begin
-    Inc(FExecutedSQLLength, Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]));
-    Inc(FExecutedStmts);
-
-    Inc(SynchroThread.SQLStmtIndex, Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]));
-    Inc(SynchroThread.SQLStmt);
-    Inc(SynchroThread.SQLPacket);
-    SynchroThread.SQLStmtInPacket := 0;
-
-    if (SynchroThread.SQLPacket < SynchroThread.SQLStmtsInPackets.Count) then
-    begin
-      SynchroThread.SQLLastStmtInPacket := SynchroThread.SQLStmt + Integer(SynchroThread.SQLStmtsInPackets[SynchroThread.SQLPacket]);
-
-      S := '# ' + SysUtils.DateTimeToStr(Now() + TimeDiff, FormatSettings);
-      WriteMonitor(PChar(S), Length(S), ttTime);
-
-      StmtLength := Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]);
-      WriteMonitor(@SynchroThread.SQL[SynchroThread.SQLStmtIndex], StmtLength, ttRequest);
-
-      SynchroThread.State := ssExecutingSQL;
-    end
-    else
-      SynchroThread.State := ssReady;
-  end;
 end;
 
 procedure TMySQLConnection.SyncNextResult(const SynchroThread: TSynchroThread);
@@ -2849,7 +2853,10 @@ begin
     if (SynchroThread.Terminated) then
       LibRow := nil
     else
+    begin
+      Sleep(100);
       LibRow := Lib.mysql_fetch_row(SynchroThread.ResultHandle);
+    end;
 
     TerminateCS.Enter();
     if (not SynchroThread.Terminated and Assigned(SynchroThread.DataSet)) then
@@ -4306,7 +4313,8 @@ end;
 
 function TMySQLQuery.InternalOpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
 begin
-  Assert(not Assigned(FHandle));
+  if (Assigned(FHandle)) then
+    Assert(not Assigned(FHandle));
 
 
   FHandle := Connection.SynchroThread.ResultHandle;
@@ -4332,7 +4340,7 @@ begin
       inherited
     else
     begin
-      CommandTextUsedForOpen := CommandText <> '';
+      CommandTextUsedForOpen := not (Self is TMySQLTable) and (CommandText <> '') or (Self is TMySQLTable) and not TMySQLTable(Self).Asynchron;
       if (CommandTextUsedForOpen) then
       begin
         if (not (Self is TMySQLTable)) then
@@ -4352,8 +4360,13 @@ begin
       end
       else
       begin
-        FDatabaseName := Connection.DatabaseName;
-        FCommandText := Connection.CommandText;
+        if (not (Self is TMySQLTable)) then
+        begin
+          FDatabaseName := Connection.DatabaseName;
+          FCommandText := Connection.CommandText;
+        end
+        else
+          TMySQLTable(Self).Asynchron := False;
 
         inherited;
       end;
@@ -5355,7 +5368,10 @@ var
 begin
   Connection.TerminateCS.Enter();
   if (IsCursorOpen() and Assigned(RecordReceived) and Assigned(Connection.SynchroThread) and (Connection.SynchroThread.DataSet = Self)) then
+  begin
     Connection.SynchroThread.DataSet := nil;
+    FHandle := nil;
+  end;
   Connection.TerminateCS.Leave();
 
   if (not HoldFieldDefs) then
@@ -5506,6 +5522,10 @@ var
   FieldName: string;
   Pos: Integer;
 begin
+  if (Assigned(FHandle)) then
+    Write
+  else
+  begin
   Connection.SynchroThread.DataSet := Self;
 
   inherited;
@@ -5549,6 +5569,7 @@ begin
     OpenCursorComplete();
 
   Result := False;
+  end;
 end;
 
 procedure TMySQLDataSet.InternalPost();
@@ -6544,6 +6565,7 @@ constructor TMySQLTable.Create(AOwner: TComponent);
 begin
   inherited;
 
+  FAsynchron := False;
   FAutomaticLoadNextRecords := False;
   SetLength(DeleteBookmarks, 0);
   FCommandType := ctTable;
@@ -6564,6 +6586,13 @@ begin
   except
     Result := False;
   end;
+end;
+
+procedure TMySQLTable.OpenAsynchron(const OnResult: TMySQLConnection.TResultEvent);
+begin
+  FAsynchron := True;
+
+  Connection.SendSQL(SQLSelect(), OnResult);
 end;
 
 procedure TMySQLTable.Sort(const ASortDef: TIndexDef);

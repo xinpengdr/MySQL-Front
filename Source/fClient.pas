@@ -531,6 +531,7 @@ type
   protected
     function GetComment(): string; virtual; abstract;
     function GetFields(): TCTableFields; virtual;
+    function OpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean; virtual;
     procedure SetComment(const AComment: string); virtual; abstract;
     procedure SetName(const AName: string); override;
     property SourceParsed: Boolean read FSourceParsed;
@@ -845,7 +846,7 @@ type
     FInputDataSet: TMySQLDataSet;
     OldSource: string;
     function GetInputDataSet(): TMySQLDataSet;
-    function GetTable(): TCBaseTable;
+    function GetTable(): TCBaseTable; inline;
     function GetTriggers(): TCTriggers; inline;
   protected
     FCreated: TDateTime;
@@ -854,10 +855,10 @@ type
     FStmt: string;
     FTableName: string;
     FTiming: TTiming;
-    xFValid: Boolean;
+    FValid: Boolean;
     procedure SetSource(const ADataSet: TMySQLQuery); overload; override;
     function SQLGetSource(): string; override;
-    property xValid: Boolean read xFValid;
+    property Valid: Boolean read FValid;
   public
     procedure Assign(const Source: TCTrigger); reintroduce; virtual;
     procedure Clear(); override;
@@ -3737,7 +3738,8 @@ begin
   FFilterSQL := FilterSQL;
 
   Result := False;
-  DataSet.Active := False;
+
+  DataSet.Close();
 
   DataSet.Limit := Limit;
   DataSet.Offset := Offset;
@@ -3747,13 +3749,17 @@ begin
 
   DataSet.Connection := Database.Client;
   DataSet.CommandText := Name;
+  DataSet.OpenAsynchron(OpenEvent);
+end;
+
+function TCTable.OpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+begin
   DataSet.Open();
 
-  if (Result) then
-  begin
-    SetLength(Database.Client.CachedTables, Length(Database.Client.CachedTables) + 1);
-    Database.Client.CachedTables[Length(Database.Client.CachedTables) - 1] := Self;
-  end;
+  SetLength(Database.Client.CachedTables, Length(Database.Client.CachedTables) + 1);
+  Database.Client.CachedTables[Length(Database.Client.CachedTables) - 1] := Self;
+
+  Result := False;
 end;
 
 function TCTable.GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string;
@@ -5157,7 +5163,7 @@ begin
           begin
             View := TCView(Table[Index]);
             if (UpperCase(DataSet.FieldByName('TABLE_COMMENT').AsString) <> 'VIEW') then
-              View.FComment := DataSet.FieldByName('TABLE_COMMENT').AsString;
+              View.Comment := DataSet.FieldByName('TABLE_COMMENT').AsString;
           end;
 
           Client.ExecuteEvent(ceStatus, Database, Self, Table[Index]);
@@ -5977,7 +5983,7 @@ begin
   OldSource := '';
   FStmt := '';
   FTiming := ttAfter;
-  xFValid := False;
+  FValid := False;
 end;
 
 destructor TCTrigger.Destroy();
@@ -6050,7 +6056,7 @@ end;
 
 procedure TCTrigger.Invalidate();
 begin
-  xFValid := False;
+  FValid := False;
 end;
 
 procedure TCTrigger.SetSource(const ADataSet: TMySQLQuery);
@@ -6194,7 +6200,7 @@ begin
         else if (UpperCase(DataSet.FieldByName('ACTION_TIMING').AsString) = 'AFTER') then
           Trigger[Index].FTiming := ttAfter;
       end;
-      Trigger[Index].xFValid := True;
+      Trigger[Index].FValid := True;
 
       if (Database.Client.ServerVersion < 50121) then
         Trigger[Index].SetSource(Trigger[Index].GetSourceEx());
@@ -7698,7 +7704,7 @@ begin
   end
   else if (Param is TCTrigger) then
   begin
-    if (not TCTrigger(Param).xValid) then
+    if (not TCTrigger(Param).Valid) then
       SQL := SQL + Triggers.SQLGetItems(TCTrigger(Param).Name);
   end
   else
@@ -7883,7 +7889,7 @@ begin
     if (not TCDBObject(Param).ValidSource) then
       SQL := SQL + TCDBObject(Param).SQLGetSource();
     if (Param is TCView) then
-      FetchViewFields := FetchViewFields or TCView(Param).Valid;
+      FetchViewFields := FetchViewFields or not TCView(Param).Valid;
   end
   else if (Param is TList) then
   begin
@@ -7893,10 +7899,10 @@ begin
           SQL := SQL + TCDBObject(TList(Param)[I]).SQLGetSource()
         else
         begin
-          if (not TCView(TList(Param)[I]).FValidSource) then
+          if (not TCView(TList(Param)[I]).ValidSource) then
             SQL := SQL + TCDBObject(TList(Param)[I]).SQLGetSource();
           if (TCDBObject(TList(Param)[I]) is TCView) then
-            FetchViewFields := True;
+            FetchViewFields := FetchViewFields or not TCView(TList(Param)[I]).Valid;
         end;
   end;
 
@@ -7909,7 +7915,7 @@ begin
       begin
         SQL := SQL + Tables[I].SQLGetSource();
         if (Tables[I] is TCView) then
-          FetchViewFields := FetchViewFields or TCView(Tables[I]).Valid;
+          FetchViewFields := FetchViewFields or not TCView(Tables[I]).Valid;
       end;
     if (Assigned(Routines)) then
       for I := 0 to Routines.Count - 1 do
@@ -8339,8 +8345,9 @@ begin
   for I := 0 to Count - 1 do
     if (Database[I].Update()) then
     begin
-      Result := True;
-      exit;
+      Result := Client.Asynchron;
+      if (Result) then
+        exit;
     end;
 end;
 
@@ -12031,7 +12038,7 @@ begin
   if (SQL = '') then
     Result := True
   else
-    Result := ExecuteSQL(SQL);
+    Result := ExecuteSQL(SQL) and Asynchron;
 end;
 
 function TCClient.UpdateHost(const Host, NewHost: TCHost): Boolean;

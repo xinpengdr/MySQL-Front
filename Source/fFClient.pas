@@ -817,7 +817,7 @@ type
     FWorkbenchMouseDownPoint: TPoint;
     GIFImage: TGIFImage;
     HostsListView: TListView;
-    IgnoreFGridTitleClick, UseNavigatorTimer: Boolean;
+    IgnoreFGridTitleClick: Boolean;
     JPEGImage: TJPEGImage;
     LastDataSource: TLastDataSource;
     LastFNavigatorSelected: string;
@@ -842,6 +842,7 @@ type
     StatiListView: TListView;
     SynMemoBeforeDrag: TSynMemoBeforeDrag;
     UsedView: TView;
+    UseNavigatorTimer: Boolean;
     UsersListView: TListView;
     VariablesListView: TListView;
     Wanted: TWanted;
@@ -851,7 +852,7 @@ type
     procedure aDCancelExecute(Sender: TObject);
     procedure aDCommitExecute(Sender: TObject);
     procedure aDCommitRefresh(Sender: TObject);
-    procedure AddressChange(Sender: TObject);
+    procedure AddressChanged(Sender: TObject);
     function AddressToNavigatorNode(const Address: string): TTreeNode;
     procedure aDPostObjectExecute(Sender: TObject);
     procedure aDRollbackExecute(Sender: TObject);
@@ -2102,11 +2103,9 @@ end;
 procedure TFClient.aDDeleteUserExecute(Sender: TObject);
 begin
   Wanted.Clear();
-
-;
 end;
 
-procedure TFClient.AddressChange(Sender: TObject);
+procedure TFClient.AddressChanged(Sender: TObject);
 var
   Control: TWinControl;
   Database: TCDatabase;
@@ -2276,10 +2275,29 @@ begin
     if (View = avObjectIDE) then
       LastObjectIDEAddress := Address;
 
-    if (Client.Account.PackAddress(Address) = '/') then
-      Wanted.Update := Client.Databases.Update
-    else if (Client.Account.PackAddress(Address) = '/?system=processes') then
-      Wanted.Update := Client.Processes.Update;
+
+    if (tsLoading in FrameState) then
+    begin
+      if (PSideBar.Visible) then
+      begin
+        if (PNavigator.Visible) then Window.ActiveControl := FNavigator
+        else if (PBookmarks.Visible) then Window.ActiveControl := FBookmarks
+        else if (PListView.Visible) then Window.ActiveControl := ActiveListView
+        else if (PBuilder.Visible) then Window.ActiveControl := FBuilder
+        else if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo
+        else if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
+      end
+      else
+        case (View) of
+          avObjectBrowser: if (PListView.Visible) then Window.ActiveControl := ActiveListView;
+          avDataBrowser: if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
+          avObjectIDE: if (PSQLEditor.Visible and Assigned(ActiveSynMemo)) then Window.ActiveControl := ActiveSynMemo;
+          avQueryBuilder: if (PBuilder.Visible and Assigned(FBuilderActiveWorkArea())) then Window.ActiveControl := FBuilderActiveWorkArea();
+          avSQLEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo;
+          avDiagram: if (PWorkbench.Visible) then Window.ActiveControl := ActiveWorkbench;
+        end;
+      Exclude(FrameState, tsLoading);
+    end;
   end;
 end;
 
@@ -2318,43 +2336,50 @@ begin
     MessageBeep(MB_ICONERROR)
   else
   begin
-    AllowChange := not Client.Update();
-    if (AllowChange) then
-      if (URI.Database <> '') then
+    if (Client.Update() and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
+      AllowChange := False
+    else if (URI.Param['system'] = 'hosts') then
+      Client.Hosts.Update()
+    else if (URI.Param['system'] = 'processes') then
+      Client.Processes.Update()
+    else if (URI.Param['system'] = 'stati') then
+      Client.Stati.Update()
+    else if (URI.Param['system'] = 'users') then
+      Client.Users.Update()
+    else if (URI.Param['system'] = 'variables') then
+      Client.Variables.Update()
+    else if (URI.Database = '') then
+      Client.Databases.Update()
+    else
+    begin
+      Database := Client.DatabaseByName(URI.Database);
+      if (not Assigned(Database)) then
+        NotFound := True
+      else if (Database.Update() and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
+        AllowChange := False
+      else if (URI.Param['view'] = 'editor') then
+        Database.UpdateSources()
+      else if ((URI.Table <> '') or (URI.Param['object'] <> Null)) then
       begin
-        Database := Client.DatabaseByName(URI.Database);
-        if (not Assigned(Database)) then
+        if (URI.Table <> '') then
+          DBObject := Database.TableByName(URI.Table)
+        else if ((URI.Param['objecttype'] = 'procedure') and (URI.Param['object'] <> Null)) then
+          DBObject := Database.ProcedureByName(URI.Param['object'])
+        else if ((URI.Param['objecttype'] = 'function') and (URI.Param['object'] <> Null)) then
+          DBObject := Database.FunctionByName(URI.Param['object'])
+        else if ((URI.Param['objecttype'] = 'trigger') and (URI.Param['object'] <> Null)) then
+          DBObject := Database.EventByName(URI.Param['object'])
+        else if ((URI.Param['objecttype'] = 'event') and (URI.Param['object'] <> Null)) then
+          DBObject := Database.EventByName(URI.Param['object'])
+        else
+          DBObject := nil;
+
+        if (not Assigned(DBObject)) then
           NotFound := True
         else
-        begin
-          AllowChange := not Database.Update();
-          if (AllowChange) then
-            if (URI.Param['view'] = 'editor') then
-              AllowChange := not Database.UpdateSources()
-            else
-            begin
-              if (URI.Table <> '') then
-                DBObject := Database.TableByName(URI.Table)
-              else if ((URI.Param['objecttype'] = 'procedure') and (URI.Param['object'] <> Null)) then
-                DBObject := Database.ProcedureByName(URI.Param['object'])
-              else if ((URI.Param['objecttype'] = 'function') and (URI.Param['object'] <> Null)) then
-                DBObject := Database.FunctionByName(URI.Param['object'])
-              else if ((URI.Param['objecttype'] = 'trigger') and (URI.Param['object'] <> Null)) then
-                DBObject := Database.EventByName(URI.Param['object'])
-              else if ((URI.Param['objecttype'] = 'event') and (URI.Param['object'] <> Null)) then
-                DBObject := Database.EventByName(URI.Param['object'])
-              else
-                DBObject := nil;
-
-              if (Assigned(DBObject)) then
-                AllowChange := not DBObject.Update()
-              else if ((URI.Table = '') and (URI.Param['objecttype'] = Null)) then
-                AllowChange := True
-              else
-                NotFound := True;
-            end;
-        end;
+          DBObject.Update();
       end;
+    end;
 
     if (NotFound) then
     begin
@@ -4432,7 +4457,7 @@ begin
 
     Window.Perform(CM_UPDATETOOLBAR, 0, LPARAM(Self));
 
-    AddressChange(nil);
+    AddressChanged(nil);
   end;
 end;
 
@@ -5006,8 +5031,6 @@ begin
 
   Perform(CM_ACTIVATEFRAME, 0, 0);
 
-  Exclude(FrameState, tsLoading);
-
 
   if (Copy(Param, 1, 8) = 'mysql://') then
     Address := Param
@@ -5025,26 +5048,6 @@ begin
   end
   else
     Address := Client.Account.Desktop.Address;
-  Param := '';
-
-  if (PSideBar.Visible) then
-  begin
-    if (PNavigator.Visible) then Window.ActiveControl := FNavigator
-    else if (PBookmarks.Visible) then Window.ActiveControl := FBookmarks
-    else if (PListView.Visible) then Window.ActiveControl := ActiveListView
-    else if (PBuilder.Visible) then Window.ActiveControl := FBuilder
-    else if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo
-    else if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
-  end
-  else
-    case (View) of
-      avObjectBrowser: if (PListView.Visible) then Window.ActiveControl := ActiveListView;
-      avDataBrowser: if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
-      avObjectIDE: if (PSQLEditor.Visible and Assigned(ActiveSynMemo)) then Window.ActiveControl := ActiveSynMemo;
-      avQueryBuilder: if (PBuilder.Visible and Assigned(FBuilderActiveWorkArea())) then Window.ActiveControl := FBuilderActiveWorkArea();
-      avSQLEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo;
-      avDiagram: if (PWorkbench.Visible) then Window.ActiveControl := ActiveWorkbench;
-    end;
 end;
 
 procedure TFClient.CMRemoveWForeignKey(var Message: TMessage);
@@ -5244,6 +5247,7 @@ end;
 constructor TFClient.Create(const AOwner: TComponent; const AParent: TWinControl; const AClient: TCClient; const AParam: string; const IconIndex: Integer);
 var
   Kind: TADesktop.TListViewKind;
+  Node: TTreeNode;
   NonClientMetrics: TNonClientMetrics;
 begin
   inherited Create(AOwner);
@@ -5280,6 +5284,14 @@ begin
   end;
   CreateLine := False;
 
+
+  if (FNavigator.Items.Count = 0) then
+  begin
+    Node := FNavigator.Items.Add(nil, Client.Caption);
+    Node.Data := Client;
+    Node.HasChildren := True;
+    Node.ImageIndex := iiServer;
+  end;
 
   FUDOffset.HandleNeeded();
   FOffset.HandleNeeded();
@@ -6516,7 +6528,7 @@ procedure TFClient.FFilterEnabledClick(Sender: TObject);
 begin
   FQuickSearchEnabled.Down := False;
   TableOpen(Sender);
-  AddressChange(Sender);
+  AddressChanged(Sender);
   Window.ActiveControl := FFilter;
 end;
 
@@ -7598,14 +7610,6 @@ var
 begin
   FNavigator.Items.BeginUpdate();
 
-  if (FNavigator.Items.Count = 0) then
-  begin
-    Node := FNavigator.Items.Add(nil, Client.Caption);
-    Node.Data := Client;
-    Node.HasChildren := True;
-    Node.ImageIndex := iiServer;
-  end;
-
   if (not Assigned(ClientEvent)) then
   begin
     Node := FNavigator.Items.getFirstNode();
@@ -8077,7 +8081,10 @@ begin
       ceInitialize:
         Wanted.Update := ClientEvent.Update;
       ceMonitor:
-        Perform(CM_POST_MONITOR, 0, 0)
+        Perform(CM_POST_MONITOR, 0, 0);
+      ceAfterExecuteSQL:
+        if (Wanted.Nothing and (Client.Account.PackAddress(Address) = '/')) then
+          Client.Databases.Update();
       else
         begin
           Database := Client.DatabaseByName(SelectedDatabase);
@@ -10821,9 +10828,9 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
           begin
             Count := 0;
             for I := 0 to TCBaseTable(ClientEvent.Sender).Database.Triggers.Count - 1 do
-              if (TCTrigger(ClientEvent.CItems[I]).Table = TCBaseTable(ClientEvent.Sender)) then
+              if (TCBaseTable(ClientEvent.Sender).Database.Triggers[I].Table = TCBaseTable(ClientEvent.Sender)) then
               begin
-                InsertItem(ClientEvent.CItems[I]);
+                InsertItem(TCBaseTable(ClientEvent.Sender).Database.Triggers[I]);
                 Inc(Count);
               end;
             GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(797), '&', '') + ' (' + IntToStr(Count) + ')';
@@ -12111,7 +12118,7 @@ begin
           begin
             SQLEditor.Filename := Import.Filename;
             SQLEditor.CodePage := Import.CodePage;
-            AddressChange(nil);
+            AddressChanged(nil);
           end;
         end;
         if (Length(FSQLEditorSynMemo.Lines.Text) < LargeSQLScriptSize) then
@@ -13559,7 +13566,7 @@ begin
 
     URI.Free();
 
-    AddressChange(nil);
+    AddressChanged(nil);
   end;
 end;
 
@@ -14356,6 +14363,7 @@ begin
   LeftMousePressed := (Sender is TTreeView_Ext) and (Button = mbLeft);
   if (LeftMousePressed) then
     MouseDownNode := TTreeView_Ext(Sender).GetNodeAt(X, Y);
+  Exclude(FrameState, tsLoading);
 end;
 
 procedure TFClient.TreeViewMouseUp(Sender: TObject;

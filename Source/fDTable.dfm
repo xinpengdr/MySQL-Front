@@ -25,6 +25,19 @@ object DTable: TDTable
     377)
   PixelsPerInch = 106
   TextHeight = 13
+  object PSQLWait: TPanel
+    Left = 8
+    Top = 8
+    Width = 321
+    Height = 325
+    Cursor = crSQLWait
+    ParentCustomHint = False
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    Caption = 'PSQLWait'
+    TabOrder = 0
+    Visible = False
+  end
   object FBOk: TButton
     Left = 167
     Top = 344
@@ -34,7 +47,7 @@ object DTable: TDTable
     Caption = 'FBOk'
     Default = True
     ModalResult = 1
-    TabOrder = 2
+    TabOrder = 3
   end
   object FBCancel: TButton
     Left = 255
@@ -45,24 +58,20 @@ object DTable: TDTable
     Cancel = True
     Caption = 'FBCancel'
     ModalResult = 2
-    TabOrder = 3
+    TabOrder = 4
   end
   object PageControl: TPageControl
     Left = 8
     Top = 8
     Width = 321
     Height = 325
-    ActivePage = TSExtras
+    ActivePage = TSTable
     Anchors = [akLeft, akTop, akRight, akBottom]
     HotTrack = True
     MultiLine = True
-    TabOrder = 0
+    TabOrder = 1
     object TSTable: TTabSheet
       Caption = 'TSTable'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -219,10 +228,6 @@ object DTable: TDTable
     object TSTables: TTabSheet
       Caption = 'TSTables'
       ImageIndex = 7
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -353,10 +358,6 @@ object DTable: TDTable
       Caption = 'TSInformations'
       ImageIndex = 1
       OnShow = TSInformationsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -497,10 +498,6 @@ object DTable: TDTable
       Caption = 'TSFields'
       ImageIndex = 4
       OnShow = TSFieldsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -593,10 +590,6 @@ object DTable: TDTable
       Caption = 'TSIndices'
       ImageIndex = 5
       OnShow = TSIndicesShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -659,10 +652,6 @@ object DTable: TDTable
       Caption = 'TSForeignKeys'
       ImageIndex = 6
       OnShow = TSForeignKeysShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -724,10 +713,6 @@ object DTable: TDTable
     object TSTriggers: TTabSheet
       Caption = 'TSTriggers'
       OnShow = TSTriggersShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -761,10 +746,6 @@ object DTable: TDTable
     object TSReferenced: TTabSheet
       Caption = 'TSReferenced'
       OnShow = TSReferencedShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -797,10 +778,6 @@ object DTable: TDTable
     object TSPartitions: TTabSheet
       Caption = 'TSPartitions'
       OnShow = TSPartitionsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -946,10 +923,6 @@ object DTable: TDTable
       Caption = 'TSExtras'
       ImageIndex = 2
       OnShow = TSExtrasShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -1056,10 +1029,6 @@ object DTable: TDTable
       Caption = 'TSSource'
       ImageIndex = 3
       OnShow = TSSourceShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -1099,7 +1068,7 @@ object DTable: TDTable
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'FBHelp'
-    TabOrder = 1
+    TabOrder = 2
     OnClick = FBHelpClick
   end
   object MSource: TPopupMenu

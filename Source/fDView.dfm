@@ -25,7 +25,7 @@ object DView: TDView
     377)
   PixelsPerInch = 106
   TextHeight = 13
-  object FSQLWait: TPanel
+  object PSQLWait: TPanel
     Left = 8
     Top = 8
     Width = 321
@@ -33,8 +33,9 @@ object DView: TDView
     Cursor = crSQLWait
     Anchors = [akLeft, akTop, akRight, akBottom]
     BevelOuter = bvNone
-    Caption = 'FSQLWait'
+    Caption = 'PSQLWait'
     TabOrder = 0
+    Visible = False
   end
   object PageControl: TPageControl
     Left = 8
@@ -47,10 +48,6 @@ object DView: TDView
     TabOrder = 1
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         297)
@@ -267,10 +264,6 @@ object DView: TDView
     object TSFields: TTabSheet
       Caption = 'TSFields'
       ImageIndex = 3
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         297)
