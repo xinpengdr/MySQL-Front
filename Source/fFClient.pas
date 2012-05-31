@@ -14,7 +14,7 @@ uses
   ComCtrls_Ext, StdCtrls_Ext, Dialogs_Ext, Forms_Ext, ExtCtrls_Ext,
   MySQLDB, MySQLDBGrid,
   fDExport, fDImport, fClient, fAccount, fBase, fPreferences, fTools,
-  fCWorkbench, ToolWin;
+  fCWorkbench, ToolWin, Vcl.Buttons;
 
 const
   CM_ACTIVATEFGRID = WM_USER + 500;
@@ -379,9 +379,9 @@ type
     tmESelectAll: TMenuItem;
     ToolBar: TToolBar;
     ToolBarBlob: TToolBar;
-    ToolBarFilterEnabled: TToolBar;
-    ToolBarLimitEnabled: TToolBar;
-    ToolBarQuickSearchEnabled: TToolBar;
+    TBFilterEnabled: TToolBar;
+    TBLimitEnabled: TToolBar;
+    TBQuickSearchEnabled: TToolBar;
     procedure aBAddExecute(Sender: TObject);
     procedure aBDeleteExecute(Sender: TObject);
     procedure aBEditExecute(Sender: TObject);
@@ -643,6 +643,8 @@ type
       Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure TreeViewMouseUp(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
+    procedure ToolBarResize(Sender: TObject);
+    procedure PDataBrowserResize(Sender: TObject);
   type
     TNewLineFormat = (nlWindows, nlUnix, nlMacintosh);
     TTabState = set of (tsLoading, tsActive);
@@ -1368,7 +1370,16 @@ end;
 
 function TFClient.TTableDesktop.GetLimit(): Integer;
 begin
-  Result := DefaultLimit;
+  if (Table is TCBaseTable) then
+  begin
+    Result := DefaultLimitSize div TCBaseTable(Table).AvgRowLength;
+    if (Result < 2 * DefaultLimit) then
+      Result := DefaultLimit
+    else
+      Result := Result div DefaultLimit * DefaultLimit;
+  end
+  else
+    Result := DefaultLimit;
 
   if (Assigned(XML) and Assigned(XMLNode(XML, 'limit'))) then
     TryStrToInt(XMLNode(XML, 'limit').Text, Result);
@@ -2808,7 +2819,7 @@ begin
   begin
     SQL := ActiveSynMemo.Text;
     Index := 1; Len := 0;
-    while (Index <= aDRunExecuteSelStart + 1) do
+    while (Index < aDRunExecuteSelStart + 1) do
     begin
       Len := SQLStmtLength(SQL, Index);
       Inc(Index, Len);
@@ -3304,7 +3315,7 @@ begin
   else if (Window.ActiveControl = ActiveWorkbench) then
   begin
     Database := Client.DatabaseByName(SelectedDatabase);
-    if (Database.Update(Database.Tables)) then
+    if (Database.Tables.Update()) then
       Wanted.Action := TAction(Sender)
     else
       for I := 0 to ActiveWorkbench.Tables.Count - 1 do
@@ -3371,7 +3382,7 @@ begin
       iiBaseTable:
         begin
           Database := Client.DatabaseByName(SelectedDatabase);
-          if (Database.Update(Database.Triggers)) then
+          if (Database.Triggers.Update()) then
             Wanted.Action := TAction(Sender)
           else if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
             for I := 0 to ActiveListView.Items.Count - 1 do
@@ -3402,7 +3413,7 @@ begin
   begin
     Table := TCBaseTable(FocusedCItem);
     Database := Table.Database;
-    if (Table.Update() or Assigned(Database.Triggers) and Database.Update(Database.Triggers)) then
+    if (Table.Update() or Assigned(Database.Triggers) and Database.Triggers.Update()) then
       Wanted.Action := TAction(Sender)
     else
     begin
@@ -4469,9 +4480,9 @@ begin
   FNavigator.Images := Preferences.SmallImages;
   FBookmarks.SmallImages := Preferences.SmallImages;
   FSQLHistory.Images := Preferences.SmallImages;
-  ToolBarLimitEnabled.Images := Preferences.SmallImages;
-  ToolBarQuickSearchEnabled.Images := Preferences.SmallImages;
-  ToolBarFilterEnabled.Images := Preferences.SmallImages;
+  TBLimitEnabled.Images := Preferences.SmallImages;
+  TBQuickSearchEnabled.Images := Preferences.SmallImages;
+  TBFilterEnabled.Images := Preferences.SmallImages;
   FServerListView.SmallImages := Preferences.SmallImages;
 
 
@@ -7343,6 +7354,7 @@ end;
 procedure TFClient.FNavigatorDragDrop(Sender, Source: TObject; X, Y: Integer);
 var
   I: Integer;
+  List: TList;
   Objects: string;
   SourceNode: TTreeNode;
   TargetNode: TTreeNode;
@@ -7353,6 +7365,8 @@ begin
     TargetNode := FNavigator.Selected
   else
     TargetNode := nil;
+
+  List := TList.Create();
 
   if ((Source is TTreeView_Ext) and (TTreeView_Ext(Source).Name = FNavigator.Name)) then
   begin
@@ -7377,7 +7391,7 @@ begin
     if (Objects <> '') then
       Objects := 'Address=' + NavigatorNodeToAddress(SourceNode) + #13#10 + Objects;
   end
-  else if ((Source is TListView) and (TListView(Source).Name = 'FList')) then
+  else if ((Source is TListView) and (TListView(Source).Parent.Name = 'PListView')) then
   begin
     SourceNode := TFClient(TComponent(TListView(Source).Owner)).FNavigator.Selected;
 
@@ -7402,6 +7416,8 @@ begin
     if (Objects <> '') then
       Objects := 'Address=' + NavigatorNodeToAddress(SourceNode) + #13#10 + Objects;
   end;
+
+  List.Free();
 
   if (Objects <> '') then
     PasteExecute(TargetNode, Objects);
@@ -12284,7 +12300,7 @@ begin
   if (StringList.Count > 0) then
   begin
     SourceURI := TUURI.Create(StringList.Values['Address']);
-    SourceClient := Clients.ClientByAccount(Accounts.AccountByURI(SourceURI.Address), SourceURI.Database);
+    SourceClient := Clients.ClientByAccount(Accounts.AccountByURI(SourceURI.Address, Client.Account), SourceURI.Database);
     if (Assigned(SourceClient)) then
       SourceClientCreated := False
     else if (not Assigned(Accounts.AccountByURI(SourceURI.Address))) then
@@ -12403,9 +12419,7 @@ begin
                           MessageBeep(MB_ICONERROR)
                         else
                         begin
-                          Name := CopyName(SourceTable.Name, Database.Tables);
-                          if (Client.LowerCaseTableNames = 1) then
-                            Name := LowerCase(Name);
+                          Name := Client.TableName(CopyName(SourceTable.Name, Database.Tables));
 
                           Success := Database.CloneTable(SourceTable, Name, DPaste.Data);
                         end;
@@ -12866,6 +12880,14 @@ procedure TFClient.PContentResize(Sender: TObject);
 begin
   PanelResize(Sender);
   PToolBar.Width := PContent.Width;
+end;
+
+procedure TFClient.PDataBrowserResize(Sender: TObject);
+begin
+  TBQuickSearchEnabled.Left := PDataBrowser.ClientWidth - TBQuickSearchEnabled.Width - GetSystemMetrics(SM_CXVSCROLL);
+  FQuickSearch.Left := TBQuickSearchEnabled.Left - FQuickSearch.Width;
+  TBFilterEnabled.Left := FQuickSearch.Left - TBFilterEnabled.Width;
+  FFilter.Width := TBFilterEnabled.Left - FFilter.Left;
 end;
 
 procedure TFClient.PGridResize(Sender: TObject);
@@ -13997,9 +14019,15 @@ begin
       if ((Window.ActiveControl = FGrid) and Assigned(FGrid.SelectedField)) then
       begin
         if (not FGrid.SelectedField.IsNull) then
-          StatusBar.Panels.Items[sbMessage].Text := FGrid.SelectedField.AsString
+        begin
+          StatusBar.Panels.Items[sbMessage].Text := FGrid.SelectedField.AsString;
+          SetTimer(Handle, tiStatusBar, 5000, nil);
+        end
         else if (Preferences.GridNullText and not FGrid.SelectedField.Required) then
+        begin
           StatusBar.Panels.Items[sbMessage].Text := '<NULL>';
+          SetTimer(Handle, tiStatusBar, 5000, nil);
+        end;
       end;
 
 
@@ -14272,6 +14300,12 @@ begin
   tbBlobSpacer.Width := ToolBarBlob.Width - Widths;
 end;
 
+procedure TFClient.ToolBarResize(Sender: TObject);
+begin
+  if ((Sender is TToolBar) and (TToolBar(Sender).Parent is TPanel)) then
+    TPanel(TToolBar(Sender).Parent).ClientHeight := TToolBar(Sender).Height + 2 * TToolBar(Sender).Top;
+end;
+
 procedure TFClient.ToolBarTabsClick(Sender: TObject);
 begin
   Wanted.Clear();
@@ -14340,7 +14374,7 @@ end;
 
 procedure TFClient.TreeViewEndDrag(Sender, Target: TObject; X, Y: Integer);
 begin
-  if (ActiveSynMemo.AlwaysShowCaret) then
+  if (Assigned(ActiveSynMemo) and (ActiveSynMemo.AlwaysShowCaret)) then
   begin
     ActiveSynMemo.SelStart := SynMemoBeforeDrag.SelStart;
     ActiveSynMemo.SelLength := SynMemoBeforeDrag.SelLength;

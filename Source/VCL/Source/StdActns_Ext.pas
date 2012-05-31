@@ -91,7 +91,7 @@ end;
 function SearchEdit(EditControl: TCustomEdit; const SearchString: String;
   Options: TFindOptions; FindFirst: Boolean = False): Boolean;
 var
-  Size: Word;
+  Size: Integer;
   SearchOptions: TStringSearchOptions;
 {$IF DEFINED(CLR)}
   P: Integer;
@@ -133,9 +133,9 @@ begin
   try
     GetEditTextBuf(EditControl, Size + 1, Buffer);
     if FindFirst then
-      P := SearchBuf(Buffer, Size, 0, EditControl.SelLength, SearchString, SearchOptions)
+      P := SearchBuf(Buffer, Size, 0, 1, SearchString, SearchOptions)
     else
-      P := SearchBuf(Buffer, Size, EditControl.SelStart, EditControl.SelLength, SearchString, SearchOptions);
+      P := SearchBuf(Buffer, Size, 0, EditControl.SelStart + EditControl.SelLength, SearchString, SearchOptions);
     if P <> nil then
     begin
       EditControl.SelStart := P - Buffer;

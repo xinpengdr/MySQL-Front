@@ -612,6 +612,7 @@ type
     FLimit: Integer;
     FLimitedDataReceived: Boolean;
     FOffset: Integer;
+    function LoadNextRecordsEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
     procedure SetLimit(const ALimit: Integer);
     procedure SetOffset(const AOffset: Integer);
     procedure SetTableName(const ATableName: string);
@@ -627,7 +628,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     function LoadNextRecords(const AllRecords: Boolean = False): Boolean; virtual;
-    procedure OpenAsynchron(const OnResult: TMySQLConnection.TResultEvent); virtual;
+    procedure Open(const OnResult: TMySQLConnection.TResultEvent); overload; virtual;
     procedure Sort(const ASortDef: TIndexDef); override;
     property CommandText: string read FCommandText write FCommandText;
     property LimitedDataReceived: Boolean read FLimitedDataReceived;
@@ -3064,6 +3065,8 @@ begin
     SynchroThread.WaitFor();
     SynchroThread.Free();
   end;
+  if (TerminatedThreads.Count > 0) then
+    Write;
   TerminatedThreads.Free();
 
   ExecuteSQLDone.Free();
@@ -3284,20 +3287,32 @@ begin
 end;
 
 function TMySQLConnection.Shutdown(): Boolean;
+var
+  Retry: Integer;
 begin
   Assert(Connected and Assigned(Lib.mysql_shutdown));
 
   if (Assigned(SynchroThread) and (SynchroThread.State <> ssReady)) then
     Terminate();
 
+  if (not Assigned(SynchroThread)) then
+    FSynchroThread := TSynchroThread.Create(Self);
+
+  Retry := 0;
+  while (not Assigned(SynchroThread.LibHandle) and (Retry < RETRY_COUNT)) do
+  begin
+    SyncConnecting(SynchroThread);
+    Inc(Retry);
+  end;
+
   SendConnectEvent(False);
 
   FErrorCode := -1; FErrorMessage := '';
 
-  Result := Lib.mysql_shutdown(Handle, SHUTDOWN_DEFAULT) = 0;
+  Result := Assigned(SynchroThread.LibHandle) and (Lib.mysql_shutdown(SynchroThread.LibHandle, SHUTDOWN_DEFAULT) = 0);
 
   if (not Result) then
-    DoError(Lib.mysql_errno(Handle), Error(Handle))
+    DoError(Lib.mysql_errno(SynchroThread.LibHandle), Error(SynchroThread.LibHandle))
   else
     SyncDisconncted(nil);
 end;
@@ -6578,7 +6593,7 @@ begin
   try
     OldInternalBuffersIndex := InternRecordBuffers.Index;
     HoldFieldDefs := True;
-    Result := Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(AllRecords));
+    Result := Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(AllRecords), LoadNextRecordsEvent);
     HoldFieldDefs := False;
     InternRecordBuffers.Index := OldInternalBuffersIndex;
   except
@@ -6586,7 +6601,16 @@ begin
   end;
 end;
 
-procedure TMySQLTable.OpenAsynchron(const OnResult: TMySQLConnection.TResultEvent);
+function TMySQLTable.LoadNextRecordsEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+begin
+  SynchroThread.DataSet := Self;
+  Connection.SyncReceivingData(SynchroThread);
+  SynchroThread.DataSet := nil;
+
+  Result := False;
+end;
+
+procedure TMySQLTable.Open(const OnResult: TMySQLConnection.TResultEvent);
 begin
   FAsynchron := True;
 

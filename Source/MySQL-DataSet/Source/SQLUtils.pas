@@ -2418,9 +2418,8 @@ end;
 
 //var
 //  SQL: string;
-//  DDLStmt: TSQLDDLStmt;
 //begin
-//  SQL := 'CREATE DATABASE /*!32312 IF NOT EXISTS*/ `db1087474-phpBB3` /*!40100 DEFAULT CHARACTER SET utf8 */;';
-//  SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), 50500);
+//  SQL := 'SET profiling = 1;'#$D#$A'SHOW PROFILES;'#$D#$A'SHOW PROFILE FOR QUERY 5;'#$D#$A'SET profiling = 0;'#$D#$A'SHOW CREATE TABLE `test`.`neuetabelle`;'#$D#$A'SHOW OPEN TABLES';
+//  SQLStmtLength(DDLStmt, 141);
 end.
 

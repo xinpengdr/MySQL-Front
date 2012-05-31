@@ -1348,7 +1348,9 @@ end;
 
 constructor TPPreferences.Create();
 var
-  Foldername: array [0..MAX_PATH] of PChar;
+  Foldername: array [0..MAX_PATH] of Char;
+  Path: string;
+  StringList: TStringList;
 begin
   inherited Create(KEY_ALL_ACCESS);
 
@@ -1422,6 +1424,20 @@ begin
       SoundFileNavigating := ReplaceEnviromentVariables(ReadString(''));
 
     CloseKey();
+  end;
+
+
+  if (DirectoryExists(PChar(@Foldername) + PathDelim + 'SQL-Front' + PathDelim)
+    and not DirectoryExists(UserPath)) then
+  begin
+    Path := PChar(@Foldername) + PathDelim + 'SQL-Front' + PathDelim;
+    RenameFile(Path, UserPath);
+    StringList := TStringList.Create();
+    StringList.LoadFromFile(Filename);
+    StringList.Text := ReplaceStr(StringList.Text, '<session', '<account');
+    StringList.Text := ReplaceStr(StringList.Text, '</session', '</account');
+    StringList.SaveToFile(Filename);
+    StringList.Free();
   end;
 
 

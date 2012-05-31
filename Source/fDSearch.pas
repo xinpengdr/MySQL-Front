@@ -658,7 +658,7 @@ begin
           begin
             Client := GetClient(Node.Parent.Index);
             Database := Client.DatabaseByName(Node.Text);
-            if (Database.Update(Database.Tables) and Client.Asynchron) then
+            if (Database.Tables.Update() and Client.Asynchron) then
               WantedNodeExpand := Node
             else
             begin
@@ -845,7 +845,7 @@ procedure TDSearch.TSExecuteShow(Sender: TObject);
               if (not WantedExecute and not (Client.Databases[I] is TCSystemDatabase)) then
               begin
                 Database := Client.Databases[I];
-                WantedExecute := Database.Update(Database.Tables) and Client.Asynchron;
+                WantedExecute := Database.Tables.Update() and Client.Asynchron;
                 if (not WantedExecute) then
                 begin
                   for J := 0 to Database.Tables.Count - 1 do
@@ -858,7 +858,7 @@ procedure TDSearch.TSExecuteShow(Sender: TObject);
       iiDatabase:
         begin
           Database := Client.DatabaseByName(Node.Text);
-          WantedExecute := Database.Update(Database.Tables) and Client.Asynchron;
+          WantedExecute := Database.Tables.Update() and Client.Asynchron;
           if (not WantedExecute) then
           begin
             for J := 0 to Database.Tables.Count - 1 do

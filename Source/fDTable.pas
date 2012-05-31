@@ -1111,7 +1111,7 @@ end;
 
 procedure TDTable.FListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
 var
-  FList: TListView;
+  ListView: TListView;
   I: Integer;
   Page: TTabSheet;
 begin
@@ -1120,26 +1120,26 @@ begin
     if (PageControl.Pages[I].Visible and (PageControl.Pages[I] <> Page)) then
       Page := TTabSheet(PageControl.Pages[I]);
 
-  FList := TListView(Sender);
+  ListView := TListView(Sender);
 
   aPCreateField.Enabled := not Selected and (Page = TSFields);
-  aPDeleteField.Enabled := Selected and (FList.SelCount >= 1) and (Item.ImageIndex = iiField) and (NewTable.Fields.Count > 1);
-  aPEditField.Enabled := Selected and (FList.SelCount = 1) and (Page = TSFields);
+  aPDeleteField.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiField) and (NewTable.Fields.Count > 1);
+  aPEditField.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSFields);
   aPCreateIndex.Enabled := not Selected and (Page = TSIndices);
-  aPDeleteIndex.Enabled := Selected and (FList.SelCount >= 1) and (Item.ImageIndex = iiIndex);
-  aPEditIndex.Enabled := Selected and (FList.SelCount = 1) and (Page = TSIndices);
+  aPDeleteIndex.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiIndex);
+  aPEditIndex.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSIndices);
   aPCreateForeignKey.Enabled := not Selected and (Page = TSForeignKeys);
-  aPDeleteForeignKey.Enabled := Selected and (FList.SelCount >= 1) and (Item.ImageIndex = iiForeignKey);
-  aPEditForeignKey.Enabled := Selected and (FList.SelCount = 1) and (Page = TSForeignKeys);
+  aPDeleteForeignKey.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiForeignKey);
+  aPEditForeignKey.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSForeignKeys);
   aPCreateTrigger.Enabled := not Selected and (Page = TSTriggers);
-  aPDeleteTrigger.Enabled := Selected and (FList.SelCount >= 1) and (Item.ImageIndex = iiTrigger);
-  aPEditTrigger.Enabled := Selected and (FList.SelCount = 1) and (Page = TSTriggers);
+  aPDeleteTrigger.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiTrigger);
+  aPEditTrigger.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSTriggers);
   aPCreatePartition.Enabled := not Selected and (Page = TSPartitions);
-  aPDeletePartition.Enabled := Selected and (FList.SelCount >= 1);
-  aPEditPartition.Enabled := Selected and (FList.SelCount = 1) and (Page = TSPartitions);
+  aPDeletePartition.Enabled := Selected and (ListView.SelCount >= 1);
+  aPEditPartition.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSPartitions);
 
-  aPUp.Enabled := Selected and (FList = FFields) and not FList.Items[0].Selected and (NewTable.Database.Client.ServerVersion >= 40001);
-  aPDown.Enabled := Selected and (FList = FFields) and not FList.Items[FList.Items.Count - 1].Selected and (NewTable.Database.Client.ServerVersion >= 40001);
+  aPUp.Enabled := Selected and (ListView = FFields) and not ListView.Items[0].Selected and (NewTable.Database.Client.ServerVersion >= 40001);
+  aPDown.Enabled := Selected and (ListView = FFields) and not ListView.Items[ListView.Items.Count - 1].Selected and (NewTable.Database.Client.ServerVersion >= 40001);
 
   ShowEnabledItems(MList.Items);
 

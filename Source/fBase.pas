@@ -490,7 +490,7 @@ begin
 
   {$IFOPT R+}
     if (not Assigned(Result)) then
-      raise EAccessViolation.CreateFMT('Action "%s" not found in action FList "%s"', [Name, MainActionList.Name]);
+      raise EAccessViolation.CreateFMT('Action "%s" not found in action list "%s"', [Name, MainActionList.Name]);
   {$ENDIF}
 end;
 

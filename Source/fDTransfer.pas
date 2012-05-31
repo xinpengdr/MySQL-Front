@@ -692,7 +692,7 @@ begin
           begin
             Client := GetClient(Node.Parent.Index);
             Database := Client.DatabaseByName(Node.Text);
-            if (Database.Update(Database.Tables) and Client.Asynchron) then
+            if (Database.Tables.Update() and Client.Asynchron) then
               WantedNodeExpand := Node
             else
             begin
@@ -757,7 +757,7 @@ var
               if (not Result and not (Client.Databases[I] is TCSystemDatabase)) then
               begin
                 Database := Client.Databases[I];
-                Result := Database.Update(Database.Tables) and Client.Asynchron;
+                Result := Database.Tables.Update() and Client.Asynchron;
                 if (not Result) then
                 begin
                   for J := 0 to Database.Tables.Count - 1 do
@@ -770,7 +770,7 @@ var
       iiDatabase:
         begin
           Database := Client.DatabaseByName(Node.Text);
-          Result := Database.Update(Database.Tables) and Client.Asynchron;
+          Result := Database.Tables.Update() and Client.Asynchron;
           if (not Result) then
           begin
             for J := 0 to Database.Tables.Count - 1 do

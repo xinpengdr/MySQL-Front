@@ -1,13 +1,17 @@
 ﻿program MySQLFront;
 
 uses
+  {$IFDEF Debug}
   FastMM4,
+  {$ENDIF}
   {$IFDEF EurekaLog}
   ExceptionLog,
   {$ENDIF}
   Windows,
   ShellAPI,
   SysUtils,
+//  Vcl.Themes,
+//  Vcl.Styles,
   Forms,
   MySQLClient in 'MySQL-DataSet\Source\MySQLClient.pas',
   MySQLConsts in 'MySQL-DataSet\Source\MySQLConsts.pas',
@@ -75,6 +79,8 @@ uses
 {$R *.res}
 
 begin
+//  TStyleManager.TrySetStyle('Aqua Light Slate');
+
   Preferences := TPPreferences.Create();
 
   if ((Preferences.SetupProgram <> '') and not Preferences.SetupProgramInstalled and (FindWindow(cWindowClassName + '.UnicodeClass', nil) = 0)) then

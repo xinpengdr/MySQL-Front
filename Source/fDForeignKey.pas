@@ -435,7 +435,7 @@ begin
 
   if (not Assigned(SelectedParentTable)) then
     FParentFields.Cursor := crDefault
-  else if (SelectedParentDatabase.Update(SelectedParentTable)) then
+  else if (SelectedParentTable.Update()) then
     FParentFields.Cursor := crSQLWait
   else
   begin

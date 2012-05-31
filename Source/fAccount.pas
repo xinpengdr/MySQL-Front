@@ -233,7 +233,7 @@ type
     procedure LoadFromXML(); virtual;
     procedure SaveToXML(); virtual;
     function AccountByName(const AccountName: string): TAAccount; virtual;
-    function AccountByURI(const AURI: string): TAAccount; virtual;
+    function AccountByURI(const AURI: string; const DefaultAccount: TAAccount = nil): TAAccount; virtual;
     procedure UpdateAccount(const Account, NewAccount: TAAccount); virtual;
   end;
 
@@ -1361,6 +1361,8 @@ begin
 end;
 
 constructor TAAccounts.Create(const ADBLogin: TLogin; const AOnSQLError: TMySQLConnection.TErrorEvent);
+var
+  StringList: TStringList;
 begin
   inherited Create();
 
@@ -1368,6 +1370,20 @@ begin
   FOnSQLError := AOnSQLError;
 
   Section := 'Accounts';
+
+  if (DirectoryExists(Preferences.UserPath + 'Sessions' + PathDelim)
+    and not DirectoryExists(DataPath)) then
+    RenameFile(Preferences.UserPath + 'Sessions' + PathDelim, DataPath);
+  if (FileExists(DataPath + 'Sessions.xml')) then
+  begin
+    RenameFile(DataPath + 'Sessions.xml', Filename);
+    StringList := TStringList.Create();
+    StringList.LoadFromFile(Filename);
+    StringList.Text := ReplaceStr(StringList.Text, '<session', '<account');
+    StringList.Text := ReplaceStr(StringList.Text, '</session', '</account');
+    StringList.SaveToFile(Filename);
+    StringList.Free();
+  end;
 
   LoadFromXML();
 
@@ -1517,7 +1533,7 @@ begin
       Result := Account[I];
 end;
 
-function TAAccounts.AccountByURI(const AURI: string): TAAccount;
+function TAAccounts.AccountByURI(const AURI: string; const DefaultAccount: TAAccount = nil): TAAccount;
 var
   Found: Integer;
   Host: string;
@@ -1542,10 +1558,10 @@ begin
     begin
       ZeroMemory(@URLComponents, SizeOf(URLComponents));
       URLComponents.dwStructSize := SizeOf(URLComponents);
-      if ((Account[I].Connection.LibraryType <> ltHTTP) or (lstrcmpi(PChar(Account[I].Connection.Host), LOCAL_HOST) <> 0)) then
-        Host := LowerCase(Account[I].Connection.Host)
-      else if (Account[I].Connection.Host = LOCAL_HOST_NAMEDPIPE) then
+      if (Account[I].Connection.Host = LOCAL_HOST_NAMEDPIPE) then
         Host := LOCAL_HOST
+      else if ((Account[I].Connection.LibraryType <> ltHTTP) or (lstrcmpi(PChar(Account[I].Connection.Host), LOCAL_HOST) <> 0)) then
+        Host := LowerCase(Account[I].Connection.Host)
       else if (InternetCrackUrl(PChar(Account[I].Connection.HTTPTunnelURI), Length(Account[I].Connection.HTTPTunnelURI), 0, URLComponents)) then
       begin
         Inc(URLComponents.dwHostNameLength);
@@ -1561,6 +1577,8 @@ begin
       begin
         Result := Account[I];
         Inc(Found);
+        if (Result = DefaultAccount) then
+          break;
       end;
     end;
 
@@ -1590,9 +1608,7 @@ begin
       Result := AccountByName(NewAccountName);
 
       SaveToXML();
-    end
-    else if (Found > 1) then
-      Result := nil;
+    end;
 
     URI.Free();
   end;
