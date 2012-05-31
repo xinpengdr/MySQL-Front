@@ -420,6 +420,7 @@ function XMLNode(const XML: IXMLNode; const Path: string; const NodeAutoCreate: 
 
 function IsConnectedToInternet(): Boolean;
 function VersionStrToVersion(VersionStr: string): Integer;
+function CopyDir(const fromDir, toDir: string): Boolean;
 
 var
   Preferences: TPPreferences;
@@ -452,6 +453,21 @@ var
 begin
   ConnectionTypes := INTERNET_CONNECTION_MODEM or INTERNET_CONNECTION_LAN or INTERNET_CONNECTION_PROXY or INTERNET_CONNECTION_CONFIGURED;
   Result := InternetGetConnectedState(@ConnectionTypes, 0);
+end;
+
+function CopyDir(const fromDir, toDir: string): Boolean;
+var
+  fos: TSHFileOpStruct;
+begin
+  ZeroMemory(@fos, SizeOf(fos));
+  with fos do
+  begin
+    wFunc  := FO_COPY;
+    fFlags := FOF_FILESONLY;
+    pFrom  := PChar(fromDir + #0);
+    pTo    := PChar(toDir)
+  end;
+  Result := (0 = ShFileOperation(fos));
 end;
 
 function TryStrToWindowState(const Str: string; var WindowState: TWindowState): Boolean;
@@ -1431,7 +1447,7 @@ begin
     and not DirectoryExists(UserPath)) then
   begin
     Path := PChar(@Foldername) + PathDelim + 'SQL-Front' + PathDelim;
-    RenameFile(Path, UserPath);
+    CopyDir(Path, UserPath);
     StringList := TStringList.Create();
     StringList.LoadFromFile(Filename);
     StringList.Text := ReplaceStr(StringList.Text, '<session', '<account');

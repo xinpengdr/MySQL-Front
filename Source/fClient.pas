@@ -3950,6 +3950,7 @@ begin
   inherited;
 
   FAutoIncrement := TCBaseTable(Source).AutoIncrement;
+  FAvgRowLength := TCBaseTable(Source).AvgRowLength;
   FChecked := TCBaseTable(Source).Checked;
   FCollation := TCBaseTable(Source).FCollation;
   FComment := TCBaseTable(Source).Comment;
@@ -4085,6 +4086,7 @@ end;
 procedure TCBaseTable.Clear();
 begin
   FAutoIncrement := -1;
+  FAvgRowLength := -1;
   FChecked := -1;
   FCollation := '';
   FComment := '';

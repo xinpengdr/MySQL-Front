@@ -42,23 +42,22 @@ if Errorlevel 1 goto End
 "%BuildAWK%" -f "%BuildSetupPath%\Resource.awk" "%BuildTempPath%\Build_Setup.awk" > "%BuildTempPath%\Resource.awk"
 if Errorlevel 1 goto Error
 
-"%BuildAWK%" -f "%BuildTempPath%\Resource.awk" "%BuildSetupPath%\MySQLFront.rc" > "%BuildTempPath%\MySQLFront.rc"
+"%BuildAWK%" -f "%BuildTempPath%\Resource.awk" "%BuildSetupPath%\MySQLFront.rc" > "%BuildSourcePath%\MySQLFront.rc"
 if Errorlevel 1 goto Error
 
-"%BuildAWK%" -f "%BuildSetupPath%\Language.awk" "%BuildLanguagesPath%\English.ini" >> "%BuildTempPath%\MySQLFront.rc"
+"%BuildAWK%" -f "%BuildSetupPath%\Language.awk" "%BuildLanguagesPath%\English.ini" >> "%BuildSourcePath%\MySQLFront.rc"
 if Errorlevel 1 goto Error
 
 "%BuildAWK%" -f "%BuildTempPath%\Resource.awk" "%BuildSetupPath%\Skin.awk" > "%BuildTempPath%\Skin.awk"
 if Errorlevel 1 goto Error
-"%BuildAWK%" -f "%BuildTempPath%\Skin.awk" "%BuildSkinsPath%\Gio_medium.ini" >> "%BuildTempPath%\MySQLFront.rc"
+"%BuildAWK%" -f "%BuildTempPath%\Skin.awk" "%BuildSkinsPath%\Gio_medium.ini" >> "%BuildSourcePath%\MySQLFront.rc"
 if Errorlevel 1 goto Error
 
 "%BuildAWK%" -f "%BuildTempPath%\Build_Setup.awk" "%BuildSetupPath%\MySQLFront.manifest" > "%BuildTempPath%\MySQLFront.manifest"
 if Errorlevel 1 goto Error
 
-"%BuildBRCC%" /fo"%BuildSourcePath%\MySQLFront.res" -32 "%BuildTempPath%\MySQLFront.rc"
+"%BuildBRCC%" /fo"%BuildTempPath%\MySQLFront.res" -32 "%BuildSourcePath%\MySQLFront.rc"
 if Errorlevel 1 goto Error
-COPY "%BuildSourcePath%\MySQLFront.res" "%BuildTempPath%""
 
 CD %BuildSourcePath%
 if exist "%BuildEurekaLog%" (

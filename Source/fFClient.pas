@@ -1370,19 +1370,20 @@ end;
 
 function TFClient.TTableDesktop.GetLimit(): Integer;
 begin
-  if (Table is TCBaseTable) then
+  if ((Table is TCBaseTable) and (TCBaseTable(Table).AvgRowLength > 0)) then
   begin
     Result := DefaultLimitSize div TCBaseTable(Table).AvgRowLength;
     if (Result < 2 * DefaultLimit) then
       Result := DefaultLimit
     else
       Result := Result div DefaultLimit * DefaultLimit;
+    if ((TCBaseTable(Table).Rows > 0) and (Result > 2 * TCBaseTable(Table).Rows)) then
+      Result := 2 * TCBaseTable(Table).Rows;
   end
+  else if (Assigned(XML) and Assigned(XMLNode(XML, 'limit')) and
+    TryStrToInt(XMLNode(XML, 'limit').Text, Result)) then
   else
     Result := DefaultLimit;
-
-  if (Assigned(XML) and Assigned(XMLNode(XML, 'limit'))) then
-    TryStrToInt(XMLNode(XML, 'limit').Text, Result);
 
   if (Result < 1) then
     Result := DefaultLimit;
@@ -2791,9 +2792,7 @@ begin
       SQL := Client.DatabaseByName(SelectedDatabase).EventByName(SelectedNavigator).SQLRun();
   end;
 
-  if (SQL = 'debug-raise') then
-    raise Exception.Create('Debug Exception')
-  else if (SQL <> '') then
+  if (SQL <> '') then
   begin
     if ((SelectedDatabase <> Client.DatabaseName) and (SelectedDatabase <> '')) then
       Client.ExecuteSQL(Client.SQLUse(SelectedDatabase));

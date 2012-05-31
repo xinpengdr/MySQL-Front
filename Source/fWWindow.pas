@@ -827,7 +827,9 @@ procedure TWWindow.aVAddressExecute(Sender: TObject);
 var
   OldAddress: string;
 begin
-  if (not PathIsURL(PChar(Trim(FAddress.Text)))) then
+  if (FAddress.Text = 'debug-raise') then
+    raise Exception.Create('Debug Exception')
+  else if (not PathIsURL(PChar(Trim(FAddress.Text)))) then
   begin
     ActiveControl := FAddress;
     MessageBeep(MB_ICONERROR);

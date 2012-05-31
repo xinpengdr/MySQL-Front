@@ -1373,16 +1373,18 @@ begin
 
   if (DirectoryExists(Preferences.UserPath + 'Sessions' + PathDelim)
     and not DirectoryExists(DataPath)) then
-    RenameFile(Preferences.UserPath + 'Sessions' + PathDelim, DataPath);
-  if (FileExists(DataPath + 'Sessions.xml')) then
+    CopyDir(PChar(Preferences.UserPath + 'Sessions' + PathDelim), PChar(DataPath));
+  if (FileExists(DataPath + 'Sessions.xml') and not FileExists(Filename)) then
   begin
-    RenameFile(DataPath + 'Sessions.xml', Filename);
-    StringList := TStringList.Create();
-    StringList.LoadFromFile(Filename);
-    StringList.Text := ReplaceStr(StringList.Text, '<session', '<account');
-    StringList.Text := ReplaceStr(StringList.Text, '</session', '</account');
-    StringList.SaveToFile(Filename);
-    StringList.Free();
+    if (CopyFile(PChar(DataPath + 'Sessions.xml'), PChar(Filename), False)) then
+    begin
+      StringList := TStringList.Create();
+      StringList.LoadFromFile(Filename);
+      StringList.Text := ReplaceStr(StringList.Text, '<session', '<account');
+      StringList.Text := ReplaceStr(StringList.Text, '</session', '</account');
+      StringList.SaveToFile(Filename);
+      StringList.Free();
+    end;
   end;
 
   LoadFromXML();
