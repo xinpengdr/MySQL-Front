@@ -4481,8 +4481,6 @@ begin
   FServerListView.SmallImages := Preferences.SmallImages;
 
 
-  Perform(CM_SYSFONTCHANGED, 0, 0);
-
   Client.SQLMonitor.CacheSize := Preferences.LogSize;
   if (Preferences.LogResult) then
     Client.SQLMonitor.TraceTypes := Client.SQLMonitor.TraceTypes + [ttInfo]
@@ -5514,6 +5512,7 @@ begin
   FOffset.Constraints.MaxWidth := FOffset.Width;
 
   Perform(CM_CHANGEPREFERENCES, 0, 0);
+  Window.Perform(CM_SYSFONTCHANGED, 0, 0);
 
   NonClientMetrics.cbSize := SizeOf(NonClientMetrics);
   if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, SizeOf(NonClientMetrics), @NonClientMetrics, 0)) then

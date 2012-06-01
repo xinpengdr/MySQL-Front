@@ -407,7 +407,6 @@ type
     FRecNo: Integer;
     FRowsAffected: Integer;
     FWarningCount: Integer;
-    HoldFieldDefs: Boolean;
     SynchroThread: TMySQLConnection.TSynchroThread;
   protected
     FCommandText: string;
@@ -489,14 +488,18 @@ type
     end;
     TInternRecordBuffers = class(TList)
     private
+      FDataSet: TMySQLDataSet;
       function Get(Index: Integer): PInternRecordBuffer; inline;
       procedure Put(Index: Integer; Buffer: PInternRecordBuffer); inline;
     public
       CriticalSection: TCriticalSection;
+      FilteredRecordCount: Integer;
       Index: Integer;
-      constructor Create();
+      procedure Clear(); override;
+      constructor Create(const ADataSet: TMySQLDataSet);
       destructor Destroy(); override;
       property Buffers[Index: Integer]: PInternRecordBuffer read Get write Put; default;
+      property DataSet: TMySQLDataSet read FDataSet;
     end;
   private
     BookmarkCounter: DWord;
@@ -507,7 +510,6 @@ type
     FCanModify: Boolean;
     FCursorOpen: Boolean;
     FDataSize: Int64;
-    FilteredRecordCount: Integer;
     FilterParser: TExprParser;
     FLocateNext: Boolean;
     FReadOnly: Boolean;
@@ -616,6 +618,7 @@ type
     procedure SetLimit(const ALimit: Integer);
     procedure SetOffset(const AOffset: Integer);
     procedure SetTableName(const ATableName: string);
+    function SortEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
   protected
     FFilterSQL: string;
     RequestedRecordCount: Integer;
@@ -2757,7 +2760,7 @@ begin
     end
     else if (Assigned(SynchroThread.DataSet)) then
     begin
-      if (Assigned(SynchroThread.DataSet.AfterReceivingRecords) and not SynchroThread.DataSet.HoldFieldDefs) then
+      if (Assigned(SynchroThread.DataSet.AfterReceivingRecords)) then
         SynchroThread.DataSet.AfterReceivingRecords(SynchroThread.DataSet);
       SynchroThread.DataSet := nil;
     end;
@@ -2832,7 +2835,7 @@ end;
 
 procedure TMySQLConnection.SyncOpenDataSet(const SynchroThread: TSynchroThread; const DataSet: TMySQLDataSet);
 begin
-  if (Assigned(DataSet) and Assigned(DataSet.BeforeReceivingRecords) and not DataSet.HoldFieldDefs) then
+  if (Assigned(DataSet) and Assigned(DataSet.BeforeReceivingRecords)) then
     DataSet.BeforeReceivingRecords(DataSet);
 
   SynchroThread.DataSet := DataSet;
@@ -3980,11 +3983,8 @@ begin
     FTableName := '';
   end;
 
-  if (not HoldFieldDefs) then
-  begin
-    FieldDefs.Clear();
-    Fields.Clear();
-  end;
+  FieldDefs.Clear();
+  Fields.Clear();
 end;
 
 procedure TMySQLQuery.InternalHandleException();
@@ -4434,7 +4434,6 @@ begin
 
   FIndexDefs := TIndexDefs.Create(Self);
   FRecNo := -1;
-  HoldFieldDefs := False;
 
   SetUniDirectional(True);
 end;
@@ -4579,7 +4578,20 @@ end;
 
 { TMySQLDataSet ***************************************************************}
 
-constructor TMySQLDataSet.TInternRecordBuffers.Create();
+procedure TMySQLDataSet.TInternRecordBuffers.Clear();
+var
+  I: Integer;
+begin
+  CriticalSection.Enter();
+  for I := 0 to Count - 1 do
+    DataSet.FreeInternRecordBuffer(Items[I]);
+  inherited Clear();
+  FilteredRecordCount := 0;
+  Index := -1;
+  CriticalSection.Leave();
+end;
+
+constructor TMySQLDataSet.TInternRecordBuffers.Create(const ADataSet: TMySQLDataSet);
 begin
   inherited Create();
 
@@ -4589,9 +4601,9 @@ end;
 
 destructor TMySQLDataSet.TInternRecordBuffers.Destroy();
 begin
-  CriticalSection.Free();
-
   inherited;
+
+  CriticalSection.Free();
 end;
 
 function TMySQLDataSet.TInternRecordBuffers.Get(Index: Integer): PInternRecordBuffer;
@@ -4651,12 +4663,12 @@ begin
 
   InternRecordBuffers.CriticalSection.Enter();
 
-  FilteredRecordCount := 0;
+  InternRecordBuffers.FilteredRecordCount := 0;
   for I := 0 to InternRecordBuffers.Count - 1 do
   begin
     InternRecordBuffers[I]^.VisibleInFilter := VisibleInFilter(InternRecordBuffers[I]);
     if (InternRecordBuffers[I]^.VisibleInFilter) then
-      Inc(FilteredRecordCount);
+      Inc(InternRecordBuffers.FilteredRecordCount);
   end;
 
   InternRecordBuffers.CriticalSection.Leave();
@@ -4685,7 +4697,7 @@ begin
       Inc(FDataSize, Data.LibLengths^[I]);
 
     if (Filtered and InternRecordBuffer^.VisibleInFilter) then
-      Inc(FilteredRecordCount);
+      Inc(InternRecordBuffers.FilteredRecordCount);
 
     InternRecordBuffers.CriticalSection.Enter();
     if (Index >= 0) then
@@ -5348,7 +5360,7 @@ end;
 function TMySQLDataSet.GetRecordCount(): Integer;
 begin
   if (Filtered) then
-    Result := FilteredRecordCount
+    Result := InternRecordBuffers.FilteredRecordCount
   else
     Result := InternRecordBuffers.Count;
 end;
@@ -5381,8 +5393,6 @@ begin
 end;
 
 procedure TMySQLDataSet.InternalClose();
-var
-  I: Integer;
 begin
   Connection.TerminateCS.Enter();
   if (IsCursorOpen() and Assigned(RecordReceived) and Assigned(SynchroThread) and (SynchroThread.DataSet = Self)) then
@@ -5392,23 +5402,15 @@ begin
   end;
   Connection.TerminateCS.Leave();
 
-  if (not HoldFieldDefs) then
-    FSortDef.Fields := ''
-  else if (Assigned(ActiveBuffer())) then
-    InternalInitRecord(ActiveBuffer());
+  FSortDef.Fields := '';
 
   FCursorOpen := False;
 
   inherited;
 
-  InternRecordBuffers.CriticalSection.Enter();
-  for I := 0 to InternRecordBuffers.Count - 1 do
-    FreeInternRecordBuffer(InternRecordBuffers[I]);
   InternRecordBuffers.Clear();
-  InternRecordBuffers.Index := -1;
-  FilteredRecordCount := 0;
+  InternRecordBuffers.FilteredRecordCount := 0;
   FDataSize := 0;
-  InternRecordBuffers.CriticalSection.Leave();
 
   if (Assigned(RecordReceived)) then
     FreeAndNil(FRecordReceived);
@@ -5439,7 +5441,7 @@ begin
       for I := ActiveRecord + 1 to BufferCount - 1 do
         Dec(PExternRecordBuffer(Buffers[I])^.RecNo);
       if (Filtered) then
-        Dec(FilteredRecordCount);
+        Dec(InternRecordBuffers.FilteredRecordCount);
       InternRecordBuffers.CriticalSection.Leave();
     end
     else
@@ -5456,7 +5458,7 @@ begin
         InternRecordBuffers.Delete(DeleteBuffersIndex);
 
         if (Filtered) then
-          Dec(FilteredRecordCount);
+          Dec(InternRecordBuffers.FilteredRecordCount);
       end;
 
       InternRecordBuffers.CriticalSection.Leave();
@@ -5507,7 +5509,7 @@ begin
   PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer := AllocInternRecordBuffer();
 
   if (Filtered) then
-    Inc(FilteredRecordCount);
+    Inc(InternRecordBuffers.FilteredRecordCount);
 
   for I := 0 to FieldCount - 1 do
     if (Fields[I].DefaultExpression <> '') then
@@ -5567,12 +5569,6 @@ begin
     UpdateBufferCount();
 
     InternRecordBuffers.Index := -1;
-  end;
-
-  if ((InternRecordBuffers.Count = 0) and HoldFieldDefs) then
-  begin
-    ClearBuffers();
-    InternalInitRecord(ActiveBuffer());
   end;
 
   FRecordReceived := TEvent.Create(nil, False, False, '');
@@ -5644,19 +5640,11 @@ begin
 
   OldSortDef := TIndexDef.Create(nil, 'SortDef', SortDef.Fields, []);
 
-  HoldFieldDefs := True;
-  InternalClose();
-
   if (Self is TMySQLTable) then
-  begin
-    Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(), InternalRefreshEvent);
-
-    FCursorOpen := True;
-  end
+    Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(), InternalRefreshEvent)
   else
-    InternalOpen();
+    Connection.ExecuteSQL(CommandText, InternalRefreshEvent);
 
-  HoldFieldDefs := False;
   SortDef.Assign(OldSortDef);
   OldSortDef.Free();
 
@@ -6014,7 +6002,7 @@ begin
   FLocateNext := False;
   FSortDef := TIndexDef.Create(nil, 'SortDef', '', []);
   InResync := False;
-  InternRecordBuffers := TInternRecordBuffers.Create();
+  InternRecordBuffers := TInternRecordBuffers.Create(Self);
   FRecordReceived := nil;
 
   BookmarkSize := SizeOf(BookmarkCounter);
@@ -6078,8 +6066,13 @@ end;
 
 function TMySQLDataSet.GetFieldData(Field: TField; Buffer: Pointer): Boolean;
 begin
+try
   Result := Assigned(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer)
     and GetFieldData(Field, Buffer, PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData);
+except
+  Result := Assigned(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer)
+    and GetFieldData(Field, Buffer, PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData);
+end;
 end;
 
 function TMySQLDataSet.GetMaxTextWidth(const Field: TField; const TextWidth: TTextWidth): Integer;
@@ -6587,26 +6580,20 @@ begin
 end;
 
 function TMySQLTable.LoadNextRecords(const AllRecords: Boolean = False): Boolean;
-var
-  OldInternalBuffersIndex: Integer;
 begin
-  try
-    OldInternalBuffersIndex := InternRecordBuffers.Index;
-    HoldFieldDefs := True;
-    Result := Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(AllRecords), LoadNextRecordsEvent);
-    HoldFieldDefs := False;
-    InternRecordBuffers.Index := OldInternalBuffersIndex;
-  except
-    Result := False;
-  end;
+  Result := Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(AllRecords), LoadNextRecordsEvent);
 end;
 
 function TMySQLTable.LoadNextRecordsEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
 begin
+  if (not Assigned(FRecordReceived)) then
+    FRecordReceived := TEvent.Create(nil, False, False, '');
+  RecordReceived.ResetEvent();
+
   SynchroThread.DataSet := Self;
-  SynchroThread.
-  Connection.SyncReceivingData(SynchroThread);
-  SynchroThread.DataSet := nil;
+  SynchroThread.RunAction(ssReceivingData);
+
+  RecordReceived.WaitFor(INFINITE);
 
   Result := False;
 end;
@@ -6643,22 +6630,18 @@ begin
       CheckBrowseMode();
       DoBeforeScroll();
 
-      HoldFieldDefs := True;
-      InternalClose();
-      try
-        Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect());
-      finally
-        HoldFieldDefs := False;
-      end;
-
-      if (Active) then
-      begin
-        InternalOpen();
+      InternRecordBuffers.Clear();
+      if (Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(), SortEvent)) then
         Resync([]);
-        DoAfterScroll();
-      end;
+
+      DoAfterScroll();
     end;
   end;
+end;
+
+function TMySQLTable.SortEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+begin
+  Result := LoadNextRecordsEvent(Connection, Data);
 end;
 
 {******************************************************************************}

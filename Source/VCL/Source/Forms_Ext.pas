@@ -96,10 +96,11 @@ begin
   end
   else if (Control is TToolbar) then
   begin
-    if (StyleServices.Enabled and (Control.Parent is TPanel)) then
+    if (Control.Parent is TPanel) then
     begin
       TToolbar(Control).ParentDoubleBuffered := False;
       TToolbar(Control).DoubleBuffered := True;
+      TPanel(Control.Parent).ParentDoubleBuffered := False;
       TPanel(Control.Parent).DoubleBuffered := False;
     end;
     if (CheckWin32Version(6)) then
