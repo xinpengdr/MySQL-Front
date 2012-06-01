@@ -90,14 +90,14 @@
 		<Target Name="VCL_Extensions:Make">
 			<MSBuild Projects="VCL\Packages\VCL_Extensions.dproj" Targets="Make"/>
 		</Target>
-		<Target Name="MySQL_DataSet">
-			<MSBuild Projects="MySQL-DataSet\Packages\MySQL_DataSet.dproj"/>
+		<Target Name="MySQL">
+			<MSBuild Projects="MySQL\Packages\MySQL.dproj"/>
 		</Target>
-		<Target Name="MySQL_DataSet:Clean">
-			<MSBuild Projects="MySQL-DataSet\Packages\MySQL_DataSet.dproj" Targets="Clean"/>
+		<Target Name="MySQL:Clean">
+			<MSBuild Projects="MySQL\Packages\MySQL.dproj" Targets="Clean"/>
 		</Target>
-		<Target Name="MySQL_DataSet:Make">
-			<MSBuild Projects="MySQL-DataSet\Packages\MySQL_DataSet.dproj" Targets="Make"/>
+		<Target Name="MySQL:Make">
+			<MSBuild Projects="MySQL\Packages\MySQL.dproj" Targets="Make"/>
 		</Target>
 		<Target Name="MySQLFront">
 			<MSBuild Projects="MySQLFront.dproj"/>
@@ -109,13 +109,13 @@
 			<MSBuild Projects="MySQLFront.dproj" Targets="Make"/>
 		</Target>
 		<Target Name="Build">
-			<CallTarget Targets="FastMM_D2010;TPerlRegEx_D2010;DISQLite3_D2010;MPHexEditor_D2010;SynEdit_D2010;acQueryBuilder_D2010;acQueryBuilderDsgn_D2010;Win32_Extensions;VCL_Extensions;MySQL_DataSet;MySQLFront"/>
+			<CallTarget Targets="FastMM_D2010;TPerlRegEx_D2010;DISQLite3_D2010;MPHexEditor_D2010;SynEdit_D2010;acQueryBuilder_D2010;acQueryBuilderDsgn_D2010;Win32_Extensions;VCL_Extensions;MySQL;MySQLFront"/>
 		</Target>
 		<Target Name="Clean">
-			<CallTarget Targets="FastMM_D2010:Clean;TPerlRegEx_D2010:Clean;DISQLite3_D2010:Clean;MPHexEditor_D2010:Clean;SynEdit_D2010:Clean;acQueryBuilder_D2010:Clean;acQueryBuilderDsgn_D2010:Clean;Win32_Extensions:Clean;VCL_Extensions:Clean;MySQL_DataSet:Clean;MySQLFront:Clean"/>
+			<CallTarget Targets="FastMM_D2010:Clean;TPerlRegEx_D2010:Clean;DISQLite3_D2010:Clean;MPHexEditor_D2010:Clean;SynEdit_D2010:Clean;acQueryBuilder_D2010:Clean;acQueryBuilderDsgn_D2010:Clean;Win32_Extensions:Clean;VCL_Extensions:Clean;MySQL:Clean;MySQLFront:Clean"/>
 		</Target>
 		<Target Name="Make">
-			<CallTarget Targets="FastMM_D2010:Make;TPerlRegEx_D2010:Make;DISQLite3_D2010:Make;MPHexEditor_D2010:Make;SynEdit_D2010:Make;acQueryBuilder_D2010:Make;acQueryBuilderDsgn_D2010:Make;Win32_Extensions:Make;VCL_Extensions:Make;MySQL_DataSet:Make;MySQLFront:Make"/>
+			<CallTarget Targets="FastMM_D2010:Make;TPerlRegEx_D2010:Make;DISQLite3_D2010:Make;MPHexEditor_D2010:Make;SynEdit_D2010:Make;acQueryBuilder_D2010:Make;acQueryBuilderDsgn_D2010:Make;Win32_Extensions:Make;VCL_Extensions:Make;MySQL:Make;MySQLFront:Make"/>
 		</Target>
 		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
 	</Project>
