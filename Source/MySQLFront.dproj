@@ -1,22 +1,18 @@
 ﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 		<PropertyGroup>
-			<ProjectGuid>{95537A40-EAE8-4F67-9722-8DA6FE98A349}</ProjectGuid>
-			<MainSource>MySQLFront.dpr</MainSource>
-			<Config Condition="'$(Config)'==''">Debug</Config>
-			<DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
+			<ProjectGuid>{676FF4F5-D15F-4D9A-A7E5-AE4BA81C1E8E}</ProjectGuid>
 			<ProjectVersion>13.4</ProjectVersion>
 			<FrameworkType>VCL</FrameworkType>
 			<Base>True</Base>
+			<Config Condition="'$(Config)'==''">Base</Config>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
-			<TargetedPlatforms>1</TargetedPlatforms>
 			<AppType>Application</AppType>
+			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
+			<SkipResGeneration>true</SkipResGeneration>
+			<TargetedPlatforms>1</TargetedPlatforms>
+			<MainSource>MySQLFront.dpr</MainSource>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
-			<Base>true</Base>
-		</PropertyGroup>
-		<PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Base)'=='true') or '$(Base_Win64)'!=''">
-			<Base_Win64>true</Base_Win64>
-			<CfgParent>Base</CfgParent>
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
@@ -24,45 +20,16 @@
 			<CfgParent>Base</CfgParent>
 			<Base>true</Base>
 		</PropertyGroup>
-		<PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_1)'!=''">
-			<Cfg_1>true</Cfg_1>
-			<CfgParent>Base</CfgParent>
-			<Base>true</Base>
-		</PropertyGroup>
-		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_1)'=='true') or '$(Cfg_1_Win32)'!=''">
-			<Cfg_1_Win32>true</Cfg_1_Win32>
-			<CfgParent>Cfg_1</CfgParent>
-			<Cfg_1>true</Cfg_1>
-			<Base>true</Base>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_2)'!=''">
-			<Cfg_2>true</Cfg_2>
-			<CfgParent>Base</CfgParent>
-			<Base>true</Base>
-		</PropertyGroup>
-		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_2)'=='true') or '$(Cfg_2_Win32)'!=''">
-			<Cfg_2_Win32>true</Cfg_2_Win32>
-			<CfgParent>Cfg_2</CfgParent>
-			<Cfg_2>true</Cfg_2>
-			<Base>true</Base>
-		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
-			<BRCC_OutputDir>..\Temp</BRCC_OutputDir>
-			<BRCC_IncludePath>EurekaLog\Resource;MPHexEditor\Resource;SynEdit\Resource;QueryBuilder\Resource;$(BRCC_IncludePath)</BRCC_IncludePath>
-			<VCL_Custom_Styles>&quot;Aqua Light Slate|VCLSTYLE|$(PUBLIC)\Documents\RAD Studio\9.0\Styles\AquaLightSlate.vsf&quot;</VCL_Custom_Styles>
-			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<Manifest_File>None</Manifest_File>
-			<VerInfo_Build>5</VerInfo_Build>
-			<VerInfo_PreRelease>true</VerInfo_PreRelease>
-			<VerInfo_MinorVer>2</VerInfo_MinorVer>
-			<VerInfo_Keys>CompanyName=;FileDescription=MySQL-Front;FileVersion=5.2.0.5;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=MySQL-Front;ProductVersion=5.2;Comments=;Build Date=01/07/2010</VerInfo_Keys>
-			<DCC_Namespace>Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;Winapi;Bde;System.Win;$(DCC_Namespace)</DCC_Namespace>
-			<VerInfo_Locale>1033</VerInfo_Locale>
-			<VerInfo_MajorVer>5</VerInfo_MajorVer>
+			<DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+			<DCC_Namespace>Vcl;Vcl.Imaging;Vcl.Shell;System;Xml;Data;Winapi;Bde;System.Win;$(DCC_Namespace)</DCC_Namespace>
+			<DCC_UnitSearchPath>FastMM\Bin;TPerlRegEx\Bin;DISQLite3\API;DISQLite3\Bin;SynEdit\Resource;SynEdit\Bin;MPHexEditor\Resource;MPHexEditor\Bin;QueryBuilder\Resource;QueryBuilder\Bin;Win32\Bin;MySQL-DataSet\Bin;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
 			<DCC_RangeChecking>true</DCC_RangeChecking>
 			<DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
 			<DCC_Optimize>false</DCC_Optimize>
-			<DCC_UsePackage>vcl;rtl;vclx;vclimg;vclactnband;dbrtl;vcldb;vcltouch;xmlrtl;dsnap;bdertl;TeeUI;TeeDB;Tee;DbxCommonDriver;DbxClientDriver;DBXInterBaseDriver;DBXMySQLDriver;DBXFirebirdDriver;DBXSybaseASEDriver;DBXSybaseASADriver;DBXOracleDriver;DBXMSSQLDriver;DBXInformixDriver;DBXDb2Driver;DISQLite3_D2010;MySQL_DataSet;Win32_Extensions;TPerlRegEx_D2010;$(DCC_UsePackage)</DCC_UsePackage>
+			<DCC_UsePackage>vcl;rtl;vclimg;dbrtl;vcldb;xmlrtl;bdertl;DISQLite3_D2010;MySQL_DataSet;Win32_Extensions;TPerlRegEx_D2010;$(DCC_UsePackage)</DCC_UsePackage>
 			<DCC_ExeOutput>..\Temp</DCC_ExeOutput>
 			<DCC_BplOutput>..\Temp</DCC_BplOutput>
 			<DCC_DcuOutput>..\Temp</DCC_DcuOutput>
@@ -72,336 +39,21 @@
 			<DCC_DependencyCheckOutputName>..\Temp\MySQLFront.exe</DCC_DependencyCheckOutputName>
 			<DCC_Platform>x86</DCC_Platform>
 		</PropertyGroup>
-		<PropertyGroup Condition="'$(Base_Win64)'!=''">
-			<Icon_MainIcon>MySQLFront_Icon.ico</Icon_MainIcon>
-			<Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
-		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base_Win32)'!=''">
-			<DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
-			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-			<Debugger_DebugSourcePath>C:\Documents\MySQL-Front\Source\SynEdit\Source\;$(Debugger_DebugSourcePath)</Debugger_DebugSourcePath>
-			<Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
+			<Manifest_File>None</Manifest_File>
+			<VerInfo_Locale>1031</VerInfo_Locale>
+			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0</VerInfo_Keys>
 		</PropertyGroup>
-		<PropertyGroup Condition="'$(Cfg_1)'!=''">
-			<DCC_UnitSearchPath>FastMM\Source;TPerlRegEx\Source;EurekaLog\Source;DISQLite3\Source;DISQLite3\API;SynEdit\Source;MPHexEditor\Source;QueryBuilder\Source;Win32\Source;MySQL-DataSet\Source;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-			<DCC_Define>RELEASE;EurekaLog;$(DCC_Define)</DCC_Define>
-			<DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
-			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
-			<DCC_DebugInformation>false</DCC_DebugInformation>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
-			<Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
-			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Cfg_2)'!=''">
-			<DCC_UnitSearchPath>FastMM\Bin;TPerlRegEx\Bin;DISQLite3\API;DISQLite3\Bin;SynEdit\Resource;SynEdit\Bin;MPHexEditor\Resource;MPHexEditor\Bin;QueryBuilder\Resource;QueryBuilder\Bin;Win32\Bin;MySQL-DataSet\Bin;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-			<DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
-			<DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
-			<Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
-			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-		</PropertyGroup>
-		<ItemGroup>
-			<DelphiCompile Include="$(MainSource)">
-				<MainSource>MainSource</MainSource>
-			</DelphiCompile>
-			<DCCReference Include="MySQL-DataSet\Source\MySQLClient.pas"/>
-			<DCCReference Include="MySQL-DataSet\Source\MySQLConsts.pas"/>
-			<DCCReference Include="MySQL-DataSet\Source\MySQLDB.pas"/>
-			<DCCReference Include="MySQL-DataSet\Source\HTTPTunnel.pas"/>
-			<DCCReference Include="MySQL-DataSet\Source\SQLUtils.pas"/>
-			<DCCReference Include="MySQL-DataSet\Source\CSVUtils.pas"/>
-			<DCCReference Include="MySQL-DataSet\Source\MySQLDBGrid.pas"/>
-			<DCCReference Include="VCL\Source\ExtCtrls_Ext.pas"/>
-			<DCCReference Include="VCL\Source\StdCtrls_Ext.pas"/>
-			<DCCReference Include="VCL\Source\StdActns_Ext.pas"/>
-			<DCCReference Include="VCL\Source\Dialogs_Ext.pas"/>
-			<DCCReference Include="VCL\Source\ComCtrls_Ext.pas"/>
-			<DCCReference Include="VCL\Source\CommCtrl_Ext.pas"/>
-			<DCCReference Include="VCL\Source\Forms_Ext.pas"/>
-			<DCCReference Include="fAccount.pas"/>
-			<DCCReference Include="fClient.pas"/>
-			<DCCReference Include="fPreferences.pas"/>
-			<DCCReference Include="fTools.pas"/>
-			<DCCReference Include="fURI.pas"/>
-			<DCCReference Include="fBase.pas"/>
-			<DCCReference Include="fDAccount.pas">
-				<Form>DAccount</Form>
-			</DCCReference>
-			<DCCReference Include="fDAccounts.pas">
-				<Form>DAccounts</Form>
-			</DCCReference>
-			<DCCReference Include="fDBookmark.pas">
-				<Form>DBookmark</Form>
-			</DCCReference>
-			<DCCReference Include="fDColumns.pas">
-				<Form>DColumns</Form>
-			</DCCReference>
-			<DCCReference Include="fDConnecting.pas">
-				<Form>DConnecting</Form>
-			</DCCReference>
-			<DCCReference Include="fDDatabase.pas">
-				<Form>DDatabase</Form>
-			</DCCReference>
-			<DCCReference Include="fDDatabases.pas">
-				<Form>DDatabases</Form>
-			</DCCReference>
-			<DCCReference Include="fDEvent.pas">
-				<Form>DEvent</Form>
-			</DCCReference>
-			<DCCReference Include="fDExport.pas">
-				<Form>DExport</Form>
-			</DCCReference>
-			<DCCReference Include="fDField.pas">
-				<Form>DField</Form>
-			</DCCReference>
-			<DCCReference Include="fDForeignKey.pas">
-				<Form>DForeignKey</Form>
-			</DCCReference>
-			<DCCReference Include="fDGoto.pas">
-				<Form>DGoto</Form>
-			</DCCReference>
-			<DCCReference Include="fDHost.pas">
-				<Form>DHost</Form>
-			</DCCReference>
-			<DCCReference Include="fDHostDatabase.pas">
-				<Form>DHostDatabase</Form>
-			</DCCReference>
-			<DCCReference Include="fDImport.pas">
-				<Form>DImport</Form>
-			</DCCReference>
-			<DCCReference Include="fDIndex.pas">
-				<Form>DIndex</Form>
-			</DCCReference>
-			<DCCReference Include="fDInfo.pas">
-				<Form>DInfo</Form>
-			</DCCReference>
-			<DCCReference Include="fDInstallUpdate.pas">
-				<Form>DInstallUpdate</Form>
-			</DCCReference>
-			<DCCReference Include="fDLogin.pas">
-				<Form>DDBLogin</Form>
-			</DCCReference>
-			<DCCReference Include="fDOptions.pas">
-				<Form>DOptions</Form>
-			</DCCReference>
-			<DCCReference Include="fDPartition.pas">
-				<Form>DPartition</Form>
-			</DCCReference>
-			<DCCReference Include="fDPaste.pas">
-				<Form>DPaste</Form>
-			</DCCReference>
-			<DCCReference Include="fDQuickFilter.pas">
-				<Form>DQuickFilter</Form>
-			</DCCReference>
-			<DCCReference Include="fDRoutine.pas">
-				<Form>DRoutine</Form>
-			</DCCReference>
-			<DCCReference Include="fDSearch.pas">
-				<Form>DSearch</Form>
-			</DCCReference>
-			<DCCReference Include="fDSegment.pas">
-				<Form>DSegment</Form>
-			</DCCReference>
-			<DCCReference Include="fDSelection.pas">
-				<Form>DSelection</Form>
-			</DCCReference>
-			<DCCReference Include="fDServer.pas">
-				<Form>DServer</Form>
-			</DCCReference>
-			<DCCReference Include="fDSQLHelp.pas">
-				<Form>DSQLHelp</Form>
-			</DCCReference>
-			<DCCReference Include="fDStatement.pas">
-				<Form>DStatement</Form>
-			</DCCReference>
-			<DCCReference Include="fDTable.pas">
-				<Form>DTable</Form>
-			</DCCReference>
-			<DCCReference Include="fDTableService.pas">
-				<Form>DTableService</Form>
-			</DCCReference>
-			<DCCReference Include="fDTransfer.pas">
-				<Form>DTransfer</Form>
-			</DCCReference>
-			<DCCReference Include="fDTrigger.pas">
-				<Form>DTrigger</Form>
-			</DCCReference>
-			<DCCReference Include="fDUser.pas">
-				<Form>DUser</Form>
-			</DCCReference>
-			<DCCReference Include="fDUserRight.pas">
-				<Form>DUserRight</Form>
-			</DCCReference>
-			<DCCReference Include="fDVariable.pas">
-				<Form>DVariable</Form>
-			</DCCReference>
-			<DCCReference Include="fDView.pas">
-				<Form>DView</Form>
-			</DCCReference>
-			<DCCReference Include="fCWorkbench.pas"/>
-			<DCCReference Include="fFClient.pas">
-				<Form>FClient</Form>
-			</DCCReference>
-			<DCCReference Include="fWWindow.pas">
-				<Form>WWindow</Form>
-			</DCCReference>
-			<DCCReference Include="fWForeignKeySelect.pas">
-				<Form>WForeignKeySelect</Form>
-			</DCCReference>
-			<None Include="MySQLFront.todo"/>
-			<None Include="..\Languages\English.ini"/>
-			<None Include="..\Languages\German.ini"/>
-			<BuildConfiguration Include="Debug">
-				<Key>Cfg_2</Key>
-				<CfgParent>Base</CfgParent>
-			</BuildConfiguration>
-			<BuildConfiguration Include="Base">
-				<Key>Base</Key>
-			</BuildConfiguration>
-			<BuildConfiguration Include="Release">
-				<Key>Cfg_1</Key>
-				<CfgParent>Base</CfgParent>
-			</BuildConfiguration>
-		</ItemGroup>
-		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')" Project="$(BDS)\Bin\CodeGear.Delphi.Targets"/>
 		<ProjectExtensions>
 			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
-			<Borland.ProjectType>VCLApplication</Borland.ProjectType>
 			<BorlandProject>
-				<Delphi.Personality>
-					<Source>
-						<Source Name="MainSource">MySQLFront.dpr</Source>
-					</Source>
-					<Parameters>
-						<Parameters Name="UseLauncher">False</Parameters>
-						<Parameters Name="LoadAllSymbols">True</Parameters>
-						<Parameters Name="LoadUnspecifiedSymbols">False</Parameters>
-						<Parameters Name="DebugSourceDirs">C:\Documents\MySQL-Front\Source\SynEdit\Source\</Parameters>
-					</Parameters>
-					<VersionInfo>
-						<VersionInfo Name="IncludeVerInfo">True</VersionInfo>
-						<VersionInfo Name="AutoIncBuild">False</VersionInfo>
-						<VersionInfo Name="MajorVer">5</VersionInfo>
-						<VersionInfo Name="MinorVer">2</VersionInfo>
-						<VersionInfo Name="Release">0</VersionInfo>
-						<VersionInfo Name="Build">5</VersionInfo>
-						<VersionInfo Name="Debug">False</VersionInfo>
-						<VersionInfo Name="PreRelease">True</VersionInfo>
-						<VersionInfo Name="Special">False</VersionInfo>
-						<VersionInfo Name="Private">False</VersionInfo>
-						<VersionInfo Name="DLL">False</VersionInfo>
-						<VersionInfo Name="Locale">1033</VersionInfo>
-						<VersionInfo Name="CodePage">1252</VersionInfo>
-					</VersionInfo>
-					<VersionInfoKeys>
-						<VersionInfoKeys Name="CompanyName"/>
-						<VersionInfoKeys Name="FileDescription">MySQL-Front</VersionInfoKeys>
-						<VersionInfoKeys Name="FileVersion">5.2.0.5</VersionInfoKeys>
-						<VersionInfoKeys Name="InternalName"/>
-						<VersionInfoKeys Name="LegalCopyright"/>
-						<VersionInfoKeys Name="LegalTrademarks"/>
-						<VersionInfoKeys Name="OriginalFilename"/>
-						<VersionInfoKeys Name="ProductName">MySQL-Front</VersionInfoKeys>
-						<VersionInfoKeys Name="ProductVersion">5.2</VersionInfoKeys>
-						<VersionInfoKeys Name="Comments"/>
-						<VersionInfoKeys Name="Build Date">01/07/2010</VersionInfoKeys>
-					</VersionInfoKeys>
-					<Excluded_Packages>
-						<Excluded_Packages Name="$(BDSBIN)\dcloffice2k160.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDSBIN)\dclofficexp160.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\Projects\Bpl\DISQLite3.bpl">The Delphi Inspiration -- DISQLite3 Personal</Excluded_Packages>
-					</Excluded_Packages>
-				</Delphi.Personality>
+				<Delphi.Personality/>
 				<Platforms>
 					<Platform value="Win64">False</Platform>
+					<Platform value="OSX32">False</Platform>
 					<Platform value="Win32">True</Platform>
 				</Platforms>
-				<Deployment>
-					<DeployFile LocalName="..\Temp\MySQLFront.exe" Configuration="Debug" Class="ProjectOutput">
-						<Platform Name="Win32"/>
-					</DeployFile>
-					<DeployFile LocalName="..\Temp\MySQLFront.rsm" Configuration="Debug" Class="DebugSymbols">
-						<Platform Name="Win32">
-							<RemoteName>MySQLFront.rsm</RemoteName>
-						</Platform>
-					</DeployFile>
-					<DeployClass Name="ProjectOutput" Required="true">
-						<Platform Name="OSX32">
-							<Operation>1</Operation>
-						</Platform>
-						<Platform Name="Win32">
-							<Operation>0</Operation>
-						</Platform>
-					</DeployClass>
-					<DeployClass Name="DependencyPackage" Required="true">
-						<Platform Name="OSX32">
-							<Operation>1</Operation>
-							<Extensions>.dylib</Extensions>
-						</Platform>
-						<Platform Name="Win32">
-							<Operation>0</Operation>
-							<Extensions>.bpl</Extensions>
-						</Platform>
-					</DeployClass>
-					<DeployClass Name="DependencyModule">
-						<Platform Name="OSX32">
-							<Operation>1</Operation>
-							<Extensions>.dylib</Extensions>
-						</Platform>
-						<Platform Name="Win32">
-							<Operation>0</Operation>
-							<Extensions>.dll;.bpl</Extensions>
-						</Platform>
-					</DeployClass>
-					<DeployClass Name="ProjectOSXInfoPList"/>
-					<DeployClass Name="File">
-						<Platform Name="OSX32">
-							<Operation>0</Operation>
-						</Platform>
-						<Platform Name="Win32">
-							<Operation>0</Operation>
-						</Platform>
-					</DeployClass>
-					<DeployClass Name="DebugSymbols">
-						<Platform Name="OSX32">
-							<Operation>1</Operation>
-						</Platform>
-						<Platform Name="Win32">
-							<Operation>0</Operation>
-						</Platform>
-					</DeployClass>
-					<DeployClass Name="DependencyFramework">
-						<Platform Name="OSX32">
-							<Operation>1</Operation>
-							<Extensions>.framework</Extensions>
-						</Platform>
-						<Platform Name="Win32">
-							<Operation>0</Operation>
-						</Platform>
-					</DeployClass>
-					<DeployClass Name="AdditionalDebugSymbols">
-						<Platform Name="OSX32">
-							<Operation>1</Operation>
-						</Platform>
-						<Platform Name="Win32">
-							<Operation>0</Operation>
-						</Platform>
-					</DeployClass>
-					<DeployClass Name="ProjectOSXResource">
-						<Platform Name="OSX32">
-							<RemoteDir>Contents\Resources</RemoteDir>
-							<Operation>1</Operation>
-						</Platform>
-					</DeployClass>
-					<ProjectRoot Name="$(PROJECTNAME)" Platform="OSX32"/>
-					<ProjectRoot Name="$(PROJECTNAME)" Platform="Win64"/>
-					<ProjectRoot Name="$(PROJECTNAME)" Platform="Win32"/>
-				</Deployment>
 			</BorlandProject>
 			<ProjectFileVersion>12</ProjectFileVersion>
 		</ProjectExtensions>
-		<Import Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')" Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj"/>
-		<Import Condition="Exists('$(MSBuildProjectName).deployproj')" Project="$(MSBuildProjectName).deployproj"/>
 	</Project>

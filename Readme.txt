@@ -74,4 +74,4 @@ Building the setup program:
 
 The Setup Program will be built with the Built_Setup.bat file.
 
-With Cleanup.bat all temporary files can be deleted easily.
+With Clean.bat all temporary files can be deleted easily.

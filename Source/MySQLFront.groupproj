@@ -2,48 +2,11 @@
 		<PropertyGroup>
 			<ProjectGuid>{F5A13737-C124-4653-9ED3-E17B87987AF8}</ProjectGuid>
 		</PropertyGroup>
-		<ItemGroup>
-			<Projects Include="FastMM\Package\FastMM_D2010.dproj">
-				<Dependencies/>
-			</Projects>
-			<Projects Include="TPerlRegEx\Packages\TPerlRegEx_D2010.dproj">
-				<Dependencies/>
-			</Projects>
-			<Projects Include="DISQLite3\Packages\DISQLite3_D2010.dproj">
-				<Dependencies/>
-			</Projects>
-			<Projects Include="MPHexEditor\Packages\MPHexEditor_D2010.dproj">
-				<Dependencies/>
-			</Projects>
-			<Projects Include="SynEdit\Packages\SynEdit_D2010.dproj">
-				<Dependencies/>
-			</Projects>
-			<Projects Include="QueryBuilder\Packages\acQueryBuilder_D2010.dproj">
-				<Dependencies/>
-			</Projects>
-			<Projects Include="QueryBuilder\Packages\acQueryBuilderDsgn_D2010.dproj">
-				<Dependencies/>
-			</Projects>
-			<Projects Include="Win32\Packages\Win32_Extensions.dproj">
-				<Dependencies/>
-			</Projects>
-			<Projects Include="VCL\Packages\VCL_Extensions.dproj">
-				<Dependencies/>
-			</Projects>
-			<Projects Include="MySQL-DataSet\Packages\MySQL_DataSet.dproj">
-				<Dependencies/>
-			</Projects>
-			<Projects Include="MySQLFront.dproj">
-				<Dependencies/>
-			</Projects>
-		</ItemGroup>
 		<ProjectExtensions>
 			<Borland.Personality>Default.Personality.12</Borland.Personality>
 			<Borland.ProjectType/>
 			<BorlandProject>
-				<Default.Personality>
-					<Projects ActiveProject="C:\Users\Nils\Documents\MySQL-Front\Source\MySQLFront.dproj"/>
-				</Default.Personality>
+				<Default.Personality/>
 			</BorlandProject>
 		</ProjectExtensions>
 		<Target Name="FastMM_D2010">
