@@ -392,8 +392,6 @@ type
     ToolButton4: TToolButton;
     ToolButton5: TToolButton;
     ToolButton7: TToolButton;
-    aHFeedback: TAction;
-    miHFeedback: TMenuItem;
     procedure aDCreateParentExecute(Sender: TObject);
     procedure aEFindExecute(Sender: TObject);
     procedure aEReplaceExecute(Sender: TObject);
@@ -451,7 +449,6 @@ type
       var DragObject: TDragObject);
     procedure TBAddressBarResize(Sender: TObject);
     procedure tbPropertiesClick(Sender: TObject);
-    procedure aHFeedbackExecute(Sender: TObject);
   private
     CaptureTabIndex: Integer;
     CloseButton: TPicture;
@@ -602,35 +599,6 @@ begin
   Perform(CM_ADDTAB, 0, 0);
 end;
 
-procedure TWWindow.aHFeedbackExecute(Sender: TObject);
-var
-  Filename: string;
-begin
-  if (IsConnectedToInternet()) then
-  begin
-    CheckUpdateThread := TCheckUpdateThread.Create(True);
-    CheckUpdateThread.Stream := TStringStream.Create('');
-    CheckUpdateThread.Execute();
-    CheckUpdateThread.Stream.Free();
-
-    if (CheckUpdateThread.UpdateAvailable) then
-    begin
-      MsgBox('An update is available. Please use the latest update before send a feedback.'
-        + #13#10#13#10 + 'You can install the update with menu: Help -> Install Update.',
-        Preferences.LoadStr(43), MB_OK + MB_ICONINFORMATION);
-    end
-    else
-    begin
-      Filename := 'mailto:' + SysUtils.LoadStr(1006)
-        + '?subject=' + SysUtils.LoadStr(1000) + '%20Feedback%20'
-        + IntToStr(Preferences.VerMajor) + '.' + IntToStr(Preferences.VerMinor) + '.' + IntToStr(Preferences.VerPatch) + '.' + IntToStr(Preferences.VerBuild);
-      ShellExecute(0, PChar('open'), PChar(Filename), nil, nil, SW_SHOWNORMAL);
-    end;
-
-    CheckUpdateThread.Free();
-  end;
-end;
-
 procedure TWWindow.aHIndexExecute(Sender: TObject);
 begin
   Application.HelpCommand(HELP_FINDER, 0);
@@ -685,7 +653,7 @@ begin
   begin
     DiableApplicationActivate := True;
 
-    Msg := 'Internal Bug:' + #13#10 + E.Message;
+    Msg := 'Internal Program Bug:' + #13#10 + E.Message;
 
     {$IFNDEF EurekaLog}
     if (IsConnectedToInternet()) then
@@ -1711,7 +1679,6 @@ begin
   TBTabControl.Visible := Preferences.TabsVisible;
 
   aHUpdate.Enabled := IsConnectedToInternet() and (Preferences.SetupProgram = '');
-  aHFeedback.Enabled := IsConnectedToInternet();
 
   aVAddressBar.Checked := Preferences.AddressBarVisible;
   PAddressBar.Visible := aVAddressBar.Checked;

@@ -78,7 +78,6 @@ object WWindow: TWWindow
       Left = 0
       Top = 0
       Width = 691
-      Height = 29
       AutoSize = True
       BorderWidth = 2
       EdgeBorders = [ebBottom]
@@ -1377,11 +1376,6 @@ object WWindow: TWWindow
       Category = 'Bookmark'
       Caption = 'aBookmark'
     end
-    object aHFeedback: TAction
-      Category = 'Help'
-      Caption = 'Send Feedback...'
-      OnExecute = aHFeedbackExecute
-    end
   end
   object OpenDialog: TOpenDialog_Ext
     Options = [ofReadOnly, ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
@@ -1879,9 +1873,6 @@ object WWindow: TWWindow
       end
       object miHUpdate: TMenuItem
         Action = aHUpdate
-      end
-      object miHFeedback: TMenuItem
-        Action = aHFeedback
       end
       object N19: TMenuItem
         Caption = '-'

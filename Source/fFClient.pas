@@ -885,7 +885,6 @@ type
     procedure ClientRefresh(Sender: TObject);
     function ColumnWidthKindFromImageIndex(const AImageIndex: Integer): TADesktop.TListViewKind;
     function CreateDesktop(const CObject: TCObject): TCObject.TDesktop;
-    procedure CreateListView(const Sender: TObject; const Data: TCustomData; out ListView: TListView);
     function CreateSynMemo(): TSynMemo;
     function CreateWorkbench(const ADatabase: TCDatabase): TWWorkbench;
     function Dragging(const Sender: TObject): Boolean;
@@ -1004,7 +1003,9 @@ type
     property SelectedImageIndex: Integer read GetSelectedImageIndex;
     property SelectedNavigator: string read GetSelectedNavigator;
   protected
+    procedure CreateListView(const Sender: TObject; const Data: TCustomData; out ListView: TListView);
     procedure CreateParams(var Params: TCreateParams); override;
+    procedure FreeListView(const ListView: TListView);
     property ResultSet: TCResultSet read GetResultSet;
   public
     Client: TCClient;
@@ -1298,12 +1299,7 @@ begin
   inherited;
 
   if (Assigned(FListView)) then
-  begin
-    FListView.Items.BeginUpdate();
-    FListView.Items.Clear();
-    FListView.Items.EndUpdate();
-    FListView.Free();
-  end;
+    FClient.FreeListView(FListView);
 end;
 
 function TFClient.TTableDesktop.GetColumnIndex(Index: Integer): Integer;
@@ -6121,10 +6117,12 @@ begin
   FNavigator.Items.Clear();
   FNavigator.Items.EndUpdate();
 
-  FServerListView.OnChanging := nil;
-  FServerListView.Items.BeginUpdate();
-  FServerListView.Items.Clear();
-  FServerListView.Items.EndUpdate();
+  FreeListView(FServerListView);
+  if (Assigned(HostsListView)) then FreeListView(HostsListView);
+  if (Assigned(ProcessesListView)) then FreeListView(ProcessesListView);
+  if (Assigned(StatiListView)) then FreeListView(StatiListView);
+  if (Assigned(UsersListView)) then FreeListView(UsersListView);
+  if (Assigned(VariablesListView)) then FreeListView(VariablesListView);
 
   FreeAndNil(JPEGImage);
   FreeAndNil(PNGImage);
@@ -7870,7 +7868,7 @@ begin
           end;
           if (Assigned(Table.Database.Triggers)) then
             for I := 0 to Table.Database.Triggers.Count - 1 do
-              if (Table.Database.Triggers[I].TableName = TCBaseTable(Table).Name) then
+              if (Table.Tables.NameCmp(Table.Database.Triggers[I].TableName, TCBaseTable(Table).Name) = 0) then
               begin
                 Child := FNavigator.Items.AddChild(Node, Table.Database.Triggers[I].Name);
                 Child.Data := Table.Database.Triggers[I];
@@ -8196,6 +8194,15 @@ begin
     FQuickSearch.SelLength := Length(FQuickSearch.Text);
     Key := #0;
   end;
+end;
+
+procedure TFClient.FreeListView(const ListView: TListView);
+begin
+  ListView.OnChanging := nil;
+  ListView.Items.BeginUpdate();
+  ListView.Items.Clear();
+  ListView.Items.EndUpdate();
+  ListView.Free();
 end;
 
 procedure TFClient.FRTFChange(Sender: TObject);
@@ -9783,7 +9790,7 @@ begin
   Compare := 0;
   if (Item1.GroupID <> Item2.GroupID) then
     Compare := Sign(Pos(Chr(Item1.GroupID), GroupSort) - Pos(Chr(Item2.GroupID), GroupSort))
-  else if (Item1.GroupID = 1) then
+  else if (Item1.GroupID = iiServer) then
     Compare := Sign(Pos(Chr(Item1.ImageIndex), GroupSort) - Pos(Chr(Item2.ImageIndex), ImageIndexSort))
   else if (SortRec^.Order = 0) then
     Compare := Sign(TCItem(Item1.Data).Index - TCItem(Item2.Data).Index)
@@ -10023,7 +10030,7 @@ begin
       ListView.Columns[2].Alignment := taRightJustify;
 
       ListView.Groups.Add().GroupID := iiDatabase;
-      ListView.Groups.Add().GroupID := 1;
+      ListView.Groups.Add().GroupID := iiServer;
     end
     else if (TObject(Data) is TCDatabase) then
     begin
@@ -10658,7 +10665,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCHosts) then
     begin
-      Item.GroupID := 1;
+      Item.GroupID := iiServer;
       Item.ImageIndex := iiHosts;
       Item.SubItems.Add(FormatFloat('#,##0', TCHosts(Data).Count, LocaleFormatSettings));
     end
@@ -10670,7 +10677,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCProcesses) then
     begin
-      Item.GroupID := 1;
+      Item.GroupID := iiServer;
       Item.ImageIndex := iiProcesses;
       if (TCProcesses(Data).Count > 0) then
         Item.SubItems.Add(FormatFloat('#,##0', TCProcesses(Data).Count, LocaleFormatSettings));
@@ -10693,7 +10700,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCStati) then
     begin
-      Item.GroupID := 1;
+      Item.GroupID := iiServer;
       Item.ImageIndex := iiStati;
       Item.SubItems.Add(FormatFloat('#,##0', TCStati(Data).Count, LocaleFormatSettings));
     end
@@ -10706,7 +10713,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCUsers) then
     begin
-      Item.GroupID := 1;
+      Item.GroupID := iiServer;
       Item.ImageIndex := iiUsers;
       if (Client.Users.Count >= 0) then
         Item.SubItems.Add(FormatFloat('#,##0', Client.Users.Count, LocaleFormatSettings))
@@ -10721,7 +10728,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCVariables) then
     begin
-      Item.GroupID := 1;
+      Item.GroupID := iiServer;
       Item.ImageIndex := iiVariables;
       Item.SubItems.Add(FormatFloat('#,##0', Client.Variables.Count, LocaleFormatSettings));
     end
@@ -10801,7 +10808,8 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
               ListView.Items.Delete(I);
 
           for I := 0 to CItems.Count - 1 do
-            InsertItem(CItems[I]);
+            if (not (CItems is TCTriggers)) then
+              InsertItem(CItems[I]);
         end;
       ceCreated:
         InsertItem(ClientEvent.CItem);
@@ -10932,7 +10940,9 @@ begin
         begin
           Table := TCTable(ClientEvent.Sender);
 
-          ListView.Items.Clear();
+          for I := ListView.Items.Count - 1 downto 0 do
+            if ((ClientEvent.CItems is TCTriggers) = (ListView.Items[I].ImageIndex in [iiTrigger])) then
+              ListView.Items.Delete(I);
           if (Table is TCBaseTable) then
             UpdateGroup(iiIndex, TCBaseTable(Table).Indices);
           UpdateGroup(iiField, Table.Fields);

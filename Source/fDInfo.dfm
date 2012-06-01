@@ -52,7 +52,7 @@ object DInfo: TDInfo
     Caption = 'FURI'
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clBlue
-    Font.Height = -11
+    Font.Height = -12
     Font.Name = 'MS Sans Serif'
     Font.Style = [fsUnderline]
     ParentFont = False
@@ -73,6 +73,23 @@ object DInfo: TDInfo
     Font.Style = []
     ParentFont = False
     Transparent = True
+  end
+  object FMail: TLabel
+    Left = 441
+    Top = 133
+    Width = 25
+    Height = 13
+    Cursor = crHandPoint
+    Alignment = taRightJustify
+    Caption = 'FMail'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clBlue
+    Font.Height = -12
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsUnderline]
+    ParentFont = False
+    Transparent = True
+    OnClick = FMailClick
   end
   object FBOk: TButton
     Left = 416

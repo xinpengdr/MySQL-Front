@@ -4803,7 +4803,9 @@ procedure TCBaseTable.SetDefaultCharset(const ADefaultCharset: string);
 begin
   FDefaultCharset := LowerCase(ADefaultCharset);
 
-  if (not Assigned(Database) or not Assigned(Database.Client)) then
+  if (lstrcmpi(PChar(ADefaultCharset), 'binary') = 0) then
+    FDefaultCodePage := 0
+  else if (not Assigned(Database) or not Assigned(Database.Client)) then
     FDefaultCodePage := CP_ACP
   else if (FDefaultCharset <> '') then
     FDefaultCodePage := Database.Client.CharsetToCodePage(FDefaultCharset)

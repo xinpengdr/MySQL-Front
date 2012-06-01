@@ -2926,7 +2926,7 @@ var
 begin
   Result := 0;
 
-  if ((0 < ServerVersion) and (ServerVersion < 40101)) then
+  if (ServerVersion < 40101) then
   begin
     for I := 0 to Length(MySQL_Character_Sets) - 1 do
       if (lstrcmpiA(PAnsiChar(AnsiString(Charset)), MySQL_Character_Sets[I].CharsetName) = 0) then
@@ -5666,7 +5666,7 @@ end;
 function TMySQLDataSet.InternalRefreshEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
 begin
   SynchroThread.DataSet := Self;
-  Connection.SyncReceivingData(SynchroThread);
+  SynchroThread.RunAction(ssReceivingData);
 
   Result := False;
 end;
