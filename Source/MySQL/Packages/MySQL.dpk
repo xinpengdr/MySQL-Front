@@ -24,13 +24,12 @@ package MySQL;
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'MySQL-DataSet'}
+{$DESCRIPTION 'MySQL'}
 {$IMPLICITBUILD ON}
 
 requires
   dcldb,
-  bdertl,
-  VCL_Extensions;
+  bdertl;
 
 contains
   MySQLConsts in '..\Source\MySQLConsts.pas',

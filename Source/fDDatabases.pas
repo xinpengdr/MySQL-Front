@@ -137,6 +137,7 @@ var
   I: Integer;
   Item: TListItem;
   J: Integer;
+  List: TList;
   ServerName: array [0 .. STR_LEN - 1] of SQLTCHAR;
 begin
   if (Assigned(Client)) then
@@ -149,15 +150,19 @@ begin
       Width := Preferences.Databases.Width;
     end;
 
-    for I := 0 to Client.Databases.Count - 1 do
-    begin
-      if (not (Client.Databases[I] is TCSystemDatabase)) then
+    List := TList.Create();
+    List.Add(Client.Databases);
+    if (not Client.Update(List)) then
+      for I := 0 to Client.Databases.Count - 1 do
       begin
-        Item := FDatabases.Items.Add();
-        Item.Caption := Client.Databases[I].Name;
-        Item.ImageIndex := iiDatabase;
+        if (not (Client.Databases[I] is TCSystemDatabase)) then
+        begin
+          Item := FDatabases.Items.Add();
+          Item.Caption := Client.Databases[I].Name;
+          Item.ImageIndex := iiDatabase;
+        end;
       end;
-    end;
+    List.Free();
 
     SetLength(DatabaseNames, 0);
     CSVSplitValues(SelectedDatabases, ',', '"', DatabaseNames);

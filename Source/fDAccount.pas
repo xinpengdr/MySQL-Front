@@ -330,6 +330,7 @@ var
   Client: TCClient;
   I: Integer;
   LibraryName: string;
+  List: TList;
 begin
   if ((FCharset.Items.Count = 0) and CheckConnectInfos()) then
   begin
@@ -348,9 +349,13 @@ begin
         Accounts.OnSQLError(Client, Client.ErrorCode, Client.ErrorMessage)
       else if (Client.Connected) then
       begin
-        for I := 0 to Client.Charsets.Count - 1 do
-          FCharset.Items.Add(Client.Charsets.Charset[I].Name);
+        List := TList.Create();
+        List.Add(Client.Charsets);
+        if (not Client.Update(List)) then
+          for I := 0 to Client.Charsets.Count - 1 do
+            FCharset.Items.Add(Client.Charsets.Charset[I].Name);
         FCharset.ItemIndex := FCharset.Items.IndexOf(Client.Charset);
+        List.Free();
       end;
       Client.EndSilent();
 

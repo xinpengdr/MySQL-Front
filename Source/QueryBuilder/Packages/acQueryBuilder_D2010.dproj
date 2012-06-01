@@ -2,49 +2,25 @@
 		<PropertyGroup>
 			<ProjectGuid>{CA875146-EFD5-4C46-B51F-2A495A6E32FD}</ProjectGuid>
 			<MainSource>acQueryBuilder_D2010.dpk</MainSource>
-			<Config Condition="'$(Config)'==''">Debug</Config>
-			<DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
 			<ProjectVersion>13.4</ProjectVersion>
-			<FrameworkType>VCL</FrameworkType>
+			<FrameworkType>None</FrameworkType>
+			<AppType>Package</AppType>
 			<Base>True</Base>
+			<Config Condition="'$(Config)'==''">Base</Config>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
 			<TargetedPlatforms>1</TargetedPlatforms>
-			<AppType>Package</AppType>
+			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
+			<SkipResGeneration>true</SkipResGeneration>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
 			<Base>true</Base>
 		</PropertyGroup>
-		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
-			<Base_Win32>true</Base_Win32>
-			<CfgParent>Base</CfgParent>
-			<Base>true</Base>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_1)'!=''">
-			<Cfg_1>true</Cfg_1>
-			<CfgParent>Base</CfgParent>
-			<Base>true</Base>
-		</PropertyGroup>
-		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_1)'=='true') or '$(Cfg_1_Win32)'!=''">
-			<Cfg_1_Win32>true</Cfg_1_Win32>
-			<CfgParent>Cfg_1</CfgParent>
-			<Cfg_1>true</Cfg_1>
-			<Base>true</Base>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_2)'!=''">
-			<Cfg_2>true</Cfg_2>
-			<CfgParent>Base</CfgParent>
-			<Base>true</Base>
-		</PropertyGroup>
-		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_2)'=='true') or '$(Cfg_2_Win32)'!=''">
-			<Cfg_2_Win32>true</Cfg_2_Win32>
-			<CfgParent>Cfg_2</CfgParent>
-			<Cfg_2>true</Cfg_2>
-			<Base>true</Base>
-		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
-			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0</VerInfo_Keys>
-			<VerInfo_Locale>1031</VerInfo_Locale>
-			<DCC_Namespace>Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
+			<GenDll>true</GenDll>
+			<GenPackage>true</GenPackage>
+			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
+			<Manifest_File>None</Manifest_File>
+			<DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;Bde;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
 			<DCC_RangeChecking>true</DCC_RangeChecking>
 			<DCC_DependencyCheckOutputName>c:\program files (x86)\embarcadero\rad studio\7.0\Projects\Bpl\acQueryBuilder_D2010.bpl</DCC_DependencyCheckOutputName>
 			<RuntimeOnlyPackage>true</RuntimeOnlyPackage>
@@ -58,226 +34,24 @@
 			<DCC_S>false</DCC_S>
 			<DCC_N>true</DCC_N>
 			<DCC_K>false</DCC_K>
-			<GenDll>true</GenDll>
 			<DCC_DcpOutput>..\Bin</DCC_DcpOutput>
 			<DCC_DcuOutput>..\Bin</DCC_DcuOutput>
-			<GenPackage>true</GenPackage>
 			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
 			<DCC_F>false</DCC_F>
 			<DCC_E>false</DCC_E>
 			<DCC_AssertionsAtRuntime>false</DCC_AssertionsAtRuntime>
 		</PropertyGroup>
-		<PropertyGroup Condition="'$(Base_Win32)'!=''">
-			<DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
-			<VerInfo_Locale>1033</VerInfo_Locale>
-			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Cfg_1)'!=''">
-			<DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
-			<VerInfo_Locale>1033</VerInfo_Locale>
-			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Cfg_2)'!=''">
-			<DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
-			<VerInfo_Locale>1033</VerInfo_Locale>
-			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-		</PropertyGroup>
-		<ItemGroup>
-			<DelphiCompile Include="$(MainSource)">
-				<MainSource>MainSource</MainSource>
-			</DelphiCompile>
-			<DCCReference Include="rtl.dcp"/>
-			<DCCReference Include="dbrtl.dcp"/>
-			<DCCReference Include="vcl.dcp"/>
-			<DCCReference Include="vclx.dcp"/>
-			<DCCReference Include="..\Source\acACCESSSynProvider.pas"/>
-			<DCCReference Include="..\Source\acAddObject.pas">
-				<Form>acAddObjectForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acAST.pas"/>
-			<DCCReference Include="..\Source\acAutoSynProvider.pas"/>
-			<DCCReference Include="..\Source\ACCESSpars.pas"/>
-			<DCCReference Include="..\Source\ACCESSscan.pas"/>
-			<DCCReference Include="..\Source\acDatasourceProps.pas">
-				<Form>acDatasourcePropsForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acDB2SynProvider.pas"/>
-			<DCCReference Include="..\Source\acFbSynProvider.pas"/>
-			<DCCReference Include="..\Source\acIBSynProvider.pas"/>
-			<DCCReference Include="..\Source\acInformixSynProvider.pas"/>
-			<DCCReference Include="..\Source\acLinkProps.pas">
-				<Form>acLinkPropsForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acLoadMetadataHelpers.pas"/>
-			<DCCReference Include="..\Source\acMimerSQLSynProvider.pas"/>
-			<DCCReference Include="..\Source\acMSSQLSynProvider.pas"/>
-			<DCCReference Include="..\Source\acMYSQLSynProvider.pas"/>
-			<DCCReference Include="..\Source\acOracleSynProvider.pas"/>
-			<DCCReference Include="..\Source\acPGSQLSynProvider.pas"/>
-			<DCCReference Include="..\Source\acProcParams.pas">
-				<Form>acProcedureParams</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acProperties.pas"/>
-			<DCCReference Include="..\Source\acQBAbout.pas">
-				<Form>fAcQBAboutForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQBBase.pas"/>
-			<DCCReference Include="..\Source\acQBControls.pas"/>
-			<DCCReference Include="..\Source\acQBEventMetaProvider.pas"/>
-			<DCCReference Include="..\Source\acQBHelper.pas"/>
-			<DCCReference Include="..\Source\acQBLocalizer.pas"/>
-			<DCCReference Include="..\Source\acQBMasks.pas"/>
-			<DCCReference Include="..\Source\acQBMetadataContainerEditor.pas">
-				<Form>fMetadataContainerEditor</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQBMetadataContainerLoad.pas">
-				<Form>facQBMetadataContainerLoad</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQBMSXML3.pas"/>
-			<DCCReference Include="..\Source\acQBPaint.pas"/>
-			<DCCReference Include="..\Source\acQBStrings.pas"/>
-			<DCCReference Include="..\Source\acQBXMLHelpers.pas"/>
-			<DCCReference Include="..\Source\acQueryFixup.pas"/>
-			<DCCReference Include="..\Source\acQueryProps.pas">
-				<Form>acQueryPropsForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQueryPropsAc.pas">
-				<Form>acQueryPropsAccessForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQueryPropsDb2.pas">
-				<Form>acQueryPropsDb2Form</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQueryPropsFb.pas">
-				<Form>acQueryPropsFbForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQueryPropsIb.pas">
-				<Form>acQueryPropsIbForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQueryPropsMS.pas">
-				<Form>acQueryPropsMSForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQueryPropsMY.pas">
-				<Form>acQueryPropsMYForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQueryPropsOracle.pas">
-				<Form>acQueryPropsOracleForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQueryPropsPg.pas">
-				<Form>acQueryPropsPgForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQueryPropsSb.pas">
-				<Form>acQueryPropsSbForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQueryPropsSQLite.pas">
-				<Form>acQueryPropsSQLiteForm</Form>
-			</DCCReference>
-			<DCCReference Include="..\Source\acQueryXML.pas"/>
-			<DCCReference Include="..\Source\acSQL2003SynProvider.pas"/>
-			<DCCReference Include="..\Source\acSQL89SynProvider.pas"/>
-			<DCCReference Include="..\Source\acSQL92SynProvider.pas"/>
-			<DCCReference Include="..\Source\acSQLBuilderPlainText.pas"/>
-			<DCCReference Include="..\Source\acSQLiteSynProvider.pas"/>
-			<DCCReference Include="..\Source\acSybaseSynProvider.pas"/>
-			<DCCReference Include="..\Source\acUniversalSynProvider.pas"/>
-			<DCCReference Include="..\Source\DB2pars.pas"/>
-			<DCCReference Include="..\Source\DB2scan.pas"/>
-			<DCCReference Include="..\Source\FBpars.pas"/>
-			<DCCReference Include="..\Source\FBscan.pas"/>
-			<DCCReference Include="..\Source\IBpars.pas"/>
-			<DCCReference Include="..\Source\IBscan.pas"/>
-			<DCCReference Include="..\Source\INFORMIXpars.pas"/>
-			<DCCReference Include="..\Source\INFORMIXscan.pas"/>
-			<DCCReference Include="..\Source\MimerSQLpars.pas"/>
-			<DCCReference Include="..\Source\MimerSQLscan.pas"/>
-			<DCCReference Include="..\Source\MSSQLpars.pas"/>
-			<DCCReference Include="..\Source\MSSQLscan.pas"/>
-			<DCCReference Include="..\Source\MYSQLANSIscan.pas"/>
-			<DCCReference Include="..\Source\MYSQLpars.pas"/>
-			<DCCReference Include="..\Source\MYSQLscan.pas"/>
-			<DCCReference Include="..\Source\ORACLEpars.pas"/>
-			<DCCReference Include="..\Source\ORACLEscan.pas"/>
-			<DCCReference Include="..\Source\PGSQLpars.pas"/>
-			<DCCReference Include="..\Source\PGSQLscan.pas"/>
-			<DCCReference Include="..\Source\SQL2003pars.pas"/>
-			<DCCReference Include="..\Source\SQL2003scan.pas"/>
-			<DCCReference Include="..\Source\SQL89pars.pas"/>
-			<DCCReference Include="..\Source\SQL89scan.pas"/>
-			<DCCReference Include="..\Source\SQL92pars.pas"/>
-			<DCCReference Include="..\Source\SQL92scan.pas"/>
-			<DCCReference Include="..\Source\SQLitepars.pas"/>
-			<DCCReference Include="..\Source\SQLitescan.pas"/>
-			<DCCReference Include="..\Source\Sybasepars.pas"/>
-			<DCCReference Include="..\Source\Sybasescan.pas"/>
-			<DCCReference Include="..\Source\UNIVERSALpars.pas"/>
-			<DCCReference Include="..\Source\UNIVERSALscan.pas"/>
-			<BuildConfiguration Include="Debug">
-				<Key>Cfg_2</Key>
-				<CfgParent>Base</CfgParent>
-			</BuildConfiguration>
-			<BuildConfiguration Include="Base">
-				<Key>Base</Key>
-			</BuildConfiguration>
-			<BuildConfiguration Include="Release">
-				<Key>Cfg_1</Key>
-				<CfgParent>Base</CfgParent>
-			</BuildConfiguration>
-		</ItemGroup>
-		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')" Project="$(BDS)\Bin\CodeGear.Delphi.Targets"/>
 		<ProjectExtensions>
 			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
 			<Borland.ProjectType>Package</Borland.ProjectType>
 			<BorlandProject>
-				<Delphi.Personality>
-					<Source>
-						<Source Name="MainSource">acQueryBuilder_D2010.dpk</Source>
-					</Source>
-					<Parameters>
-						<Parameters Name="UseLauncher">False</Parameters>
-						<Parameters Name="LoadAllSymbols">True</Parameters>
-						<Parameters Name="LoadUnspecifiedSymbols">False</Parameters>
-					</Parameters>
-					<VersionInfo>
-						<VersionInfo Name="IncludeVerInfo">True</VersionInfo>
-						<VersionInfo Name="AutoIncBuild">False</VersionInfo>
-						<VersionInfo Name="MajorVer">1</VersionInfo>
-						<VersionInfo Name="MinorVer">0</VersionInfo>
-						<VersionInfo Name="Release">0</VersionInfo>
-						<VersionInfo Name="Build">0</VersionInfo>
-						<VersionInfo Name="Debug">False</VersionInfo>
-						<VersionInfo Name="PreRelease">False</VersionInfo>
-						<VersionInfo Name="Special">False</VersionInfo>
-						<VersionInfo Name="Private">False</VersionInfo>
-						<VersionInfo Name="DLL">False</VersionInfo>
-						<VersionInfo Name="Locale">1031</VersionInfo>
-						<VersionInfo Name="CodePage">1252</VersionInfo>
-					</VersionInfo>
-					<VersionInfoKeys>
-						<VersionInfoKeys Name="CompanyName"/>
-						<VersionInfoKeys Name="FileDescription"/>
-						<VersionInfoKeys Name="FileVersion">1.0.0.0</VersionInfoKeys>
-						<VersionInfoKeys Name="InternalName"/>
-						<VersionInfoKeys Name="LegalCopyright"/>
-						<VersionInfoKeys Name="LegalTrademarks"/>
-						<VersionInfoKeys Name="OriginalFilename"/>
-						<VersionInfoKeys Name="ProductName"/>
-						<VersionInfoKeys Name="ProductVersion">1.0.0.0</VersionInfoKeys>
-					</VersionInfoKeys>
-					<Excluded_Packages>
-						<Excluded_Packages Name="$(BDSBIN)\dcloffice2k160.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDSBIN)\dclofficexp160.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\Projects\Bpl\DISQLite3.bpl">The Delphi Inspiration -- DISQLite3 Personal</Excluded_Packages>
-					</Excluded_Packages>
-				</Delphi.Personality>
+				<Delphi.Personality/>
 				<Platforms>
-					<Platform value="Win64">False</Platform>
 					<Platform value="Win32">True</Platform>
+					<Platform value="Win64">False</Platform>
+					<Platform value="OSX32">False</Platform>
 				</Platforms>
 			</BorlandProject>
 			<ProjectFileVersion>12</ProjectFileVersion>
 		</ProjectExtensions>
-		<Import Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')" Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj"/>
 	</Project>

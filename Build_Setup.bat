@@ -82,7 +82,7 @@ if Errorlevel 1 goto Error
 "%BuildAWK%" -f "%BuildTempPath%\Build_Setup.awk" "%BuildSetupPath%\pad_file.xml" > "%BuildTempPath%\pad_file.xml"
 if Errorlevel 1 goto Error
 
-"%BuildAWK%" -f "%BuildTempPath%\Build_Setup.awk" "%BuildSourcePath%\MySQL-DataSet\Source\libMySQL.php" > "%BuildTempPath%\libMySQL.php"
+"%BuildAWK%" -f "%BuildTempPath%\Build_Setup.awk" "%BuildSourcePath%\MySQL\Source\libMySQL.php" > "%BuildTempPath%\libMySQL.php"
 if Errorlevel 1 goto Error
 
 "%BuildAWK%" -f "%BuildTempPath%\Build_Setup.awk" "%BuildSetupPath%\MySQLFront.iss" > "%BuildTempPath%\MySQLFront.iss"

@@ -12004,13 +12004,15 @@ begin
       end;
     end;
 
-  Result := SQL <> '';
-  if (Result) then
-    if (Synchron) then
-      ExecuteSQL(SQL, ClientResult)
-    else
-      SendSQL(SQL, ClientResult);
-  Result := Result and Asynchron;
+  if (SQL = '') then
+    Result := False
+  else if (Synchron or not Asynchron) then
+    Result := not ExecuteSQL(SQL, ClientResult)
+  else
+  begin
+    SendSQL(SQL, ClientResult);
+    Result := True;
+  end;
 end;
 
 function TCClient.UpdateDatabase(const Database, NewDatabase: TCDatabase): Boolean;

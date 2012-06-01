@@ -515,7 +515,6 @@ type
     FReadOnly: Boolean;
     FRecordReceived: TEvent;
     FSortDef: TIndexDef;
-    InResync: Boolean;
     InternRecordBuffers: TInternRecordBuffers;
     function AllocInternRecordBuffer(): PInternRecordBuffer;
     function BookmarkToInternBufferIndex(const Bookmark: TBookmark): Integer;
@@ -578,7 +577,6 @@ type
     function GetMaxTextWidth(const Field: TField; const TextWidth: TTextWidth): Integer; virtual;
     function Locate(const KeyFields: string; const KeyValues: Variant;
       Options: TLocateOptions): Boolean; override;
-    procedure Resync(Mode: TResyncMode); override;
     procedure Sort(const ASortDef: TIndexDef); virtual;
     function SQLDelete(): string; virtual;
     function SQLInsert(): string; virtual;
@@ -5291,7 +5289,7 @@ begin
         Result := grError;
         while (Result = grError) do
         begin
-          if ((NewIndex + 1 = InternRecordBuffers.Count) and not InResync and not Filtered) then
+          if ((NewIndex + 1 = InternRecordBuffers.Count) and not Filtered) then
             if (Assigned(Handle) and Assigned(RecordReceived)) then
               RecordReceived.WaitFor(NET_WAIT_TIMEOUT * 1000)
             else if ((Self is TMySQLTable) and TMySQLTable(Self).LimitedDataReceived and TMySQLTable(Self).AutomaticLoadNextRecords) then
@@ -6001,7 +5999,6 @@ begin
   FilterParser := nil;
   FLocateNext := False;
   FSortDef := TIndexDef.Create(nil, 'SortDef', '', []);
-  InResync := False;
   InternRecordBuffers := TInternRecordBuffers.Create(Self);
   FRecordReceived := nil;
 
@@ -6185,15 +6182,6 @@ begin
 
   SetLength(Values, 0);
   SetLength(FieldNames, 0);
-end;
-
-procedure TMySQLDataSet.Resync(Mode: TResyncMode);
-begin
-  InResync := True;
-
-  inherited;
-
-  InResync := False;
 end;
 
 procedure TMySQLDataSet.Sort(const ASortDef: TIndexDef);
