@@ -96,6 +96,12 @@ begin
   end
   else if (Control is TToolbar) then
   begin
+    if (StyleServices.Enabled and (Control.Parent is TPanel)) then
+    begin
+      TToolbar(Control).ParentDoubleBuffered := False;
+      TToolbar(Control).DoubleBuffered := True;
+      TPanel(Control.Parent).DoubleBuffered := False;
+    end;
     if (CheckWin32Version(6)) then
       for I := 0 to TToolbar(Control).ButtonCount - 1 do
         if (not StyleServices.Enabled and (TToolbar(Control).Buttons[I].Style = tbsSeparator)) then

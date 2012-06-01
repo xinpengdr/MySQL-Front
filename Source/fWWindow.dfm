@@ -171,9 +171,7 @@ object WWindow: TWWindow
     Align = alTop
     AutoSize = True
     BevelOuter = bvNone
-    DoubleBuffered = False
     ParentBackground = False
-    ParentDoubleBuffered = False
     ParentShowHint = False
     ShowHint = True
     TabOrder = 0
@@ -183,9 +181,7 @@ object WWindow: TWWindow
       Width = 691
       Height = 56
       AutoSize = True
-      DoubleBuffered = True
       EdgeBorders = [ebTop, ebBottom]
-      ParentDoubleBuffered = False
       TabOrder = 0
       object tbVRefresh: TToolButton
         Left = 0

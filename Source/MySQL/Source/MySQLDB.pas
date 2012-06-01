@@ -6604,6 +6604,7 @@ end;
 function TMySQLTable.LoadNextRecordsEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
 begin
   SynchroThread.DataSet := Self;
+  SynchroThread.
   Connection.SyncReceivingData(SynchroThread);
   SynchroThread.DataSet := nil;
 
