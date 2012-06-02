@@ -1,4 +1,4 @@
-unit MySQL_DataSetReg;
+unit MySQLReg;
 
 interface {********************************************************************}
 

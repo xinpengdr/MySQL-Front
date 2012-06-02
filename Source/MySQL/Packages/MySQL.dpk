@@ -1,6 +1,5 @@
 package MySQL;
 
-{$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS OFF}
@@ -29,7 +28,8 @@ package MySQL;
 
 requires
   dcldb,
-  bdertl;
+  bdertl,
+  VCL_Extensions;
 
 contains
   MySQLConsts in '..\Source\MySQLConsts.pas',
@@ -38,7 +38,7 @@ contains
   HTTPTunnel in '..\Source\HTTPTunnel.pas',
   MySQLDB in '..\Source\MySQLDB.pas',
   MySQLDBGrid in '..\Source\MySQLDBGrid.pas',
-  MySQL_DataSetReg in '..\Source\MySQL_DataSetReg.pas',
+  MySQLReg in '..\Source\MySQLReg.pas',
   UInt64Lib in '..\Source\UInt64Lib.pas',
   CSVUtils in '..\Source\CSVUtils.pas';
 

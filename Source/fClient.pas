@@ -1494,8 +1494,6 @@ type
     procedure MonitorExecutedStmts(const Sender: TObject; const Text: PChar; const Len: Integer; const ATraceType: TMySQLMonitor.TTraceType); virtual;
     procedure SetAutoCommit(const AAutoCommit: Boolean); override;
     procedure SetCharset(const ACharset: string); override;
-    property InformationSchema: TCDatabase read FInformationSchema;
-    property PerformanceSchema: TCDatabase read FPerformanceSchema;
     property Prefetch: Integer read FPrefetch;
     property UseInformationSchema: Boolean read GetUseInformationSchema;
   public
@@ -1571,9 +1569,11 @@ type
     property Engines: TCEngines read FEngines;
     property FieldTypes: TCFieldTypes read FFieldTypes;
     property Hosts: TCHosts read GetHosts;
+    property InformationSchema: TCDatabase read FInformationSchema;
     property Log: string read GetLog;
     property LogActive: Boolean read GetLogActive;
     property LowerCaseTableNames: Byte read FLowerCaseTableNames;
+    property PerformanceSchema: TCDatabase read FPerformanceSchema;
     property Plugins: TCPlugins read FPlugins;
     property Processes: TCProcesses read FProcesses;
     property QueryBuilderResult: TCResultSet read GetQueryBuilderResult;

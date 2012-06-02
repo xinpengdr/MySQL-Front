@@ -1,6 +1,5 @@
 package TPerlRegEx_D2010;
 
-{$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS OFF}

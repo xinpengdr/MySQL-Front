@@ -612,11 +612,9 @@ type
     FLimit: Integer;
     FLimitedDataReceived: Boolean;
     FOffset: Integer;
-    function LoadNextRecordsEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
     procedure SetLimit(const ALimit: Integer);
     procedure SetOffset(const AOffset: Integer);
     procedure SetTableName(const ATableName: string);
-    function SortEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
   protected
     FFilterSQL: string;
     RequestedRecordCount: Integer;
@@ -2748,6 +2746,8 @@ begin
   begin
     S := '----> Connection Terminated <----';
     WriteMonitor(PChar(S), Length(S), ttInfo);
+    if (Assigned(SynchroThread.DataSet)) then
+      SynchroThread.DataSet := nil;
   end
   else
   begin
@@ -5292,8 +5292,9 @@ begin
           if ((NewIndex + 1 = InternRecordBuffers.Count) and not Filtered) then
             if (Assigned(Handle) and Assigned(RecordReceived)) then
               RecordReceived.WaitFor(NET_WAIT_TIMEOUT * 1000)
-            else if ((Self is TMySQLTable) and TMySQLTable(Self).LimitedDataReceived and TMySQLTable(Self).AutomaticLoadNextRecords) then
-              TMySQLTable(Self).LoadNextRecords();
+            else if (Assigned(SynchroThread) and not SynchroThread.IsRunning and (Self is TMySQLTable) and TMySQLTable(Self).LimitedDataReceived and TMySQLTable(Self).AutomaticLoadNextRecords) then
+              if (TMySQLTable(Self).LoadNextRecords()) then
+                RecordReceived.WaitFor(NET_WAIT_TIMEOUT * 1000);
 
           if (NewIndex >= InternRecordBuffers.Count - 1) then
             Result := grEOF
@@ -5638,6 +5639,7 @@ begin
 
   OldSortDef := TIndexDef.Create(nil, 'SortDef', SortDef.Fields, []);
 
+  InternRecordBuffers.Clear();
   if (Self is TMySQLTable) then
     Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(), InternalRefreshEvent)
   else
@@ -5651,6 +5653,15 @@ end;
 
 function TMySQLDataSet.InternalRefreshEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
 begin
+  Assert(not Assigned(FHandle));
+
+  SynchroThread := Connection.SynchroThread;
+  FHandle := SynchroThread.ResultHandle;
+
+  if (not Assigned(FRecordReceived)) then
+    FRecordReceived := TEvent.Create(nil, False, False, '');
+  RecordReceived.ResetEvent();
+
   SynchroThread.DataSet := Self;
   SynchroThread.RunAction(ssReceivingData);
 
@@ -6569,21 +6580,7 @@ end;
 
 function TMySQLTable.LoadNextRecords(const AllRecords: Boolean = False): Boolean;
 begin
-  Result := Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(AllRecords), LoadNextRecordsEvent);
-end;
-
-function TMySQLTable.LoadNextRecordsEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
-begin
-  if (not Assigned(FRecordReceived)) then
-    FRecordReceived := TEvent.Create(nil, False, False, '');
-  RecordReceived.ResetEvent();
-
-  SynchroThread.DataSet := Self;
-  SynchroThread.RunAction(ssReceivingData);
-
-  RecordReceived.WaitFor(INFINITE);
-
-  Result := False;
+  Result := Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(AllRecords), InternalRefreshEvent);
 end;
 
 procedure TMySQLTable.Open(const OnResult: TMySQLConnection.TResultEvent);
@@ -6619,17 +6616,12 @@ begin
       DoBeforeScroll();
 
       InternRecordBuffers.Clear();
-      if (Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(), SortEvent)) then
-        Resync([]);
+      if (Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(), InternalRefreshEvent)) then
+        First();
 
       DoAfterScroll();
     end;
   end;
-end;
-
-function TMySQLTable.SortEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
-begin
-  Result := LoadNextRecordsEvent(Connection, Data);
 end;
 
 {******************************************************************************}

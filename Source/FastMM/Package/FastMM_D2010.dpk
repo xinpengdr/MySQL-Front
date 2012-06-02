@@ -1,6 +1,5 @@
 package FastMM_D2010;
 
-{$R *.res}
 {$ALIGN 8}
 {$ASSERTIONS OFF}
 {$BOOLEVAL OFF}

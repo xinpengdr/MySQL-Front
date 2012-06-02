@@ -1,6 +1,5 @@
 package VCL_Extensions;
 
-{$R *.res}
 {$ALIGN 8}
 {$ASSERTIONS OFF}
 {$BOOLEVAL OFF}

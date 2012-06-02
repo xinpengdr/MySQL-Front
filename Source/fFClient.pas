@@ -904,6 +904,7 @@ type
     procedure FieldSetText(Sender: TField; const Text: string);
     procedure FImageShow(Sender: TObject);
     procedure FNavigatorEmptyExecute(Sender: TObject);
+    procedure FNavigatorInitialize(Sender: TObject);
     procedure FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
     procedure FormClientEvent(const ClientEvent: TCClient.TEvent);
     procedure FormAccountEvent(const ClassType: TClass);
@@ -4467,7 +4468,6 @@ end;
 
 procedure TFClient.CMChangePreferences(var Message: TMessage);
 var
-  Event: TCClient.TEvent;
   I: Integer;
 begin
   TBSideBar.Images := Preferences.SmallImages;
@@ -4638,14 +4638,8 @@ begin
 
   smEEmpty.Caption := Preferences.LoadStr(181);
 
-  for I := 0 to FNavigator.Items.Count - 1 do
-    case (FNavigator.Items[I].ImageIndex) of
-      iiHosts: FNavigator.Items[I].Text := Preferences.LoadStr(335);
-      iiProcesses: FNavigator.Items[I].Text := ReplaceStr(Preferences.LoadStr(24), '&', '');
-      iiStati: FNavigator.Items[I].Text := ReplaceStr(Preferences.LoadStr(23), '&', '');
-      iiUsers: FNavigator.Items[I].Text := ReplaceStr(Preferences.LoadStr(561), '&', '');
-      iiVariables: FNavigator.Items[I].Text := ReplaceStr(Preferences.LoadStr(22), '&', '');
-    end;
+  FNavigatorInitialize(nil);
+  ListViewInitialize(nil, FServerListView, Client);
 
   BINSERT.Font := FSQLEditorSynMemo.Font;
   BINSERT.Font.Style := [fsBold];
@@ -4657,70 +4651,6 @@ begin
   SaveDialog.EncodingLabel := Preferences.LoadStr(682) + ':';
 
   SQLBuilderSQLUpdated(nil);
-
-  if (PListView.Visible) then
-    case (SelectedImageIndex) of
-      iiServer:
-      begin
-        FServerListView.Column[0].Caption := ReplaceStr(Preferences.LoadStr(38), '&', '');
-        FServerListView.Column[1].Caption := Preferences.LoadStr(76);
-        FServerListView.Column[2].Caption := Preferences.LoadStr(67);
-        FServerListView.Column[3].Caption := Preferences.LoadStr(77);
-      end;
-      iiDatabase,
-      iiSystemDatabase:
-      begin
-        ActiveListView.Column[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
-        ActiveListView.Column[1].Caption := Preferences.LoadStr(69);
-        ActiveListView.Column[2].Caption := Preferences.LoadStr(66);
-        ActiveListView.Column[3].Caption := Preferences.LoadStr(67);
-        ActiveListView.Column[4].Caption := Preferences.LoadStr(68);
-        ActiveListView.Column[5].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
-        ActiveListView.Column[6].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
-      end;
-      iiBaseTable,
-      iiSystemView:
-      begin
-        ActiveListView.Column[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
-        ActiveListView.Column[1].Caption := Preferences.LoadStr(69);
-        ActiveListView.Column[2].Caption := Preferences.LoadStr(71);
-        ActiveListView.Column[3].Caption := Preferences.LoadStr(72);
-        ActiveListView.Column[4].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
-        if (ActiveListView.Columns.Count > 5) then
-          ActiveListView.Column[5].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
-      end;
-      iiHosts:
-        ActiveListView.Column[0].Caption := Preferences.LoadStr(335);
-      iiUsers:
-        ActiveListView.Column[0].Caption := Preferences.LoadStr(335);
-      iiStati,
-      iiVariables:
-      begin
-        ActiveListView.Column[0].Caption := Preferences.LoadStr(267);
-        ActiveListView.Column[1].Caption := Preferences.LoadStr(268);
-      end;
-      iiProcesses:
-      begin
-        ActiveListView.Column[0].Caption := Preferences.LoadStr(269);
-        ActiveListView.Column[1].Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
-        ActiveListView.Column[2].Caption := Preferences.LoadStr(271);
-        ActiveListView.Column[3].Caption := ReplaceStr(Preferences.LoadStr(38), '&', '');
-        ActiveListView.Column[4].Caption := Preferences.LoadStr(273);
-        ActiveListView.Column[5].Caption := Preferences.LoadStr(274);
-        ActiveListView.Column[6].Caption := ReplaceStr(Preferences.LoadStr(661), '&', '');
-        ActiveListView.Column[7].Caption := Preferences.LoadStr(276);
-      end;
-    end;
-
-  if (PListView.Visible) then
-    for I := 0 to ActiveListView.Items.Count - 1 do
-      case (ActiveListView.Items[I].ImageIndex) of
-        iiHosts: ActiveListView.Items[I].Caption := Preferences.LoadStr(335);
-        iiProcesses: ActiveListView.Items[I].Caption := ReplaceStr(Preferences.LoadStr(24), '&', '');
-        iiStati: ActiveListView.Items[I].Caption := ReplaceStr(Preferences.LoadStr(23), '&', '');
-        iiUsers: ActiveListView.Items[I].Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
-        iiVariables: ActiveListView.Items[I].Caption := ReplaceStr(Preferences.LoadStr(22), '&', '');
-      end;
 
   FLog.Font.Name := Preferences.LogFontName;
   FLog.Font.Style := Preferences.LogFontStyle;
@@ -7608,6 +7538,22 @@ begin
   if (Key = #3) then Key := #0; // Why is threre a Beep on <Ctrl+C> without this?
 end;
 
+procedure TFClient.FNavigatorInitialize(Sender: TObject);
+var
+  I: Integer;
+  Node: TTreeNode;
+begin
+  Node := FNavigator.Items.getFirstNode();
+  for I := 0 to Node.Count - 1 do
+    case (Node.Item[I].ImageIndex) of
+      iiHosts: Node.Text := Preferences.LoadStr(335);
+      iiProcesses: Node.Text := Preferences.LoadStr(24);
+      iiStati: Node.Text := Preferences.LoadStr(23);
+      iiUsers: Node.Text := ReplaceStr(Preferences.LoadStr(561), '&', '');
+      iiVariables: Node.Text := Preferences.LoadStr(22);
+    end;
+end;
+
 procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
 var
   Child: TTreeNode;
@@ -7621,21 +7567,38 @@ var
 begin
   FNavigator.Items.BeginUpdate();
 
-  if (not Assigned(ClientEvent)) then
+  if (ClientEvent.Sender is TCClient) then
   begin
     Node := FNavigator.Items.getFirstNode();
-    for I := 0 to Node.Count - 1 do
-      case (Node.Item[I].ImageIndex) of
-        iiHosts: Node.Text := Preferences.LoadStr(335);
-        iiProcesses: Node.Text := Preferences.LoadStr(24);
-        iiStati: Node.Text := Preferences.LoadStr(23);
-        iiUsers: Node.Text := ReplaceStr(Preferences.LoadStr(561), '&', '');
-        iiVariables: Node.Text := Preferences.LoadStr(22);
+
+    if (Node.Count = 0) then
+    begin
+      if (Assigned(Client.Hosts)) then
+      begin
+        Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(335));
+        Child.Data := Client.Hosts;
+        Child.ImageIndex := iiHosts;
       end;
-  end
-  else if (ClientEvent.Sender is TCClient) then
-  begin
-    Node := FNavigator.Items.getFirstNode();
+      if (Assigned(Client.Processes)) then
+      begin
+        Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(24));
+        Child.Data := Client.Processes;
+        Child.ImageIndex := iiProcesses
+      end;
+      Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(23));
+      Child.Data := Client.Stati;
+      Child.ImageIndex := iiStati;
+      if (Assigned(Client.Users)) then
+      begin
+        Child := FNavigator.Items.AddChild(Node, ReplaceStr(Preferences.LoadStr(561), '&', ''));
+        Child.Data := Client.Users;
+        Child.ImageIndex := iiUsers;
+      end;
+      Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(22));
+      Child.Data := Client.Variables;
+      Child.ImageIndex := iiVariables;
+      Node.Expand(False);
+    end;
 
     if (ClientEvent.EventType in [ceBuild, ceDroped]) then
     begin
@@ -7888,38 +7851,7 @@ begin
     end;
   end
   else
-  begin
-    Node := FNavigator.Items.getFirstNode();
-
-    if (Node.Count = 0) then
-    begin
-      if (Assigned(Client.Hosts)) then
-      begin
-        Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(335));
-        Child.Data := Client.Hosts;
-        Child.ImageIndex := iiHosts;
-      end;
-      if (Assigned(Client.Processes)) then
-      begin
-        Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(24));
-        Child.Data := Client.Processes;
-        Child.ImageIndex := iiProcesses
-      end;
-      Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(23));
-      Child.Data := Client.Stati;
-      Child.ImageIndex := iiStati;
-      if (Assigned(Client.Users)) then
-      begin
-        Child := FNavigator.Items.AddChild(Node, ReplaceStr(Preferences.LoadStr(561), '&', ''));
-        Child.Data := Client.Users;
-        Child.ImageIndex := iiUsers;
-      end;
-      Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(22));
-      Child.Data := Client.Variables;
-      Child.ImageIndex := iiVariables;
-      Node.Expand(False);
-    end;
-  end;
+    Node := nil;
 
   FNavigator.Items.EndUpdate();
 

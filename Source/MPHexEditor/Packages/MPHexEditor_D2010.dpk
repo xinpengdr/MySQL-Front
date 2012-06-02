@@ -1,7 +1,6 @@
 package MPHexEditor_D2010;
 
-{$R *.res}
-{$R '..\Source\MPHexEditorReg.dcr'}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
 {$BOOLEVAL OFF}
@@ -23,6 +22,7 @@ package MPHexEditor_D2010;
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
+{$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'mirkes.de HexEditor vcl'}
 {$IMPLICITBUILD OFF}
 

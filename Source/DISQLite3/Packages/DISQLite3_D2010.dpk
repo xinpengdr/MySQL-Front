@@ -1,6 +1,5 @@
 package DISQLite3_D2010;
 
-{$R *.res}
 {$R 'DISQLite3Reg.dcr'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}

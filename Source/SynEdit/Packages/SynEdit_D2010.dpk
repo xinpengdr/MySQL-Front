@@ -1,7 +1,6 @@
 package SynEdit_D2010;
 
-{$R *.res}
-{$R '..\Source\SynEditReg.dcr'}
+{$R 'SynEditReg.dcr'}
 {$ALIGN 8}
 {$ASSERTIONS OFF}
 {$BOOLEVAL OFF}
