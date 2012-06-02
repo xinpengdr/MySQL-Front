@@ -11118,6 +11118,7 @@ begin
     ltBuiltIn: LibraryName := '';
     ltDLL: LibraryName := Account.Connection.LibraryFilename;
     ltHTTP: LibraryName := Account.Connection.HTTPTunnelURI;
+    ltNamedPipe: LibraryName := Account.Connection.PipeName;
   end;
   Host := Account.Connection.Host;
   HTTPAgent := Preferences.InternetAgent;
@@ -11143,7 +11144,6 @@ procedure TCClient.FirstConnect(const AConnectionType: Integer; const ALibraryNa
 begin
   Close();
 
-  Asynchron := AAsynchron;
   Compression := ACompression;
   FDatabaseName := ADatabase;
   Host := AHost;
@@ -11162,6 +11162,7 @@ begin
   Username := AUser;
 
   Open();
+  Asynchron := AAsynchron;
 end;
 
 function TCClient.FlushHosts(): Boolean;

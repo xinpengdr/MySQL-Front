@@ -22,6 +22,18 @@ object DDatabases: TDDatabases
     241)
   PixelsPerInch = 106
   TextHeight = 13
+  object PSQLWait: TPanel
+    Left = 8
+    Top = 8
+    Width = 242
+    Height = 186
+    Cursor = crSQLWait
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    Caption = 'PSQLWait'
+    TabOrder = 0
+    Visible = False
+  end
   object GroupBox: TGroupBox_Ext
     Left = 8
     Top = 8
@@ -29,7 +41,7 @@ object DDatabases: TDDatabases
     Height = 186
     Anchors = [akLeft, akTop, akRight, akBottom]
     Caption = 'GroupBox'
-    TabOrder = 0
+    TabOrder = 1
     DesignSize = (
       242
       186)
@@ -63,7 +75,7 @@ object DDatabases: TDDatabases
     Caption = 'FBOk'
     Default = True
     ModalResult = 1
-    TabOrder = 1
+    TabOrder = 2
   end
   object FBCancel: TButton
     Left = 175
@@ -74,6 +86,6 @@ object DDatabases: TDDatabases
     Cancel = True
     Caption = 'FBCancel'
     ModalResult = 2
-    TabOrder = 2
+    TabOrder = 3
   end
 end

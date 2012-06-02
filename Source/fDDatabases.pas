@@ -7,11 +7,22 @@ uses
   Dialogs, StdCtrls, ComCtrls,
   ODBCAPI,
   Forms_Ext,
-  fBase, fClient, StdCtrls_Ext;
+  fBase, fClient, StdCtrls_Ext, Vcl.ExtCtrls;
 
 type
   TDDatabases = class (TForm_Ext)
+    FBCancel: TButton;
+    FBOk: TButton;
+    FDatabases: TListView;
+    GroupBox: TGroupBox_Ext;
+    PSQLWait: TPanel;
+    procedure FDatabasesDblClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormHide(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+  private
+    procedure Built();
+    procedure FormClientEvent(const Event: TCClient.TEvent);
   protected
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
@@ -19,14 +30,6 @@ type
     ODBCEnv: SQLHENV;
     SelectedDatabases: string;
     function Execute(): Boolean;
-  published
-    FBCancel: TButton;
-    FBOk: TButton;
-    FDatabases: TListView;
-    GroupBox: TGroupBox_Ext;
-    procedure FDatabasesDblClick(Sender: TObject);
-    procedure FormHide(Sender: TObject);
-    procedure FormShow(Sender: TObject);
   end;
 
 function DDatabases(): TDDatabases;
@@ -57,11 +60,55 @@ end;
 
 { TDDatabases *****************************************************************}
 
+procedure TDDatabases.Built();
+var
+  DatabaseNames: TCSVStrings;
+  I: Integer;
+  Item: TListItem;
+  J: Integer;
+begin
+  for I := 0 to Client.Databases.Count - 1 do
+  begin
+    if (not (Client.Databases[I] is TCSystemDatabase)) then
+    begin
+      Item := FDatabases.Items.Add();
+      Item.Caption := Client.Databases[I].Name;
+      Item.ImageIndex := iiDatabase;
+    end;
+  end;
+
+  SetLength(DatabaseNames, 0);
+  CSVSplitValues(SelectedDatabases, ',', '"', DatabaseNames);
+  for I := 0 to Length(DatabaseNames) - 1 do
+    for J := 0 to FDatabases.Items.Count - 1 do
+      FDatabases.Items[J].Selected := FDatabases.Items[J].Selected
+        or (Client.Databases.NameCmp(FDatabases.Items[J].Caption, DatabaseNames[I]) = 0);
+  SetLength(DatabaseNames, 0);
+
+  FDatabases.SortType := stText;
+
+  FDatabases.ItemFocused := nil;
+  for I := FDatabases.Items.Count - 1 downto 0 do
+    if (FDatabases.Items[I].Selected) then
+      FDatabases.ItemFocused := FDatabases.Items[I];
+  if (not Assigned(FDatabases.ItemFocused) and (FDatabases.Items.Count > 0)) then
+    FDatabases.ItemFocused := FDatabases.Items[0];
+
+  GroupBox.Visible := True;
+  PSQLWait.Visible := not GroupBox.Visible;
+  FBOk.Enabled := GroupBox.Visible;
+
+  ActiveControl := FDatabases;
+end;
+
 procedure TDDatabases.CMChangePreferences(var Message: TMessage);
 begin
   Preferences.SmallImages.GetIcon(iiServer, Icon);
 
   Caption := Preferences.LoadStr(264);
+
+  PSQLWait.Caption := Preferences.LoadStr(882);
+
   GroupBox.Caption := Preferences.LoadStr(265) + ':';
 
   FBOk.Caption := Preferences.LoadStr(29);
@@ -77,6 +124,12 @@ end;
 procedure TDDatabases.FDatabasesDblClick(Sender: TObject);
 begin
   FBOk.Click();
+end;
+
+procedure TDDatabases.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if (Event.EventType in [ceBuild]) then
+    Built();
 end;
 
 procedure TDDatabases.FormCreate(Sender: TObject);
@@ -99,6 +152,9 @@ procedure TDDatabases.FormHide(Sender: TObject);
 var
   I: Integer;
 begin
+  if (Assigned(Client)) then
+    Client.UnRegisterEventProc(FormClientEvent);
+
   if (ModalResult = mrOk) then
   begin
     SelectedDatabases := '';
@@ -133,15 +189,15 @@ end;
 procedure TDDatabases.FormShow(Sender: TObject);
 var
   cbServerName: SQLSMALLINT;
-  DatabaseNames: TCSVStrings;
   I: Integer;
   Item: TListItem;
-  J: Integer;
   List: TList;
   ServerName: array [0 .. STR_LEN - 1] of SQLTCHAR;
 begin
   if (Assigned(Client)) then
   begin
+    Client.RegisterEventProc(FormClientEvent);
+
     Left := Preferences.Databases.Left;
     Top := Preferences.Databases.Top;
     if ((Preferences.ODBC.Width >= Width) and (Preferences.ODBC.Height >= Height)) then
@@ -152,28 +208,12 @@ begin
 
     List := TList.Create();
     List.Add(Client.Databases);
-    if (not Client.Update(List)) then
-      for I := 0 to Client.Databases.Count - 1 do
-      begin
-        if (not (Client.Databases[I] is TCSystemDatabase)) then
-        begin
-          Item := FDatabases.Items.Add();
-          Item.Caption := Client.Databases[I].Name;
-          Item.ImageIndex := iiDatabase;
-        end;
-      end;
+    GroupBox.Visible := not Client.Update(List);
+    PSQLWait.Visible := not GroupBox.Visible;
     List.Free();
 
-    SetLength(DatabaseNames, 0);
-    CSVSplitValues(SelectedDatabases, ',', '"', DatabaseNames);
-
-    for I := 0 to Length(DatabaseNames) - 1 do
-      for J := 0 to FDatabases.Items.Count - 1 do
-        FDatabases.Items[J].Selected := FDatabases.Items[J].Selected
-          or (Assigned(Client) and (Client.LowerCaseTableNames = 0) and (FDatabases.Items[J].Caption = DatabaseNames[I])
-          or (not Assigned(Client) or (Client.LowerCaseTableNames > 0)) and (lstrcmpi(PChar(FDatabases.Items[J].Caption), PChar(DatabaseNames[I])) = 0));
-
-    SetLength(DatabaseNames, 0);
+    if (GroupBox.Visible) then
+      Built();
 
     FDatabases.MultiSelect := True;
   end
@@ -195,18 +235,22 @@ begin
       until (not SQL_SUCCEEDED(SQLDataSources(ODBCEnv, SQL_FETCH_NEXT, @ServerName, STR_LEN, @cbServerName, nil, 0, nil)));
 
     FDatabases.MultiSelect := False;
+
+    FDatabases.SortType := stText;
+
+    FDatabases.ItemFocused := nil;
+    for I := FDatabases.Items.Count - 1 downto 0 do
+      if (FDatabases.Items[I].Selected) then
+        FDatabases.ItemFocused := FDatabases.Items[I];
+    if (not Assigned(FDatabases.ItemFocused) and (FDatabases.Items.Count > 0)) then
+      FDatabases.ItemFocused := FDatabases.Items[0];
   end;
 
-  FDatabases.SortType := stText;
-
-  FDatabases.ItemFocused := nil;
-  for I := FDatabases.Items.Count - 1 downto 0 do
-    if (FDatabases.Items[I].Selected) then
-      FDatabases.ItemFocused := FDatabases.Items[I];
-  if (not Assigned(FDatabases.ItemFocused) and (FDatabases.Items.Count > 0)) then
-    FDatabases.ItemFocused := FDatabases.Items[0];
-
-  ActiveControl := FDatabases;
+  FBOk.Enabled := GroupBox.Visible;
+  if (not GroupBox.Visible) then
+    ActiveControl := FBCancel
+  else
+    ActiveControl := FDatabases;
 end;
 
 initialization

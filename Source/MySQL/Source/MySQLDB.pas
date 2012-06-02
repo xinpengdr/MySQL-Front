@@ -19,7 +19,7 @@ type
 
   TMySQLLibrary = class
   type
-    TLibraryType = (ltBuiltIn, ltDLL, ltHTTP);
+    TLibraryType = (ltBuiltIn, ltDLL, ltHTTP, ltNamedPipe);
   private
     FHandle: HModule;
     FLibraryType: TLibraryType;
@@ -244,6 +244,7 @@ type
     FUsername: string;
     local_infile: Plocal_infile;
     function GetCommandText(): string;
+    function GetCompression(): Boolean;
     function GetDateTime(): TDateTime;
     function GetErrorCode: Integer;
     function GetErrorMessage(): string;
@@ -365,7 +366,7 @@ type
     property AfterExecuteSQL: TNotifyEvent read FAfterExecuteSQL write FAfterExecuteSQL;
     property BeforeExecuteSQL: TNotifyEvent read FBeforeExecuteSQL write FBeforeExecuteSQL;
     property Charset: string read FCharset write SetCharset;
-    property Compression: Boolean read FCompression write SetCompression default True;
+    property Compression: Boolean read GetCompression write SetCompression default True;
     property DatabaseName: string read FDatabaseName write SetDatabaseName;
     property Host: string read FHost write SetHost;
     property InsertId: my_ulonglong read GetInsertId;
@@ -558,6 +559,7 @@ type
     procedure SetBookmarkFlag(Buffer: TRecordBuffer; Value: TBookmarkFlag); override;
     procedure SetFieldData(Field: TField; Buffer: Pointer); override;
     procedure SetFieldData(const Field: TField; const Buffer: Pointer; const Size: Integer); overload; virtual;
+    procedure SetFieldsSortTag(); virtual;
     procedure SetFiltered(Value: Boolean); override;
     procedure SetFilterText(const Value: string); override;
     procedure SetRecNo(Value: Integer); override;
@@ -1955,6 +1957,11 @@ begin
   end
 end;
 
+function TMySQLConnection.GetCompression(): Boolean;
+begin
+  Result := ((LibraryType = ltHTTP) or (lstrcmpi(PChar(Host), LOCAL_HOST) <> 0)) and FCompression;
+end;
+
 function TMySQLConnection.GetDateTime(): TDateTime;
 begin
   Result := Now() + TimeDiff;
@@ -2336,10 +2343,19 @@ begin
   if (Compression) then
     ClientFlag := ClientFlag or CLIENT_COMPRESS;
 
-  SynchroThread.Success := Assigned(Lib.mysql_real_connect(SynchroThread.LibHandle,
-    my_char(LibEncode(Host)),
-    my_char(LibEncode(Username)), my_char(LibEncode(Password)),
-    my_char(LibEncode(DatabaseName)), Port, '', ClientFlag));
+  if (LibraryType <> ltNamedPipe) then
+    SynchroThread.Success := Assigned(Lib.mysql_real_connect(SynchroThread.LibHandle,
+      my_char(LibEncode(Host)),
+      my_char(LibEncode(Username)), my_char(LibEncode(Password)),
+      my_char(LibEncode(DatabaseName)), Port, '', ClientFlag))
+  else
+  begin
+    Lib.mysql_options(SynchroThread.LibHandle, enum_mysql_option(MYSQL_OPT_NAMED_PIPE), nil);
+    SynchroThread.Success := Assigned(Lib.mysql_real_connect(SynchroThread.LibHandle,
+      my_char(LibEncode(LOCAL_HOST_NAMEDPIPE)),
+      my_char(LibEncode(Username)), my_char(LibEncode(Password)),
+      my_char(LibEncode(DatabaseName)), Port, '', ClientFlag));
+  end;
 
   if (SynchroThread.Terminated and Assigned(SynchroThread.LibHandle)) then
   begin
@@ -5536,27 +5552,12 @@ begin
 end;
 
 function TMySQLDataSet.InternalOpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
-var
-  Field: TField;
-  FieldName: string;
-  Pos: Integer;
 begin
   inherited;
 
   SynchroThread.DataSet := Self;
 
-  for Field in Fields do
-    Field.Tag := Field.Tag and not ftSortedField;
-  Pos := 1;
-  repeat
-    FieldName := ExtractFieldName(SortDef.Fields, Pos);
-    if (FieldName <> '') then
-    begin
-      Field := FindField(FieldName);
-      if (Assigned(Field)) then
-        Field.Tag := Field.Tag or ftSortedField;
-    end;
-  until (FieldName = '');
+  SetFieldsSortTag();
 
   if (CachedUpdates) then
   begin
@@ -5632,28 +5633,18 @@ begin
 end;
 
 procedure TMySQLDataSet.InternalRefresh();
-var
-  OldSortDef: TIndexDef;
 begin
-  SetState(dsInactive);
-
-  OldSortDef := TIndexDef.Create(nil, 'SortDef', SortDef.Fields, []);
-
   InternRecordBuffers.Clear();
   if (Self is TMySQLTable) then
     Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(), InternalRefreshEvent)
   else
     Connection.ExecuteSQL(CommandText, InternalRefreshEvent);
-
-  SortDef.Assign(OldSortDef);
-  OldSortDef.Free();
-
-  SetState(dsBrowse);
 end;
 
 function TMySQLDataSet.InternalRefreshEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
 begin
   Assert(not Assigned(FHandle));
+
 
   SynchroThread := Connection.SynchroThread;
   FHandle := SynchroThread.ResultHandle;
@@ -5806,6 +5797,36 @@ begin
   else if (PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData <> PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData) then
     FreeMem(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData);
   PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData := NewData;
+end;
+
+procedure TMySQLDataSet.SetFieldsSortTag();
+var
+  Field: TField;
+  FieldName: string;
+  Pos: Integer;
+begin
+  for Field in Fields do
+    Field.Tag := Field.Tag and not ftSortedField;
+  Pos := 1;
+  repeat
+    FieldName := ExtractFieldName(SortDef.Fields, Pos);
+    if (FieldName <> '') then
+    begin
+      Field := FindField(FieldName);
+      if (Assigned(Field)) then
+        Field.Tag := Field.Tag or ftAscSortedField;
+    end;
+  until (FieldName = '');
+  Pos := 1;
+  repeat
+    FieldName := ExtractFieldName(SortDef.DescFields, Pos);
+    if (FieldName <> '') then
+    begin
+      Field := FindField(FieldName);
+      if (Assigned(Field)) then
+        Field.Tag := (Field.Tag and not ftAscSortedField) or ftDescSortedField;
+    end;
+  until (FieldName = '');
 end;
 
 procedure TMySQLDataSet.SetFiltered(Value: Boolean);
@@ -6074,13 +6095,8 @@ end;
 
 function TMySQLDataSet.GetFieldData(Field: TField; Buffer: Pointer): Boolean;
 begin
-try
   Result := Assigned(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer)
     and GetFieldData(Field, Buffer, PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData);
-except
-  Result := Assigned(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer)
-    and GetFieldData(Field, Buffer, PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData);
-end;
 end;
 
 function TMySQLDataSet.GetMaxTextWidth(const Field: TField; const TextWidth: TTextWidth): Integer;
@@ -6612,14 +6628,16 @@ begin
     begin
       FSortDef.Assign(ASortDef);
 
+
       CheckBrowseMode();
-      DoBeforeScroll();
 
+      FOffset := 0;
       InternRecordBuffers.Clear();
-      if (Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(), InternalRefreshEvent)) then
-        First();
+      Connection.ExecuteSQL(SQLSelect(), InternalRefreshEvent);
 
-      DoAfterScroll();
+      SetFieldsSortTag();
+
+      First();
     end;
   end;
 end;

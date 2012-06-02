@@ -117,6 +117,7 @@ type
     LibraryType: TMySQLLibrary.TLibraryType;
     MultiStatements: Boolean;
     Password: string;
+    PipeName: string;
     Port: Integer;
     Prefetch: Integer;
     SavePassword: Boolean;
@@ -260,6 +261,7 @@ begin
   case (Value) of
     1: Result := ltDLL;
     2: Result := ltHTTP;
+    3: Result := ltNamedPipe;
     else Result := ltBuiltIn;
   end;
 end;
@@ -269,6 +271,7 @@ begin
   case (LibraryType) of
     ltDLL: Result := 1;
     ltHTTP: Result := 2;
+    ltNamedPipe: Result := 3;
     else Result := 0; // ltBuiltIn
   end;
 end;
@@ -766,6 +769,7 @@ end;
 
 procedure TAConnection.Assign(const Source: TAConnection);
 begin
+  Asynchron := Source.Asynchron;
   Charset := Source.Charset;
   Compression := Source.Compression;
   Database := Source.Database;
@@ -774,8 +778,8 @@ begin
   LibraryFilename := Source.LibraryFilename;
   LibraryType := Source.LibraryType;
   MultiStatements := Source.MultiStatements;
-  Asynchron := Source.Asynchron;
   Password := Source.Password;
+  PipeName := Source.PipeName;
   Port := Source.Port;
   Prefetch := Source.Prefetch;
   SavePassword := Source.SavePassword;
@@ -790,6 +794,7 @@ begin
   FAccount := AAccount;
   FXML := nil;
 
+  Asynchron := True;
   Charset := '';
   Compression := True;
   Database := '';
@@ -798,8 +803,8 @@ begin
   LibraryFilename := 'libMySQL.dll';
   LibraryType := ltBuiltIn;
   MultiStatements := True;
-  Asynchron := True;
   Password := '';
+  PipeName := MYSQL_NAMEDPIPE;
   Port := MYSQL_PORT;
   Prefetch := 1;
   SavePassword := False;
@@ -819,6 +824,7 @@ procedure TAConnection.LoadFromXML();
 begin
   if (Assigned(XML)) then
   begin
+    if (Assigned(XMLNode(XML, 'asynchron'))) then TryStrToBool(XMLNode(XML, 'asynchron').Text, Asynchron);
     if (Assigned(XMLNode(XML, 'character_set'))) then Charset := XMLNode(XML, 'character_set').Text;
     if (Assigned(XMLNode(XML, 'compression'))) then TryStrToBool(XMLNode(XML, 'compression').Text, Compression);
     if (Assigned(XMLNode(XML, 'database'))) then Database := XMLNode(XML, 'database').Text;
@@ -831,8 +837,8 @@ begin
     if (Assigned(XMLNode(XML, 'library/filename'))) then LibraryFilename := XMLNode(XML, 'library/filename').Text;
     if (Assigned(XMLNode(XML, 'library/tunnel_url'))) then HTTPTunnelURI := XMLNode(XML, 'library/tunnel_url').Text;
     if (Assigned(XMLNode(XML, 'multistatements'))) then TryStrToBool(XMLNode(XML, 'multistatements').Text, MultiStatements);
-    if (Assigned(XMLNode(XML, 'asynchron'))) then TryStrToBool(XMLNode(XML, 'asynchron').Text, Asynchron);
     if (Assigned(XMLNode(XML, 'password')) and (XMLNode(XML, 'password').Attributes['encode'] = 'none')) then Password := XMLNode(XML, 'password').Text;
+    if (Assigned(XMLNode(XML, 'library/pipename'))) then PipeName := XMLNode(XML, 'library/pipename').Text;
     if (Assigned(XMLNode(XML, 'port'))) then TryStrToInt(XMLNode(XML, 'port').Text, Port);
     if (Assigned(XMLNode(XML, 'prefetch'))) then TryStrToInt(XMLNode(XML, 'prefetch').Text, Prefetch);
     if (Assigned(XMLNode(XML, 'savepassword'))) then TryStrToBool(XMLNode(XML, 'savepassword').Text, SavePassword);
@@ -844,6 +850,10 @@ end;
 
 procedure TAConnection.SaveToXML();
 begin
+  if (Asynchron) then
+    XML.ChildNodes.Delete('asynchron')
+  else
+    XMLNode(XML, 'asynchron').Text := BoolToStr(Asynchron, True);
   XMLNode(XML, 'character_set').Text := Charset;
   XMLNode(XML, 'compression').Text := BoolToStr(Compression, True);
   XMLNode(XML, 'database').Text := Database;
@@ -860,12 +870,9 @@ begin
     XML.ChildNodes.Delete('multistatements')
   else
     XMLNode(XML, 'multistatements').Text := BoolToStr(MultiStatements, True);
-  if (Asynchron) then
-    XML.ChildNodes.Delete('asynchron')
-  else
-    XMLNode(XML, 'asynchron').Text := BoolToStr(Asynchron, True);
   XMLNode(XML, 'password').Attributes['encode'] := 'none';
   XMLNode(XML, 'password').Text := Password;
+  XMLNode(XML, 'library/pipename').Text := PipeName;
   XMLNode(XML, 'port').Text := IntToStr(Port);
   if (Prefetch = 1) then
     XML.ChildNodes.Delete('prefetch')

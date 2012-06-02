@@ -1122,9 +1122,9 @@ begin
       if (Columns[I].Visible and BOOL(SendMessage(FHeader, HDM_GETITEM, Index, LParam(@HDItem)))) then
       begin
         if (Columns[I].Field.Tag and ftAscSortedField <> 0) then
-          HDItem.fmt := HDItem.fmt and not HDF_SORTUP or HDF_SORTDOWN
-        else if (Columns[I].Field.Tag and ftAscSortedField <> 0) then
-          HDItem.fmt := HDItem.fmt and not HDF_SORTDOWN or HDF_SORTUP
+          HDItem.fmt := HDItem.fmt and not HDF_SORTUP or HDF_SORTUP
+        else if (Columns[I].Field.Tag and ftDescSortedField <> 0) then
+          HDItem.fmt := HDItem.fmt and not HDF_SORTDOWN or HDF_SORTDOWN
         else
           HDItem.fmt := HDItem.fmt and not HDF_SORTUP and not HDF_SORTDOWN;
         SendMessage(FHeader, HDM_SETITEM, Index, LPARAM(@HDItem));

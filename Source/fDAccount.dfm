@@ -52,6 +52,10 @@ object DAccount: TDAccount
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
       OnShow = TSBasicsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GBasics: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -113,6 +117,10 @@ object DAccount: TDAccount
     object TSConnection: TTabSheet
       Caption = 'TSConnection'
       ImageIndex = 1
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GServer: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -242,6 +250,10 @@ object DAccount: TDAccount
     object TSLogin: TTabSheet
       Caption = 'TSLogin'
       ImageIndex = 2
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GLogin: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -315,6 +327,10 @@ object DAccount: TDAccount
     end
     object TSStartup: TTabSheet
       Caption = 'TSStartup'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         305
         231)
@@ -348,6 +364,10 @@ object DAccount: TDAccount
     object TSDataBrowser: TTabSheet
       Caption = 'TSDataBrowser'
       ImageIndex = 4
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GBrowser: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -406,6 +426,10 @@ object DAccount: TDAccount
     end
     object TSDebug: TTabSheet
       Caption = 'TSDebug'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GDebug: TGroupBox_Ext
         Left = 4
         Top = 4
