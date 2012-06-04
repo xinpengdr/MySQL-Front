@@ -4195,28 +4195,22 @@ begin
           CreateField := Pos('.', Field.Origin) = 0;
           if (CreateField) then
           begin
-            if ((Connection.Lib.Version < 40100) and (Connection.Lib.Field(LibField).name_length > 0)) then
-              Field.Origin := '"' + Connection.LibDecode(Connection.Lib.Field(LibField).name) + '"'
-            else if ((Connection.Lib.Version >= 40100) and (Connection.Lib.Field(LibField).org_name_length > 0)) then
+            if ((Connection.Lib.Version >= 40100) and (Connection.Lib.Field(LibField).org_name_length > 0)) then
               Field.Origin := '"' + Connection.LibDecode(Connection.Lib.Field(LibField).org_name) + '"'
+            else if (Connection.Lib.Field(LibField).name_length > 0) then
+              Field.Origin := '"' + Connection.LibDecode(Connection.Lib.Field(LibField).name) + '"'
             else
               Field.Origin := '';
-            if (Field.Origin = '') then
-              Field.ReadOnly := True
-            else
-            begin
-              Field.ReadOnly := False;
-              if ((Connection.Lib.Version < 40000) and (Connection.Lib.Field(LibField).table_length > 0)) then
-                Field.Origin := '"' + Connection.LibDecode(Connection.Lib.Field(LibField).table) + '".' + Field.Origin
-              else if ((Connection.Lib.Version >= 40000) and (Connection.Lib.Field(LibField).org_table_length > 0)) then
+            if (Field.Origin <> '') then
+              if ((Connection.Lib.Version >= 40000) and (Connection.Lib.Field(LibField).org_table_length > 0)) then
               begin
                 Field.Origin := '"' + Connection.LibDecode(Connection.Lib.Field(LibField).org_table) + '".' + Field.Origin;
                 if ((Connection.Lib.Version >= 40101) and (Connection.Lib.Field(LibField).db_length > 0)) then
                   Field.Origin := '"' + Connection.LibDecode(Connection.Lib.Field(LibField).db) + '".' + Field.Origin;
               end
-              else
-                Field.ReadOnly := True;
-            end;
+              else if (Connection.Lib.Field(LibField).table_length > 0) then
+                Field.Origin := '"' + Connection.LibDecode(Connection.Lib.Field(LibField).table) + '".' + Field.Origin;
+            Field.ReadOnly := Field.Origin = '';
             if ((Connection.Lib.Version >= 40101) and (Connection.Lib.Field(LibField).db_length > 0)) then
               if (DName = '') then
                 DName := Connection.LibDecode(Connection.Lib.Field(LibField).db)

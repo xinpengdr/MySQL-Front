@@ -551,6 +551,7 @@ type
     function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; override;
     procedure Invalidate(); override;
     function Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean; virtual;
+    procedure PushBuildEvents(); virtual;
     property DataSet: TCTableDataSet read GetDataSet;
     property Fields: TCTableFields read GetFields;
     property Index: Integer read GetIndex;
@@ -668,6 +669,7 @@ type
     function Open(const Filter, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean; override;
     function Optimize(): Boolean; virtual;
     function PartitionByName(const PartitionName: string): TCPartition; virtual;
+    procedure PushBuildEvents(); override;
     function Repair(): Boolean; virtual;
     property AutoIncrement: LargeInt read FAutoIncrement write FAutoIncrement;
     property AutoIncrementField: TCBaseTableField read GetAutoIncrementField;
@@ -1014,7 +1016,7 @@ type
     function FunctionByName(const FunctionName: string): TCFunction; virtual;
     function GetSourceEx(const DropBeforeCreate: Boolean = False): string; virtual;
     function OptimizeTables(const TableNames: array of string): Boolean; virtual;
-    procedure PushBuildEvents(const Sender: TObject); virtual;
+    procedure PushBuildEvents(); virtual;
     function ProcedureByName(const ProcedureName: string): TCProcedure;
     function RenameTable(const Table: TCTable; const NewTableName: string): Boolean; virtual;
     function SQLUse(): string; virtual;
@@ -3725,6 +3727,11 @@ begin
   FSourceParsed := False;
 end;
 
+function TCTable.GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string;
+begin
+  raise EAbstractError.Create(SAbstractError);
+end;
+
 function TCTable.Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean;
 var
   CacheSize: Int64;
@@ -3780,9 +3787,9 @@ begin
   Result := False;
 end;
 
-function TCTable.GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string;
+procedure TCTable.PushBuildEvents();
 begin
-  raise EAbstractError.Create(SAbstractError);
+  Client.ExecuteEvent(ceBuild, Self, Tables);
 end;
 
 procedure TCTable.SetName(const AName: string);
@@ -4804,6 +4811,16 @@ begin
       for J := 0 to FIndices.Index[0].Columns.Count - 1 do
         FIndices.Index[0].Columns.Column[J].Field.FInPrimaryIndex := True;
   end;
+end;
+
+procedure TCBaseTable.PushBuildEvents();
+begin
+  Client.ExecuteEvent(ceBuild, Self, Indices);
+  inherited;
+  if (Assigned(ForeignKeys)) then
+    Client.ExecuteEvent(ceBuild, Self, ForeignKeys);
+  if (Assigned(Database.Triggers)) then
+    Client.ExecuteEvent(ceBuild, Self, Database.Triggers);
 end;
 
 function TCBaseTable.Repair(): Boolean;
@@ -7227,7 +7244,7 @@ begin
       Result := TCProcedure(Routines[I]);
 end;
 
-procedure TCDatabase.PushBuildEvents(const Sender: TObject);
+procedure TCDatabase.PushBuildEvents();
 begin
   Client.ExecuteEvent(ceBuild, Self, Tables);
   if (Assigned(Routines)) then
@@ -8648,38 +8665,23 @@ begin
   if ((TList(Self).Count = 0) and (Client.ServerVersion < 40102)) then
   begin
     if ((Client.ServerVersion >= 32334) and Assigned(Client.VariableByName('have_bdb')) and Client.VariableByName('have_bdb').AsBoolean) then
-    begin
-      Add(TCEngine.Create(Self));
-      Engine[TList(Self).Count - 1].FName := 'BDB';
-    end;
+      Add(TCEngine.Create(Self, 'BDB'));
 
-    Add(TCEngine.Create(Self));
-    Engine[TList(Self).Count - 1].FName := 'HEAP';
+    Add(TCEngine.Create(Self, 'HEAP'));
 
     if (Assigned(Client.VariableByName('have_innodb')) and Client.VariableByName('have_innodb').AsBoolean) then
-    begin
-      Add(TCEngine.Create(Self));
-      Engine[TList(Self).Count - 1].FName := 'InnoDB';
-    end;
+      Add(TCEngine.Create(Self, 'InnoDB'));
 
     if (Assigned(Client.VariableByName('have_isam')) and Client.VariableByName('have_isam').AsBoolean) then
-    begin
-      Add(TCEngine.Create(Self));
-      Engine[TList(Self).Count - 1].FName := 'ISAM';
-    end;
+      Add(TCEngine.Create(Self, 'ISAM'));
 
     if (Client.ServerVersion >= 32325) then
-    begin
-      Add(TCEngine.Create(Self));
-      Engine[TList(Self).Count - 1].FName := 'MERGE';
-    end;
+      Add(TCEngine.Create(Self, 'MERGE'));
 
-    Add(TCEngine.Create(Self));
-    Engine[TList(Self).Count - 1].FName := 'MyISAM';
-    Engine[TList(Self).Count - 1].FDefault := not Assigned(Client.VariableByName('table_type'));
+    Add(TCEngine.Create(Self, 'MyISAM'));
+    Engine[Count - 1].FDefault := not Assigned(Client.VariableByName('table_type'));
 
-    Add(TCEngine.Create(Self));
-    Engine[TList(Self).Count - 1].FName := 'MRG_MyISAM';
+    Add(TCEngine.Create(Self, 'MRG_MyISAM'));
 
     if (Assigned(Client.VariableByName('table_type'))) then
       for I := 0 to TList(Self).Count - 1 do

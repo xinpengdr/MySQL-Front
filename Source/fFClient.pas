@@ -1058,6 +1058,22 @@ const
   tiCodeCompletion = 3;
 
 const
+  giDatabase = 1;
+  giSystemTools = 2;
+  giTable = 3;
+  giRoutine = 4;
+  giEvent = 5;
+  giIndex = 6;
+  giField = 7;
+  giForeignKey = 8;
+  giTrigger = 9;
+  giHost = 10;
+  giProcess = 11;
+  giStatus = 12;
+  giUser = 13;
+  giVariable = 14;
+
+const
   PrefetchObjectCount = 50;
 
 const
@@ -7483,6 +7499,8 @@ var
 begin
   if (Node.HasChildren) then
   begin
+    Database := nil;
+    Table := nil;
     case (Node.ImageIndex) of
       iiDatabase,
       iiSystemDatabase:
@@ -7501,7 +7519,15 @@ begin
     end;
 
     if (not AllowExpansion and (Sender = FNavigator)) then
+      FNavigatorNodeToExpand := Node
+    else if (AllowExpansion and Node.HasChildren and (Node.Count = 0)) then
+    begin
       FNavigatorNodeToExpand := Node;
+      if (Assigned(Table)) then
+        Table.PushBuildEvents()
+      else if (Assigned(Database)) then
+        Database.PushBuildEvents();
+    end;
   end;
 end;
 
@@ -7540,9 +7566,219 @@ end;
 
 procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
 
-  function Compare(const ImageIndex: Integer; const Item1, Item2: TTreeNode): Integer;
+  function GroupIDByImageIndex(const ImageIndex: Integer): Integer;
   begin
-//    ListViewCompare(nil, Item1, Item2, LPARAM(@ListViewSortData[Kind]), Result);
+    case (ImageIndex) of
+      iiDatabase,
+      iiSystemDatabase:
+        Result := giDatabase;
+      iiTable,
+      iiBaseTable,
+      iiSystemView,
+      iiView:
+        Result := giTable;
+      iiProcedure,
+      iiFunction:
+        Result := giRoutine;
+      iiEvent:
+        Result := giEvent;
+      iiIndex:
+        Result := giIndex;
+      iiField,
+      iiSystemViewField,
+      iiViewField:
+        Result := giField;
+      iiForeignKey:
+        Result := giForeignKey;
+      iiTrigger:
+        Result := giTrigger;
+      iiHosts,
+      iiProcesses,
+      iiStati,
+      iiUsers,
+      iiVariables:
+        Result := giSystemTools;
+      iiHost:
+        Result := giHost;
+      iiProcess:
+        Result := giProcess;
+      iiStatus:
+        Result := giStatus;
+      iiUser:
+        Result := giUser;
+      iiVariable:
+        Result := giVariable;
+      else
+        Result := 0;
+    end;
+  end;
+
+  function Compare(const ImageIndex: Integer; const Item1, Item2: TTreeNode): Integer;
+  const
+    ImageIndexSort = Chr(iiHosts) + Chr(iiProcesses) + Chr(iiStati) + Chr(iiUsers) + Chr(iiVariables);
+  begin
+    if (GroupIDByImageIndex(Item1.ImageIndex) <> GroupIDByImageIndex(Item2.ImageIndex)) then
+      Result := Sign(GroupIDByImageIndex(Item1.ImageIndex) - GroupIDByImageIndex(Item2.ImageIndex))
+    else if (GroupIDByImageIndex(Item1.ImageIndex) = giSystemTools) then
+      Result := Sign(Pos(Chr(Item1.ImageIndex), ImageIndexSort) - Pos(Chr(Item2.ImageIndex), ImageIndexSort))
+    else if (TObject(Item1.Data) is TCItem) then
+      Result := -TCItem(Item1.Data).CItems.NameCmp(Item1.Text, Item2.Text)
+    else
+      raise ERangeError.Create(SRangeError);
+  end;
+
+  function ImageIndexByData(const Data: TObject): Integer;
+  begin
+    if (not Assigned(Data)) then
+      Result := 0
+    else if (TObject(Data) is TCSystemDatabase) then
+      Result := iiSystemDatabase
+    else if (TObject(Data) is TCDatabase) then
+      Result := iiDatabase
+    else if (TObject(Data) is TCSystemView) then
+      Result := iiSystemView
+    else if (TObject(Data) is TCBaseTable) then
+      Result := iiBaseTable
+    else if (TObject(Data) is TCView) then
+      Result := iiView
+    else if (TObject(Data) is TCProcedure) then
+      Result := iiProcedure
+    else if (TObject(Data) is TCFunction) then
+      Result := iiFunction
+    else if (TObject(Data) is TCEvent) then
+      Result := iiEvent
+    else if (TObject(Data) is TCIndex) then
+      Result := iiIndex
+    else if (TObject(Data) is TCTableField) then
+      if (TCTableField(Data).Table is TCSystemView) then
+        Result := iiSystemViewField
+      else if (TCTableField(Data).Table is TCBaseTable) then
+        Result := iiField
+      else
+        Result := iiViewField
+    else if (TObject(Data) is TCForeignKey) then
+      Result := iiForeignKey
+    else if (TObject(Data) is TCTrigger) then
+      Result := iiTrigger
+    else if (TObject(Data) is TCHosts) then
+      Result := iiHosts
+    else if (TObject(Data) is TCProcesses) then
+      Result := iiProcesses
+    else if (TObject(Data) is TCStati) then
+      Result := iiStati
+    else if (TObject(Data) is TCUsers) then
+      Result := iiUsers
+    else if (TObject(Data) is TCVariables) then
+      Result := iiVariables
+    else
+      raise ERangeError.Create(SRangeError);
+  end;
+
+  procedure InsertChild(const Node: TTreeNode; const Data: TObject);
+  var
+    Added: Boolean;
+    Child: TTreeNode;
+    Index: Integer;
+    Left: Integer;
+    Mid: Integer;
+    Right: Integer;
+    Text: string;
+  begin
+    Index := 0;
+    while ((Index < Node.Count) and (Node.Item[Index].Data <> Data)) do
+      Inc(Index);
+
+    if ((Index = Node.Count) and (Node.Count > 0)) then
+    begin
+      Child := TTreeNode.Create(Node.Owner);
+      Child.Data := Data;
+      Child.ImageIndex := ImageIndexByData(Data);
+
+      Left := 0;
+      Right := Node.Count - 1;
+      while (Left <= Right) do
+      begin
+        Mid := (Right - Left) div 2 + Left;
+        case (Compare(Node.ImageIndex, Node.Item[Mid], Child)) of
+          -1: begin Left := Mid + 1; Index := Mid + 1; end;
+          0: raise ERangeError.Create(SRangeError);
+          1: begin Right := Mid - 1; Index := Mid; end;
+        end;
+      end;
+
+      Child.Free();
+    end;
+
+    if (TObject(Data) is TCItem) then
+      Text := TCItem(Data).Name
+    else if (TObject(Data) is TCHosts) then
+      Text := Preferences.LoadStr(335)
+    else if (TObject(Data) is TCProcesses) then
+      Text := Preferences.LoadStr(24)
+    else if (TObject(Data) is TCStati) then
+      Text := Preferences.LoadStr(23)
+    else if (TObject(Data) is TCUsers) then
+      Text := ReplaceStr(Preferences.LoadStr(561), '&', '')
+    else if (TObject(Data) is TCVariables) then
+      Text := Preferences.LoadStr(22)
+    else
+      raise ERangeError.Create(SRangeError);
+
+    if (Index = Node.Count) then
+    begin
+      Child := FNavigator.Items.AddChild(Node, Text);
+      Added := True;
+    end
+    else if (Node.Item[Index].Data <> Data) then
+    begin
+      Child := FNavigator.Items.Insert(Node.Item[Index], Text);
+      Added := True;
+    end
+    else
+    begin
+      Child := Node.Item[Index];
+      Added := False;
+    end;
+    Child.Data := Data;
+    Child.ImageIndex := ImageIndexByData(Data);
+    if (Added and (Child.ImageIndex in [iiDatabase, iiSystemDatabase, iiSystemView, iiBaseTable, iiView])) then
+      Child.HasChildren := True;
+  end;
+
+  procedure UpdateGroup(const Node: TTreeNode; const CItems: TCItems);
+  var
+    I: Integer;
+  begin
+    case (ClientEvent.EventType) of
+      ceBuild:
+        begin
+          for I := Node.Count - 1 downto 0 do
+            if ((GroupIDByImageIndex(ImageIndexByData(ClientEvent.CItem)) = GroupIDByImageIndex(Node.Item[I].ImageIndex)) and (CItems.IndexOf(Node.Item[I].Data) < 0)) then
+            begin
+              if (Node.Item[I] = FNavigatorNodeToExpand) then
+                FNavigatorNodeToExpand := nil;
+              Node.Item[I].Delete();
+            end;
+
+          for I := 0 to CItems.Count - 1 do
+            if (not (CItems is TCTriggers)) then
+              InsertChild(Node, CItems[I]);
+        end;
+      ceCreated:
+        InsertChild(Node, ClientEvent.CItem);
+      ceAltered:
+        for I := 0 to Node.Count - 1 do
+          if (Node.Item[I].Data = ClientEvent.CItem) then
+            Node.Text := ClientEvent.CItem.Name;
+      ceDroped:
+        for I := Node.Count - 1 downto 0 do
+          if (Node.Item[I].Data = ClientEvent.CItem) then
+          begin
+            if (Node.Item[I] = FNavigatorNodeToExpand) then
+              FNavigatorNodeToExpand := nil;
+            Node.Item[I].Delete();
+          end;
+    end;
   end;
 
 var
@@ -7552,7 +7788,6 @@ var
   ExpandingEvent: TTVExpandingEvent;
   I: Integer;
   Node: TTreeNode;
-  Sibling: TTreeNode;
   Table: TCTable;
 begin
   FNavigator.Items.BeginUpdate();
@@ -7564,79 +7799,18 @@ begin
     if (Node.Count = 0) then
     begin
       if (Assigned(Client.Hosts)) then
-      begin
-        Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(335));
-        Child.Data := Client.Hosts;
-        Child.ImageIndex := iiHosts;
-      end;
+        InsertChild(Node, Client.Hosts);
       if (Assigned(Client.Processes)) then
-      begin
-        Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(24));
-        Child.Data := Client.Processes;
-        Child.ImageIndex := iiProcesses
-      end;
-      Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(23));
-      Child.Data := Client.Stati;
-      Child.ImageIndex := iiStati;
+        InsertChild(Node, Client.Processes);
+      InsertChild(Node, Client.Stati);
       if (Assigned(Client.Users)) then
-      begin
-        Child := FNavigator.Items.AddChild(Node, ReplaceStr(Preferences.LoadStr(561), '&', ''));
-        Child.Data := Client.Users;
-        Child.ImageIndex := iiUsers;
-      end;
-      Child := FNavigator.Items.AddChild(Node, Preferences.LoadStr(22));
-      Child.Data := Client.Variables;
-      Child.ImageIndex := iiVariables;
+        InsertChild(Node, Client.Users);
+      InsertChild(Node, Client.Variables);
       Node.Expand(False);
     end;
 
-    if (ClientEvent.EventType in [ceBuild, ceDroped]) then
-    begin
-      Child := Node.getFirstChild();
-      while (Assigned(Child) and (Child.ImageIndex in [iiDatabase, iiSystemDatabase])) do
-      begin
-        Sibling := Child.getNextSibling();
-        if ((Client.Databases.IndexOf(Child.Data) < 0) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Child.Data)) then
-          Child.Delete();
-        Child := Sibling;
-      end;
-    end;
-    if (ClientEvent.EventType in [ceBuild, ceCreated]) then
-    begin
-      for I := 0 to Client.Databases.Count - 1 do
-      begin
-        Child := Node.getFirstChild();
-        while (Assigned(Child) and (Child.ImageIndex in [iiDatabase, iiSystemDatabase]) and (Client.TableNameCmp(Client.Databases[I].Name, Child.Text) > 0)) do
-          Child := Child.getNextSibling();
-        if (not Assigned(Child)) then
-        begin
-          Child := FNavigator.Items.AddChild(Node, Client.Databases[I].Name);
-          Child.Data := Client.Databases[I];
-        end
-        else if (not (Child.ImageIndex in [iiDatabase, iiSystemDatabase]) or (Client.TableNameCmp(Client.Databases[I].Name, Child.Text) < 0)) then
-        begin
-          Child := FNavigator.Items.Insert(Child, Client.Databases[I].Name);
-          Child.Data := Client.Databases[I];
-        end
-        else
-          Child := nil;
-        if (Assigned(Child)) then
-        begin
-          Child.HasChildren := True;
-          if (Client.Databases[I] is TCSystemDatabase) then
-            Child.ImageIndex := iiSystemDatabase
-          else
-            Child.ImageIndex := iiDatabase;
-        end;
-      end;
-
-      ExpandingEvent := FNavigator.OnExpanding;
-      FNavigator.OnExpanding := nil;
-      Node.Expand(False);
-      FNavigator.OnExpanding := ExpandingEvent;
-    end;
-
-    Node.HasChildren := Node.Count > 0;
+    if (ClientEvent.CItems is TCDatabases) then
+      UpdateGroup(Node, ClientEvent.CItems);
   end
   else if (ClientEvent.Sender is TCDatabase) then
   begin
@@ -7645,141 +7819,9 @@ begin
     Node := FNavigator.Items.getFirstNode().getFirstChild();
     while (Assigned(Node) and (Node.Data <> Database)) do Node := Node.getNextSibling();
 
-    if (Assigned(Node)) then
+    if (Assigned(Node) and (not Node.HasChildren or (Node.Count > 0) or (Node = FNavigatorNodeToExpand))) then
     begin
-      if (not Assigned(ClientEvent.CItem) or (ClientEvent.CItem is TCTable)) then
-      begin
-        if (ClientEvent.EventType in [ceBuild, ceDroped]) then
-        begin
-          Child := Node.getFirstChild();
-          while (Assigned(Child) and (Child.ImageIndex in [iiBaseTable, iiSystemView, iiView])) do
-          begin
-            Sibling := Child.getNextSibling();
-            if ((Database.Tables.IndexOf(Child.Data) < 0) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Child.Data)) then
-            begin
-              if (Child = FNavigatorNodeToExpand) then FNavigatorNodeToExpand := nil;
-              Child.Delete();
-            end;
-            Child := Sibling;
-          end;
-        end;
-        if (ClientEvent.EventType in [ceBuild, ceCreated]) then
-          for I := 0 to Database.Tables.Count - 1 do
-          begin
-            Child := Node.getFirstChild();
-            while (Assigned(Child) and (Child.ImageIndex in [iiBaseTable, iiSystemView, iiView]) and (Client.TableNameCmp(Database.Tables[I].Name, Child.Text) > 0)) do
-              Child := Child.getNextSibling();
-            if (not Assigned(Child)) then
-            begin
-              Child := FNavigator.Items.AddChild(Node, Database.Tables[I].Name);
-              Child.Data := Database.Tables[I];
-            end
-            else if (Client.TableNameCmp(Database.Tables[I].Name, Child.Text) <> 0) then
-            begin
-              Child := FNavigator.Items.Insert(Child, Database.Tables[I].Name);
-              Child.Data := Database.Tables[I];
-            end
-            else
-              Child := nil;
-            if (Assigned(Child)) then
-            begin
-              Child.HasChildren := True;
-              if (Database.Tables[I] is TCSystemView) then
-                Child.ImageIndex := iiSystemView
-              else if (Database.Tables[I] is TCBaseTable) then
-                Child.ImageIndex := iiBaseTable
-              else
-                Child.ImageIndex := iiView;
-            end;
-          end;
-      end
-      else if (not Assigned(ClientEvent.CItem) or (ClientEvent.CItem is TCRoutine)) then
-      begin
-        if (ClientEvent.EventType in [ceBuild, ceDroped]) then
-        begin
-          Child := Node.getFirstChild();
-          while (Assigned(Child) and (Child.ImageIndex in [iiBaseTable, iiSystemView, iiView])) do
-            Child := Child.getNextSibling();
-          while (Assigned(Child) and (Child.ImageIndex in [iiProcedure, iiFunction])) do
-          begin
-            Sibling := Child.getNextSibling();
-            if ((Database.Routines.IndexOf(Child.Data) < 0) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Child.Data)) then
-            begin
-              if (Child = FNavigatorNodeToExpand) then FNavigatorNodeToExpand := nil;
-              Child.Delete();
-            end;
-            Child := Sibling;
-          end;
-        end;
-        if (ClientEvent.EventType in [ceBuild, ceCreated]) then
-          for I := 0 to Database.Routines.Count - 1 do
-          begin
-            Child := Node.getFirstChild();
-            while (Assigned(Child) and not (Child.ImageIndex in [iiProcedure, iiFunction])) do
-              Child := Child.getNextSibling();
-            while (Assigned(Child) and (Child.ImageIndex in [iiProcedure, iiFunction]) and (lstrcmpi(PChar(Database.Routines[I].Name), PChar(Child.Text)) > 0)) do
-              Child := Child.getNextSibling();
-            if (not Assigned(Child)) then
-            begin
-              Child := FNavigator.Items.AddChild(Node, Database.Routines[I].Name);
-              Child.Data := Database.Routines[I];
-            end
-            else if (lstrcmpi(PChar(Database.Routines[I].Name), PChar(Child.Text)) <> 0) then
-            begin
-              Child := FNavigator.Items.Insert(Child, Database.Routines[I].Name);
-              Child.Data := Database.Routines[I];
-            end
-            else
-              Child := nil;
-            if (Assigned(Child)) then
-              if (Database.Routines[I] is TCProcedure) then
-                Child.ImageIndex := iiProcedure
-              else
-                Child.ImageIndex := iiFunction;
-          end;
-      end
-      else if (not Assigned(ClientEvent.CItem) or (ClientEvent.CItem is TCEvent)) then
-      begin
-        if (ClientEvent.EventType in [ceBuild, ceDroped]) then
-        begin
-          Child := Node.getFirstChild();
-          while (Assigned(Child) and (Child.ImageIndex in [iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction])) do
-            Child := Child.getNextSibling();
-          while (Assigned(Child) and (Child.ImageIndex in [iiEvent])) do
-          begin
-            Sibling := Child.getNextSibling();
-            if ((Database.Events.IndexOf(Child.Data) < 0) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Child.Data)) then
-            begin
-              if (Child = FNavigatorNodeToExpand) then FNavigatorNodeToExpand := nil;
-              Child.Delete();
-            end;
-            Child := Sibling;
-          end;
-        end;
-        if (ClientEvent.EventType in [ceBuild, ceCreated]) then
-          for I := 0 to Database.Events.Count - 1 do
-          begin
-            Child := Node.getFirstChild();
-            while (Assigned(Child) and not (Child.ImageIndex in [iiEvent])) do
-              Child := Child.getNextSibling();
-            while (Assigned(Child) and (Child.ImageIndex in [iiEvent]) and (lstrcmpi(PChar(Database.Events[I].Name), PChar(Child.Text)) > 0)) do
-              Child := Child.getNextSibling();
-            if (not Assigned(Child)) then
-            begin
-              Child := FNavigator.Items.AddChild(Node, Database.Events[I].Name);
-              Child.Data := Database.Events[I];
-            end
-            else if (lstrcmpi(PChar(Database.Events[I].Name), PChar(Child.Text)) <> 0) then
-            begin
-              Child := FNavigator.Items.Insert(Child, Database.Events[I].Name);
-              Child.Data := Database.Events[I];
-            end
-            else
-              Child := nil;
-            if (Assigned(Child)) then
-              Child.ImageIndex := iiEvent;
-          end;
-      end;
+      UpdateGroup(Node, ClientEvent.CItems);
 
       Node.HasChildren := (Node.Count > 0)
         or not Database.Tables.Valid or (Database.Tables.Count > 0)
@@ -7794,7 +7836,7 @@ begin
     Node := FNavigator.Items.getFirstNode().getFirstChild();
     while (Assigned(Node) and (Node.Data <> Table.Database)) do Node := Node.getNextSibling();
 
-    if (Assigned(Node)) then
+    if (Assigned(Node) and (not Node.HasChildren or (Node.Count > 0) or (Node = FNavigatorNodeToExpand))) then
     begin
       Node := Node.getFirstChild();
       while (Assigned(Node) and (Node.Data <> Table)) do Node := Node.getNextSibling();
@@ -9711,7 +9753,6 @@ end;
 procedure TFClient.ListViewCompare(Sender: TObject; Item1: TListItem;
   Item2: TListItem; Data: Integer; var Compare: Integer);
 const
-  GroupSort = Chr(iiDatabase) + Chr(1) + Chr(iiTable) + Chr(iiProcedure) + Chr(iiEvent) + Chr(iiIndex) + Chr(iiField) + Chr(iiForeignKey) + Chr(iiTrigger) + Chr(iiHost) + Chr(iiProcess) + Chr(iiStatus) + Chr(iiUser) + Chr(iiVariable);
   ImageIndexSort = Chr(iiHosts) + Chr(iiProcesses) + Chr(iiStati) + Chr(iiUsers) + Chr(iiVariables);
 var
   String1: string;
@@ -9722,9 +9763,9 @@ begin
 
   Compare := 0;
   if (Item1.GroupID <> Item2.GroupID) then
-    Compare := Sign(Pos(Chr(Item1.GroupID), GroupSort) - Pos(Chr(Item2.GroupID), GroupSort))
-  else if (Item1.GroupID = iiServer) then
-    Compare := Sign(Pos(Chr(Item1.ImageIndex), GroupSort) - Pos(Chr(Item2.ImageIndex), ImageIndexSort))
+    Compare := Sign(Item1.GroupID - Item2.GroupID)
+  else if (Item1.GroupID = giSystemTools) then
+    Compare := Sign(Pos(Chr(Item1.ImageIndex), ImageIndexSort) - Pos(Chr(Item2.ImageIndex), ImageIndexSort))
   else if (SortRec^.Order = 0) then
     Compare := Sign(TCItem(Item1.Data).Index - TCItem(Item2.Data).Index)
   else
@@ -9962,8 +10003,8 @@ begin
       ListView.Columns[1].Alignment := taRightJustify;
       ListView.Columns[2].Alignment := taRightJustify;
 
-      ListView.Groups.Add().GroupID := iiDatabase;
-      ListView.Groups.Add().GroupID := iiServer;
+      ListView.Groups.Add().GroupID := giDatabase;
+      ListView.Groups.Add().GroupID := giSystemTools;
     end
     else if (TObject(Data) is TCDatabase) then
     begin
@@ -9981,9 +10022,9 @@ begin
       ListView.Columns[2].Alignment := taRightJustify;
       ListView.Columns[3].Alignment := taRightJustify;
 
-      ListView.Groups.Add().GroupID := iiTable;
-      ListView.Groups.Add().GroupID := iiProcedure;
-      ListView.Groups.Add().GroupID := iiEvent;
+      ListView.Groups.Add().GroupID := giTable;
+      ListView.Groups.Add().GroupID := giRoutine;
+      ListView.Groups.Add().GroupID := giEvent;
     end
     else if (TObject(Data) is TCBaseTable) then
     begin
@@ -9999,10 +10040,10 @@ begin
       if (ListView.Column[1].Width > 2 * Preferences.GridMaxColumnWidth) then
         ListView.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
 
-      ListView.Groups.Add().GroupID := iiIndex;
-      ListView.Groups.Add().GroupID := iiField;
-      ListView.Groups.Add().GroupID := iiForeignKey;
-      ListView.Groups.Add().GroupID := iiTrigger;
+      ListView.Groups.Add().GroupID := giIndex;
+      ListView.Groups.Add().GroupID := giField;
+      ListView.Groups.Add().GroupID := giForeignKey;
+      ListView.Groups.Add().GroupID := giTrigger;
     end
     else if (TObject(Data) is TCView) then
     begin
@@ -10016,7 +10057,7 @@ begin
       if (ListView.Column[1].Width > 2 * Preferences.GridMaxColumnWidth) then
         ListView.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
 
-      ListView.Groups.Add().GroupID := iiField;
+      ListView.Groups.Add().GroupID := giField;
     end
     else if (TObject(Data) is TCHosts) then
     begin
@@ -10024,7 +10065,7 @@ begin
       ListView.Columns.EndUpdate();
       SetColumnWidths(ListView, lkHosts);
 
-      ListView.Groups.Add().GroupID := iiHost;
+      ListView.Groups.Add().GroupID := giHost;
     end
     else if (TObject(Data) is TCProcesses) then
     begin
@@ -10039,7 +10080,7 @@ begin
       ListView.Columns.EndUpdate();
       SetColumnWidths(ListView, lkProcesses);
 
-      ListView.Groups.Add().GroupID := iiProcess;
+      ListView.Groups.Add().GroupID := giProcess;
     end
     else if (TObject(Data) is TCStati) then
     begin
@@ -10048,7 +10089,7 @@ begin
       ListView.Columns.EndUpdate();
       SetColumnWidths(ListView, lkStati);
 
-      ListView.Groups.Add().GroupID := iiStatus;
+      ListView.Groups.Add().GroupID := giStatus;
     end
     else if (TObject(Data) is TCUsers) then
     begin
@@ -10056,7 +10097,7 @@ begin
       ListView.Columns.EndUpdate();
       SetColumnWidths(ListView, lkUsers);
 
-      ListView.Groups.Add().GroupID := iiUser;
+      ListView.Groups.Add().GroupID := giUser;
     end
     else if (TObject(Data) is TCVariables) then
     begin
@@ -10065,7 +10106,7 @@ begin
       ListView.Columns.EndUpdate();
       SetColumnWidths(ListView, lkVariables);
 
-      ListView.Groups.Add().GroupID := iiVariable;
+      ListView.Groups.Add().GroupID := giVariable;
     end;
 
   if (ListView = FServerListView) then
@@ -10342,7 +10383,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
 
     if (Data is TCDatabase) then
     begin
-      Item.GroupID := iiDatabase;
+      Item.GroupID := giDatabase;
       if (Data is TCSystemDatabase) then
         Item.ImageIndex := iiSystemDatabase
       else
@@ -10379,7 +10420,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCTable) then
     begin
-      Item.GroupID := iiTable;
+      Item.GroupID := giTable;
       if (Data is TCSystemView) then
         Item.ImageIndex := iiSystemView
       else if (Data is TCBaseTable) then
@@ -10433,7 +10474,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCRoutine) then
     begin
-      Item.GroupID := iiProcedure;
+      Item.GroupID := giRoutine;
       if (Data is TCProcedure) then
         Item.ImageIndex := iiProcedure
       else
@@ -10460,7 +10501,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCEvent) then
     begin
-      Item.GroupID := iiEvent;
+      Item.GroupID := giEvent;
       Item.ImageIndex := iiEvent;
       Item.Caption := TCEvent(Data).Name;
       Item.SubItems.Add('TCEvent(Data)');
@@ -10478,7 +10519,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCIndex) then
     begin
-      Item.GroupID := iiIndex;
+      Item.GroupID := giIndex;
       Item.ImageIndex := iiIndex;
       Item.Caption := TCIndex(Data).Caption;
       S := '';
@@ -10503,7 +10544,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCBaseTableField) then
     begin
-      Item.GroupID := iiField;
+      Item.GroupID := giField;
       if (TCBaseTableField(Data).Table is TCSystemView) then
         Item.ImageIndex := iiSystemViewField
       else
@@ -10539,7 +10580,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCForeignKey) then
     begin
-      Item.GroupID := iiForeignKey;
+      Item.GroupID := giForeignKey;
       Item.ImageIndex := iiForeignKey;
       Item.Caption := TCForeignKey(Data).Name;
       Item.SubItems.Add(TCForeignKey(Data).DBTypeStr());
@@ -10561,7 +10602,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCTrigger) then
     begin
-      Item.GroupID := iiTrigger;
+      Item.GroupID := giTrigger;
       Item.ImageIndex := iiTrigger;
       Item.Caption := TCTrigger(Data).Name;
       S := '';
@@ -10578,7 +10619,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCViewField) then
     begin
-      Item.GroupID := iiField;
+      Item.GroupID := giField;
       Item.ImageIndex := iiViewField;
       Item.Caption := TCViewField(Data).Name;
       if (TCViewField(Data).FieldType <> mfUnknown) then
@@ -10598,26 +10639,26 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCHosts) then
     begin
-      Item.GroupID := iiServer;
+      Item.GroupID := giSystemTools;
       Item.ImageIndex := iiHosts;
       Item.SubItems.Add(FormatFloat('#,##0', TCHosts(Data).Count, LocaleFormatSettings));
     end
     else if (Data is TCHost) then
     begin
-      Item.GroupID := iiHost;
+      Item.GroupID := giHost;
       Item.ImageIndex := iiHost;
       Item.Caption := TCHost(Data).Caption;
     end
     else if (Data is TCProcesses) then
     begin
-      Item.GroupID := iiServer;
+      Item.GroupID := giSystemTools;
       Item.ImageIndex := iiProcesses;
       if (TCProcesses(Data).Count > 0) then
         Item.SubItems.Add(FormatFloat('#,##0', TCProcesses(Data).Count, LocaleFormatSettings));
     end
     else if (Data is TCProcess) then
     begin
-      Item.GroupID := iiProcess;
+      Item.GroupID := giProcess;
       Item.ImageIndex := iiProcess;
       Item.Caption := IntToStr(TCProcess(Data).Id);
       Item.SubItems.Add(TCProcess(Data).UserName);
@@ -10633,20 +10674,20 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCStati) then
     begin
-      Item.GroupID := iiServer;
+      Item.GroupID := giSystemTools;
       Item.ImageIndex := iiStati;
       Item.SubItems.Add(FormatFloat('#,##0', TCStati(Data).Count, LocaleFormatSettings));
     end
     else if (Data is TCStatus) then
     begin
-      Item.GroupID := iiStatus;
+      Item.GroupID := giStatus;
       Item.ImageIndex := iiStatus;
       Item.Caption := TCStatus(Data).Name;
       Item.SubItems.Add(TCStatus(Data).Value);
     end
     else if (Data is TCUsers) then
     begin
-      Item.GroupID := iiServer;
+      Item.GroupID := giSystemTools;
       Item.ImageIndex := iiUsers;
       if (Client.Users.Count >= 0) then
         Item.SubItems.Add(FormatFloat('#,##0', Client.Users.Count, LocaleFormatSettings))
@@ -10655,19 +10696,19 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCUser) then
     begin
-      Item.GroupID := iiUser;
+      Item.GroupID := giUser;
       Item.ImageIndex := iiUser;
       Item.Caption := TCUser(Data).Caption;
     end
     else if (Data is TCVariables) then
     begin
-      Item.GroupID := iiServer;
+      Item.GroupID := giSystemTools;
       Item.ImageIndex := iiVariables;
       Item.SubItems.Add(FormatFloat('#,##0', Client.Variables.Count, LocaleFormatSettings));
     end
     else if (Data is TCVariable) then
     begin
-      Item.GroupID := iiVariable;
+      Item.GroupID := giVariable;
       Item.ImageIndex := iiVariable;
       Item.Caption := TCVariable(Data).Name;
       Item.SubItems.Add(TCVariable(Data).Value);
@@ -10762,9 +10803,9 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
 
     if (ClientEvent.EventType in [ceBuild, ceCreated, ceDroped, ceStatus]) then
       case (GroupID) of
-        iiDatabase:
+        giDatabase:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(265) + ' (' + IntToStr(ClientEvent.CItems.Count) + ')', '&', '');
-        iiTable:
+        giTable:
           begin
             Header := ReplaceStr(Preferences.LoadStr(234), '&', '');
             if (Client.ServerVersion >= 50001) then
@@ -10772,17 +10813,17 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
             Header := Header + ' (' + IntToStr(ClientEvent.CItems.Count) + ')';
             GroupByGroupID(GroupID).Header := Header;
           end;
-        iiProcedure:
+        giRoutine:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(874) + ' + ' + Preferences.LoadStr(875), '&', '') + ' (' + IntToStr(ClientEvent.CItems.Count) + ')';
-        iiEvent:
+        giEvent:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(876), '&', '') + ' (' + IntToStr(ClientEvent.CItems.Count) + ')';
-        iiIndex:
+        giIndex:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(458), '&', '') + ' (' + IntToStr(TCBaseTable(ClientEvent.Sender).Indices.Count) + ')';
-        iiField:
+        giField:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(TCTable(ClientEvent.Sender).Fields.Count) + ')';
-        iiForeignKey:
+        giForeignKey:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(TCBaseTable(ClientEvent.Sender).ForeignKeys.Count) + ')';
-        iiTrigger:
+        giTrigger:
           begin
             Count := 0;
             for I := 0 to TCBaseTable(ClientEvent.Sender).Database.Triggers.Count - 1 do
@@ -10793,15 +10834,15 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
               end;
             GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(797), '&', '') + ' (' + IntToStr(Count) + ')';
           end;
-        iiHost:
+        giHost:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(335), '&', '') + ' (' + IntToStr(Client.Hosts.Count) + ')';
-        iiProcess:
+        giProcess:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(24), '&', '') + ' (' + IntToStr(Client.Processes.Count) + ')';
-        iiStatus:
+        giStatus:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(23), '&', '') + ' (' + IntToStr(Client.Stati.Count) + ')';
-        iiUser:
+        giUser:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(561), '&', '') + ' (' + IntToStr(Client.Users.Count) + ')';
-        iiVariable:
+        giVariable:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(22), '&', '') + ' (' + IntToStr(Client.Variables.Count) + ')';
       end;
   end;
@@ -10845,7 +10886,7 @@ begin
           end;
 
           if (ClientEvent.CItems is TCDatabases) then
-            UpdateGroup(iiDatabase, ClientEvent.CItems)
+            UpdateGroup(giDatabase, ClientEvent.CItems)
           else if (ClientEvent.CItems is TCDBObjects) then
           begin
             for I := 0 to ListView.Items.Count - 1 do
@@ -10862,11 +10903,11 @@ begin
       lkDatabase:
         begin
           if (ClientEvent.CItems is TCTables) then
-            UpdateGroup(iiTable, ClientEvent.CItems)
+            UpdateGroup(giTable, ClientEvent.CItems)
           else if (ClientEvent.CItems is TCRoutines) then
-            UpdateGroup(iiProcedure, ClientEvent.CItems)
+            UpdateGroup(giRoutine, ClientEvent.CItems)
           else if (ClientEvent.CItems is TCEvents) then
-            UpdateGroup(iiEvent, ClientEvent.CItems);
+            UpdateGroup(giEvent, ClientEvent.CItems);
         end;
       lkTable:
         if (ClientEvent.Sender is TCTable) then
@@ -10877,23 +10918,23 @@ begin
             if ((ClientEvent.CItems is TCTriggers) = (ListView.Items[I].ImageIndex in [iiTrigger])) then
               ListView.Items.Delete(I);
           if (Table is TCBaseTable) then
-            UpdateGroup(iiIndex, TCBaseTable(Table).Indices);
-          UpdateGroup(iiField, Table.Fields);
+            UpdateGroup(giIndex, TCBaseTable(Table).Indices);
+          UpdateGroup(giField, Table.Fields);
           if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).ForeignKeys)) then
-            UpdateGroup(iiForeignKey, TCBaseTable(Table).ForeignKeys);
+            UpdateGroup(giForeignKey, TCBaseTable(Table).ForeignKeys);
           if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Database.Triggers)) then
-            UpdateGroup(iiTrigger, TCBaseTable(Table).Database.Triggers);
+            UpdateGroup(giTrigger, TCBaseTable(Table).Database.Triggers);
         end;
       lkHosts:
-        UpdateGroup(iiHost, ClientEvent.CItems);
+        UpdateGroup(giHost, ClientEvent.CItems);
       lkProcesses:
-        UpdateGroup(iiProcess, ClientEvent.CItems);
+        UpdateGroup(giProcess, ClientEvent.CItems);
       lkStati:
-        UpdateGroup(iiStatus, ClientEvent.CItems);
+        UpdateGroup(giStatus, ClientEvent.CItems);
       lkUsers:
-        UpdateGroup(iiUser, ClientEvent.CItems);
+        UpdateGroup(giUser, ClientEvent.CItems);
       lkVariables:
-        UpdateGroup(iiVariable, ClientEvent.CItems);
+        UpdateGroup(giVariable, ClientEvent.CItems);
     end;
 
     if (ClientEvent.EventType = ceBuild) then
