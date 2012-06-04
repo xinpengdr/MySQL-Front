@@ -81,7 +81,7 @@ begin
 end;
 
 initialization
-  GetLocaleFormatSettings(LOCALE_USER_DEFAULT, LocaleFormatSettings);
+  LocaleFormatSettings := TFormatSettings.Create(LOCALE_USER_DEFAULT);
   SetLength(Points, 0);
 finalization
   SetLength(Points, 0);

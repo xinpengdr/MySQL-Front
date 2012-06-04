@@ -677,7 +677,7 @@ begin
             Client := GetClient(Node.Parent.Parent.Index);
             Database := Client.DatabaseByName(Node.Parent.Text);
             Table := Database.BaseTableByName(Node.Text);
-            if (Database.UpdateSources(Table) and Client.Asynchron) then
+            if (Table.Update()) then
               WantedNodeExpand := Node
             else
             begin
@@ -851,7 +851,7 @@ procedure TDSearch.TSExecuteShow(Sender: TObject);
                   for J := 0 to Database.Tables.Count - 1 do
                     if (Database.Tables[J] is TCBaseTable) then
                       Objects.Add(Database.Tables[J]);
-                  WantedExecute := Database.UpdateSources(Objects) and Client.Asynchron;
+                  WantedExecute := Client.Update(Objects);
                 end;
               end;
         end;
@@ -864,7 +864,7 @@ procedure TDSearch.TSExecuteShow(Sender: TObject);
             for J := 0 to Database.Tables.Count - 1 do
               if (Database.Tables[J] is TCBaseTable) then
                 Objects.Add(Database.Tables[J]);
-            WantedExecute := Database.UpdateSources(Objects) and Client.Asynchron;
+            WantedExecute := Client.Update(Objects);
           end;
         end;
       iiBaseTable:
@@ -873,7 +873,7 @@ procedure TDSearch.TSExecuteShow(Sender: TObject);
           for J := 0 to Database.Tables.Count - 1 do
             if (Node.Parent.Item[J].Selected) then
               Objects.Add(Database.Tables[J]);
-          WantedExecute := Database.UpdateSources(Objects) and Client.Asynchron;
+          WantedExecute := Client.Update(Objects);
         end;
     end;
     Objects.Free();

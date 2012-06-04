@@ -3805,7 +3805,7 @@ begin
               PRecordBufferData(Source)^.LibRow^[Field.FieldNo - 1], PRecordBufferData(Source)^.LibLengths^[Field.FieldNo - 1],
               TMemoryStream(Dest).Memory, Len)
           else if (GetLastError() <> 0) then
-            DatabaseErrorFmt(SysErrorMessage(GetLastError()), [Field.DisplayName]);
+            DatabaseErrorFmt(SysErrorMessage(GetLastError()) + '(%s)', [Field.DisplayName]);
         end;
       end;
     ftWideString:

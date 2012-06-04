@@ -386,7 +386,7 @@ begin
 
   FStartup.Lines.Clear();
 
-  TSProcesses.TabVisible := not Assigned(Client.UserRights) or Client.UserRights.RProcess or (Client.ServerVersion >= 50000);
+  TSProcesses.TabVisible := Assigned(Client.Processes);
   TSSQLLog.TabVisible := Client.LogActive;
   TSSlowSQLLog.TabVisible := Client.SlowLogActive;
   TSStartup.TabVisible := Assigned(Client.VariableByName('init_connect')) and (Client.VariableByName('init_connect').Value <> '');

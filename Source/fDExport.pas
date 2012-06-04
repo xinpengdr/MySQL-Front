@@ -239,13 +239,13 @@ begin
   Client := TCDBObject(Item1).Database.Client;
 
   if (Client.LowerCaseTableNames = 0) then
-    Result := Sign(lstrcmp(PChar(TCDBObject(Item1).Database.Name), PChar(TCDBObject(Item2).Database.Name)))
+    Result := lstrcmp(PChar(TCDBObject(Item1).Database.Name), PChar(TCDBObject(Item2).Database.Name))
   else
-    Result := Sign(lstrcmpi(PChar(TCDBObject(Item1).Database.Name), PChar(TCDBObject(Item2).Database.Name)));
+    Result := lstrcmpi(PChar(TCDBObject(Item1).Database.Name), PChar(TCDBObject(Item2).Database.Name));
 
   if (Result = 0) then
   begin
-    if ((TCDBObject(Item1) is TCBaseTable) and not TCBaseTable(Item1).Engine.IsMerge) then
+    if ((TCDBObject(Item1) is TCBaseTable) and Assigned(TCBaseTable(Item1).Engine) and not TCBaseTable(Item1).Engine.IsMerge) then
       Index1 := 0
     else if (TCDBObject(Item1) is TCBaseTable) then
       Index1 := 1
@@ -259,7 +259,7 @@ begin
       Index1 := 5
     else
       Index1 := 6;
-    if ((TCDBObject(Item2) is TCBaseTable) and not TCBaseTable(Item2).Engine.IsMerge) then
+    if ((TCDBObject(Item2) is TCBaseTable) and Assigned(TCBaseTable(Item2).Engine) and not TCBaseTable(Item2).Engine.IsMerge) then
       Index2 := 0
     else if (TCDBObject(Item2) is TCBaseTable) then
       Index2 := 1
@@ -969,7 +969,7 @@ begin
     repeat
       if ((Index = DBObjects.Count) or (TCDBObject(DBObjects[Index]).Database <> Database)) then
       begin
-        SQLWait := Database.UpdateSources(Objects);
+        SQLWait := Client.Update(Objects);
         Objects.Clear();
       end
       else

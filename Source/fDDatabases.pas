@@ -20,8 +20,11 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure FDatabasesChange(Sender: TObject; Item: TListItem;
+      Change: TItemChange);
   private
     procedure Built();
+    procedure FBOkCheckEnabled(Sender: TObject);
     procedure FormClientEvent(const Event: TCClient.TEvent);
   protected
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
@@ -96,7 +99,7 @@ begin
 
   GroupBox.Visible := True;
   PSQLWait.Visible := not GroupBox.Visible;
-  FBOk.Enabled := GroupBox.Visible;
+  FBOkCheckEnabled(nil);
 
   ActiveControl := FDatabases;
 end;
@@ -119,6 +122,18 @@ function TDDatabases.Execute(): Boolean;
 begin
   ShowModal();
   Result := ModalResult = mrOk;
+end;
+
+procedure TDDatabases.FBOkCheckEnabled(Sender: TObject);
+begin
+  FBOk.Enabled := GroupBox.Visible
+    and (Assigned(Client) or Assigned(FDatabases.Selected));
+end;
+
+procedure TDDatabases.FDatabasesChange(Sender: TObject; Item: TListItem;
+  Change: TItemChange);
+begin
+  FBOkCheckEnabled(Sender);
 end;
 
 procedure TDDatabases.FDatabasesDblClick(Sender: TObject);
@@ -191,7 +206,6 @@ var
   cbServerName: SQLSMALLINT;
   I: Integer;
   Item: TListItem;
-  List: TList;
   ServerName: array [0 .. STR_LEN - 1] of SQLTCHAR;
 begin
   if (Assigned(Client)) then
@@ -206,11 +220,8 @@ begin
       Width := Preferences.Databases.Width;
     end;
 
-    List := TList.Create();
-    List.Add(Client.Databases);
-    GroupBox.Visible := not Client.Update(List);
+    GroupBox.Visible := not Client.Databases.Update();
     PSQLWait.Visible := not GroupBox.Visible;
-    List.Free();
 
     if (GroupBox.Visible) then
       Built();
@@ -246,7 +257,7 @@ begin
       FDatabases.ItemFocused := FDatabases.Items[0];
   end;
 
-  FBOk.Enabled := GroupBox.Visible;
+  FBOkCheckEnabled(Sender);
   if (not GroupBox.Visible) then
     ActiveControl := FBCancel
   else

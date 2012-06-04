@@ -225,7 +225,7 @@ type
     Engine: string;
     RowType: TMySQLRowType;
     Table: TCBaseTable;
-    Tablenames: array of string;
+    Tables: TList;
     function Execute(): Boolean;
     property CreatedName: string read FCreatedName;
   end;
@@ -582,7 +582,7 @@ var
   I: Integer;
   Index: Integer;
 begin
-  if (Length(TableNames) = 0) then
+  if (not Assigned(Tables)) then
   begin
     NewTable.Assign(Table);
 
@@ -610,12 +610,12 @@ begin
   end
   else
   begin
-    FTablesCount.Caption := IntToStr(Length(TableNames));
+    FTablesCount.Caption := IntToStr(Tables.Count);
     FDatabase.Text := Database.Name;
 
-    Engine := Database.BaseTableByName(TableNames[0]).Engine;
-    for I := 1 to Length(TableNames) - 1 do
-      if (Database.BaseTableByName(TableNames[I]).Engine <> Engine) then
+    Engine := TCBaseTable(Tables[0]).Engine;
+    for I := 1 to Tables.Count - 1 do
+      if (TCBaseTable(Tables[I]).Engine <> Engine) then
         Engine := nil;
     if (FTablesEngine.Style = csDropDown) then
       FTablesEngine.Text := NewTable.Engine.Name
@@ -624,26 +624,26 @@ begin
 
     Index := -1;
     for I := 0 to FDefaultCharset.Items.Count - 1 do
-      if (lstrcmpi(PChar(FDefaultCharset.Items[I]), PChar(Database.BaseTableByName(TableNames[0]).DefaultCharset)) = 0) then
+      if (Database.Client.Charsets.NameCmp(FDefaultCharset.Items[I], TCBaseTable(Tables[0]).DefaultCharset) = 0) then
         Index := I;
-    for I := 1 to Length(TableNames) - 1 do
-      if ((Index >= 0) and (lstrcmpi(PChar(FDefaultCharset.Items[Index]), PChar(Database.BaseTableByName(TableNames[I]).DefaultCharset)) <> 0)) then
+    for I := 1 to Tables.Count - 1 do
+      if ((Index >= 0) and (Database.Client.Charsets.NameCmp(FDefaultCharset.Items[Index], TCBaseTable(Tables[I]).DefaultCharset) <> 0)) then
         Index := -1;
     FTablesCharset.ItemIndex := Index;
 
     Index := -1;
     for I := 0 to FCollation.Items.Count - 1 do
-      if (lstrcmpi(PChar(FCollation.Items[I]), PChar(Database.BaseTableByName(TableNames[0]).Collation)) = 0) then
+      if (Database.Client.Collations.NameCmp(FCollation.Items[I], TCBaseTable(Tables[0]).Collation) = 0) then
         Index := FCollation.Items.IndexOf(FCollation.Items[I]);
-    for I := 1 to Length(TableNames) - 1 do
-      if ((Index >= 0) and (lstrcmpi(PChar(FCollation.Items[Index]), PChar(Database.BaseTableByName(TableNames[I]).Collation)) <> 0)) then
+    for I := 1 to Tables.Count - 1 do
+      if ((Index >= 0) and (Database.Client.Collations.NameCmp(FCollation.Items[Index], TCBaseTable(Tables[I]).Collation) <> 0)) then
         Index := -1;
     if (Assigned(Database.Client.CharsetByName(FTablesCharset.Text)) and Assigned(Database.Client.CharsetByName(FTablesCharset.Text).DefaultCollation) and (FTablesCollation.Items[Index] <> Database.Client.CharsetByName(FTablesCharset.Text).DefaultCollation.Name)) then
       FTablesCollation.ItemIndex := Index;
 
-    Index := FTablesRowType.Items.IndexOf(Database.BaseTableByName(TableNames[0]).DBRowTypeStr());
-    for I := 1 to Length(TableNames) - 1 do
-      if (FTablesRowType.Items.IndexOf(Database.BaseTableByName(TableNames[I]).DBRowTypeStr()) <> Index) then
+    Index := FTablesRowType.Items.IndexOf(TCBaseTable(Tables[0]).DBRowTypeStr());
+    for I := 1 to Tables.Count - 1 do
+      if (FTablesRowType.Items.IndexOf(TCBaseTable(Tables[I]).DBRowTypeStr()) <> Index) then
         Index := 0;
     FTablesRowType.ItemIndex := Index;
 
@@ -820,7 +820,7 @@ var
 begin
   DTableService.Database := Database;
 
-  if (Length(TableNames) = 0) then
+  if (not Assigned(Tables)) then
   begin
     SetLength(DTableService.TableNames, 1);
     DTableService.TableNames[0] := NewTable.Name;
@@ -839,16 +839,16 @@ begin
   else
   begin
     Success := True;
-    SetLength(DTableService.TableNames, Length(TableNames));
+    SetLength(DTableService.TableNames, Tables.Count);
 
-    for I := 0 to Length(TableNames) - 1 do
+    for I := 0 to Tables.Count - 1 do
       if (Success) then
       begin
-        DTableService.TableNames[I] := TableNames[I];
+        DTableService.TableNames[I] := TCBaseTable(Tables[I]).Name;
         DTableService.ServiceMode := smCheck;
 
         Success := DTableService.Execute();
-        if (not Success and (UpperCase(Database.BaseTableByName(TableNames[I]).Engine.Name) = 'MYISAM')) then
+        if (not Success and (Database.Client.Engines.NameCmp(TCBaseTable(Tables[I]).Engine.Name, 'MYISAM') = 0)) then
         begin
           DTableService.ServiceMode := smRepair;
           Success := DTableService.Execute();
@@ -871,16 +871,16 @@ begin
   DTableService.ServiceMode := smFlush;
   DTableService.Database := Database;
 
-  if (Length(TableNames) = 0) then
+  if (not Assigned(Tables)) then
   begin
     SetLength(DTableService.TableNames, 1);
     DTableService.TableNames[0] := NewTable.Name;
   end
   else
   begin
-    SetLength(DTableService.TableNames, Length(TableNames));
-    for I := 0 to Length(TableNames) - 1 do
-      DTableService.TableNames[I] := TableNames[I];
+    SetLength(DTableService.TableNames, Tables.Count);
+    for I := 0 to Tables.Count - 1 do
+      DTableService.TableNames[I] := TCBaseTable(Tables[I]).Name;
   end;
   DTableService.Execute();
 
@@ -897,7 +897,8 @@ end;
 
 procedure TDTable.FBOkCheckEnabled(Sender: TObject);
 begin
-  FBOk.Enabled := (FName.Text <> '')
+  FBOk.Enabled := PageControl.Visible
+    and (FName.Text <> '')
     and (not Assigned(Database.TableByName(FName.Text)) or (Assigned(Table) and (((Database.Client.LowerCaseTableNames = 0) and (FName.Text = Table.Name)) or ((Database.Client.LowerCaseTableNames > 0) and ((lstrcmpi(PChar(FName.Text), PChar(Table.Name)) = 0))))))
     and True;
 
@@ -911,7 +912,7 @@ begin
   DTableService.ServiceMode := smOptimize;
   DTableService.Database := Database;
 
-  if (Length(TableNames) = 0) then
+  if (not Assigned(Tables)) then
   begin
     SetLength(DTableService.TableNames, 1);
     DTableService.TableNames[0] := NewTable.Name;
@@ -920,9 +921,9 @@ begin
   end
   else
   begin
-    SetLength(DTableService.TableNames, Length(TableNames));
-    for I := 0 to Length(TableNames) - 1 do
-      DTableService.TableNames[I] := TableNames[I];
+    SetLength(DTableService.TableNames, Tables.Count);
+    for I := 0 to Tables.Count - 1 do
+      DTableService.TableNames[I] := TCBaseTable(Tables[I]).Name;
 
     DTableService.Execute();
   end;
@@ -975,7 +976,7 @@ procedure TDTable.FEngineChange(Sender: TObject);
 begin
   NewTable.Engine := Database.Client.EngineByName(Trim(FEngine.Text));
 
-  TSForeignKeys.TabVisible := (Length(TableNames) = 0) and Assigned(Database.Client.EngineByName(FEngine.Text)) and Database.Client.EngineByName(FEngine.Text).ForeignKeyAllowed;
+  TSForeignKeys.TabVisible := not Assigned(Tables) and Assigned(Database.Client.EngineByName(FEngine.Text)) and Database.Client.EngineByName(FEngine.Text).ForeignKeyAllowed;
 
   FBOkCheckEnabled(Sender);
 end;
@@ -1159,7 +1160,7 @@ var
   UpdateTableNames: TStringList;
 begin
   if (ModalResult = mrOk) then
-    if (Length(TableNames) = 0) then
+    if (not Assigned(Tables)) then
     begin
       NewTable.Name := Trim(FName.Text);
       NewTable.DefaultCharset := Trim(FDefaultCharset.Text);
@@ -1190,8 +1191,8 @@ begin
     else
     begin
       UpdateTableNames := TStringList.Create();
-      for I := 0 to Length(TableNames) - 1 do
-        UpdateTableNames.Add(TableNames[I]);
+      for I := 0 to Tables.Count - 1 do
+        UpdateTableNames.Add(TCBaseTable(Tables[I]).Name);
 
       CanClose := Database.UpdateTables(UpdateTableNames, FTablesCharset.Text, FTablesCollation.Text, FTablesEngine.Text, TMySQLRowType(FTablesRowType.ItemIndex));
 
@@ -1201,6 +1202,8 @@ end;
 
 procedure TDTable.FormCreate(Sender: TObject);
 begin
+  Tables := nil;
+
   FFields.SmallImages := Preferences.SmallImages;
   FIndices.SmallImages := Preferences.SmallImages;
   FForeignKeys.SmallImages := Preferences.SmallImages;
@@ -1248,7 +1251,7 @@ begin
 
   if (Assigned(NewTable)) then
     FreeAndNil(NewTable);
-  SetLength(TableNames, 0);
+  FreeAndNil(Tables);
 
   Preferences.Table.Width := Width;
   Preferences.Table.Height := Height;
@@ -1275,7 +1278,6 @@ end;
 procedure TDTable.FormShow(Sender: TObject);
 var
   I: Integer;
-  List: TList;
   NewColumn: TCIndexColumn;
   NewField: TCBaseTableField;
   NewIndex: TCIndex;
@@ -1283,17 +1285,17 @@ var
 begin
   Database.Client.RegisterEventProc(FormClientEvent);
 
-  if (Length(Tablenames) > 0) then
-  begin
-    Caption := Preferences.LoadStr(107);
-    HelpContext := 1054;
-  end
-  else if (not Assigned(Table)) then
+  if (not Assigned(Tables) and not Assigned(Table)) then
   begin
     Caption := Preferences.LoadStr(383);
     HelpContext := 1045;
   end
-  else if (Length(Tablenames) = 0) then
+  else if (not Assigned(Table)) then
+  begin
+    Caption := Preferences.LoadStr(107);
+    HelpContext := 1054;
+  end
+  else
   begin
     Caption := Preferences.LoadStr(842, Table.Name);
     HelpContext := 1054;
@@ -1335,12 +1337,12 @@ begin
   FBCheck.Enabled := True;
   FBFlush.Enabled := True;
 
-  if (Length(TableNames) = 0) then
+  if (not Assigned(Tables)) then
   begin
     NewTable := TCBaseTable.Create(Database.Tables);
 
-    TSTable.TabVisible := (Length(TableNames) = 0);
-    TSTables.TabVisible := (Length(TableNames) > 0);
+    TSTable.TabVisible := not Assigned(Tables);
+    TSTables.TabVisible := not TSTable.TabVisible;
     PageControl.ActivePage := TSTable;
 
     if (not Assigned(Table)) then
@@ -1409,15 +1411,10 @@ begin
   end
   else
   begin
-    List := TList.Create();
-    for I := 0 to Length(TableNames) - 1 do
-      List.Add(Database.TableByName(TableNames[I]));
-    List.Free();
-
-    TSTable.TabVisible := (Length(TableNames) = 0);
-    TSTables.TabVisible := (Length(TableNames) > 0);
+    TSTable.TabVisible := (not Assigned(Tables));
+    TSTables.TabVisible := not TSTable.TabVisible;
     PageControl.ActivePage := TSTables;
-    PageControl.Visible := not Database.UpdateSources(List);
+    PageControl.Visible := not Database.Client.Update(Tables);
     PSQLWait.Visible := not PageControl.Visible;
 
     if (PageControl.Visible) then
@@ -1433,16 +1430,16 @@ begin
   FTablesCollation.Visible := Database.Client.ServerVersion >= 40101; FLTablesCollation.Visible := FTablesCollation.Visible;
   GRecords.Visible := Assigned(Table);
 
-  TSInformations.TabVisible := Assigned(Table) and (Table.DataSize >= 0) or (Length(TableNames) > 0);
-  TSFields.TabVisible := (Length(TableNames) = 0);
-  TSIndices.TabVisible := (Length(TableNames) = 0);
+  TSInformations.TabVisible := Assigned(Table) and (Table.DataSize >= 0) or Assigned(Tables);
+  TSFields.TabVisible := not Assigned(Tables);
+  TSIndices.TabVisible := not Assigned(Tables);
   TSTriggers.TabVisible := Assigned(Table)  and Assigned(Database.Triggers);
   TSReferenced.TabVisible := Assigned(Table) and Assigned(NewTable.Engine) and (UpperCase(NewTable.Engine.Name) = 'INNODB');
-  TSPartitions.TabVisible := (Length(TableNames) = 0) and Assigned(NewTable.Partitions);
-  TSExtras.TabVisible := Assigned(Table) or (Length(TableNames) > 0);
-  TSSource.TabVisible := Assigned(Table) or (Length(TableNames) > 0);
+  TSPartitions.TabVisible := not Assigned(Tables) and Assigned(NewTable.Partitions);
+  TSExtras.TabVisible := Assigned(Table) or Assigned(Tables);
+  TSSource.TabVisible := Assigned(Table) or Assigned(Tables);
 
-  FBOk.Enabled := not Assigned(Table) and (Length(Tablenames) = 0) and PageControl.Visible;
+  FBOk.Enabled := PageControl.Visible and not Assigned(Tables) and not Assigned(Table);
   FBCancel.Caption := Preferences.LoadStr(30);
 end;
 
@@ -1579,7 +1576,7 @@ var
   I: Integer;
   Size: Int64;
 begin
-  if (Length(TableNames) = 0) then
+  if (not Assigned(Tables)) then
   begin
     FUnusedSize.Caption := SizeToStr(NewTable.UnusedSize);
 
@@ -1591,14 +1588,14 @@ begin
   else
   begin
     Size := 0;
-    for I := 0 to Length(TableNames) - 1 do
-      Inc(Size, Database.BaseTableByName(TableNames[I]).UnusedSize);
+    for I := 0 to Tables.Count - 1 do
+      Inc(Size, TCBaseTable(Tables[I]).UnusedSize);
     FUnusedSize.Caption := SizeToStr(Size);
 
     DateTime := Now();
-    for I := 0 to Length(TableNames) - 1 do
-      if (Database.BaseTableByName(TableNames[I]).Checked < DateTime) then
-        DateTime := Database.BaseTableByName(TableNames[I]).Checked;
+    for I := 0 to Tables.Count - 1 do
+      if (TCBaseTable(Tables[I]).Checked < DateTime) then
+        DateTime := TCBaseTable(Tables[I]).Checked;
     if (DateTime <= 0) then
       FChecked.Caption := '???'
     else
@@ -1768,7 +1765,7 @@ begin
   FMaxDataSize.Caption := '???';
   FRecordCount.Caption := '???';
 
-  if (Length(TableNames) = 0) then
+  if (not Assigned(Tables)) then
   begin
     if (NewTable.Created = 0) then FCreated.Caption := '???' else FCreated.Caption := SysUtils.DateTimeToStr(NewTable.Created, LocaleFormatSettings);
     if (NewTable.Updated = 0) then FUpdated.Caption := '???' else FUpdated.Caption := SysUtils.DateTimeToStr(NewTable.Updated, LocaleFormatSettings);
@@ -1786,32 +1783,32 @@ begin
   else
   begin
     DateTime := Now();
-    for I := 0 to Length(TableNames) - 1 do
-      if (Database.BaseTableByName(TableNames[I]).Created < DateTime) then
-        DateTime := Database.BaseTableByName(TableNames[I]).Created;
+    for I := 0 to Tables.Count - 1 do
+      if (TCBaseTable(Tables[I]).Created < DateTime) then
+        DateTime := TCBaseTable(Tables[I]).Created;
     if (DateTime <= 0) then FCreated.Caption := '???' else FCreated.Caption := SysUtils.DateTimeToStr(DateTime, LocaleFormatSettings);
 
     DateTime := 0;
-    for I := 0 to Length(TableNames) - 1 do
-      if (Database.BaseTableByName(TableNames[I]).Updated > DateTime) then
-        DateTime := Database.BaseTableByName(TableNames[I]).Updated;
+    for I := 0 to Tables.Count - 1 do
+      if (TCBaseTable(Tables[I]).Updated > DateTime) then
+        DateTime := TCBaseTable(Tables[I]).Updated;
     if (DateTime = 0) then FUpdated.Caption := '???' else FUpdated.Caption := SysUtils.DateTimeToStr(DateTime, LocaleFormatSettings);
 
     Size := 0;
-    for I := 0 to Length(TableNames) - 1 do
-      Inc(Size, Database.BaseTableByName(TableNames[I]).IndexSize);
+    for I := 0 to Tables.Count - 1 do
+      Inc(Size, TCBaseTable(Tables[I]).IndexSize);
     FIndexSize.Caption := SizeToStr(Size);
 
     Size := 0;
-    for I := 0 to Length(TableNames) - 1 do
-      Inc(Size, Database.BaseTableByName(TableNames[I]).DataSize);
+    for I := 0 to Tables.Count - 1 do
+      Inc(Size, TCBaseTable(Tables[I]).DataSize);
     FDataSize.Caption := SizeToStr(Size);
 
     if (RecordCount < 0) then
     begin
       RecordCount := 0;
-      for I := 0 to Length(TableNames) - 1 do
-        Inc(RecordCount, Database.BaseTableByName(TableNames[I]).CountRecords());
+      for I := 0 to Tables.Count - 1 do
+        Inc(RecordCount, TCBaseTable(Tables[I]).CountRecords());
     end;
     FRecordCount.Caption := FormatFloat('#,##0', RecordCount, LocaleFormatSettings);
   end;
@@ -1937,13 +1934,13 @@ var
   I: Integer;
 begin
   if (FSource.Lines.Count = 0) then
-    if ((Length(TableNames) = 0) and Assigned(NewTable)) then
+    if (not Assigned(Tables) and Assigned(NewTable)) then
       FSource.Lines.Text := NewTable.Source + #13#10
-    else
-      for I := 0 to Length(TableNames) - 1 do
+    else if (Assigned(Tables)) then
+      for I := 0 to Tables.Count - 1 do
       begin
         if (I > 0) then FSource.Lines.Text := FSource.Lines.Text + #13#10;
-        FSource.Lines.Text := FSource.Lines.Text + Database.BaseTableByName(TableNames[I]).Source + #13#10;
+        FSource.Lines.Text := FSource.Lines.Text + TCBaseTable(Tables[I]).Source + #13#10;
       end;
 end;
 

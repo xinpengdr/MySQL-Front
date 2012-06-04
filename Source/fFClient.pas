@@ -19,7 +19,7 @@ uses
 const
   CM_ACTIVATEFGRID = WM_USER + 500;
   CM_ACTIVATEFTEXT = WM_USER + 501;
-  CM_POSTPOSTSCROLL = WM_USER + 502;
+  CM_POSTSCROLL = WM_USER + 502;
   CM_ACTIVATEFRAME = WM_USER + 503;
   CM_DEACTIVATEFRAME = WM_USER + 504;
   CM_EXECUTE = WM_USER + 505;
@@ -783,13 +783,11 @@ type
       FAction: TAction;
       FAddress: string;
       FClient: TFClient;
-      FFNavigatorNodeExpand: string;
       FUpdate: TCClient.TUpdate;
       procedure Clear();
       function GetNothing(): Boolean;
       procedure SetAction(const AAction: TAction);
       procedure SetAddress(const AAddress: string);
-      procedure SetFNavigatorNodeExpand(const ANode: string);
       procedure SetUpdate(const AUpdate: TCClient.TUpdate);
     protected
       procedure Synchronize();
@@ -798,7 +796,6 @@ type
       procedure Execute();
       property Action: TAction read FAction write SetAction;
       property Address: string read FAddress write SetAddress;
-      property FNavigatorNodeExpand: string read FFNavigatorNodeExpand write SetFNavigatorNodeExpand;
       property Update: TCClient.TUpdate read FUpdate write SetUpdate;
       property Nothing: Boolean read GetNothing;
     end;
@@ -813,6 +810,7 @@ type
     FHTML: TWebBrowser;
     FilterMRU: TMRUList;
     FNavigatorMenuNode: TTreeNode;
+    FNavigatorNodeToExpand: TTreeNode;
     FrameState: TTabState;
     FSQLEditorCompletionTimerCounter: Integer;
     FSQLHistoryMenuNode: TTreeNode;
@@ -977,6 +975,7 @@ type
     procedure SynMemoPrintExecute(Sender: TObject);
     procedure TableOpen(Sender: TObject);
     procedure TSymMemoGotoExecute(Sender: TObject);
+    function UpdateObjectBrowser(): Boolean; virtual;
     procedure CMActivateFGrid(var Message: TMessage); message CM_ACTIVATEFGRID;
     procedure CMActivateFText(var Message: TMessage); message CM_ACTIVATEFTEXT;
     procedure CMBeforeReceivingDataSet(var Message: TMessage); message CM_BEFORE_RECEIVING_DATASET;
@@ -987,7 +986,7 @@ type
     procedure CMFrameDeactivate(var Message: TMessage); message CM_DEACTIVATEFRAME;
     procedure CMPostBuilderQueryChange(var Message: TMessage); message CM_POST_BUILDER_QUERY_CHANGE;
     procedure CMPostMonitor(var Message: TMessage); message CM_POST_MONITOR;
-    procedure CMPostPostScroll(var Message: TMessage); message CM_POSTPOSTSCROLL;
+    procedure CMPostScroll(var Message: TMessage); message CM_POSTSCROLL;
     procedure CMPostShow(var Message: TMessage); message CM_POSTSHOW;
     procedure CMRemoveWForeignKey(var Message: TMessage); message CM_REMOVE_WFOREIGENKEY;
     procedure CMSysFontChanged(var Message: TMessage); message CM_SYSFONTCHANGED;
@@ -1057,6 +1056,9 @@ const
   tiNavigator = 1;
   tiStatusBar = 2;
   tiCodeCompletion = 3;
+
+const
+  PrefetchObjectCount = 50;
 
 const
   Filters: array[0 .. 12 - 1] of
@@ -1592,7 +1594,6 @@ begin
   FAction := nil;
   FAddress := '';
   FUpdate := nil;
-  FFNavigatorNodeExpand := '';
 end;
 
 constructor TFClient.TWanted.Create(const AFClient: TFClient);
@@ -1612,7 +1613,7 @@ end;
 
 function TFClient.TWanted.GetNothing(): Boolean;
 begin
-  Result := not Assigned(Action) and (Address = '') and (FFNavigatorNodeExpand = '');
+  Result := not Assigned(Action) and (Address = '') and not Assigned(Update);
 end;
 
 procedure TFClient.TWanted.SetAction(const AAction: TAction);
@@ -1633,26 +1634,20 @@ begin
   end;
 end;
 
-procedure TFClient.TWanted.SetFNavigatorNodeExpand(const ANode: string);
-begin
-  Clear();
-  FFNavigatorNodeExpand := ANode;
-end;
-
 procedure TFClient.TWanted.SetUpdate(const AUpdate: TCClient.TUpdate);
 begin
   Clear();
-  FUpdate := AUpdate;
   if (not FClient.Client.InUse) then
-    Update();
+    AUpdate()
+  else
+    FUpdate := AUpdate;
 end;
 
 procedure TFClient.TWanted.Synchronize();
 var
-  ExpandingEvent: TTVExpandingEvent;
   TempAction: TAction;
   TempAddress: string;
-  TempNode: TTreeNode;
+  TempUpdate: TCClient.TUpdate;
 begin
   if (Assigned(Action)) then
   begin
@@ -1668,17 +1663,9 @@ begin
   end
   else if (Assigned(Update)) then
   begin
-    if (not Update()) then
-      Clear();
-  end
-  else if (Assigned(FClient.AddressToNavigatorNode(FFNavigatorNodeExpand))) then
-  begin
-    TempNode := FClient.AddressToNavigatorNode(FFNavigatorNodeExpand);
+    TempUpdate := Update;
     Clear();
-    ExpandingEvent := FClient.FNavigator.OnExpanding;
-    FClient.FNavigator.OnExpanding := nil;
-    TempNode.Expand(False);
-    FClient.FNavigator.OnExpanding := ExpandingEvent;
+    TempUpdate();
   end;
 end;
 
@@ -2307,6 +2294,9 @@ begin
         end;
       Exclude(FrameState, tsLoading);
     end;
+
+    if (Wanted.Nothing) then
+      Wanted.Update := UpdateObjectBrowser;
   end;
 end;
 
@@ -2357,17 +2347,13 @@ begin
       Client.Users.Update()
     else if (URI.Param['system'] = 'variables') then
       Client.Variables.Update()
-    else if (URI.Database = '') then
-      Client.Databases.Update()
-    else
+    else if (URI.Database <> '') then
     begin
       Database := Client.DatabaseByName(URI.Database);
       if (not Assigned(Database)) then
         NotFound := True
       else if (Database.Update() and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
         AllowChange := False
-      else if (URI.Param['view'] = 'editor') then
-        Database.UpdateSources()
       else if ((URI.Table <> '') or (URI.Param['object'] <> Null)) then
       begin
         if (URI.Table <> '') then
@@ -2616,12 +2602,10 @@ begin
   begin
     Database := Client.DatabaseByName(SelectedDatabase);
 
+    DTable.Tables := TList.Create();
     for I := 0 to ActiveListView.Items.Count - 1 do
-      if (ActiveListView.Items[I].Selected) then
-      begin
-        SetLength(DTable.TableNames, Length(DTable.TableNames) + 1);
-        DTable.TableNames[Length(DTable.TableNames) - 1] := ActiveListView.Items[I].Caption;
-      end;
+      if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex = iiBaseTable)) then
+        DTable.Tables.Add(ActiveListView.Items[I].Data);
 
     DTable.Database := Database;
     DTable.Table := nil;
@@ -3838,9 +3822,6 @@ begin
 
   StatusBar.Panels.Items[sbMessage].Text := Msg;
   SetTimer(Handle, tiStatusBar, 5000, nil);
-
-  if (Assigned(Wanted.Action) or (Wanted.Address <> '') or Assigned(Wanted.Update)) then
-    Wanted.Execute();
 end;
 
 procedure TFClient.aHRunClick(Sender: TObject);
@@ -4131,7 +4112,8 @@ begin
             iiSystemView:
               begin
                 Client.DatabaseByName(SelectedDatabase).TableByName(SelectedTable).Invalidate();
-                Client.DatabaseByName(SelectedDatabase).Triggers.Invalidate();
+                if (Assigned(Client.DatabaseByName(SelectedDatabase).Triggers)) then
+                  Client.DatabaseByName(SelectedDatabase).Triggers.Invalidate();
               end;
             iiView: Client.DatabaseByName(SelectedDatabase).TableByName(SelectedTable).Invalidate();
             iiProcedure: Client.DatabaseByName(SelectedDatabase).ProcedureByName(SelectedNavigator).Invalidate();
@@ -4926,9 +4908,9 @@ begin
   end;
 end;
 
-procedure TFClient.CMPostPostScroll(var Message: TMessage);
+procedure TFClient.CMPostScroll(var Message: TMessage);
 begin
-  StatusBarRefresh();
+//  StatusBarRefresh();
 end;
 
 procedure TFClient.CMPostShow(var Message: TMessage);
@@ -5204,6 +5186,7 @@ begin
   StatiListView := nil;
   UsersListView := nil;
   VariablesListView := nil;
+  FNavigatorNodeToExpand := nil;
   PanelMouseDownPoint := Point(-1, -1);
   for Kind := lkServer to lkVariables do
   begin
@@ -5656,7 +5639,8 @@ begin
     MainAction('aDInsertRecord').Enabled := aDInsertRecord.Enabled and (DataSet.State in [dsBrowse, dsEdit]) and (DataSet.FieldCount > 0) and (FGrid.SelectedRows.Count < 1) and True;
     MainAction('aDDeleteRecord').Enabled := aDDeleteRecord.Enabled and (DataSet.State in [dsBrowse, dsEdit]) and not DataSet.IsEmpty();
 
-    PostMessage(Handle, CM_POSTPOSTSCROLL, 0, 0);
+    StatusBarRefresh();
+//    PostMessage(Handle, CM_POSTSCROLL, 0, 0);
   end;
 end;
 
@@ -7517,7 +7501,7 @@ begin
     end;
 
     if (not AllowExpansion and (Sender = FNavigator)) then
-      Wanted.FNavigatorNodeExpand := NavigatorNodeToAddress(Node);
+      FNavigatorNodeToExpand := Node;
   end;
 end;
 
@@ -7555,6 +7539,12 @@ begin
 end;
 
 procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
+
+  function Compare(const ImageIndex: Integer; const Item1, Item2: TTreeNode): Integer;
+  begin
+//    ListViewCompare(nil, Item1, Item2, LPARAM(@ListViewSortData[Kind]), Result);
+  end;
+
 var
   Child: TTreeNode;
   Database: TCDatabase;
@@ -7666,7 +7656,10 @@ begin
           begin
             Sibling := Child.getNextSibling();
             if ((Database.Tables.IndexOf(Child.Data) < 0) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Child.Data)) then
+            begin
+              if (Child = FNavigatorNodeToExpand) then FNavigatorNodeToExpand := nil;
               Child.Delete();
+            end;
             Child := Sibling;
           end;
         end;
@@ -7711,7 +7704,10 @@ begin
           begin
             Sibling := Child.getNextSibling();
             if ((Database.Routines.IndexOf(Child.Data) < 0) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Child.Data)) then
+            begin
+              if (Child = FNavigatorNodeToExpand) then FNavigatorNodeToExpand := nil;
               Child.Delete();
+            end;
             Child := Sibling;
           end;
         end;
@@ -7753,7 +7749,10 @@ begin
           begin
             Sibling := Child.getNextSibling();
             if ((Database.Events.IndexOf(Child.Data) < 0) or (ClientEvent.EventType = ceDroped) and (ClientEvent.CItem = Child.Data)) then
+            begin
+              if (Child = FNavigatorNodeToExpand) then FNavigatorNodeToExpand := nil;
               Child.Delete();
+            end;
             Child := Sibling;
           end;
         end;
@@ -7803,6 +7802,7 @@ begin
       if (Assigned(Node)) then
       begin
         Expanded := Node.Expanded;
+        if (Assigned(FNavigatorNodeToExpand) and (FNavigatorNodeToExpand.Parent = Node)) then FNavigatorNodeToExpand := nil;
         Node.DeleteChildren();
 
         if (ClientEvent.Sender is TCBaseTable) then
@@ -7849,21 +7849,25 @@ begin
         Node.Expanded := Expanded;
       end;
     end;
-  end
-  else
-    Node := nil;
+  end;
 
   FNavigator.Items.EndUpdate();
 
-  if (Assigned(Node) and (Node.Count > 0) and (Node = AddressToNavigatorNode(Wanted.FNavigatorNodeExpand))) then
-    Wanted.Execute();
+  if (Assigned(FNavigatorNodeToExpand) and (FNavigatorNodeToExpand.Count > 0)) then
+  begin
+    ExpandingEvent := FNavigator.OnExpanding;
+    FNavigator.OnExpanding := nil;
+    FNavigatorNodeToExpand.Expand(False);
+    FNavigator.OnExpanding := ExpandingEvent;
+  end;
 end;
 
 procedure TFClient.FNavigatorSetMenuItems(Sender: TObject; const Node: TTreeNode);
 begin
   aPExpand.Enabled := Assigned(Node) and (not Assigned(Node) or not Node.Expanded) and (Assigned(Node) and Node.HasChildren);
   aPCollapse.Enabled := Assigned(Node) and (not Assigned(Node) or Node.Expanded) and (Node.ImageIndex <> iiServer);
-  aPOpenInNewWindow.Enabled := Assigned(Node) and (Node.ImageIndex in [iiServer, iiDatabase, iiSystemDatabase, iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction]);
+  aPOpenInNewWindow.Enabled := Assigned(Node) and (Node.
+  ImageIndex in [iiServer, iiDatabase, iiSystemDatabase, iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction]);
   aPOpenInNewTab.Enabled := aPOpenInNewWindow.Enabled;
 
   MainAction('aFImportSQL').Enabled := Assigned(Node) and (((Node.ImageIndex = iiServer) and (not Assigned(Client.UserRights) or Client.UserRights.RInsert)) or (Node.ImageIndex = iiDatabase));
@@ -8023,13 +8027,11 @@ begin
       ceAltered:
         if (ClientEvent.CItem is TCObject) then
           Wanted.Update := TCObject(ClientEvent.CItem).Update;
-      ceInitialize:
-        Wanted.Update := ClientEvent.Update;
       ceMonitor:
         Perform(CM_POST_MONITOR, 0, 0);
       ceAfterExecuteSQL:
-        if (Wanted.Nothing and (Client.Account.PackAddress(Address) = '/')) then
-          Client.Databases.Update();
+        if (not Wanted.Nothing) then
+          Wanted.Execute();
       else
         begin
           Database := Client.DatabaseByName(SelectedDatabase);
@@ -13355,7 +13357,7 @@ procedure TFClient.SendQuery(Sender: TObject; const SQL: string);
 begin
   if (Assigned(ResultSet)) then
   begin
-    if ((Sender is TAction) and Assigned(Client.DatabaseByName(SelectedDatabase)) and (Client.DatabaseByName(SelectedDatabase).Update() or Client.DatabaseByName(SelectedDatabase).UpdateSources())) then
+    if ((Sender is TAction) and Assigned(Client.DatabaseByName(SelectedDatabase)) and (Client.DatabaseByName(SelectedDatabase).Update() or Client.DatabaseByName(SelectedDatabase).Update())) then
       Wanted.Action := TAction(Sender)
     else
     begin
@@ -14365,6 +14367,62 @@ begin
         MessageBeep(MB_ICONERROR)
       else
         TSynMemo(Window.ActiveControl).GotoLineAndCenter(Line);
+  end;
+end;
+
+function TFClient.UpdateObjectBrowser(): Boolean;
+var
+  Database: TCDatabase;
+  I: Integer;
+  List: TList;
+begin
+  Result := False;
+
+  case (SelectedImageIndex) of
+    iiServer:
+      for I := 0 to Client.Databases.Count - 1 do
+      begin
+        Result := Client.Databases[I].Update();
+        if (Result) then
+          break;
+      end;
+    iiDatabase,
+    iiSystemDatabase:
+      begin
+        Database := Client.DatabaseByName(SelectedDatabase);
+
+        Result := Database.Update();
+
+        if (not Result and (Client.Account.Connection.Prefetch > 0)) then
+        begin
+          List := TList.Create();
+
+          if ((Client.Account.Connection.Prefetch = 1) and (Database.Count > PrefetchObjectCount)) then
+          begin
+            for I := 0 to Database.Tables.Count - 1 do
+              if (Database.Tables[I].Opened) then
+                List.Add(Database.Tables[I]);
+          end
+          else
+          begin
+            for I := 0 to Database.Tables.Count - 1 do
+              List.Add(Database.Tables[I]);
+            if (Assigned(Database.Routines)) then
+              for I := 0 to Database.Routines.Count - 1 do
+                List.Add(Database.Routines[I]);
+            if (Assigned(Database.Events)) then
+              for I := 0 to Database.Routines.Count - 1 do
+                List.Add(Database.Routines[I]);
+            if (Assigned(Database.Triggers)) then
+              for I := 0 to Database.Triggers.Count - 1 do
+                List.Add(Database.Triggers[I]);
+          end;
+
+          Result := Client.Update(List);
+
+          List.Free();
+        end;
+      end;
   end;
 end;
 

@@ -763,7 +763,7 @@ var
                   for J := 0 to Database.Tables.Count - 1 do
                     if (Database.Tables[J] is TCBaseTable) then
                       Objects.Add(Database.Tables[J]);
-                  Result := Database.UpdateSources(Objects) and Client.Asynchron;
+                  Result := Client.Update(Objects);
                 end;
               end;
         end;
@@ -776,7 +776,7 @@ var
             for J := 0 to Database.Tables.Count - 1 do
               if (Database.Tables[J] is TCBaseTable) then
                 Objects.Add(Database.Tables[J]);
-            Result := Database.UpdateSources(Objects) and Client.Asynchron;
+            Result := Client.Update(Objects);
           end;
         end;
       iiBaseTable:
@@ -785,7 +785,7 @@ var
           for J := 0 to Database.Tables.Count - 1 do
             if (Node.Parent.Item[J].Selected) then
               Objects.Add(Database.Tables[J]);
-          Result := Database.UpdateSources(Objects) and Client.Asynchron;
+          Result := Client.Update(Objects);
         end;
       else
         Result := False;

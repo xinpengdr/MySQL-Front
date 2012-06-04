@@ -2,8 +2,6 @@ program Cleanup;
 
 {$APPTYPE CONSOLE}
 
-{$R *.res}
-
 uses
   SysUtils, IniFiles, StrUtils, Classes;
 

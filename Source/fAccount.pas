@@ -256,26 +256,6 @@ resourcestring
 var
   WSAData: WinSock.WSADATA;
 
-function IntToLibraryType(const Value: Integer): TMySQLLibrary.TLibraryType;
-begin
-  case (Value) of
-    1: Result := ltDLL;
-    2: Result := ltHTTP;
-    3: Result := ltNamedPipe;
-    else Result := ltBuiltIn;
-  end;
-end;
-
-function LibraryTypeToInt(const LibraryType: TMySQLLibrary.TLibraryType): Integer;
-begin
-  case (LibraryType) of
-    ltDLL: Result := 1;
-    ltHTTP: Result := 2;
-    ltNamedPipe: Result := 3;
-    else Result := 0; // ltBuiltIn
-  end;
-end;
-
 function ViewStyleToInteger(const ViewStyle: TViewStyle): Integer;
 begin
   Result := 2;
@@ -833,12 +813,13 @@ begin
       if (UpperCase(XMLNode(XML, 'library/type').Text) = 'FILE') then LibraryType := ltDLL
       else if (UpperCase(XMLNode(XML, 'library/type').Text) = 'TUNNEL') then LibraryType := ltHTTP
       else if (UpperCase(XMLNode(XML, 'library/type').Text) = 'HTTPTUNNEL') then LibraryType := ltHTTP
+      else if (UpperCase(XMLNode(XML, 'library/type').Text) = 'NAMEDPIPE') then LibraryType := ltNamedPipe
       else LibraryType := ltBuiltIn;
     if (Assigned(XMLNode(XML, 'library/filename'))) then LibraryFilename := XMLNode(XML, 'library/filename').Text;
+    if (Assigned(XMLNode(XML, 'library/pipename'))) then PipeName := XMLNode(XML, 'library/pipename').Text;
     if (Assigned(XMLNode(XML, 'library/tunnel_url'))) then HTTPTunnelURI := XMLNode(XML, 'library/tunnel_url').Text;
     if (Assigned(XMLNode(XML, 'multistatements'))) then TryStrToBool(XMLNode(XML, 'multistatements').Text, MultiStatements);
     if (Assigned(XMLNode(XML, 'password')) and (XMLNode(XML, 'password').Attributes['encode'] = 'none')) then Password := XMLNode(XML, 'password').Text;
-    if (Assigned(XMLNode(XML, 'library/pipename'))) then PipeName := XMLNode(XML, 'library/pipename').Text;
     if (Assigned(XMLNode(XML, 'port'))) then TryStrToInt(XMLNode(XML, 'port').Text, Port);
     if (Assigned(XMLNode(XML, 'prefetch'))) then TryStrToInt(XMLNode(XML, 'prefetch').Text, Prefetch);
     if (Assigned(XMLNode(XML, 'savepassword'))) then TryStrToBool(XMLNode(XML, 'savepassword').Text, SavePassword);
@@ -861,9 +842,11 @@ begin
   case (LibraryType) of
     ltDLL: XMLNode(XML, 'library/type').Text := 'File';
     ltHTTP: XMLNode(XML, 'library/type').Text := 'HTTPTunnel';
+    ltNamedPipe: XMLNode(XML, 'library/type').Text := 'NamedPipe';
     else XMLNode(XML, 'library').ChildNodes.Delete('type');
   end;
   XMLNode(XML, 'library/filename').Text := LibraryFilename;
+  XMLNode(XML, 'library/pipename').Text := PipeName;
   XMLNode(XML, 'library/tunnel_url').Text := HTTPTunnelURI;
   XMLNode(XML, 'multistatements').Text := BoolToStr(MultiStatements, True);
   if (MultiStatements) then
@@ -872,7 +855,6 @@ begin
     XMLNode(XML, 'multistatements').Text := BoolToStr(MultiStatements, True);
   XMLNode(XML, 'password').Attributes['encode'] := 'none';
   XMLNode(XML, 'password').Text := Password;
-  XMLNode(XML, 'library/pipename').Text := PipeName;
   XMLNode(XML, 'port').Text := IntToStr(Port);
   if (Prefetch = 1) then
     XML.ChildNodes.Delete('prefetch')

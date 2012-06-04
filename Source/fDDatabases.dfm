@@ -63,6 +63,7 @@ object DDatabases: TDDatabases
       ShowColumnHeaders = False
       TabOrder = 0
       ViewStyle = vsReport
+      OnChange = FDatabasesChange
       OnDblClick = FDatabasesDblClick
     end
   end

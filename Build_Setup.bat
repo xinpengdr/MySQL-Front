@@ -62,13 +62,13 @@ if Errorlevel 1 goto Error
 CD %BuildSourcePath%
 if exist "%BuildEurekaLog%" (
   "%BuildEurekaLog%" /B --el_config"MySQLFront.eof" "MySQLFront.dpr"
-) else (   
+) else (
   "%BuildCompiler%" /B "MySQLFront.dpr"
 )
 if Errorlevel 1 goto Error
 DEL "%BuildTempPath%\*.dcu"
 DEL "%BuildSourcePath%\*.drc"
-    
+
 if exist "%BuildTempPath%\%BuildName%.exe" DEL "%BuildTempPath%\%BuildName%.exe"
 "%BuildUPX%" "%BuildTempPath%\MySQLFront.exe" -o "%BuildTempPath%\%BuildName%.exe"
 if Errorlevel 1 goto Error

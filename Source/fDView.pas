@@ -496,10 +496,11 @@ begin
   TSFields.TabVisible := Assigned(View);
   TSSource.TabVisible := Assigned(View);
 
-  FBOk.Enabled := not Assigned(View);
+  FBOk.Enabled := PageControl.Visible and not Assigned(View);
 
-  ActiveControl := FBCancel;
-  if (PageControl.Visible) then
+  if (not PageControl.Visible) then
+    ActiveControl := FBCancel
+  else
     ActiveControl := FName;
 end;
 

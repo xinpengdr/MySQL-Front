@@ -52,7 +52,7 @@ function SQLParseChar(var Handle: TSQLParse; const Character: Char; const Increm
 function SQLParseCLStmt(out CLStmt: TSQLCLStmt; const SQL: PChar; const Len: Integer; const Version: Integer): Boolean;
 function SQLParseDDLStmt(out DDLStmt: TSQLDDLStmt; const SQL: PChar; const Len: Integer; const Version: Integer): Boolean;
 function SQLParseDMLStmt(out DMLStmt: TSQLDMLStmt; const SQL: PChar; const Len: Integer; const Version: Integer): Boolean;
-function SQLParseEnd(const Handle: TSQLParse): Boolean;
+function SQLParseEnd(const Handle: TSQLParse): Boolean; inline;
 function SQLParseGetIndex(const Handle: TSQLParse): Integer;
 function SQLParseKeyword(var Handle: TSQLParse; const Keyword: PChar; const IncrementIndex: Boolean = True): Boolean;
 function SQLParseObjectName(var Handle: TSQLParse; var DatabaseName: string; out ObjectName: string): Boolean;

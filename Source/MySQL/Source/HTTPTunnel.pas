@@ -185,9 +185,6 @@ var
   StatusCode: array [0..4] of Char;
   URL: string;
 begin
-  Assert(ClientStatus = MYSQL_STATUS_READY);
-
-
   if (Assigned(Request)) then
     InternetCloseHandle(Request);                                 
 
