@@ -5429,6 +5429,7 @@ procedure TMySQLDataSet.InternalDelete();
 var
   DeleteBuffersIndex: Integer;
   I: Integer;
+  J: Integer;
   SQL: string;
   Success: Boolean;
 begin
@@ -5441,37 +5442,36 @@ begin
     if (Success and (Connection.RowsAffected = 0)) then
       raise EDatabasePostError.Create(SRecordChanged);
 
+    InternRecordBuffers.CriticalSection.Enter();
     if (Length(DeleteBookmarks) = 0) then
     begin
-      InternRecordBuffers.CriticalSection.Enter();
       InternalSetToRecord(ActiveBuffer());
       FreeInternRecordBuffer(InternRecordBuffers[InternRecordBuffers.Index]);
       InternRecordBuffers.Delete(InternRecordBuffers.Index);
-      for I := ActiveRecord + 1 to BufferCount - 1 do
-        Dec(PExternRecordBuffer(Buffers[I])^.RecNo);
+        for J := ActiveRecord + 1 to BufferCount - 1 do
+          Dec(PExternRecordBuffer(Buffers[J])^.RecNo);
       if (Filtered) then
         Dec(InternRecordBuffers.FilteredRecordCount);
-      InternRecordBuffers.CriticalSection.Leave();
     end
     else
     begin
-      InternRecordBuffers.CriticalSection.Enter();
-
       for I := 0 to Max(1, Length(DeleteBookmarks)) - 1 do
       begin
         DeleteBuffersIndex := BookmarkToInternBufferIndex(DeleteBookmarks[I]);
         if (InternRecordBuffers.Index > DeleteBuffersIndex) then
           Dec(InternRecordBuffers.Index);
-
+        for J := 0 to BufferCount - 1 do
+          if (PExternRecordBuffer(Buffers[I])^.InternRecordBuffer = InternRecordBuffers[DeleteBuffersIndex]) then
+            PExternRecordBuffer(Buffers[I])^.InternRecordBuffer := nil;
         FreeInternRecordBuffer(InternRecordBuffers[DeleteBuffersIndex]);
         InternRecordBuffers.Delete(DeleteBuffersIndex);
-
+        for J := ActiveRecord + 1 to BufferCount - 1 do
+          Dec(PExternRecordBuffer(Buffers[J])^.RecNo);
         if (Filtered) then
           Dec(InternRecordBuffers.FilteredRecordCount);
       end;
-
-      InternRecordBuffers.CriticalSection.Leave();
     end;
+    InternRecordBuffers.CriticalSection.Leave();
 
     PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer := nil;
   end;
@@ -6089,8 +6089,13 @@ end;
 
 function TMySQLDataSet.GetFieldData(Field: TField; Buffer: Pointer): Boolean;
 begin
+try
   Result := Assigned(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer)
     and GetFieldData(Field, Buffer, PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData);
+except
+  Result := Assigned(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer);
+  Result := Result and GetFieldData(Field, Buffer, PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData);
+end;
 end;
 
 function TMySQLDataSet.GetMaxTextWidth(const Field: TField; const TextWidth: TTextWidth): Integer;

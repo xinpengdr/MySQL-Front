@@ -1178,7 +1178,7 @@ begin
 
     if (URI.Scheme = 'mysql') then
       Delete(Result, 1, Length('mysql') + 1);
-    if (((URI.Host = LowerCase(Connection.Host)) or (URI.Host = LOCAL_HOST) and (Connection.Host = LOCAL_HOST_NAMEDPIPE)) and ((URI.Port = 0) or (URI.Port = Connection.Port))) then
+    if (((URI.Host = LowerCase(Connection.Host)) or (URI.Host = LOCAL_HOST)) and ((URI.Port = 0) or (URI.Port = Connection.Port))) then
     begin
       Delete(Result, 1, 2);
       if (Pos('/', Result) = 0) then
@@ -1549,9 +1549,7 @@ begin
     begin
       ZeroMemory(@URLComponents, SizeOf(URLComponents));
       URLComponents.dwStructSize := SizeOf(URLComponents);
-      if (Account[I].Connection.Host = LOCAL_HOST_NAMEDPIPE) then
-        Host := LOCAL_HOST
-      else if ((Account[I].Connection.LibraryType <> ltHTTP) or (lstrcmpi(PChar(Account[I].Connection.Host), LOCAL_HOST) <> 0)) then
+      if ((Account[I].Connection.LibraryType <> ltHTTP) or (lstrcmpi(PChar(Account[I].Connection.Host), LOCAL_HOST) <> 0)) then
         Host := LowerCase(Account[I].Connection.Host)
       else if (InternetCrackUrl(PChar(Account[I].Connection.HTTPTunnelURI), Length(Account[I].Connection.HTTPTunnelURI), 0, URLComponents)) then
       begin

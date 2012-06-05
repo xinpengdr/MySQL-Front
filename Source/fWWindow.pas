@@ -1411,38 +1411,38 @@ begin
     MNext.Items.Clear();
   end;
 
-  tbCreateDatabase.Visible   := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectBrowser]);
-  tbDeleteDatabase.Visible   := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectBrowser]);
-  tbCreateTable.Visible      := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectBrowser, fFClient.avDiagram]);
-  tbDeleteTable.Visible      := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectBrowser, fFClient.avDiagram]);
-  tbCreateIndex.Visible      := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectBrowser]);
-  tbDeleteIndex.Visible      := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectBrowser]);
-  tbCreateField.Visible      := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectBrowser]);
-  tbDeleteField.Visible      := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectBrowser]);
-  tbCreateForeignKey.Visible := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectBrowser, fFClient.avDiagram]);
-  tbDeleteForeignKey.Visible := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectBrowser, fFClient.avDiagram]);
-  tbProperties.Visible       := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectBrowser, fFClient.avDiagram]);
+  tbCreateDatabase.Visible   := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vObjects]);
+  tbDeleteDatabase.Visible   := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vObjects]);
+  tbCreateTable.Visible      := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vObjects, fFClient.vDiagram]);
+  tbDeleteTable.Visible      := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vObjects, fFClient.vDiagram]);
+  tbCreateIndex.Visible      := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vObjects]);
+  tbDeleteIndex.Visible      := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vObjects]);
+  tbCreateField.Visible      := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vObjects]);
+  tbDeleteField.Visible      := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vObjects]);
+  tbCreateForeignKey.Visible := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vObjects, fFClient.vDiagram]);
+  tbDeleteForeignKey.Visible := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vObjects, fFClient.vDiagram]);
+  tbProperties.Visible       := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vObjects, fFClient.vDiagram]);
 
-  tbOpen.Visible             := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectIDE, fFClient.avQueryBuilder, fFClient.avSQLEditor]);
-  tbSave.Visible             := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectIDE, fFClient.avQueryBuilder, fFClient.avSQLEditor]);
-  tbUndo.Visible             := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectIDE, fFClient.avQueryBuilder, fFClient.avSQLEditor]);
-  tbRedo.Visible             := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectIDE, fFClient.avQueryBuilder, fFClient.avSQLEditor]);
-  tbSearchFind.Visible       := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectIDE, fFClient.avQueryBuilder, fFClient.avSQLEditor]);
-  tbSearchReplace.Visible    := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectIDE, fFClient.avQueryBuilder, fFClient.avSQLEditor]);
-  tbRun.Visible              := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectIDE, fFClient.avSQLEditor]);
-  tbRunSelection.Visible     := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectIDE, fFClient.avSQLEditor]);
-  tbPostObject.Visible       := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectIDE]);
+  tbOpen.Visible             := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vIDE, fFClient.vBuilder, fFClient.vEditor]);
+  tbSave.Visible             := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vIDE, fFClient.vBuilder, fFClient.vEditor]);
+  tbUndo.Visible             := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vIDE, fFClient.vBuilder, fFClient.vEditor]);
+  tbRedo.Visible             := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vIDE, fFClient.vBuilder, fFClient.vEditor]);
+  tbSearchFind.Visible       := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vIDE, fFClient.vBuilder, fFClient.vEditor]);
+  tbSearchReplace.Visible    := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vIDE, fFClient.vBuilder, fFClient.vEditor]);
+  tbRun.Visible              := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vIDE, fFClient.vEditor]);
+  tbRunSelection.Visible     := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vIDE, fFClient.vEditor]);
+  tbPostObject.Visible       := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vIDE]);
 
-  tbDBFirst.Visible          := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avDataBrowser, fFClient.avQueryBuilder, fFClient.avSQLEditor]);
-  tbDBPrev.Visible           := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avDataBrowser]);
-  tbDBNext.Visible           := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avDataBrowser]);
-  tbDBLast.Visible           := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avDataBrowser, fFClient.avQueryBuilder, fFClient.avSQLEditor]);
-  tbDInsertRecord.Visible    := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avDataBrowser, fFClient.avQueryBuilder, fFClient.avSQLEditor]);
-  tbDDeleteRecord.Visible    := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avDataBrowser, fFClient.avQueryBuilder, fFClient.avSQLEditor]);
-  tbPostRecord.Visible       := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avDataBrowser]);
-  tbCancelRecord.Visible     := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avDataBrowser]);
+  tbDBFirst.Visible          := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vBrowser, fFClient.vBuilder, fFClient.vEditor]);
+  tbDBPrev.Visible           := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vBrowser]);
+  tbDBNext.Visible           := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vBrowser]);
+  tbDBLast.Visible           := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vBrowser, fFClient.vBuilder, fFClient.vEditor]);
+  tbDInsertRecord.Visible    := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vBrowser, fFClient.vBuilder, fFClient.vEditor]);
+  tbDDeleteRecord.Visible    := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vBrowser, fFClient.vBuilder, fFClient.vEditor]);
+  tbPostRecord.Visible       := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vBrowser]);
+  tbCancelRecord.Visible     := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vBrowser]);
 
-  tbDEmpty.Visible           := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.avObjectBrowser]);
+  tbDEmpty.Visible           := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [fFClient.vObjects]);
 
   // Auto hide unneeded separator buttons
   Found := False;

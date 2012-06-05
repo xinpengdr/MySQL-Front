@@ -645,10 +645,12 @@ type
       Shift: TShiftState; X, Y: Integer);
     procedure ToolBarResize(Sender: TObject);
     procedure PDataBrowserResize(Sender: TObject);
+    procedure ListViewChange(Sender: TObject; Item: TListItem;
+      Change: TItemChange);
   type
     TNewLineFormat = (nlWindows, nlUnix, nlMacintosh);
     TTabState = set of (tsLoading, tsActive);
-    TView = (avObjectBrowser, avDataBrowser, avObjectIDE, avQueryBuilder, avSQLEditor, avDiagram);
+    TView = (vObjects, vBrowser, vIDE, vBuilder, vEditor, vDiagram);
     TToolBarData = record
       View: TView;
       Address: string;
@@ -754,9 +756,8 @@ type
       property SynMemo: TSynMemo read GetSynMemo write FSynMemo;
     end;
 
-    TDatabaseDesktop = class(TCDatabase.TDesktop)
+    TDatabaseDesktop = class(TCObjectDesktop)
     private
-      FFClient: TFClient;
       FXML: IXMLNode;
       function GetDatabase(): TCDatabase; inline;
       function GetWorkbench(): TWWorkbench;
@@ -764,13 +765,11 @@ type
     protected
       FListView: TListView;
       FWorkbench: TWWorkbench;
-      property FClient: TFClient read FFClient;
     public
       procedure CloseQuery(Sender: TObject; var CanClose: Boolean);
       constructor Create(const AFClient: TFClient; const ADatabase: TCDatabase);
       procedure CreateListView(); virtual;
       destructor Destroy(); override;
-      function TableCount(): Integer; override;
       procedure SaveToXML(); override;
       property Database: TCDatabase read GetDatabase;
       property ListView: TListView read FListView write FListView;
@@ -975,7 +974,7 @@ type
     procedure SynMemoPrintExecute(Sender: TObject);
     procedure TableOpen(Sender: TObject);
     procedure TSymMemoGotoExecute(Sender: TObject);
-    function UpdateObjectBrowser(): Boolean; virtual;
+    function UpdateAfterAddressChanged(): Boolean; virtual;
     procedure CMActivateFGrid(var Message: TMessage); message CM_ACTIVATEFGRID;
     procedure CMActivateFText(var Message: TMessage); message CM_ACTIVATEFTEXT;
     procedure CMBeforeReceivingDataSet(var Message: TMessage); message CM_BEFORE_RECEIVING_DATASET;
@@ -1163,9 +1162,7 @@ end;
 
 constructor TFClient.TDatabaseDesktop.Create(const AFClient: TFClient; const ADatabase: TCDatabase);
 begin
-  FFClient := AFClient;
-
-  inherited Create(ADatabase);
+  inherited Create(AFClient, ADatabase);
 
   FXML := nil;
 end;
@@ -1255,14 +1252,6 @@ begin
 
   if (Database.Tables.Valid) then
     XMLNode(XML, 'tables', True).Attributes['count'] := IntToStr(Database.Tables.Count);
-end;
-
-function TFClient.TDatabaseDesktop.TableCount(): Integer;
-begin
-  Result := -1;
-
-  if (Assigned(XMLNode(XML, 'tables'))) then
-    TryStrToInt(XMLNode(XML, 'tables').Attributes['count'], Result);
 end;
 
 { TFClient.TTableDesktop ******************************************************}
@@ -1725,11 +1714,11 @@ end;
 function TFClient.ViewToParam(const AView: TView): Variant;
 begin
   case (AView) of
-    avDataBrowser: Result := 'browser';
-    avObjectIDE: Result := 'ide';
-    avQueryBuilder: Result := 'builder';
-    avSQLEditor: Result := 'editor';
-    avDiagram: Result := 'diagram';
+    vBrowser: Result := 'browser';
+    vIDE: Result := 'ide';
+    vBuilder: Result := 'builder';
+    vEditor: Result := 'editor';
+    vDiagram: Result := 'diagram';
     else Result := Null;
   end;
 end;
@@ -2145,12 +2134,12 @@ begin
       OldControl := OldControl.Parent;
 
     case (View) of
-      avObjectBrowser: NewActiveControl := ActiveListView;
-      avDataBrowser: NewActiveControl := FGrid;
-      avObjectIDE: NewActiveControl := ActiveSynMemo;
-      avQueryBuilder: NewActiveControl := FBuilderActiveWorkArea();
-      avSQLEditor: NewActiveControl := FSQLEditorSynMemo;
-      avDiagram: NewActiveControl := ActiveWorkbench;
+      vObjects: NewActiveControl := ActiveListView;
+      vBrowser: NewActiveControl := FGrid;
+      vIDE: NewActiveControl := ActiveSynMemo;
+      vBuilder: NewActiveControl := FBuilderActiveWorkArea();
+      vEditor: NewActiveControl := FSQLEditorSynMemo;
+      vDiagram: NewActiveControl := ActiveWorkbench;
       else NewActiveControl := nil;
     end;
 
@@ -2163,11 +2152,11 @@ begin
 
 
     Empty := not Assigned(ActiveSynMemo) or (ActiveSynMemo.Lines.Count <= 1) and (ActiveSynMemo.Text = ''); // Takes a lot of time
-    if (not Empty and (View = avObjectIDE)) then SQL := ActiveSynMemo.Text else SQL := '';
+    if (not Empty and (View = vIDE)) then SQL := ActiveSynMemo.Text else SQL := '';
 
-    MainAction('aFOpen').Enabled := View = avSQLEditor;
-    MainAction('aFSave').Enabled := (View = avSQLEditor) and not Empty and ((SQLEditor.Filename = '') or ActiveSynMemo.Modified);
-    MainAction('aFSaveAs').Enabled := (View = avSQLEditor) and not Empty;
+    MainAction('aFOpen').Enabled := View = vEditor;
+    MainAction('aFSave').Enabled := (View = vEditor) and not Empty and ((SQLEditor.Filename = '') or ActiveSynMemo.Modified);
+    MainAction('aFSaveAs').Enabled := (View = vEditor) and not Empty;
     MainAction('aVObjectBrowser').Enabled := True;
     MainAction('aVDataBrowser').Enabled := (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView, iiTrigger]) or ((LastSelectedDatabase <> '') and (LastSelectedDatabase = SelectedDatabase) and (LastSelectedTable <> ''));
     MainAction('aVObjectIDE').Enabled := (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent, iiTrigger]) or (LastObjectIDEAddress <> '');
@@ -2175,11 +2164,11 @@ begin
     MainAction('aVSQLEditor').Enabled := True;
     MainAction('aVDiagram').Enabled := (SelectedDatabase <> '') or (LastSelectedDatabase <> '');
     MainAction('aDRun').Enabled :=
-      ((View = avSQLEditor)
-      or ((View  = avQueryBuilder) and FBuilder.Visible)
-      or ((View = avObjectIDE) and SQLSingleStmt(SQL) and (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent]))) and not Empty;
+      ((View = vEditor)
+      or ((View  = vBuilder) and FBuilder.Visible)
+      or ((View = vIDE) and SQLSingleStmt(SQL) and (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent]))) and not Empty;
     MainAction('aDRunSelection').Enabled := (((ActiveSynMemo = FSQLEditorSynMemo) and not Empty) or Assigned(ActiveSynMemo) and (ActiveSynMemo.SelText <> '')) and True;
-    MainAction('aDPostObject').Enabled := (View = avObjectIDE) and Assigned(ActiveSynMemo) and ActiveSynMemo.Modified and SQLSingleStmt(SQL)
+    MainAction('aDPostObject').Enabled := (View = vIDE) and Assigned(ActiveSynMemo) and ActiveSynMemo.Modified and SQLSingleStmt(SQL)
       and ((SelectedImageIndex in [iiView]) and SQLCreateParse(Parse, PChar(SQL), Length(SQL),Client.ServerVersion) and (SQLParseKeyword(Parse, 'SELECT'))
         or (SelectedImageIndex in [iiProcedure, iiFunction]) and SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), Client.ServerVersion) and (DDLStmt.DefinitionType = dtCreate) and (DDLStmt.ObjectType in [otProcedure, otFunction])
         or (SelectedImageIndex in [iiEvent, iiTrigger]));
@@ -2188,12 +2177,12 @@ begin
 
     UsedView := View;
     case (View) of
-      avObjectBrowser: if (not (ttObjectBrowser in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttObjectBrowser); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
-      avDataBrowser: if (not (ttDataBrowser in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttDataBrowser); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
-      avObjectIDE: if (not (ttObjectIDE in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttObjectIDE); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
-      avQueryBuilder: if (not (ttQueryBuilder in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttQueryBuilder); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
-      avSQLEditor: if (not (ttSQLEditor in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttSQLEditor); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
-      avDiagram: if (not (ttDiagram in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttDiagram); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
+      vObjects: if (not (ttObjectBrowser in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttObjectBrowser); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
+      vBrowser: if (not (ttDataBrowser in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttDataBrowser); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
+      vIDE: if (not (ttObjectIDE in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttObjectIDE); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
+      vBuilder: if (not (ttQueryBuilder in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttQueryBuilder); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
+      vEditor: if (not (ttSQLEditor in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttSQLEditor); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
+      vDiagram: if (not (ttDiagram in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttDiagram); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
     end;
 
     ToolBarData.Caption := Client.Account.Name + ' - ' + AddressToCaption(Address);
@@ -2241,7 +2230,7 @@ begin
       if ((tsActive in FrameState) and (ToolBarData.CurrentAddress > 0) and Wanted.Nothing) then
         PlaySound(PChar(Preferences.SoundFileNavigating), Handle, SND_FILENAME or SND_ASYNC);
 
-      if ((UsedView = avDataBrowser) and (SelectedTable <> '')) then
+      if ((UsedView = vBrowser) and (SelectedTable <> '')) then
       begin
         Database := Client.DatabaseByName(SelectedDatabase);
         Table := Database.TableByName(SelectedTable);
@@ -2284,7 +2273,7 @@ begin
       LastSelectedTable := SelectedTable;
     if (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) then
       LastTableView := View;
-    if (View = avObjectIDE) then
+    if (View = vIDE) then
       LastObjectIDEAddress := Address;
 
 
@@ -2301,18 +2290,17 @@ begin
       end
       else
         case (View) of
-          avObjectBrowser: if (PListView.Visible) then Window.ActiveControl := ActiveListView;
-          avDataBrowser: if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
-          avObjectIDE: if (PSQLEditor.Visible and Assigned(ActiveSynMemo)) then Window.ActiveControl := ActiveSynMemo;
-          avQueryBuilder: if (PBuilder.Visible and Assigned(FBuilderActiveWorkArea())) then Window.ActiveControl := FBuilderActiveWorkArea();
-          avSQLEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo;
-          avDiagram: if (PWorkbench.Visible) then Window.ActiveControl := ActiveWorkbench;
+          vObjects: if (PListView.Visible) then Window.ActiveControl := ActiveListView;
+          vBrowser: if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
+          vIDE: if (PSQLEditor.Visible and Assigned(ActiveSynMemo)) then Window.ActiveControl := ActiveSynMemo;
+          vBuilder: if (PBuilder.Visible and Assigned(FBuilderActiveWorkArea())) then Window.ActiveControl := FBuilderActiveWorkArea();
+          vEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo;
+          vDiagram: if (PWorkbench.Visible) then Window.ActiveControl := ActiveWorkbench;
         end;
       Exclude(FrameState, tsLoading);
     end;
 
-    if (Wanted.Nothing) then
-      Wanted.Update := UpdateObjectBrowser;
+    Wanted.Update := UpdateAfterAddressChanged;
   end;
 end;
 
@@ -2328,7 +2316,7 @@ begin
 
   if (URI.Scheme <> 'mysql') then
     AllowChange := False
-  else if ((lstrcmpi(PChar(URI.Host), PChar(Client.Account.Connection.Host)) <> 0) and ((lstrcmpi(PChar(URI.Host), LOCAL_HOST) <> 0) or (lstrcmpi(LOCAL_HOST_NAMEDPIPE, PChar(Client.Account.Connection.Host)) <> 0))) then
+  else if ((lstrcmpi(PChar(URI.Host), PChar(Client.Account.Connection.Host)) <> 0) and ((lstrcmpi(PChar(URI.Host), LOCAL_HOST) <> 0))) then
     AllowChange := False
   else if (URI.Port <> Client.Account.Connection.Port) then
     AllowChange := False
@@ -2351,7 +2339,7 @@ begin
     MessageBeep(MB_ICONERROR)
   else
   begin
-    if (Client.Update() and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
+    if (Client.Update(URI.Param['view'] = Null) and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
       AllowChange := False
     else if (URI.Param['system'] = 'hosts') then
       Client.Hosts.Update()
@@ -2368,7 +2356,7 @@ begin
       Database := Client.DatabaseByName(URI.Database);
       if (not Assigned(Database)) then
         NotFound := True
-      else if (Database.Update() and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
+      else if (Database.Update(URI.Param['view'] = Null) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
         AllowChange := False
       else if ((URI.Table <> '') or (URI.Param['object'] <> Null)) then
       begin
@@ -2471,7 +2459,7 @@ begin
 
   if (URI.Scheme <> 'mysql') then
     Result := nil
-  else if ((lstrcmpi(PChar(URI.Host), PChar(Client.Account.Connection.Host)) <> 0) and ((lstrcmpi(PChar(URI.Host), LOCAL_HOST) <> 0) or (lstrcmpi(LOCAL_HOST_NAMEDPIPE, PChar(Client.Account.Connection.Host)) <> 0))) then
+  else if ((lstrcmpi(PChar(URI.Host), PChar(Client.Account.Connection.Host)) <> 0) and ((lstrcmpi(PChar(URI.Host), LOCAL_HOST) <> 0))) then
     Result := nil
   else if (URI.Port <> Client.Account.Connection.Port) then
     Result := nil
@@ -2762,28 +2750,28 @@ begin
     FBuilderActiveSelectList().EditorMode := False;
 
   SQL := '';
-  if (View in [avQueryBuilder, avSQLEditor]) then
+  if (View in [vBuilder, vEditor]) then
     SQL := Trim(ActiveSynMemo.Text)
-  else if ((View = avObjectIDE) and (SelectedImageIndex = iiView)) then
+  else if ((View = vIDE) and (SelectedImageIndex = iiView)) then
   begin
     if (not ActiveSynMemo.Modified or PostObject(Sender)) then
-      View := avDataBrowser;
+      View := vBrowser;
   end
-  else if ((View = avObjectIDE) and (SelectedImageIndex = iiProcedure)) then
+  else if ((View = vIDE) and (SelectedImageIndex = iiProcedure)) then
   begin
     if (Assigned(FObjectIDEGrid.DataSource.DataSet)) then
       FObjectIDEGrid.DataSource.DataSet.CheckBrowseMode();
     if (not ActiveSynMemo.Modified or PostObject(Sender)) then
       SQL := Client.DatabaseByName(SelectedDatabase).ProcedureByName(SelectedNavigator).SQLRun();
   end
-  else if ((View = avObjectIDE) and (SelectedImageIndex = iiFunction)) then
+  else if ((View = vIDE) and (SelectedImageIndex = iiFunction)) then
   begin
     if (Assigned(FObjectIDEGrid.DataSource.DataSet)) then
       FObjectIDEGrid.DataSource.DataSet.CheckBrowseMode();
     if (not ActiveSynMemo.Modified or PostObject(Sender)) then
       SQL := Client.DatabaseByName(SelectedDatabase).FunctionByName(SelectedNavigator).SQLRun();
   end
-  else if ((View = avObjectIDE) and (SelectedImageIndex = iiEvent)) then
+  else if ((View = vIDE) and (SelectedImageIndex = iiEvent)) then
   begin
     if (not ActiveSynMemo.Modified or PostObject(Sender)) then
       SQL := Client.DatabaseByName(SelectedDatabase).EventByName(SelectedNavigator).SQLRun();
@@ -3848,8 +3836,8 @@ begin
   begin
     Wanted.Clear();
 
-    View := avSQLEditor;
-    if (View = avSQLEditor) then
+    View := vEditor;
+    if (View = vEditor) then
     begin
       SQL := '';
 
@@ -3871,8 +3859,8 @@ begin
 
   if (Assigned(FSQLHistoryMenuNode) and (FSQLHistoryMenuNode.ImageIndex in [iiStatement, iiQuery, iiClock])) then
   begin
-    View := avSQLEditor;
-    if (View = avSQLEditor) then
+    View := vEditor;
+    if (View = vEditor) then
     begin
       SQL := '';
 
@@ -3906,8 +3894,8 @@ procedure TFClient.aPObjectBrowserTableExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  if (View <> avObjectBrowser) then
-    View := avObjectBrowser;
+  if (View <> vObjects) then
+    View := vObjects;
   SelectedTable := LastSelectedTable; // Navigator auf Table stellen
 end;
 
@@ -3966,25 +3954,25 @@ end;
 
 procedure TFClient.aTBFilterExecute(Sender: TObject);
 begin
-  if (View = avDataBrowser) then
+  if (View = vBrowser) then
     Window.ActiveControl := FFilter;
 end;
 
 procedure TFClient.aTBLimitExecute(Sender: TObject);
 begin
-  if (View = avDataBrowser) then
+  if (View = vBrowser) then
     Window.ActiveControl := FLimit;
 end;
 
 procedure TFClient.aTBOffsetExecute(Sender: TObject);
 begin
-  if (View = avDataBrowser) then
+  if (View = vBrowser) then
     Window.ActiveControl := FOffset;
 end;
 
 procedure TFClient.aTBQuickSearchExecute(Sender: TObject);
 begin
-  if (View = avDataBrowser) then
+  if (View = vBrowser) then
     Window.ActiveControl := FQuickSearch;
 end;
 
@@ -4036,17 +4024,17 @@ var
   AllowChange: Boolean;
 begin
   if (Sender = MainAction('aVObjectBrowser')) then
-    NewView := avObjectBrowser
+    NewView := vObjects
   else if (Sender = MainAction('aVDataBrowser')) then
-    NewView := avDataBrowser
+    NewView := vBrowser
   else if (Sender = MainAction('aVObjectIDE')) then
-    NewView := avObjectIDE
+    NewView := vIDE
   else if (Sender = MainAction('aVQueryBuilder')) then
-    NewView := avQueryBuilder
+    NewView := vBuilder
   else if (Sender = MainAction('aVSQLEditor')) then
-    NewView := avSQLEditor
+    NewView := vEditor
   else if (Sender = MainAction('aVDiagram')) then
-    NewView := avDiagram
+    NewView := vDiagram
   else
     NewView := View;
 
@@ -4072,12 +4060,12 @@ begin
     View := NewView;
 
     case (View) of
-      avObjectBrowser: if (PListView.Visible) then Window.ActiveControl := ActiveListView;
-      avDataBrowser: if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
-      avObjectIDE: if (PSQLEditor.Visible and Assigned(ActiveSynMemo)) then Window.ActiveControl := ActiveSynMemo;
-      avQueryBuilder: if (PBuilder.Visible and Assigned(FBuilderActiveWorkArea())) then Window.ActiveControl := FBuilderActiveWorkArea();
-      avSQLEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo;
-      avDiagram: if (PWorkbench.Visible) then Window.ActiveControl := ActiveWorkbench;
+      vObjects: if (PListView.Visible) then Window.ActiveControl := ActiveListView;
+      vBrowser: if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
+      vIDE: if (PSQLEditor.Visible and Assigned(ActiveSynMemo)) then Window.ActiveControl := ActiveSynMemo;
+      vBuilder: if (PBuilder.Visible and Assigned(FBuilderActiveWorkArea())) then Window.ActiveControl := FBuilderActiveWorkArea();
+      vEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo;
+      vDiagram: if (PWorkbench.Visible) then Window.ActiveControl := ActiveWorkbench;
     end;
   end;
 end;
@@ -4117,8 +4105,8 @@ begin
     KillTimer(Handle, tiNavigator);
 
     case (View) of
-      avObjectBrowser,
-      avObjectIDE:
+      vObjects,
+      vIDE:
         begin
           case (SelectedImageIndex) of
             iiServer: Client.Invalidate();
@@ -4144,9 +4132,9 @@ begin
           end;
           Address := Address;
         end;
-      avDataBrowser,
-      avQueryBuilder,
-      avSQLEditor:
+      vBrowser,
+      vBuilder,
+      vEditor:
         if (PResult.Visible and (FGrid.DataSource.DataSet is TMySQLDataSet) and TMySQLDataSet(FGrid.DataSource.DataSet).Active and (TMySQLDataSet(FGrid.DataSource.DataSet).CommandText <> '')) then
         begin
           TCResult.Tabs.Clear();
@@ -4393,7 +4381,7 @@ begin
 
   if (Assigned(ClientEvent) and (ClientEvent.EventType = ceCreated) and (ClientEvent.Sender is TCDatabase) and (TCDatabase(ClientEvent.Sender) = TCDatabase(FNavigator.Selected.Data))) then
     case (View) of
-      avDiagram:
+      vDiagram:
         if (ClientEvent.CItem is TCBaseTable) then
         begin
           ActiveWorkbench.BeginUpdate();
@@ -4440,7 +4428,7 @@ var
 begin
   DataSet := TDataSet(Message.wParam);
 
-  if ((View = avDataBrowser) and (DataSet is TCTableDataSet) and (TCTableDataSet(DataSet).DatabaseName = SelectedDatabase) and (TCTableDataSet(DataSet).CommandText = SelectedTable)) then
+  if ((View = vBrowser) and (DataSet is TCTableDataSet) and (TCTableDataSet(DataSet).DatabaseName = SelectedDatabase) and (TCTableDataSet(DataSet).CommandText = SelectedTable)) then
   begin
     FUDOffset.Position := TCTableDataSet(DataSet).Offset;
     FLimitEnabled.Down := TCTableDataSet(DataSet).Limit > 0;
@@ -4682,7 +4670,7 @@ begin
         Msg := Preferences.LoadStr(589)
       else
         Msg := Preferences.LoadStr(584, ExtractFileName(SQLEditor.Filename));
-      View := avSQLEditor;
+      View := vEditor;
       Window.ActiveControl := FSQLEditorSynMemo;
       case (MsgBox(Msg, Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION)) of
         IDYES: SaveSQLFile(MainAction('aFSave'));
@@ -5386,7 +5374,6 @@ begin
   PBuilder.Align := alClient;
 
   FServerListView.RowSelect := CheckWin32Version(6);
-  ListViewInitialize(Self, FServerListView, Client);
 
   FSQLEditorSynMemo.Highlighter := MainHighlighter;
   FBuilderSynMemo.Highlighter := MainHighlighter;
@@ -5405,7 +5392,7 @@ begin
   LastFNavigatorSelected := '';
   LastSelectedDatabase := '';
   LastSelectedTable := '';
-  LastTableView := avObjectBrowser;
+  LastTableView := vObjects;
   LastObjectIDEAddress := '';
 
 
@@ -5480,6 +5467,7 @@ begin
   ListView.Parent := FServerListView.Parent;
   ListView.ViewStyle := FServerListView.ViewStyle;
   ListView.Visible := False;
+  ListView.OnChange := FServerListView.OnChange;
   ListView.OnChanging := FServerListView.OnChanging;
   ListView.OnColumnClick := FServerListView.OnColumnClick;
   ListView.OnCompare := FServerListView.OnCompare;
@@ -5624,10 +5612,10 @@ begin
   end;
 
   if ((DataSet.FieldCount > 0)
-    and ((View = avDataBrowser) and (DataSet is TCTableDataSet) and (TCTableDataSet(DataSet).DatabaseName = SelectedDatabase) and (TCTableDataSet(DataSet).CommandText = SelectedTable)
-      or (View = avObjectIDE) and Assigned(ResultSet) and (ResultSet <> Client.QueryBuilderResult) and (ResultSet <> Client.SQLEditorResult)
-      or (View = avQueryBuilder) and (ResultSet = Client.QueryBuilderResult)
-      or (View = avSQLEditor) and (ResultSet = Client.SQLEditorResult))) then
+    and ((View = vBrowser) and (DataSet is TCTableDataSet) and (TCTableDataSet(DataSet).DatabaseName = SelectedDatabase) and (TCTableDataSet(DataSet).CommandText = SelectedTable)
+      or (View = vIDE) and Assigned(ResultSet) and (ResultSet <> Client.QueryBuilderResult) and (ResultSet <> Client.SQLEditorResult)
+      or (View = vBuilder) and (ResultSet = Client.QueryBuilderResult)
+      or (View = vEditor) and (ResultSet = Client.SQLEditorResult))) then
   begin
     PContentChange(DataSet);
     PContentRefresh(DataSet);
@@ -5746,7 +5734,7 @@ begin
     DBGrid.UpdateAction(MainAction('aEPaste'));
     MainAction('aECopyToFile').Enabled := (DBGrid.SelectedField.DataType in [ftWideMemo, ftBlob]) and (not DBGrid.SelectedField.IsNull) and (DBGrid.SelectedRows.Count <= 1);
     MainAction('aEPasteFromFile').Enabled := (DBGrid.SelectedField.DataType in [ftWideMemo, ftBlob]) and not DBGrid.SelectedField.ReadOnly and (DBGrid.SelectedRows.Count <= 1);
-    MainAction('aDCreateField').Enabled := Assigned(DBGrid.SelectedField) and (View = avDataBrowser);
+    MainAction('aDCreateField').Enabled := Assigned(DBGrid.SelectedField) and (View = vBrowser);
     MainAction('aDEditRecord').Enabled := Assigned(DBGrid.SelectedField);
     MainAction('aDEmpty').Enabled := Assigned(DBGrid.DataSource.DataSet) and DBGrid.DataSource.DataSet.CanModify and Assigned(DBGrid.SelectedField) and not DBGrid.SelectedField.IsNull and not DBGrid.SelectedField.Required and (DBGrid.SelectedRows.Count <= 1) and True;
   end;
@@ -5906,7 +5894,7 @@ var
 begin
   if (Sender is TMySQLDBGrid) then
   begin
-    if (View = avObjectIDE) then SQL := SQLTrimStmt(ActiveSynMemo.Text) else SQL := '';
+    if (View = vIDE) then SQL := SQLTrimStmt(ActiveSynMemo.Text) else SQL := '';
 
     DBGrid := TMySQLDBGrid(Sender);
 
@@ -6843,7 +6831,7 @@ begin
       MenuItem.Tag := -1;
       MGridHeader.Items.Add(MenuItem);
 
-      if ((View = avDataBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView])) then
+      if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView])) then
       begin
         Database := Client.DatabaseByName(SelectedDatabase);
         Table := Database.BaseTableByName(SelectedTable);
@@ -6877,7 +6865,7 @@ begin
 
       for I := 0 to FGrid.Columns.Count - 1 do
       begin
-        if (View <> avDataBrowser) then
+        if (View <> vBrowser) then
           Database := nil
         else
           Database := Client.DatabaseByName(SelectedDatabase);
@@ -7927,7 +7915,7 @@ begin
   MainAction('aFExportODBC').Enabled := Assigned(Node) and (Node.ImageIndex in [iiDatabase, iiBaseTable]);
   MainAction('aFExportXML').Enabled := Assigned(Node) and (Node.ImageIndex in [iiServer, iiDatabase, iiBaseTable, iiView]);
   MainAction('aFExportHTML').Enabled := Assigned(Node) and (Node.ImageIndex in [iiServer, iiDatabase, iiBaseTable, iiView]);
-  MainAction('aFPrint').Enabled := Assigned(Node) and ((View = avDiagram) or (Node.ImageIndex in [iiServer, iiDatabase, iiBaseTable, iiView]));
+  MainAction('aFPrint').Enabled := Assigned(Node) and ((View = vDiagram) or (Node.ImageIndex in [iiServer, iiDatabase, iiBaseTable, iiView]));
   MainAction('aECopy').Enabled := Assigned(Node) and (Node.ImageIndex in [iiDatabase, iiSystemDatabase, iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction, iiEvent, iiTrigger, iiField, iiSystemViewField, iiViewField, iiHost, iiUser]);
   MainAction('aEPaste').Enabled := Assigned(Node) and ((Node.ImageIndex = iiServer) and Clipboard.HasFormat(CF_MYSQLSERVER) or (Node.ImageIndex = iiDatabase) and Clipboard.HasFormat(CF_MYSQLDATABASE) or (Node.ImageIndex = iiBaseTable) and Clipboard.HasFormat(CF_MYSQLTABLE) or (Node.ImageIndex = iiHosts) and Clipboard.HasFormat(CF_MYSQLHOSTS) or (Node.ImageIndex = iiUsers) and Clipboard.HasFormat(CF_MYSQLUSERS)) and True;
   MainAction('aERename').Enabled := Assigned(Node) and ((Node.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013) or (Node.ImageIndex in [iiBaseTable, iiView, iiEvent, iiTrigger, iiField])) and True;
@@ -8235,6 +8223,7 @@ begin
   FSQLEditorEnter(Sender);
 end;
 
+
 procedure TFClient.FSQLEditorCompletionExecute(Kind: SynCompletionType;
   Sender: TObject; var CurrentInput: string; var x, y: Integer;
   var CanExecute: Boolean);
@@ -8515,7 +8504,7 @@ begin
     if (((scCaretX in Changes) or (scModified in Changes) or (scAll in Changes)) and Assigned(ActiveSynMemo)) then
     begin
       SelSQL := ActiveSynMemo.SelText; // Cache, da Abfrage bei vielen Zeilen Zeit benötigt
-      if (View = avObjectIDE) then SQL := ActiveSynMemo.Text;
+      if (View = vIDE) then SQL := ActiveSynMemo.Text;
 
       Empty := ((ActiveSynMemo.Lines.Count <= 1) and (ActiveSynMemo.Text = '')); // Benötigt bei vielen Zeilen Zeit
 
@@ -8527,11 +8516,11 @@ begin
       MainAction('aEPasteFromFile').Enabled := (ActiveSynMemo = FSQLEditorSynMemo);
       MainAction('aSGoto').Enabled := (Sender = FSQLEditorSynMemo) and not Empty;
       MainAction('aDRun').Enabled :=
-        ((View = avSQLEditor)
-        or ((View  = avQueryBuilder) and FBuilder.Visible)
-        or ((View = avObjectIDE) and SQLSingleStmt(SQL) and (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent]))) and not Empty;
+        ((View = vEditor)
+        or ((View  = vBuilder) and FBuilder.Visible)
+        or ((View = vIDE) and SQLSingleStmt(SQL) and (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent]))) and not Empty;
       MainAction('aDRunSelection').Enabled := (((ActiveSynMemo = FSQLEditorSynMemo) and not Empty) or Assigned(ActiveSynMemo) and (ActiveSynMemo.SelText <> '')) and True;
-      MainAction('aDPostObject').Enabled := (View = avObjectIDE) and ActiveSynMemo.Modified and SQLSingleStmt(SQL)
+      MainAction('aDPostObject').Enabled := (View = vIDE) and ActiveSynMemo.Modified and SQLSingleStmt(SQL)
         and ((SelectedImageIndex in [iiView]) and SQLCreateParse(Parse, PChar(SQL), Length(SQL),Client.ServerVersion) and (SQLParseKeyword(Parse, 'SELECT'))
           or (SelectedImageIndex in [iiProcedure, iiFunction]) and SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), Client.ServerVersion) and (DDLStmt.DefinitionType = dtCreate) and (DDLStmt.ObjectType in [otProcedure, otFunction])
           or (SelectedImageIndex in [iiEvent, iiTrigger]));
@@ -9343,7 +9332,7 @@ end;
 function TFClient.GetActiveSynMemo(): TSynMemo;
 begin
   case (View) of
-    avObjectIDE:
+    vIDE:
       case (SelectedImageIndex) of
         iiView: Result := TViewDesktop(TCView(FNavigator.Selected.Data).Desktop).SynMemo;
         iiProcedure,
@@ -9352,9 +9341,9 @@ begin
         iiTrigger: Result := TTriggerDesktop(TCTrigger(FNavigator.Selected.Data).Desktop).SynMemo;
         else Result := nil;
       end;
-    avQueryBuilder:
+    vBuilder:
       Result := FBuilderSynMemo;
-    avSQLEditor:
+    vEditor:
       Result := FSQLEditorSynMemo
     else
       Result := nil;
@@ -9524,13 +9513,13 @@ end;
 
 function TFClient.GetResultSet(): TCResultSet;
 begin
-  if ((View = avObjectIDE) and (SelectedImageIndex = iiProcedure)) then
+  if ((View = vIDE) and (SelectedImageIndex = iiProcedure)) then
     Result := Client.DatabaseByName(SelectedDatabase).ProcedureByName(SelectedNavigator).IDEResult
-  else if ((View = avObjectIDE) and (SelectedImageIndex = iiFunction)) then
+  else if ((View = vIDE) and (SelectedImageIndex = iiFunction)) then
     Result := Client.DatabaseByName(SelectedDatabase).FunctionByName(SelectedNavigator).IDEResult
-  else if (View = avQueryBuilder) then
+  else if (View = vBuilder) then
     Result := Client.QueryBuilderResult
-  else if (View = avSQLEditor) then
+  else if (View = vEditor) then
     Result := Client.SQLEditorResult
   else
     Result := nil;
@@ -9604,12 +9593,12 @@ end;
 
 function TFClient.GetView(): TView;
 begin
-  if (MainAction('aVObjectBrowser').Checked) then Result := avObjectBrowser
-  else if (MainAction('aVDataBrowser').Checked) then Result := avDataBrowser
-  else if (MainAction('aVObjectIDE').Checked) then Result := avObjectIDE
-  else if (MainAction('aVQueryBuilder').Checked) then Result := avQueryBuilder
-  else if (MainAction('aVSQLEditor').Checked) then Result := avSQLEditor
-  else if (MainAction('aVDiagram').Checked) then Result := avDiagram
+  if (MainAction('aVObjectBrowser').Checked) then Result := vObjects
+  else if (MainAction('aVDataBrowser').Checked) then Result := vBrowser
+  else if (MainAction('aVObjectIDE').Checked) then Result := vIDE
+  else if (MainAction('aVQueryBuilder').Checked) then Result := vBuilder
+  else if (MainAction('aVSQLEditor').Checked) then Result := vEditor
+  else if (MainAction('aVDiagram').Checked) then Result := vDiagram
   else Result := UsedView;
 end;
 
@@ -9670,7 +9659,7 @@ begin
   end;
 
   if (Success) then
-    if (View = avDataBrowser) then
+    if (View = vBrowser) then
     begin
       FFilter.Text := Format(Filters[FilterIndex].Text, [Client.EscapeIdentifier(FGrid.SelectedField.FieldName), Value]);
       FFilterEnabled.Down := True;
@@ -9690,6 +9679,23 @@ begin
   MsgBox(Error.ErrorMessage, Preferences.LoadStr(45), MB_OK + MB_ICONERROR);
 
   Success := daAbort;
+end;
+
+procedure TFClient.ListViewChange(Sender: TObject; Item: TListItem;
+  Change: TItemChange);
+var
+  I: Integer;
+  List: TList;
+begin
+  if ((Sender is TListView) and not Client.InUse) then
+  begin
+    List := TList.Create();
+    for I := 0 to TListView(Sender).Items.Count - 1 do
+      if (TListView(Sender).Items[I].Selected and (TObject(TListView(Sender).Items[I].Data) is TCObject)) then
+        List.Add(TCObject(TListView(Sender).Items[I].Data));
+    Client.Update(List, True);
+    List.Free();
+  end;
 end;
 
 procedure TFClient.ListViewChanging(Sender: TObject; Item: TListItem;
@@ -10394,14 +10400,14 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         Item.SubItems.Add('')
       else
         Item.SubItems.Add(FormatFloat('#,##0', TCDatabase(Data).Count, LocaleFormatSettings));
-      if (TCDatabase(Data) is TCSystemDatabase) then
+      if ((TCDatabase(Data) is TCSystemDatabase) or (TCDatabase(Data).Size < 0)) then
         Item.SubItems.Add('')
       else
         Item.SubItems.Add(SizeToStr(TCDatabase(Data).Size));
       if (TCDatabase(Data) is TCSystemDatabase) then
         Item.SubItems.Add(SysUtils.DateToStr(Client.StartTime, LocaleFormatSettings))
       else if (TCDatabase(Data).Created = 0) then
-        Item.SubItems.Add('???')
+        Item.SubItems.Add('')
       else
         Item.SubItems.Add(SysUtils.DateToStr(TCDatabase(Data).Created, LocaleFormatSettings));
       if (TCDatabase(Data).DefaultCharset = Client.DefaultCharset) then
@@ -10452,10 +10458,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         else
           Item.SubItems.Add(SizeToStr(TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize + 1))
       else
-        if (not TCView(TCTable(Data)).Valid) then
-          Item.SubItems.Add('')
-        else
-          Item.SubItems.Add(SizeToStr(Length(TCView(TCTable(Data)).Source)));
+        Item.SubItems.Add(SizeToStr(Length(TCView(TCTable(Data)).Source)));
       if (not (TCTable(Data) is TCBaseTable) or not TCBaseTable(TCTable(Data)).ValidStatus or (TCBaseTable(TCTable(Data)).Updated <= 0)) then
         Item.SubItems.Add('')
       else
@@ -10945,8 +10948,6 @@ begin
         ListView.OnSelectItem(nil, ListView.Selected, Assigned(ListView.Selected));
     end;
 
-    ListView.Columns.EndUpdate();
-
     for I := 0 to ListView.Columns.Count - 1 do
       if ((Kind = lkProcesses) and (I = 5)) then
         ListView.Columns[I].Width := Preferences.GridMaxColumnWidth
@@ -10956,7 +10957,9 @@ begin
         ListView.Columns[I].Width := ColumnHeaderWidth
       else
         ListView.Columns[I].Width := ColumnTextWidth;
+//    ListView.Columns[0].Width := 123;
 
+    ListView.Columns.EndUpdate();
     ListView.Items.EndUpdate();
     ListView.EnableAlign();
     ListView.OnChanging := ChangingEvent;
@@ -11556,8 +11559,8 @@ begin
   if (Assigned(FSQLHistoryMenuNode) and (FSQLHistoryMenuNode.ImageIndex in [iiStatement, iiQuery, iiClock])
     and Boolean(Perform(CM_CLOSE_TAB_QUERY, 0, 0))) then
   begin
-    View := avSQLEditor;
-    if (View = avSQLEditor) then
+    View := vEditor;
+    if (View = vEditor) then
     begin
       FSQLEditorSynMemo.Text := XMLNode(IXMLNode(FSQLHistoryMenuNode.Data), 'sql').Text;
 
@@ -11626,8 +11629,8 @@ begin
 
   if (Assigned(FSQLHistoryMenuNode) and (FSQLHistoryMenuNode.ImageIndex in [iiStatement, iiQuery, iiClock])) then
   begin
-    View := avSQLEditor;
-    if (View = avSQLEditor) then
+    View := vEditor;
+    if (View = vEditor) then
     begin
       SelStart := FSQLEditorSynMemo.SelStart;
       FSQLEditorSynMemo.SelText := XMLNode(IXMLNode(FSQLHistoryMenuNode.Data), 'sql').Text;
@@ -11727,13 +11730,13 @@ procedure TFClient.MSQLEditorPopup(Sender: TObject);
 var
   I: Integer;
 begin
-  if ((View = avQueryBuilder) and not (Window.ActiveControl = FBuilderSynMemo)) then
+  if ((View = vBuilder) and not (Window.ActiveControl = FBuilderSynMemo)) then
   begin
     Window.ActiveControl := FBuilderSynMemo;
     FSQLEditorStatusChange(Sender, []);
   end
   else
-  if ((View = avSQLEditor) and not (Window.ActiveControl = FSQLEditorSynMemo)) then
+  if ((View = vEditor) and not (Window.ActiveControl = FSQLEditorSynMemo)) then
   begin
     Window.ActiveControl := FSQLEditorSynMemo;
     FSQLEditorStatusChange(Sender, []);
@@ -11761,10 +11764,10 @@ begin
 
   MainAction('aECopy').Enabled := Assigned(FSQLHistoryMenuNode) and (FSQLHistoryMenuNode.ImageIndex in [iiStatement, iiQuery]);
 
-  miHStatementIntoSQLEditor.Enabled := Assigned(FSQLHistoryMenuNode) and (View = avSQLEditor) and (FSQLHistoryMenuNode.ImageIndex in [iiStatement, iiQuery, iiClock]);
+  miHStatementIntoSQLEditor.Enabled := Assigned(FSQLHistoryMenuNode) and (View = vEditor) and (FSQLHistoryMenuNode.ImageIndex in [iiStatement, iiQuery, iiClock]);
   aPExpand.Enabled := Assigned(FSQLHistoryMenuNode) and not FSQLHistoryMenuNode.Expanded and FSQLHistoryMenuNode.HasChildren;
   aPCollapse.Enabled := Assigned(FSQLHistoryMenuNode) and FSQLHistoryMenuNode.Expanded;
-  miHOpen.Enabled := Assigned(FSQLHistoryMenuNode) and (View = avSQLEditor) and (FSQLHistoryMenuNode.ImageIndex in [iiStatement, iiQuery, iiClock]);
+  miHOpen.Enabled := Assigned(FSQLHistoryMenuNode) and (View = vEditor) and (FSQLHistoryMenuNode.ImageIndex in [iiStatement, iiQuery, iiClock]);
   miHSaveAs.Enabled := Assigned(FSQLHistoryMenuNode) and (FSQLHistoryMenuNode.ImageIndex in [iiStatement, iiQuery, iiClock]);
   miHRun.Enabled := Assigned(FSQLHistoryMenuNode) and (FSQLHistoryMenuNode.ImageIndex in [iiStatement, iiQuery, iiClock]);
   miHProperties.Enabled := Assigned(FSQLHistoryMenuNode) and (FSQLHistoryMenuNode.ImageIndex in [iiStatement, iiQuery, iiClock]) and not FSQLHistoryMenuNode.HasChildren;
@@ -11905,10 +11908,7 @@ begin
   URI := TUURI.Create('');
 
   URI.Scheme := 'mysql';
-  if (Client.Host = LOCAL_HOST_NAMEDPIPE) then
-    URI.Host := LOCAL_HOST
-  else
-    URI.Host := Client.Host;
+  URI.Host := Client.Host;
   if (Client.Port <> MYSQL_PORT) then
     URI.Port := Client.Port;
 
@@ -11981,7 +11981,7 @@ begin
 
     if (Node = FNavigator.Selected) then
       case (View) of
-        avDataBrowser:
+        vBrowser:
           if (Assigned(FGrid.DataSource.DataSet) and FGrid.DataSource.DataSet.Active and (FGrid.DataSource.DataSet is TMySQLTable)) then
           begin
              if (TMySQLTable(FGrid.DataSource.DataSet).Offset > 0) then
@@ -11990,7 +11990,7 @@ begin
             if (TMySQLTable(FGrid.DataSource.DataSet).FilterSQL <> '') then
               URI.Param['filter'] := TMySQLTable(FGrid.DataSource.DataSet).FilterSQL;
           end;
-        avSQLEditor:
+        vEditor:
           if (SQLEditor.Filename <> '') then
             URI.Param['file'] := PathToURI(SQLEditor.Filename);
       end;
@@ -12021,11 +12021,11 @@ begin
     URI.Database := DatabaseName;
     URI.Table := TableName;
     case (View) of
-      avDataBrowser: if (TableName <> '') then URI.Param['view'] := 'browser';
-      avObjectIDE: if (TableName = '') then URI.Param['view'] := 'ide';
-      avQueryBuilder: if (TableName = '') then URI.Param['view'] := 'builder';
-      avSQLEditor: if (TableName = '') then URI.Param['view'] := 'editor';
-      avDiagram: if (TableName = '') then URI.Param['view'] := 'diagram';
+      vBrowser: if (TableName <> '') then URI.Param['view'] := 'browser';
+      vIDE: if (TableName = '') then URI.Param['view'] := 'ide';
+      vBuilder: if (TableName = '') then URI.Param['view'] := 'builder';
+      vEditor: if (TableName = '') then URI.Param['view'] := 'editor';
+      vDiagram: if (TableName = '') then URI.Param['view'] := 'diagram';
     end;
   end
   else
@@ -12631,9 +12631,9 @@ begin
   if (Sender <> Self) then
   begin
     PResultVisible := True;
-    if ((View = avDataBrowser) and Assigned(Table)) then
+    if ((View = vBrowser) and Assigned(Table)) then
       SetDataSource(nil, Table.DataSet)
-    else if (View = avObjectIDE) then
+    else if (View = vIDE) then
       case (SelectedImageIndex) of
         iiView: PResultVisible := False;
         iiProcedure,
@@ -12645,12 +12645,12 @@ begin
         iiTrigger,
         iiEvent: PResultVisible := False;
       end
-    else if (View = avQueryBuilder) then
+    else if (View = vBuilder) then
       if ((Sender is TDataSet) and TDataSet(Sender).Active) then
         SetDataSource(Client.QueryBuilderResult, TDataSet(Sender))
       else
         SetDataSource(Client.QueryBuilderResult, Client.QueryBuilderResult.DataSets[Client.QueryBuilderResult.IndexOf(Client.QueryBuilderResult.Selected)])
-    else if (View = avSQLEditor) then
+    else if (View = vEditor) then
       if ((Sender is TDataSet) and TDataSet(Sender).Active) then
         SetDataSource(Client.SQLEditorResult, TDataSet(Sender))
       else
@@ -12659,7 +12659,7 @@ begin
       PResultVisible := False;
     PResultVisible := PResultVisible and Assigned(FGrid.DataSource.DataSet) and FGrid.DataSource.DataSet.Active;
 
-    if ((View = avDataBrowser) and Assigned(Table)) then
+    if ((View = vBrowser) and Assigned(Table)) then
     begin
       FUDOffset.Position := 0;
       FUDLimit.Position := TTableDesktop(Table.Desktop).Limit;
@@ -12692,7 +12692,7 @@ begin
 
     EnableAligns(PContent);
 
-    if (View = avDataBrowser) then
+    if (View = vBrowser) then
     begin
       PDataBrowser.Top := 0;
       PDataBrowser.Align := alTop;
@@ -12701,7 +12701,7 @@ begin
     else
       PDataBrowser.Visible := False;
 
-    if ((View = avObjectIDE) and (Assigned(Routine) and Assigned(Routine.InputDataSet) or Assigned(Trigger) and Assigned(Trigger.InputDataSet))) then
+    if ((View = vIDE) and (Assigned(Routine) and Assigned(Routine.InputDataSet) or Assigned(Trigger) and Assigned(Trigger.InputDataSet))) then
     begin
       PObjectIDE.Top := 0;
       PObjectIDE.Align := alTop;
@@ -12759,14 +12759,14 @@ begin
 
     if (PResultVisible and Assigned(FGrid.DataSource.DataSet) and FGrid.DataSource.DataSet.Active) then
     begin
-      TCResult.Visible := (View in [avObjectIDE, avSQLEditor]) and (TCResult.Tabs.Count > 1);
+      TCResult.Visible := (View in [vIDE, vEditor]) and (TCResult.Tabs.Count > 1);
 
       NewTop := PContent.ClientHeight - PResult.Height;
       for I := 0 to PContent.ControlCount - 1 do
         if (PContent.Controls[I].Align = alBottom) then
           Dec(NewTop, PContent.Controls[I].Height);
       PResult.Top := NewTop;
-      if (View = avDataBrowser) then
+      if (View = vBrowser) then
       begin
         PResult.Align := alClient;
         PResult.Left := 0;
@@ -12778,7 +12778,7 @@ begin
         PResult.Align := alBottom;
         PResult.Height := PResultHeight;
       end;
-      PResultHeader.Visible := View <> avDataBrowser;
+      PResultHeader.Visible := View <> vBrowser;
 
       PResult.Visible := True;
     end
@@ -12798,7 +12798,7 @@ begin
     else
       SResult.Visible := False;
 
-    if (View = avDiagram) then
+    if (View = vDiagram) then
     begin
       PWorkbench.Align := alClient;
       PWorkbench.Visible := True;
@@ -12807,7 +12807,7 @@ begin
     else
       PWorkbench.Visible := False;
 
-    if ((View = avQueryBuilder) and (SelectedImageIndex in [iiServer, iiDatabase, iiSystemDatabase])) then
+    if ((View = vBuilder) and (SelectedImageIndex in [iiServer, iiDatabase, iiSystemDatabase])) then
     begin
       PBuilder.Align := alClient;
       PBuilder.Visible := True;
@@ -12815,7 +12815,7 @@ begin
     else
       PBuilder.Visible := False;
 
-    if ((View = avSQLEditor) and (SelectedImageIndex in [iiServer, iiDatabase, iiSystemDatabase]) or (View = avObjectIDE) and (SelectedImageIndex in [iiView, iiFunction, iiProcedure, iiEvent, iiTrigger])) then
+    if ((View = vEditor) and (SelectedImageIndex in [iiServer, iiDatabase, iiSystemDatabase]) or (View = vIDE) and (SelectedImageIndex in [iiView, iiFunction, iiProcedure, iiEvent, iiTrigger])) then
     begin
       PSQLEditorRefresh(Sender);
       if (Assigned(ActiveSynMemo)) then ActiveSynMemo.BringToFront();
@@ -12825,7 +12825,7 @@ begin
     else
       PSQLEditor.Visible := False;
 
-    if ((View = avObjectBrowser) and not (SelectedImageIndex in [iiIndex, iiField, iiForeignKey]) or ((View = avDataBrowser) and (SelectedImageIndex = iiServer))) then
+    if ((View = vObjects) and not (SelectedImageIndex in [iiIndex, iiField, iiForeignKey]) or ((View = vBrowser) and (SelectedImageIndex = iiServer))) then
     begin
       PListView.Align := alClient;
       PListView.Visible := True;
@@ -12847,12 +12847,12 @@ begin
   if (PObjectIDE.Visible) then PObjectIDERefresh(Sender);
   if (PWorkbench.Visible) then PWorkbenchRefresh(Sender);
 
-  if ((View = avDataBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView])) then
+  if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView])) then
     if (Assigned(FGrid.DataSource.DataSet)) then
       FGridRefresh(Sender)
     else
       TableOpen(Sender)
-  else if ((View in [avObjectIDE, avQueryBuilder, avSQLEditor]) and Assigned(FGrid.DataSource.DataSet) and FGrid.DataSource.DataSet.Active) then
+  else if ((View in [vIDE, vBuilder, vEditor]) and Assigned(FGrid.DataSource.DataSet) and FGrid.DataSource.DataSet.Active) then
     FGridRefresh(Sender);
 
   if ((Sender is TMySQLDataSet) and (TCResultSet(TMySQLDataSet(Sender).Tag) = Client.SQLEditorResult)) then
@@ -13075,7 +13075,7 @@ var
   Trigger: TCTrigger;
   View: TCView;
 begin
-  if (Self.View = avObjectIDE) then
+  if (Self.View = vIDE) then
     case (SelectedImageIndex) of
       iiView:
         begin
@@ -13419,7 +13419,7 @@ begin
       ResultSet.SendSQL(SQL, ResultSetEvent);
     end;
   end
-  else if ((View = avObjectIDE) and (SelectedImageIndex = iiEvent)) then
+  else if ((View = vIDE) and (SelectedImageIndex = iiEvent)) then
     Client.SendSQL(SQL);
 end;
 
@@ -13432,30 +13432,30 @@ begin
     URI := TUURI.Create(Address);
 
     case (AView) of
-      avObjectBrowser: URI.Param['view'] := Null;
-      avDataBrowser: URI.Param['view'] := 'browser';
-      avObjectIDE: URI.Param['view'] := 'ide';
-      avQueryBuilder: URI.Param['view'] := 'builder';
-      avSQLEditor: URI.Param['view'] := 'editor';
-      avDiagram: URI.Param['view'] := 'diagram';
+      vObjects: URI.Param['view'] := Null;
+      vBrowser: URI.Param['view'] := 'browser';
+      vIDE: URI.Param['view'] := 'ide';
+      vBuilder: URI.Param['view'] := 'builder';
+      vEditor: URI.Param['view'] := 'editor';
+      vDiagram: URI.Param['view'] := 'diagram';
     end;
 
-    if ((AView = avObjectBrowser) and (SelectedImageIndex in [iiProcedure, iiFunction, iiTrigger, iiEvent])) then
+    if ((AView = vObjects) and (SelectedImageIndex in [iiProcedure, iiFunction, iiTrigger, iiEvent])) then
     begin
       URI.Param['objecttype'] := Null;
       URI.Param['object'] := Null;
     end
-    else if ((AView = avDataBrowser) and not (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView])) then
+    else if ((AView = vBrowser) and not (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView])) then
     begin
       if (SelectedImageIndex = iiTrigger) then
         URI.Table := SelectedTable
       else
         URI.Table := LastSelectedTable;
     end
-    else if ((AView = avObjectIDE) and not (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent, iiTrigger])) then
+    else if ((AView = vIDE) and not (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent, iiTrigger])) then
       URI.Address := LastObjectIDEAddress
-    else if ((AView = avQueryBuilder) and not (SelectedImageIndex in [iiDatabase, iiSystemDatabase])
-      or (AView = avSQLEditor) and not (SelectedImageIndex in [iiServer, iiDatabase, iiSystemDatabase])) then
+    else if ((AView = vBuilder) and not (SelectedImageIndex in [iiDatabase, iiSystemDatabase])
+      or (AView = vEditor) and not (SelectedImageIndex in [iiServer, iiDatabase, iiSystemDatabase])) then
     begin
       if (URI.Database = '') then
         URI.Database := Client.DatabaseName;
@@ -13465,7 +13465,7 @@ begin
       URI.Param['offset'] := Null;
       URI.Param['file'] := Null;
     end
-    else if ((AView = avDiagram) and not (SelectedImageIndex in [iiDatabase, iiSystemDatabase])) then
+    else if ((AView = vDiagram) and not (SelectedImageIndex in [iiDatabase, iiSystemDatabase])) then
     begin
       if (URI.Database = '') then
         URI.Database := LastSelectedDatabase;
@@ -13497,6 +13497,11 @@ begin
   AllowChange := True;
   NewAddress := AAddress; // We need this, since in AddressChanging maybe Wanted.Address will be changed, but AAddress is Wanted.Address
   AddressChanging(nil, NewAddress, AllowChange);
+  if (not AllowChange and Wanted.Nothing) then
+  begin
+    NewAddress := Client.Account.FullAddress('/');
+    AllowChange := True;
+  end;
   if (AllowChange) then
   begin
     URI := TUURI.Create(NewAddress);
@@ -13504,17 +13509,17 @@ begin
     Node := AddressToNavigatorNode(NewAddress);
 
     if ((URI.Param['view'] = 'browser') and (Node.ImageIndex in [iiBaseTable, iiSystemView, iiView])) then
-      NewView := avDataBrowser
+      NewView := vBrowser
     else if ((URI.Param['view'] = 'ide') and (Node.ImageIndex in [iiView, iiProcedure, iiFunction, iiTrigger, iiEvent])) then
-      NewView := avObjectIDE
+      NewView := vIDE
     else if ((URI.Param['view'] = 'builder') and (Node.ImageIndex in [iiDatabase, iiSystemDatabase])) then
-      NewView := avQueryBuilder
+      NewView := vBuilder
     else if (URI.Param['view'] = 'editor') then
-      NewView := avSQLEditor
+      NewView := vEditor
     else if ((URI.Param['view'] = 'diagram') and (Node.ImageIndex in [iiDatabase, iiSystemDatabase])) then
-      NewView := avDiagram
+      NewView := vDiagram
     else
-      NewView := avObjectBrowser;
+      NewView := vObjects;
 
     ChangingEvent := FNavigator.OnChanging; FNavigator.OnChanging := nil;
     ChangeEvent := FNavigator.OnChange; FNavigator.OnChange := nil;
@@ -13522,12 +13527,12 @@ begin
     FNavigator.OnChanging := ChangingEvent;
     FNavigator.OnChange := ChangeEvent;
 
-    MainAction('aVObjectBrowser').Checked := NewView = avObjectBrowser;
-    MainAction('aVDataBrowser').Checked := NewView = avDataBrowser;
-    MainAction('aVObjectIDE').Checked := NewView = avObjectIDE;
-    MainAction('aVQueryBuilder').Checked := NewView = avQueryBuilder;
-    MainAction('aVSQLEditor').Checked := NewView = avSQLEditor;
-    MainAction('aVDiagram').Checked := NewView = avDiagram;
+    MainAction('aVObjectBrowser').Checked := NewView = vObjects;
+    MainAction('aVDataBrowser').Checked := NewView = vBrowser;
+    MainAction('aVObjectIDE').Checked := NewView = vIDE;
+    MainAction('aVQueryBuilder').Checked := NewView = vBuilder;
+    MainAction('aVSQLEditor').Checked := NewView = vEditor;
+    MainAction('aVDiagram').Checked := NewView = vDiagram;
 
     tbObjectBrowser.Down := MainAction('aVObjectBrowser').Checked;
     tbDataBrowser.Down := MainAction('aVDataBrowser').Checked;
@@ -13537,7 +13542,7 @@ begin
     tbDiagram.Down := MainAction('aVDiagram').Checked;
 
     case (NewView) of
-      avDataBrowser:
+      vBrowser:
         begin
           Table := Client.DatabaseByName(URI.Database).TableByName(URI.Table);
 
@@ -13560,7 +13565,7 @@ begin
           if ((URI.Param['offset'] <> Null) or (URI.Param['filter'] <> Null)) then
             TableOpen(nil);
         end;
-      avSQLEditor:
+      vEditor:
         if (URI.Param['file'] <> Null) then
         begin
           FileName := URIToPath(URI.Param['file']);
@@ -13938,15 +13943,15 @@ begin
 
     Count := -1;
     case (View) of
-      avObjectBrowser: Count := ActiveListView.Items.Count;
-      avDataBrowser: if (Assigned(FGrid.DataSource.DataSet) and FGrid.DataSource.DataSet.Active) then Count := FGrid.DataSource.DataSet.RecordCount;
-      avObjectIDE,
-      avSQLEditor:
+      vObjects: Count := ActiveListView.Items.Count;
+      vBrowser: if (Assigned(FGrid.DataSource.DataSet) and FGrid.DataSource.DataSet.Active) then Count := FGrid.DataSource.DataSet.RecordCount;
+      vIDE,
+      vEditor:
         if (Assigned(Window.ActiveControl) and (Window.ActiveControl = ActiveSynMemo)) then
           Count := ActiveSynMemo.Lines.Count
         else if ((Window.ActiveControl = FGrid) and Assigned(FGrid.DataSource.DataSet)) then
           Count := FGrid.DataSource.DataSet.RecordCount;
-      avQueryBuilder:
+      vBuilder:
         begin
           if (Assigned(FBuilderEditorPageControl())) then
           begin
@@ -13967,7 +13972,7 @@ begin
     else if ((Window.ActiveControl = FGrid) and (FGrid.SelectedRows.Count > 0)) then
       SelCount := FGrid.SelectedRows.Count;
 
-    if (View <> avDataBrowser) then
+    if (View <> vBrowser) then
       Table := nil
     else
     begin
@@ -13980,14 +13985,14 @@ begin
 
     if (SelCount > 0) then
       Text := Preferences.LoadStr(688, IntToStr(SelCount))
-    else if ((View = avDataBrowser) and (FGrid.DataSource.DataSet is TMySQLTable) and not Client.InUse() and Assigned(Table) and TMySQLTable(FGrid.DataSource.DataSet).LimitedDataReceived and (Table.Rows >= 0)) then
+    else if ((View = vBrowser) and (FGrid.DataSource.DataSet is TMySQLTable) and not Client.InUse() and Assigned(Table) and TMySQLTable(FGrid.DataSource.DataSet).LimitedDataReceived and (Table.Rows >= 0)) then
       if (Assigned(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).Engine) and (UpperCase(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).Engine.Name) <> 'INNODB')) then
         Text := Preferences.LoadStr(691, IntToStr(Count), IntToStr(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).Rows))
       else
         Text := Preferences.LoadStr(691, IntToStr(Count), '~' + IntToStr(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).Rows))
     else if (Assigned(ActiveSynMemo) and (Window.ActiveControl = ActiveSynMemo) and (Count >= 0)) then
       Text := IntToStr(Count) + ' ' + ReplaceStr(Preferences.LoadStr(600), '&', '')
-    else if ((View = avQueryBuilder) and (Count >= 0)) then
+    else if ((View = vBuilder) and (Count >= 0)) then
       if (Window.ActiveControl = FBuilderSynMemo) then
         Text := IntToStr(Count) + ' ' + ReplaceStr(Preferences.LoadStr(600), '&', '')
       else
@@ -14348,7 +14353,7 @@ procedure TFClient.TreeViewCollapsing(Sender: TObject;
 begin
   if ((Sender is TTreeView_Ext) and Assigned(TTreeView_Ext(Sender).OnChange)) then
   begin
-    if ((View = avDataBrowser) and not (Node.ImageIndex in [iiBaseTable, iiSystemView, iiView]) and (Node = TTreeView_Ext(Sender).Selected.Parent)) then
+    if ((View = vBrowser) and not (Node.ImageIndex in [iiBaseTable, iiSystemView, iiView]) and (Node = TTreeView_Ext(Sender).Selected.Parent)) then
       TTreeView_Ext(Sender).Selected := Node;
 
     AllowCollapse := Node <> TTreeView_Ext(Sender).Items.getFirstNode();
@@ -14411,7 +14416,7 @@ begin
   end;
 end;
 
-function TFClient.UpdateObjectBrowser(): Boolean;
+function TFClient.UpdateAfterAddressChanged(): Boolean;
 var
   Database: TCDatabase;
   I: Integer;
@@ -14419,52 +14424,54 @@ var
 begin
   Result := False;
 
-  case (SelectedImageIndex) of
-    iiServer:
-      for I := 0 to Client.Databases.Count - 1 do
-      begin
-        Result := Client.Databases[I].Update();
-        if (Result) then
-          break;
-      end;
-    iiDatabase,
-    iiSystemDatabase:
-      begin
-        Database := Client.DatabaseByName(SelectedDatabase);
-
-        Result := Database.Update();
-
-        if (not Result and (Client.Account.Connection.Prefetch > 0)) then
-        begin
-          List := TList.Create();
-
-          if ((Client.Account.Connection.Prefetch = 1) and (Database.Count > PrefetchObjectCount)) then
+  if (View in [vObjects, vEditor]) then
+    case (SelectedImageIndex) of
+      iiServer:
+        if (Client.Account.Connection.Prefetch > 0) then
           begin
-            for I := 0 to Database.Tables.Count - 1 do
-              if (Database.Tables[I].Opened) then
-                List.Add(Database.Tables[I]);
-          end
-          else
-          begin
-            for I := 0 to Database.Tables.Count - 1 do
-              List.Add(Database.Tables[I]);
-            if (Assigned(Database.Routines)) then
-              for I := 0 to Database.Routines.Count - 1 do
-                List.Add(Database.Routines[I]);
-            if (Assigned(Database.Events)) then
-              for I := 0 to Database.Routines.Count - 1 do
-                List.Add(Database.Routines[I]);
-            if (Assigned(Database.Triggers)) then
-              for I := 0 to Database.Triggers.Count - 1 do
-                List.Add(Database.Triggers[I]);
+            List := TList.Create();
+            for I := 0 to Client.Databases.Count - 1 do
+              if (not Client.Databases[I].Valid) then
+                List.Add(Client.Databases[I]);
+            Result := Client.Update(List, View = vObjects);
+            List.Free();
           end;
+      iiDatabase,
+      iiSystemDatabase:
+        begin
+          Database := Client.DatabaseByName(SelectedDatabase);
 
-          Result := Client.Update(List);
+          if (Client.Account.Connection.Prefetch > 0) then
+          begin
+            List := TList.Create();
 
-          List.Free();
+            if ((Client.Account.Connection.Prefetch = 1) and (Database.Count > PrefetchObjectCount)) then
+            begin
+              for I := 0 to Database.Tables.Count - 1 do
+                if (Database.Tables[I].Opened) then
+                  List.Add(Database.Tables[I]);
+            end
+            else
+            begin
+              for I := 0 to Database.Tables.Count - 1 do
+                List.Add(Database.Tables[I]);
+              if (Assigned(Database.Routines)) then
+                for I := 0 to Database.Routines.Count - 1 do
+                  List.Add(Database.Routines[I]);
+              if (Assigned(Database.Events)) then
+                for I := 0 to Database.Routines.Count - 1 do
+                  List.Add(Database.Routines[I]);
+              if (Assigned(Database.Triggers)) then
+                for I := 0 to Database.Triggers.Count - 1 do
+                  List.Add(Database.Triggers[I]);
+            end;
+
+            Result := Client.Update(List, View = vObjects);
+
+            List.Free();
+          end;
         end;
-      end;
-  end;
+    end;
 end;
 
 procedure TFClient.WMNotify(var Message: TWMNotify);
