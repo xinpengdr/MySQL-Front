@@ -5010,7 +5010,6 @@ begin
   Client.ExecuteEvent(ceSource, Self);
   Client.ExecuteEvent(ceStatus, Client, Client.Databases, Database);
   Client.ExecuteEvent(ceStatus, Database, Tables, Self);
-  // Client.ExecuteEvent(ceStatus, Database,  ... will be called from TCTables.BuildViewFields
   // Client.ExecuteEvent(ceBuild,  ... will be called from TCTables.BuildViewFields
 end;
 
@@ -5189,11 +5188,13 @@ begin
           BaseTable.BuildStatus(DataSet, UseInformationSchema);
         end;
 
-        Client.ExecuteEvent(ceStatus, Database, Self, Table[Index]);
       until (not DataSet.FindNext());
 
     if (Count > 0) then
+    begin
       Client.ExecuteEvent(ceStatus, Client, Client.Databases, Database);
+      Client.ExecuteEvent(ceStatus, Database, Self, Table[Index]);
+    end;
 
     Result := False;
   end;

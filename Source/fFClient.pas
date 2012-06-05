@@ -9993,10 +9993,11 @@ var
 begin
   Update := ListView.Columns.Count > 0;
 
-  ListView.Columns.BeginUpdate();
   ListView.Groups.BeginUpdate();
 
   if (not Update) then
+  begin
+    ListView.Columns.BeginUpdate();
     if (ListView = FServerListView) then
     begin
       ListView.Columns.Add();
@@ -10006,8 +10007,8 @@ begin
       ListView.Columns.Add();
       ListView.Columns.EndUpdate();
       SetColumnWidths(ListView, lkServer);
-      ListView.Columns[1].Alignment := taRightJustify;
-      ListView.Columns[2].Alignment := taRightJustify;
+//      ListView.Columns[1].Alignment := taRightJustify;
+//      ListView.Columns[2].Alignment := taRightJustify;
 
       ListView.Groups.Add().GroupID := giDatabase;
       ListView.Groups.Add().GroupID := giSystemTools;
@@ -10114,6 +10115,7 @@ begin
 
       ListView.Groups.Add().GroupID := giVariable;
     end;
+  end;
 
   if (ListView = FServerListView) then
   begin
@@ -10948,6 +10950,8 @@ begin
         ListView.OnSelectItem(nil, ListView.Selected, Assigned(ListView.Selected));
     end;
 
+    ListView.Columns.EndUpdate();
+
     for I := 0 to ListView.Columns.Count - 1 do
       if ((Kind = lkProcesses) and (I = 5)) then
         ListView.Columns[I].Width := Preferences.GridMaxColumnWidth
@@ -10957,9 +10961,7 @@ begin
         ListView.Columns[I].Width := ColumnHeaderWidth
       else
         ListView.Columns[I].Width := ColumnTextWidth;
-//    ListView.Columns[0].Width := 123;
 
-    ListView.Columns.EndUpdate();
     ListView.Items.EndUpdate();
     ListView.EnableAlign();
     ListView.OnChanging := ChangingEvent;
@@ -14431,8 +14433,7 @@ begin
           begin
             List := TList.Create();
             for I := 0 to Client.Databases.Count - 1 do
-              if (not Client.Databases[I].Valid) then
-                List.Add(Client.Databases[I]);
+              List.Add(Client.Databases[I]);
             Result := Client.Update(List, View = vObjects);
             List.Free();
           end;

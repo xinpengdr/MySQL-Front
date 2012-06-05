@@ -3,9 +3,9 @@
 			<ProjectGuid>{676FF4F5-D15F-4D9A-A7E5-AE4BA81C1E8E}</ProjectGuid>
 			<ProjectVersion>13.4</ProjectVersion>
 			<FrameworkType>VCL</FrameworkType>
+			<TargetedPlatforms>1</TargetedPlatforms>
 			<AppType>Application</AppType>
 			<MainSource>MySQLFront.dpr</MainSource>
-			<Base>True</Base>
 			<Config Condition="'$(Config)'==''">Base</Config>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
 			<TargetedPlatforms>1</TargetedPlatforms>
@@ -13,11 +13,6 @@
 			<SkipResGeneration>true</SkipResGeneration>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
-			<Base>true</Base>
-		</PropertyGroup>
-		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
-			<Base_Win32>true</Base_Win32>
-			<CfgParent>Base</CfgParent>
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">

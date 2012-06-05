@@ -110,7 +110,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 631
+        Height = 225
         HelpContext = 1082
         Align = alClient
         BorderStyle = bsNone
@@ -132,7 +132,6 @@ object FClient: TFClient
         OnExit = FBookmarksExit
         OnDragDrop = FBookmarksDragDrop
         OnDragOver = FBookmarksDragOver
-        ExplicitHeight = 225
       end
     end
     object PNavigator: TPanel_Ext
