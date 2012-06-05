@@ -182,7 +182,9 @@ type
       SQLUseStmts: TList;
       State: TState;
       Success: Boolean;
+      procedure BindDataSet(const ADataSet: TMySQLDataSet); virtual;
       procedure Execute(); override;
+      procedure ReleaseDataSet(const ADataSet: TMySQLDataSet); virtual;
       procedure RunAction(const AState: TState; Synchron: Boolean = False); virtual;
       procedure Synchronize(); virtual;
       property Connection: TMySQLConnection read FConnection;
@@ -1692,6 +1694,12 @@ end;
 
 { TMySQLConnection.TSynchroThread *********************************************}
 
+procedure TMySQLConnection.TSynchroThread.BindDataSet(const ADataSet: TMySQLDataSet);
+begin
+  DataSet := ADataSet;
+  ADataSet.SynchroThread := Self;
+end;
+
 constructor TMySQLConnection.TSynchroThread.Create(const AConnection: TMySQLConnection);
 begin
   inherited Create(False);
@@ -1710,6 +1718,8 @@ end;
 
 destructor TMySQLConnection.TSynchroThread.Destroy();
 begin
+  Assert(not Assigned(DataSet));
+
   Connection.TerminateCS.Enter();
   Connection.TerminatedThreads.Delete(Self);
   Connection.TerminateCS.Leave();
@@ -1781,6 +1791,12 @@ end;
 function TMySQLConnection.TSynchroThread.GetIsRunning(): Boolean;
 begin
   Result := (ExecuteE.WaitFor(IGNORE) = wrSignaled) or not (State in [ssClose, ssReady]);
+end;
+
+procedure TMySQLConnection.TSynchroThread.ReleaseDataSet(const ADataSet: TMySQLDataSet);
+begin
+  ADataSet.SynchroThread := nil;
+  DataSet := nil;
 end;
 
 procedure TMySQLConnection.TSynchroThread.RunAction(const AState: TState; Synchron: Boolean = False);
@@ -2763,7 +2779,7 @@ begin
     S := '----> Connection Terminated <----';
     WriteMonitor(PChar(S), Length(S), ttInfo);
     if (Assigned(SynchroThread.DataSet)) then
-      SynchroThread.DataSet := nil;
+      SynchroThread.ReleaseDataSet(SynchroThread.DataSet);
   end
   else
   begin
@@ -2776,7 +2792,7 @@ begin
     begin
       if (Assigned(SynchroThread.DataSet.AfterReceivingRecords)) then
         SynchroThread.DataSet.AfterReceivingRecords(SynchroThread.DataSet);
-      SynchroThread.DataSet := nil;
+      SynchroThread.ReleaseDataSet(SynchroThread.DataSet);
     end;
 
     if (Assigned(SynchroThread.ResultHandle)) then
@@ -2852,7 +2868,7 @@ begin
   if (Assigned(DataSet) and Assigned(DataSet.BeforeReceivingRecords)) then
     DataSet.BeforeReceivingRecords(DataSet);
 
-  SynchroThread.DataSet := DataSet;
+  SynchroThread.BindDataSet(DataSet);
   SynchroThread.RunAction(ssReceivingData);
 end;
 
@@ -3985,7 +4001,6 @@ begin
   begin
     if (Assigned(SynchroThread)) then
       Connection.SyncHandledResult(SynchroThread);
-    SynchroThread := nil;
     FHandle := nil;
   end;
 
@@ -5406,7 +5421,7 @@ begin
   Connection.TerminateCS.Enter();
   if (IsCursorOpen() and Assigned(RecordReceived) and Assigned(SynchroThread) and (SynchroThread.DataSet = Self)) then
   begin
-    SynchroThread.DataSet := nil;
+    SynchroThread.ReleaseDataSet(SynchroThread.DataSet);
     FHandle := nil;
   end;
   Connection.TerminateCS.Leave();
@@ -5549,7 +5564,7 @@ function TMySQLDataSet.InternalOpenEvent(const Connection: TMySQLConnection; con
 begin
   inherited;
 
-  SynchroThread.DataSet := Self;
+  SynchroThread.BindDataSet(Self);
 
   SetFieldsSortTag();
 
@@ -5647,7 +5662,7 @@ begin
     FRecordReceived := TEvent.Create(nil, False, False, '');
   RecordReceived.ResetEvent();
 
-  SynchroThread.DataSet := Self;
+  SynchroThread.BindDataSet(Self);
   SynchroThread.RunAction(ssReceivingData);
 
   Result := False;
@@ -5866,7 +5881,7 @@ begin
     Inc(Index);
   end;
 
-  if (VisibleRecords = Value + 1) then
+  if ((VisibleRecords = Value + 1) and (Index < InternRecordBuffers.Count)) then
   begin
     SetLength(Bookmark, BookmarkSize);
     PPointer(@Bookmark[0])^ := InternRecordBuffers[Index - 1];

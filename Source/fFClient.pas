@@ -903,7 +903,7 @@ type
     procedure FNavigatorEmptyExecute(Sender: TObject);
     procedure FNavigatorInitialize(Sender: TObject);
     procedure FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
-    procedure FormClientEvent(const ClientEvent: TCClient.TEvent);
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure FormAccountEvent(const ClassType: TClass);
     procedure FRTFShow(Sender: TObject);
     procedure FSQLHistoryRefresh(Sender: TObject);
@@ -1057,20 +1057,20 @@ const
   tiCodeCompletion = 3;
 
 const
-  giDatabase = 1;
+  giDatabases = 1;
   giSystemTools = 2;
-  giTable = 3;
-  giRoutine = 4;
-  giEvent = 5;
-  giIndex = 6;
-  giField = 7;
-  giForeignKey = 8;
-  giTrigger = 9;
-  giHost = 10;
-  giProcess = 11;
-  giStatus = 12;
-  giUser = 13;
-  giVariable = 14;
+  giTables = 3;
+  giRoutines = 4;
+  giEvents = 5;
+  giIndices = 6;
+  giFields = 7;
+  giForeignKeys = 8;
+  giTriggers = 9;
+  giHosts = 10;
+  giProcesses = 11;
+  giStati = 12;
+  giUsers = 13;
+  giVariables = 14;
 
 const
   PrefetchObjectCount = 50;
@@ -2443,6 +2443,7 @@ end;
 
 function TFClient.AddressToNavigatorNode(const Address: string): TTreeNode;
 var
+  B: Boolean;
   Child: TTreeNode;
   DatabaseNode: TTreeNode;
   ObjectIDENode: TTreeNode;
@@ -2513,6 +2514,8 @@ begin
         if (Assigned(DatabaseNode)) then
           if ((URI.Table <> '') or (URI.Param['objecttype'] = 'trigger') and (URI.Param['object'] <> Null)) then
           begin
+            if (Child.Count = 0) then
+              FNavigatorExpanding(nil, DatabaseNode, B);
             Child := DatabaseNode.getFirstChild();
             if (URI.Table <> '') then
               TableName := URI.Table
@@ -3826,6 +3829,9 @@ begin
 
   StatusBar.Panels.Items[sbMessage].Text := Msg;
   SetTimer(Handle, tiStatusBar, 5000, nil);
+
+  if (not Wanted.Nothing) then
+    Wanted.Execute();
 end;
 
 procedure TFClient.aHRunClick(Sender: TObject);
@@ -4316,7 +4322,7 @@ begin
   OldAddress := Address;
 
   if (Assigned(ClientEvent)) then
-    if (ClientEvent.EventType in [ceBuild, ceCreated, ceDroped, ceAltered]) then
+    if (ClientEvent.EventType in [ceBuild, ceObjCreated, ceObjDroped, ceObjAltered]) then
       FNavigatorRefresh(ClientEvent);
 
   if (Assigned(ClientEvent)) then
@@ -4379,7 +4385,7 @@ begin
   if (Assigned(ActiveWorkbench)) then
     ActiveWorkbench.Refresh();
 
-  if (Assigned(ClientEvent) and (ClientEvent.EventType = ceCreated) and (ClientEvent.Sender is TCDatabase) and (TCDatabase(ClientEvent.Sender) = TCDatabase(FNavigator.Selected.Data))) then
+  if (Assigned(ClientEvent) and (ClientEvent.EventType = ceObjCreated) and (ClientEvent.Sender is TCDatabase) and (TCDatabase(ClientEvent.Sender) = TCDatabase(FNavigator.Selected.Data))) then
     case (View) of
       vDiagram:
         if (ClientEvent.CItem is TCBaseTable) then
@@ -4715,9 +4721,7 @@ begin
 
   Client.BeforeConnect := BeforeConnect;
   Client.AfterConnect := AfterConnect;
-  Client.BeforeExecuteSQL := BeforeExecuteSQL;
   Client.OnConvertError := OnConvertError;
-  Client.AfterExecuteSQL := AfterExecuteSQL;
 
   if (Window.ActiveControl is TWinControl) then
     Perform(CM_ENTER, 0, 0);
@@ -7559,27 +7563,27 @@ procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
     case (ImageIndex) of
       iiDatabase,
       iiSystemDatabase:
-        Result := giDatabase;
+        Result := giDatabases;
       iiTable,
       iiBaseTable,
       iiSystemView,
       iiView:
-        Result := giTable;
+        Result := giTables;
       iiProcedure,
       iiFunction:
-        Result := giRoutine;
+        Result := giRoutines;
       iiEvent:
-        Result := giEvent;
+        Result := giEvents;
       iiIndex:
-        Result := giIndex;
+        Result := giIndices;
       iiField,
       iiSystemViewField,
       iiViewField:
-        Result := giField;
+        Result := giFields;
       iiForeignKey:
-        Result := giForeignKey;
+        Result := giForeignKeys;
       iiTrigger:
-        Result := giTrigger;
+        Result := giTriggers;
       iiHosts,
       iiProcesses,
       iiStati,
@@ -7587,15 +7591,15 @@ procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
       iiVariables:
         Result := giSystemTools;
       iiHost:
-        Result := giHost;
+        Result := giHosts;
       iiProcess:
-        Result := giProcess;
+        Result := giProcesses;
       iiStatus:
-        Result := giStatus;
+        Result := giStati;
       iiUser:
-        Result := giUser;
+        Result := giUsers;
       iiVariable:
-        Result := giVariable;
+        Result := giVariables;
       else
         Result := 0;
     end;
@@ -7752,13 +7756,13 @@ procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
             if (not (CItems is TCTriggers)) then
               InsertChild(Node, CItems[I]);
         end;
-      ceCreated:
+      ceObjCreated:
         InsertChild(Node, ClientEvent.CItem);
-      ceAltered:
+      ceObjAltered:
         for I := 0 to Node.Count - 1 do
           if (Node.Item[I].Data = ClientEvent.CItem) then
             Node.Text := ClientEvent.CItem.Name;
-      ceDroped:
+      ceObjDroped:
         for I := Node.Count - 1 downto 0 do
           if (Node.Item[I].Data = ClientEvent.CItem) then
           begin
@@ -8042,33 +8046,35 @@ begin
   end;
 end;
 
-procedure TFClient.FormClientEvent(const ClientEvent: TCClient.TEvent);
+procedure TFClient.FormClientEvent(const Event: TCClient.TEvent);
 var
   Database: TCDatabase;
   Table: TCTable;
 begin
   if (not (csDestroying in ComponentState)) then
-    case (ClientEvent.EventType) of
-      ceBuild,
-      ceCreated,
-      ceDroped,
-      ceStatus:
-        ClientRefresh(ClientEvent);
-      ceAltered:
-        if (ClientEvent.CItem is TCObject) then
-          Wanted.Update := TCObject(ClientEvent.CItem).Update;
+    case (Event.EventType) of
+      ceBuild:
+        ClientRefresh(Event);
+      ceObjBuild: ;
+      ceObjCreated,
+      ceObjDroped,
+      ceObjStatus:
+        ClientRefresh(Event);
+      ceObjAltered:
+        if (Event.CItem is TCObject) then Wanted.Update := TCObject(Event.CItem).Update;
       ceMonitor:
         Perform(CM_POST_MONITOR, 0, 0);
+      ceBeforeExecuteSQL:
+        BeforeExecuteSQL(Event);
       ceAfterExecuteSQL:
-        if (not Wanted.Nothing) then
-          Wanted.Execute();
+        AfterExecuteSQL(Event);
       else
         begin
           Database := Client.DatabaseByName(SelectedDatabase);
           if (Assigned(Database) and (SelectedTable <> '')) then
           begin
             Table := Database.TableByName(SelectedTable);
-            case (ClientEvent.EventType) of
+            case (Event.EventType) of
               ceBeforeCancel: DataSetBeforeCancel(Table.DataSet);
               ceBeforeReceivingRecords: DataSetBeforeReceivingRecords(Table.DataSet);
               ceBeforePost: DataSetBeforePost(Table.DataSet);
@@ -10010,7 +10016,7 @@ begin
 //      ListView.Columns[1].Alignment := taRightJustify;
 //      ListView.Columns[2].Alignment := taRightJustify;
 
-      ListView.Groups.Add().GroupID := giDatabase;
+      ListView.Groups.Add().GroupID := giDatabases;
       ListView.Groups.Add().GroupID := giSystemTools;
     end
     else if (TObject(Data) is TCDatabase) then
@@ -10029,9 +10035,9 @@ begin
       ListView.Columns[2].Alignment := taRightJustify;
       ListView.Columns[3].Alignment := taRightJustify;
 
-      ListView.Groups.Add().GroupID := giTable;
-      ListView.Groups.Add().GroupID := giRoutine;
-      ListView.Groups.Add().GroupID := giEvent;
+      ListView.Groups.Add().GroupID := giTables;
+      ListView.Groups.Add().GroupID := giRoutines;
+      ListView.Groups.Add().GroupID := giEvents;
     end
     else if (TObject(Data) is TCBaseTable) then
     begin
@@ -10047,10 +10053,10 @@ begin
       if (ListView.Column[1].Width > 2 * Preferences.GridMaxColumnWidth) then
         ListView.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
 
-      ListView.Groups.Add().GroupID := giIndex;
-      ListView.Groups.Add().GroupID := giField;
-      ListView.Groups.Add().GroupID := giForeignKey;
-      ListView.Groups.Add().GroupID := giTrigger;
+      ListView.Groups.Add().GroupID := giIndices;
+      ListView.Groups.Add().GroupID := giFields;
+      ListView.Groups.Add().GroupID := giForeignKeys;
+      ListView.Groups.Add().GroupID := giTriggers;
     end
     else if (TObject(Data) is TCView) then
     begin
@@ -10064,7 +10070,7 @@ begin
       if (ListView.Column[1].Width > 2 * Preferences.GridMaxColumnWidth) then
         ListView.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
 
-      ListView.Groups.Add().GroupID := giField;
+      ListView.Groups.Add().GroupID := giFields;
     end
     else if (TObject(Data) is TCHosts) then
     begin
@@ -10072,7 +10078,7 @@ begin
       ListView.Columns.EndUpdate();
       SetColumnWidths(ListView, lkHosts);
 
-      ListView.Groups.Add().GroupID := giHost;
+      ListView.Groups.Add().GroupID := giHosts;
     end
     else if (TObject(Data) is TCProcesses) then
     begin
@@ -10087,7 +10093,7 @@ begin
       ListView.Columns.EndUpdate();
       SetColumnWidths(ListView, lkProcesses);
 
-      ListView.Groups.Add().GroupID := giProcess;
+      ListView.Groups.Add().GroupID := giProcesses;
     end
     else if (TObject(Data) is TCStati) then
     begin
@@ -10096,7 +10102,7 @@ begin
       ListView.Columns.EndUpdate();
       SetColumnWidths(ListView, lkStati);
 
-      ListView.Groups.Add().GroupID := giStatus;
+      ListView.Groups.Add().GroupID := giStati;
     end
     else if (TObject(Data) is TCUsers) then
     begin
@@ -10104,7 +10110,7 @@ begin
       ListView.Columns.EndUpdate();
       SetColumnWidths(ListView, lkUsers);
 
-      ListView.Groups.Add().GroupID := giUser;
+      ListView.Groups.Add().GroupID := giUsers;
     end
     else if (TObject(Data) is TCVariables) then
     begin
@@ -10113,7 +10119,7 @@ begin
       ListView.Columns.EndUpdate();
       SetColumnWidths(ListView, lkVariables);
 
-      ListView.Groups.Add().GroupID := giVariable;
+      ListView.Groups.Add().GroupID := giVariables;
     end;
   end;
 
@@ -10391,7 +10397,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
 
     if (Data is TCDatabase) then
     begin
-      Item.GroupID := giDatabase;
+      Item.GroupID := giDatabases;
       if (Data is TCSystemDatabase) then
         Item.ImageIndex := iiSystemDatabase
       else
@@ -10428,7 +10434,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCTable) then
     begin
-      Item.GroupID := giTable;
+      Item.GroupID := giTables;
       if (Data is TCSystemView) then
         Item.ImageIndex := iiSystemView
       else if (Data is TCBaseTable) then
@@ -10479,7 +10485,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCRoutine) then
     begin
-      Item.GroupID := giRoutine;
+      Item.GroupID := giRoutines;
       if (Data is TCProcedure) then
         Item.ImageIndex := iiProcedure
       else
@@ -10506,7 +10512,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCEvent) then
     begin
-      Item.GroupID := giEvent;
+      Item.GroupID := giEvents;
       Item.ImageIndex := iiEvent;
       Item.Caption := TCEvent(Data).Name;
       Item.SubItems.Add('TCEvent(Data)');
@@ -10524,7 +10530,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCIndex) then
     begin
-      Item.GroupID := giIndex;
+      Item.GroupID := giIndices;
       Item.ImageIndex := iiIndex;
       Item.Caption := TCIndex(Data).Caption;
       S := '';
@@ -10549,7 +10555,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCBaseTableField) then
     begin
-      Item.GroupID := giField;
+      Item.GroupID := giFields;
       if (TCBaseTableField(Data).Table is TCSystemView) then
         Item.ImageIndex := iiSystemViewField
       else
@@ -10585,7 +10591,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCForeignKey) then
     begin
-      Item.GroupID := giForeignKey;
+      Item.GroupID := giForeignKeys;
       Item.ImageIndex := iiForeignKey;
       Item.Caption := TCForeignKey(Data).Name;
       Item.SubItems.Add(TCForeignKey(Data).DBTypeStr());
@@ -10607,7 +10613,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCTrigger) then
     begin
-      Item.GroupID := giTrigger;
+      Item.GroupID := giTriggers;
       Item.ImageIndex := iiTrigger;
       Item.Caption := TCTrigger(Data).Name;
       S := '';
@@ -10624,7 +10630,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCViewField) then
     begin
-      Item.GroupID := giField;
+      Item.GroupID := giFields;
       Item.ImageIndex := iiViewField;
       Item.Caption := TCViewField(Data).Name;
       if (TCViewField(Data).FieldType <> mfUnknown) then
@@ -10650,7 +10656,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCHost) then
     begin
-      Item.GroupID := giHost;
+      Item.GroupID := giHosts;
       Item.ImageIndex := iiHost;
       Item.Caption := TCHost(Data).Caption;
     end
@@ -10663,7 +10669,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCProcess) then
     begin
-      Item.GroupID := giProcess;
+      Item.GroupID := giProcesses;
       Item.ImageIndex := iiProcess;
       Item.Caption := IntToStr(TCProcess(Data).Id);
       Item.SubItems.Add(TCProcess(Data).UserName);
@@ -10685,7 +10691,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCStatus) then
     begin
-      Item.GroupID := giStatus;
+      Item.GroupID := giStati;
       Item.ImageIndex := iiStatus;
       Item.Caption := TCStatus(Data).Name;
       Item.SubItems.Add(TCStatus(Data).Value);
@@ -10701,7 +10707,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCUser) then
     begin
-      Item.GroupID := giUser;
+      Item.GroupID := giUsers;
       Item.ImageIndex := iiUser;
       Item.Caption := TCUser(Data).Caption;
     end
@@ -10713,7 +10719,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     end
     else if (Data is TCVariable) then
     begin
-      Item.GroupID := giVariable;
+      Item.GroupID := giVariables;
       Item.ImageIndex := iiVariable;
       Item.Caption := TCVariable(Data).Name;
       Item.SubItems.Add(TCVariable(Data).Value);
@@ -10790,27 +10796,27 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
             if (not (CItems is TCTriggers)) then
               InsertItem(CItems[I]);
         end;
-      ceCreated:
+      ceObjCreated:
         InsertItem(ClientEvent.CItem);
-      ceAltered:
+      ceObjAltered:
         for I := 0 to ListView.Items.Count - 1 do
           if (ListView.Items[I].Data = ClientEvent.CItem) then
             UpdateItem(ListView.Items[I], ClientEvent.CItem);
-      ceDroped:
+      ceObjDroped:
         for I := ListView.Items.Count - 1 downto 0 do
           if (ListView.Items[I].Data = ClientEvent.CItem) then
             ListView.Items.Delete(I);
-      ceStatus:
+      ceObjStatus:
         for I := 0 to ListView.Items.Count - 1 do
           if (ListView.Items[I].Data = ClientEvent.CItem) then
             UpdateItem(ListView.Items[I], ClientEvent.CItem);
     end;
 
-    if (ClientEvent.EventType in [ceBuild, ceCreated, ceDroped, ceStatus]) then
+    if (ClientEvent.EventType in [ceBuild, ceObjCreated, ceObjDroped]) then
       case (GroupID) of
-        giDatabase:
+        giDatabases:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(265) + ' (' + IntToStr(ClientEvent.CItems.Count) + ')', '&', '');
-        giTable:
+        giTables:
           begin
             Header := ReplaceStr(Preferences.LoadStr(234), '&', '');
             if (Client.ServerVersion >= 50001) then
@@ -10818,17 +10824,17 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
             Header := Header + ' (' + IntToStr(ClientEvent.CItems.Count) + ')';
             GroupByGroupID(GroupID).Header := Header;
           end;
-        giRoutine:
+        giRoutines:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(874) + ' + ' + Preferences.LoadStr(875), '&', '') + ' (' + IntToStr(ClientEvent.CItems.Count) + ')';
-        giEvent:
+        giEvents:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(876), '&', '') + ' (' + IntToStr(ClientEvent.CItems.Count) + ')';
-        giIndex:
+        giIndices:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(458), '&', '') + ' (' + IntToStr(TCBaseTable(ClientEvent.Sender).Indices.Count) + ')';
-        giField:
+        giFields:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(TCTable(ClientEvent.Sender).Fields.Count) + ')';
-        giForeignKey:
+        giForeignKeys:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(TCBaseTable(ClientEvent.Sender).ForeignKeys.Count) + ')';
-        giTrigger:
+        giTriggers:
           begin
             Count := 0;
             for I := 0 to TCBaseTable(ClientEvent.Sender).Database.Triggers.Count - 1 do
@@ -10839,15 +10845,15 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
               end;
             GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(797), '&', '') + ' (' + IntToStr(Count) + ')';
           end;
-        giHost:
+        giHosts:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(335), '&', '') + ' (' + IntToStr(Client.Hosts.Count) + ')';
-        giProcess:
+        giProcesses:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(24), '&', '') + ' (' + IntToStr(Client.Processes.Count) + ')';
-        giStatus:
+        giStati:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(23), '&', '') + ' (' + IntToStr(Client.Stati.Count) + ')';
-        giUser:
+        giUsers:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(561), '&', '') + ' (' + IntToStr(Client.Users.Count) + ')';
-        giVariable:
+        giVariables:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(22), '&', '') + ' (' + IntToStr(Client.Variables.Count) + ')';
       end;
   end;
@@ -10891,13 +10897,7 @@ begin
           end;
 
           if (ClientEvent.CItems is TCDatabases) then
-            UpdateGroup(giDatabase, ClientEvent.CItems)
-          else if (ClientEvent.CItems is TCDBObjects) then
-          begin
-            for I := 0 to ListView.Items.Count - 1 do
-              if (ListView.Items[I].Data = TCDBObjects(ClientEvent.CItems).Database) then
-                UpdateItem(ListView.Items[I], TCDBObjects(ClientEvent.CItems).Database);
-          end
+            UpdateGroup(giDatabases, ClientEvent.CItems)
           else if ((ClientEvent.CItems is TCHosts) or (ClientEvent.CItems is TCProcesses) or (ClientEvent.CItems is TCStati) or (ClientEvent.CItems is TCUsers) or (ClientEvent.CItems is TCVariables)) then
           begin
             for I := 0 to ListView.Items.Count - 1 do
@@ -10908,11 +10908,11 @@ begin
       lkDatabase:
         begin
           if (ClientEvent.CItems is TCTables) then
-            UpdateGroup(giTable, ClientEvent.CItems)
+            UpdateGroup(giTables, ClientEvent.CItems)
           else if (ClientEvent.CItems is TCRoutines) then
-            UpdateGroup(giRoutine, ClientEvent.CItems)
+            UpdateGroup(giRoutines, ClientEvent.CItems)
           else if (ClientEvent.CItems is TCEvents) then
-            UpdateGroup(giEvent, ClientEvent.CItems);
+            UpdateGroup(giEvents, ClientEvent.CItems);
         end;
       lkTable:
         if (ClientEvent.Sender is TCTable) then
@@ -10923,26 +10923,26 @@ begin
             if ((ClientEvent.CItems is TCTriggers) = (ListView.Items[I].ImageIndex in [iiTrigger])) then
               ListView.Items.Delete(I);
           if (Table is TCBaseTable) then
-            UpdateGroup(giIndex, TCBaseTable(Table).Indices);
-          UpdateGroup(giField, Table.Fields);
+            UpdateGroup(giIndices, TCBaseTable(Table).Indices);
+          UpdateGroup(giFields, Table.Fields);
           if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).ForeignKeys)) then
-            UpdateGroup(giForeignKey, TCBaseTable(Table).ForeignKeys);
+            UpdateGroup(giForeignKeys, TCBaseTable(Table).ForeignKeys);
           if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Database.Triggers)) then
-            UpdateGroup(giTrigger, TCBaseTable(Table).Database.Triggers);
+            UpdateGroup(giTriggers, TCBaseTable(Table).Database.Triggers);
         end;
       lkHosts:
-        UpdateGroup(giHost, ClientEvent.CItems);
+        UpdateGroup(giHosts, ClientEvent.CItems);
       lkProcesses:
-        UpdateGroup(giProcess, ClientEvent.CItems);
+        UpdateGroup(giProcesses, ClientEvent.CItems);
       lkStati:
-        UpdateGroup(giStatus, ClientEvent.CItems);
+        UpdateGroup(giStati, ClientEvent.CItems);
       lkUsers:
-        UpdateGroup(giUser, ClientEvent.CItems);
+        UpdateGroup(giUsers, ClientEvent.CItems);
       lkVariables:
-        UpdateGroup(giVariable, ClientEvent.CItems);
+        UpdateGroup(giVariables, ClientEvent.CItems);
     end;
 
-    if (ClientEvent.EventType = ceBuild) then
+    if ((ClientEvent.EventType = ceBuild) and not Assigned(ClientEvent.CItem)) then
     begin
       if (not Assigned(ListView.ItemFocused) and (ListView.Items.Count > 0)) then
         ListView.ItemFocused := ListView.Items[0];
