@@ -1007,7 +1007,7 @@ type
     function OptimizeTables(const TableNames: array of string): Boolean; virtual;
     procedure PushBuildEvents(); virtual;
     function ProcedureByName(const ProcedureName: string): TCProcedure;
-    function RenameTable(const Table: TCTable; const NewTableName: string): Boolean; virtual;
+    procedure RenameTable(const Table: TCTable; const NewTableName: string); virtual;
     function SQLUse(): string; virtual;
     function TableByName(const TableName: string): TCTable; overload; virtual;
     function TriggerByName(const TriggerName: string): TCTrigger; virtual;
@@ -1414,7 +1414,7 @@ type
 
   TCClient = class(TMySQLConnection)
   type
-    TEventType = (ceBuild, ceObjBuild, ceObjCreated, ceObjDroped, ceObjAltered, ceObjStatus, ceBeforeExecuteSQL, ceBeforeCancel, ceBeforeClose, ceBeforeOpen, ceAfterOpen, ceAfterReceivingRecords, ceBeforeReceivingRecords, ceBeforeScroll, ceAfterExecuteSQL, ceAfterScroll, ceAfterCancel, ceAfterClose, ceAfterPost, ceBeforePost, ceMonitor);
+    TEventType = (ceBuild, ceObjCreated, ceObjDroped, ceObjAltered, ceObjStatus, ceBeforeExecuteSQL, ceBeforeCancel, ceBeforeClose, ceBeforeOpen, ceAfterOpen, ceAfterReceivingRecords, ceBeforeReceivingRecords, ceBeforeScroll, ceAfterExecuteSQL, ceAfterScroll, ceAfterCancel, ceAfterClose, ceAfterPost, ceBeforePost, ceMonitor);
     TUpdate = function (): Boolean of object;
     TEvent = class
     public
@@ -4838,7 +4838,7 @@ procedure TCBaseTable.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create Table'));
 
-  Client.ExecuteEvent(ceObjBuild, Database, Tables, Self);
+  Client.ExecuteEvent(ceBuild, Self);
 end;
 
 function TCBaseTable.SQLGetSource(): string;
@@ -5213,7 +5213,7 @@ begin
         if (Assigned(View)) then
         begin
           View.Fields.FValid := True;
-          Client.ExecuteEvent(ceObjBuild, Database, Self, View);
+          Client.ExecuteEvent(ceBuild, View);
           Client.ExecuteEvent(ceObjStatus, Database, Database.Tables, View);
         end;
       end;
@@ -5255,7 +5255,7 @@ begin
   if (Assigned(View)) then
   begin
     View.Fields.FValid := True;
-    Client.ExecuteEvent(ceObjBuild, Database, Self, View);
+    Client.ExecuteEvent(ceBuild, View);
     Client.ExecuteEvent(ceObjStatus, Database, Database.Tables, View);
   end;
 end;
@@ -6154,7 +6154,7 @@ procedure TCTrigger.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('SQL Original Statement'));
 
-  Client.ExecuteEvent(ceObjBuild, Database, Triggers, Self);
+  Client.ExecuteEvent(ceBuild, Self);
 end;
 
 function TCTrigger.SQLDelete(): string;
@@ -7256,13 +7256,11 @@ begin
     Client.ExecuteEvent(ceBuild, Self, Events);
 end;
 
-function TCDatabase.RenameTable(const Table: TCTable; const NewTableName: string): Boolean;
+procedure TCDatabase.RenameTable(const Table: TCTable; const NewTableName: string);
 var
   NewView: TCView;
 begin
-  if (NewTableName = Table.Name) then
-    Result := True
-  else
+  if (NewTableName <> Table.Name) then
   begin
     if (Assigned(Table.FDataSet)) then
       Table.FDataSet.TableName := NewTableName;
@@ -7272,11 +7270,11 @@ begin
       NewView := TCView.Create(Tables);
       NewView.Assign(TCView(Table));
       NewView.FName := NewTableName;
-      Result := UpdateView(TCView(Table), NewView);
+      UpdateView(TCView(Table), NewView);
       NewView.Free();
     end
     else
-      Result := Client.ExecuteSQL('RENAME TABLE ' + Client.EscapeIdentifier(Table.Database.Name) + '.' + Client.EscapeIdentifier(Table.Name) + ' TO ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(NewTableName) + ';');
+      Client.SendSQL('RENAME TABLE ' + Client.EscapeIdentifier(Table.Database.Name) + '.' + Client.EscapeIdentifier(Table.Name) + ' TO ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(NewTableName) + ';');
   end;
 end;
 
@@ -10171,7 +10169,7 @@ begin
   if (not Assigned(Processes) and ((ServerVersion < 50000) or not Assigned(UserRights) or UserRights.RProcess)) then
     FProcesses := TCProcesses.Create(Self);
 
-  ExecuteEvent(ceObjBuild, Self, Users, User);
+  ExecuteEvent(ceBuild, User);
 end;
 
 procedure TCClient.ConnectChange(Sender: TObject; Connecting: Boolean);
@@ -11438,6 +11436,8 @@ var
   DatabaseName: string;
   DDLStmt: TSQLDDLStmt;
   DMLStmt: TSQLDMLStmt;
+  NewDatabaseName: string;
+  NewObjectName: string;
   ObjectName: string;
   OldObjectName: string;
   Parse: TSQLParse;
@@ -11496,7 +11496,8 @@ begin
                   if (SQLParseObjectName(Parse, DatabaseName, ObjectName)) then
                   begin
                     Database := DatabaseByName(DatabaseName);
-                    if (SQLParseKeyword(Parse, 'TO') and SQLParseObjectName(Parse, DatabaseName, ObjectName)) then
+                    NewDatabaseName := DatabaseName;
+                    if (SQLParseKeyword(Parse, 'TO') and SQLParseObjectName(Parse, NewDatabaseName, NewObjectName)) then
                     begin
                       Table := Database.TableByName(ObjectName);
                       if (Assigned(Table)) then
@@ -11505,8 +11506,8 @@ begin
 
                         ExecuteEvent(ceObjDroped, Database, Database.Tables, Table);
 
-                        Table.FDatabase := DatabaseByName(DatabaseName);
-                        Table.Name := ObjectName;
+                        Table.FDatabase := DatabaseByName(NewDatabaseName);
+                        Table.Name := NewObjectName;
 
                         Table.Database.Tables.Add(Table, True);
                       end;

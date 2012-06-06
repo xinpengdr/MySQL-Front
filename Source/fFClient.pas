@@ -2339,7 +2339,7 @@ begin
     MessageBeep(MB_ICONERROR)
   else
   begin
-    if (Client.Update(URI.Param['view'] = Null) and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
+    if (Client.Update((URI.Database = '') and (URI.Param['view'] = Null)) and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
       AllowChange := False
     else if (URI.Param['system'] = 'hosts') then
       Client.Hosts.Update()
@@ -2356,7 +2356,7 @@ begin
       Database := Client.DatabaseByName(URI.Database);
       if (not Assigned(Database)) then
         NotFound := True
-      else if (Database.Update(URI.Param['view'] = Null) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
+      else if (Database.Update((URI.Table = '') and (URI.Param['object'] = Null) and (URI.Param['view'] = Null)) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
         AllowChange := False
       else if ((URI.Table <> '') or (URI.Param['object'] <> Null)) then
       begin
@@ -4369,10 +4369,7 @@ begin
   end;
 
   if ((OldAddress <> '') and (Address <> OldAddress)) then
-    Wanted.Address := OldAddress
-//  else if (Assigned(FNavigator.Selected)) then
-//    PContentRefresh(Sender);
-;
+    Wanted.Address := OldAddress;
 
   if (PContent.Visible and Assigned(TempActiveControl) and TempActiveControl.Visible) then
   begin
@@ -7613,7 +7610,7 @@ procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
     else if (GroupIDByImageIndex(Item1.ImageIndex) = giSystemTools) then
       Result := Sign(Pos(Chr(Item1.ImageIndex), ImageIndexSort) - Pos(Chr(Item2.ImageIndex), ImageIndexSort))
     else if (TObject(Item1.Data) is TCItem) then
-      Result := -TCItem(Item1.Data).CItems.NameCmp(Item1.Text, Item2.Text)
+      Result := TCItem(Item1.Data).CItems.NameCmp(Item1.Text, Item2.Text)
     else
       raise ERangeError.Create(SRangeError);
   end;
@@ -7684,6 +7681,7 @@ procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
       Child := TTreeNode.Create(Node.Owner);
       Child.Data := Data;
       Child.ImageIndex := ImageIndexByData(Data);
+      Child.Text := TCItem(Data).Name;
 
       Left := 0;
       Right := Node.Count - 1;
@@ -8057,7 +8055,6 @@ begin
       ceObjDroped,
       ceObjStatus:
         ClientRefresh(Event);
-      ceObjBuild: ;
       ceObjAltered:
         if (Event.CItem is TCObject) then Wanted.Update := TCObject(Event.CItem).Update;
       ceMonitor:
@@ -10726,7 +10723,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     Item.SubItems.EndUpdate();
   end;
 
-  procedure InsertItem(const Data: TObject);
+  function InsertItem(const Data: TObject): TListItem;
   var
     Item: TListItem;
     Index: Integer;
@@ -10761,17 +10758,17 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
 
     if (Index = ListView.Items.Count) then
     begin
-      Item := ListView.Items.Add();
-      Item.Data := Data;
+      Result := ListView.Items.Add();
+      Result.Data := Data;
     end
     else if (ListView.Items[Index].Data <> Data) then
     begin
-      Item := ListView.Items.Insert(Index);
-      Item.Data := Data;
+      Result := ListView.Items.Insert(Index);
+      Result.Data := Data;
     end
     else
-      Item := ListView.Items[Index];
-    UpdateItem(Item, Data);
+      Result := ListView.Items[Index];
+    UpdateItem(Result, Data);
   end;
 
   procedure UpdateGroup(const GroupID: Integer; const CItems: TCItems);
@@ -10780,6 +10777,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     Header: string;
     I: Integer;
     Index: Integer;
+    Item: TListItem;
     J: Integer;
     S: string;
   begin
@@ -10793,9 +10791,16 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
           for I := 0 to CItems.Count - 1 do
             if (not (CItems is TCTriggers)) then
               InsertItem(CItems[I]);
+
+          if (not Assigned(ListView.ItemFocused) and (ListView.Items.Count > 0)) then
+            ListView.ItemFocused := ListView.Items[0];
         end;
       ceObjCreated:
-        InsertItem(ClientEvent.CItem);
+        begin
+          Item := InsertItem(ClientEvent.CItem);
+          if (not Assigned(ListView.Selected)) then
+            ListView.Selected := Item;
+        end;
       ceObjAltered:
         for I := 0 to ListView.Items.Count - 1 do
           if (ListView.Items[I].Data = ClientEvent.CItem) then
@@ -10942,8 +10947,6 @@ begin
 
     if (ClientEvent.EventType = ceBuild) then
     begin
-      if (not Assigned(ListView.ItemFocused) and (ListView.Items.Count > 0)) then
-        ListView.ItemFocused := ListView.Items[0];
       if ((Window.ActiveControl = ListView) and Assigned(ListView.OnSelectItem)) then
         ListView.OnSelectItem(nil, ListView.Selected, Assigned(ListView.Selected));
     end;
@@ -13130,7 +13133,9 @@ begin
   begin
     Table := TCTable(CItem);
 
-    Result := Table.Database.RenameTable(Table, NewName);
+    Table.Database.RenameTable(Table, NewName);
+
+    Result := False;
   end
   else if (CItem is TCTrigger) then
   begin
@@ -14436,7 +14441,10 @@ begin
             List.Free();
           end;
       iiDatabase,
-      iiSystemDatabase:
+      iiSystemDatabase,
+      iiBaseTable,
+      iiSystemView,
+      iiView:
         begin
           Database := Client.DatabaseByName(SelectedDatabase);
 

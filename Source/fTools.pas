@@ -1058,8 +1058,12 @@ begin
           DoError(DatabaseError(Item.Client), Item);
 
       if (Rename) then
-        while ((Success = daSuccess) and not Database.RenameTable(Table, NewTableName)) do
-          DoError(DatabaseError(Item.Client), Item)
+        while (Success = daSuccess) do
+        begin
+          Database.RenameTable(Table, NewTableName);
+          if (Item.Client.ErrorCode <> 0) then
+            DoError(DatabaseError(Item.Client), Item);
+        end
       else
         while ((Success = daSuccess) and not Database.CloneTable(Table, NewTableName, True)) do
           DoError(DatabaseError(Item.Client), Item);
