@@ -1,14 +1,16 @@
 ﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 		<PropertyGroup>
 			<ProjectGuid>{676FF4F5-D15F-4D9A-A7E5-AE4BA81C1E8E}</ProjectGuid>
+			<MainSource>MySQLFront.dpr</MainSource>
 			<ProjectVersion>13.4</ProjectVersion>
 			<FrameworkType>VCL</FrameworkType>
 			<TargetedPlatforms>1</TargetedPlatforms>
 			<AppType>Application</AppType>
 			<MainSource>MySQLFront.dpr</MainSource>
-			<Config Condition="'$(Config)'==''">Base</Config>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
-			<TargetedPlatforms>1</TargetedPlatforms>
+			<Config Condition="'$(Config)'==''">Base</Config>
+			<Base>True</Base>
+
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<SkipResGeneration>true</SkipResGeneration>
 		</PropertyGroup>

@@ -5086,6 +5086,7 @@ begin
 
   for I := 0 to Length(Parameter) - 1 do
     case (Fields[I].DataType) of
+      ftString,
       ftShortInt,
       ftByte,
       ftSmallInt,
@@ -5251,6 +5252,14 @@ begin
       end
     else
       case (Fields[I].DataType) of
+        ftString:
+          begin
+            SQL_C_TYPE := SQL_C_BINARY;
+            SQL_TYPE := SQL_BINARY;
+            ColumnSize := Fields[I].Size;
+            Parameter[I].BufferSize := ColumnSize;
+            GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
+          end;
         ftShortInt,
         ftByte,
         ftSmallInt,
@@ -5353,6 +5362,11 @@ begin
       end
     else
       case (Fields[I].DataType) of
+        ftString:
+          begin
+            Parameter[I].Size := Min(Parameter[I].BufferSize, DataSet.LibLengths^[I]);
+            MoveMemory(Parameter[I].Buffer, DataSet.LibRow^[I], Parameter[I].Size);
+          end;
         ftShortInt,
         ftByte,
         ftSmallInt,
@@ -5566,6 +5580,8 @@ begin
     else
       SQL := SQL + '"' + Fields[I].DisplayName + '" ';
     case (Fields[I].DataType) of
+      ftString:
+        SQL := SQL + 'BINARY';
       ftShortInt,
       ftByte,
       ftSmallInt,
@@ -5734,6 +5750,8 @@ begin
       sqlite3_bind_blob(Stmt, 1 + I, DataSet.LibRow^[I], DataSet.LibLengths^[I], SQLITE_STATIC)
     else
       case (Fields[I].DataType) of
+        ftString:
+          sqlite3_bind_blob(Stmt, 1 + I, DataSet.LibRow^[I], DataSet.LibLengths^[I], SQLITE_STATIC);
         ftShortInt,
         ftByte,
         ftSmallInt,

@@ -755,7 +755,7 @@ function SQLFormatToDisplayFormat(const SQLFormat: string): string;
 
 const
   UnquotedDataTypes = [ftShortInt, ftByte, ftSmallInt, ftWord, ftInteger, ftLongWord, ftLargeint, ftSingle, ftFloat, ftExtended];
-  BinaryDataTypes = [ftBytes, ftBlob];
+  BinaryDataTypes = [ftString, ftBytes, ftBlob];
   TextDataTypes = [ftWideString, ftWideMemo];
 
 var
@@ -3915,6 +3915,7 @@ begin
         end
       else
         case (Field.DataType) of
+          ftString: Move(Data^.LibRow^[Field.FieldNo - 1]^, Buffer^, Data^.LibLengths^[Field.FieldNo - 1]);
           ftShortInt: begin SetString(S, Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]); ShortInt(Buffer^) := StrToInt(S); end;
           ftByte: begin SetString(S, Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]); Byte(Buffer^) := StrToInt(S); end;
           ftSmallInt: begin SetString(S, Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]); Smallint(Buffer^) := StrToInt(S); end;
@@ -4151,7 +4152,7 @@ begin
             MYSQL_TYPE_VAR_STRING,
             MYSQL_TYPE_STRING:
               if (Binary) then
-                begin Field := TBytesField.Create(Self); if (Connection.ServerVersion < 40100) then Field.Size := Len + 1 else Field.Size := Len; end
+                begin Field := TStringField.Create(Self); if (Connection.ServerVersion < 40100) then Field.Size := Len + 1 else Field.Size := Len; end
               else if (Len <= 255) then
                 begin Field := TMySQLWideStringField.Create(Self); Field.Size := 255; end
               else if ((Len <= 65535) and (Connection.ServerVersion >= 50000)) then
@@ -4512,6 +4513,7 @@ begin
     Result := 'NULL'
   else if (not Assigned(Data^.LibRow^[Field.FieldNo - 1])) then
     case (Field.DataType) of
+      ftString,
       ftShortInt,
       ftByte,
       ftSmallInt,
@@ -4536,6 +4538,7 @@ begin
     Result := 'b''' + IntToBitString(UInt64(Data^.LibRow^[Field.FieldNo - 1]^)) + ''''
   else
     case (Field.DataType) of
+      ftString: Connection.LibDecode(Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]);
       ftShortInt,
       ftByte,
       ftSmallInt,
@@ -5541,7 +5544,7 @@ begin
       RBS := Connection.LibEncode(SQLUnescape(Fields[I].DefaultExpression));
       SetFieldData(Fields[I], @RBS[1], Length(RBS));
     end
-    else if (Fields[I].Required and (Fields[I].DataType in [ftWideString, ftWideMemo, ftBytes, ftBlob])) then
+    else if (Fields[I].Required and (Fields[I].DataType in [ftString, ftWideString, ftWideMemo, ftBytes, ftBlob])) then
       SetFieldData(Fields[I], Pointer(1), 0);
 end;
 
@@ -5718,6 +5721,7 @@ begin
   else
   begin
     case (Field.DataType) of
+      ftString: SetString(RBS, PAnsiChar(Buffer), Field.DataSize);
       ftShortInt: RBS := Connection.LibPack(FormatFloat(TNumericField(Field).DisplayFormat, ShortInt(Buffer^), Connection.FormatSettings));
       ftByte: RBS := Connection.LibPack(FormatFloat(TNumericField(Field).DisplayFormat, Byte(Buffer^), Connection.FormatSettings));
       ftSmallInt: RBS := Connection.LibPack(FormatFloat(TNumericField(Field).DisplayFormat, SmallInt(Buffer^), Connection.FormatSettings));
@@ -5736,7 +5740,7 @@ begin
       ftTime: RBS := Connection.LibPack(TimeToStr(Integer(Buffer^), TMySQLTimeField(Field).SQLFormat));
       ftTimeStamp: RBS := Connection.LibPack(MySQLTimeStampToStr(PSQLTimeStamp(Buffer)^, TMySQLTimeStampField(Field).DisplayFormat));
       ftDateTime: begin DataConvert(Field, Buffer, @DT, False); RBS := Connection.LibPack(MySQLDB.DateTimeToStr(DT, Connection.FormatSettings)); end;
-      ftBytes: SetString(RBS, PAnsiChar(Buffer), StrLen(PAnsiChar(Buffer)));
+      ftBytes: SetString(RBS, PAnsiChar(Buffer), Field.DataSize);
       ftBlob: begin SetLength(RBS, TMemoryStream(Buffer).Size); Move(TMemoryStream(Buffer).Memory^, PAnsiChar(RBS)^, TMemoryStream(Buffer).Size); end;
       ftWideMemo: DataConvert(Field, Buffer, @RBS, True);
       ftWideString: RBS := PAnsiChar(Buffer);
@@ -6268,6 +6272,7 @@ var
     else
     begin
       case (Field.DataType) of
+        ftString: Result := lstrcmpA(A^.NewData^.LibRow^[Field.FieldNo - 1], B^.NewData^.LibRow^[Field.FieldNo - 1]);
         ftShortInt: begin GetFieldData(Field, @ShortIntA, A^.NewData); GetFieldData(Field, @ShortIntB, B^.NewData); Result := Sign(ShortIntA - ShortIntB); end;
         ftByte:
           begin

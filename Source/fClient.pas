@@ -5876,7 +5876,7 @@ begin
   SetSource(ADataSet.FieldByName('Create Function'));
 
   Client.ExecuteEvent(ceObjStatus, Client, Client.Databases, Database);
-  Client.ExecuteEvent(ceObjStatus, Client, Routines, Self);
+  Client.ExecuteEvent(ceObjStatus, Database, Routines, Self);
 end;
 
 function TCFunction.SQLGetSource(): string;
@@ -12006,7 +12006,7 @@ begin
   if (Status) then
   begin
     for I := 0 to List.Count - 1 do
-      if ((TObject(List[I]) is TCDatabase) and not (TObject(List[I]) is TCSystemDatabase)) then
+      if (TObject(List[I]) is TCDatabase) then
       begin
         if (TCDatabase(List[I]).Tables.Count = 0) then
           SQL := SQL + TCDatabase(List[I]).Tables.SQLGetStatus()
@@ -12062,7 +12062,7 @@ begin
   else
   begin
     SendSQL(SQL, ClientResult);
-    Result := True;
+    Result := Asynchron;
   end;
 end;
 

@@ -2,13 +2,13 @@
 		<PropertyGroup>
 			<ProjectGuid>{23251FF1-A3D4-4402-968E-E658715339A8}</ProjectGuid>
 			<MainSource>acQueryBuilderDsgn_D2010.dpk</MainSource>
-				<ProjectVersion>13.4</ProjectVersion>
+			<ProjectVersion>13.4</ProjectVersion>
 			<FrameworkType>None</FrameworkType>
 			<AppType>Package</AppType>
-			<Base>True</Base>
-			<Config Condition="'$(Config)'==''">Base</Config>
-			<Platform Condition="'$(Platform)'==''">Win32</Platform>
 			<TargetedPlatforms>1</TargetedPlatforms>
+			<Platform Condition="'$(Platform)'==''">Win32</Platform>
+			<Config Condition="'$(Config)'==''">Base</Config>
+			<Base>True</Base>
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<SkipResGeneration>true</SkipResGeneration>
 		</PropertyGroup>

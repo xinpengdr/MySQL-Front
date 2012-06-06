@@ -7497,15 +7497,14 @@ begin
       iiDatabase,
       iiSystemDatabase:
         begin
-          Database := Client.DatabaseByName(Node.Text);
+          Database := TCDatabase(Node.Data);
           AllowExpansion := not Database.Update();
         end;
       iiBaseTable,
       iiSystemView,
       iiView:
         begin
-          Database := Client.DatabaseByName(Node.Parent.Text);
-          Table := Database.TableByName(Node.Text);
+          Table := TCTable(Node.Data);
           AllowExpansion := not Table.Update();
         end;
     end;
@@ -8053,13 +8052,12 @@ var
 begin
   if (not (csDestroying in ComponentState)) then
     case (Event.EventType) of
-      ceBuild:
-        ClientRefresh(Event);
-      ceObjBuild: ;
+      ceBuild,
       ceObjCreated,
       ceObjDroped,
       ceObjStatus:
         ClientRefresh(Event);
+      ceObjBuild: ;
       ceObjAltered:
         if (Event.CItem is TCObject) then Wanted.Update := TCObject(Event.CItem).Update;
       ceMonitor:
@@ -10942,7 +10940,7 @@ begin
         UpdateGroup(giVariables, ClientEvent.CItems);
     end;
 
-    if ((ClientEvent.EventType = ceBuild) and not Assigned(ClientEvent.CItem)) then
+    if (ClientEvent.EventType = ceBuild) then
     begin
       if (not Assigned(ListView.ItemFocused) and (ListView.Items.Count > 0)) then
         ListView.ItemFocused := ListView.Items[0];
@@ -11513,7 +11511,7 @@ begin
         AddFilterMenuItem(FGrid.SelectedField, Value, 3);
         AddFilterMenuItem(FGrid.SelectedField, Value, 4);
         AddFilterMenuItem(FGrid.SelectedField, Value, 5);
-        if (FGrid.SelectedField.DataType in [ftBytes, ftWideString]) then
+        if (FGrid.SelectedField.DataType in [ftString, ftBytes, ftWideString]) then
           AddFilterMenuItem(FGrid.SelectedField, SQLEscape('%' + FGrid.SelectedField.DisplayText + '%'), 6);
         AddFilterMenuItem(FGrid.SelectedField, '', -1);
       end;
@@ -11526,7 +11524,7 @@ begin
       AddFilterMenuItem(FGrid.SelectedField, Value, 8);
       AddFilterMenuItem(FGrid.SelectedField, Value, 9);
       AddFilterMenuItem(FGrid.SelectedField, Value, 10);
-      if (FGrid.SelectedField.DataType in [ftBytes, ftWideString]) then
+      if (FGrid.SelectedField.DataType in [ftString, ftBytes, ftWideString]) then
         AddFilterMenuItem(FGrid.SelectedField, Value, 11);
     end;
 
