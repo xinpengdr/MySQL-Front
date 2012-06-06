@@ -1158,7 +1158,7 @@ end;
 
 procedure TDTable.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceBuild]) and (Event.Sender = Table)) then
+  if ((Event.EventType in [ceItemBuild]) and (Event.CItem = Table)) then
     Built();
 end;
 

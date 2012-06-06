@@ -34,6 +34,7 @@ const
 
 type
   TCItems = class;
+  TCEntities = class;
   TCObjects = class;
   TCDBObjects = class;
   TCIndexColumns = class;
@@ -170,6 +171,10 @@ type
   end;
 
   TCEntity = class(TCItem)
+  private
+    function GetEntities(): TCEntities; inline;
+  public
+    property Entities: TCEntities read GetEntities;
   end;
 
   TCEntities = class(TCItems)
@@ -245,6 +250,7 @@ type
     FDatabase: TCDatabase;
     function GetDBObjects(): TCDBObjects; inline;
   protected
+    procedure SetDatabase(const ADatabase: TCDatabase); virtual;
     procedure SetSource(const ASource: string); override;
     function SQLGetSource(): string; virtual; abstract;
   public
@@ -1414,7 +1420,7 @@ type
 
   TCClient = class(TMySQLConnection)
   type
-    TEventType = (ceBuild, ceObjCreated, ceObjDroped, ceObjAltered, ceObjStatus, ceBeforeExecuteSQL, ceBeforeCancel, ceBeforeClose, ceBeforeOpen, ceAfterOpen, ceAfterReceivingRecords, ceBeforeReceivingRecords, ceBeforeScroll, ceAfterExecuteSQL, ceAfterScroll, ceAfterCancel, ceAfterClose, ceAfterPost, ceBeforePost, ceMonitor);
+    TEventType = (ceBuild, ceStatus, ceItemBuild, ceItemCreated, ceItemDroped, ceItemAltered, ceItemStatus, ceBeforeExecuteSQL, ceBeforeCancel, ceBeforeClose, ceBeforeOpen, ceAfterOpen, ceAfterReceivingRecords, ceBeforeReceivingRecords, ceBeforeScroll, ceAfterExecuteSQL, ceAfterScroll, ceAfterCancel, ceAfterClose, ceAfterPost, ceBeforePost, ceMonitor);
     TUpdate = function (): Boolean of object;
     TEvent = class
     public
@@ -1917,8 +1923,17 @@ begin
 end;
 
 procedure TCItem.SetName(const AName: string);
+var
+  NewIndex: Integer;
 begin
   FName := AName;
+
+  if (not (Self is TCIndex) and not (Self is TCField) and not (Self is TCForeignKey) and (Self is TCEntity) and TCEntity(Self).Entities.InsertIndex(AName, NewIndex)) then
+  begin
+    if (NewIndex > TCEntity(Self).Entities.IndexOf(Self)) then
+      Dec(NewIndex);
+    TCEntity(Self).Entities.Move(TCEntity(Self).Entities.IndexOf(Self), NewIndex);
+  end;
 end;
 
 { TCDBItems *******************************************************************}
@@ -1993,6 +2008,15 @@ begin
   Result := lstrcmpi(PChar(Name1), PChar(Name2));
 end;
 
+{ TCEntity ********************************************************************}
+
+function TCEntity.GetEntities(): TCEntities;
+begin
+  Assert(CItems is TCEntities);
+
+  Result := TCEntities(CItems);
+end;
+
 { TCEntities ******************************************************************}
 
 function TCEntities.Add(const AEntity: TCEntity; const ExecuteEvent: Boolean): Integer;
@@ -2004,7 +2028,7 @@ begin
       TList(Self).Add(AEntity);
 
   if (ExecuteEvent) then
-    Client.ExecuteEvent(ceObjCreated, Client, Self, AEntity);
+    Client.ExecuteEvent(ceItemCreated, Client, Self, AEntity);
 end;
 
 function TCEntities.Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean; Filtered: Boolean = False): Boolean;
@@ -2040,7 +2064,7 @@ begin
   begin
     TList(Self).Delete(Index);
 
-    Client.ExecuteEvent(ceObjDroped, Client, Self, AEntity);
+    Client.ExecuteEvent(ceItemDroped, Client, Self, AEntity);
 
     AEntity.Free();
   end;
@@ -2253,6 +2277,25 @@ begin
   Result := TCDBObjects(CItems);
 end;
 
+procedure TCDBObject.SetDatabase(const ADatabase: TCDatabase);
+begin
+  if (ADatabase <> FDatabase) then
+  begin
+    Entities.Delete(Self);
+    if (Self is TCTable) then
+      FCItems := ADatabase.Tables
+    else if (Self is TCRoutine) then
+      FCItems := ADatabase.Routines
+    else if (Self is TCRoutine) then
+      FCItems := ADatabase.Routines
+    else if (Self is TCTrigger) then
+      FCItems := ADatabase.Triggers
+    else
+      ERangeError.Create(SRangeError);
+    Entities.Add(Self, True);
+  end;
+end;
+
 procedure TCDBObject.SetSource(const ASource: string);
 begin
   FValidSource := True;
@@ -2280,7 +2323,7 @@ begin
       TList(Self).Add(AEntity);
 
   if (ExecuteEvent) then
-    Client.ExecuteEvent(ceObjCreated, Database, Self, AEntity);
+    Client.ExecuteEvent(ceItemCreated, Database, Self, AEntity);
 end;
 
 constructor TCDBObjects.Create(const ADatabase: TCDatabase);
@@ -2301,7 +2344,7 @@ begin
   begin
     TList(Self).Delete(Index);
 
-    Client.ExecuteEvent(ceObjDroped, Database, Self, AEntity);
+    Client.ExecuteEvent(ceItemDroped, Database, Self, AEntity);
 
     AEntity.Free();
   end;
@@ -3479,12 +3522,12 @@ end;
 
 procedure TCTable.AfterCancel(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceAfterCancel, Database, Database.Tables, Self);
+  Client.ExecuteEvent(ceAfterCancel, Self);
 end;
 
 procedure TCTable.AfterClose(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceAfterClose, Database, Database.Tables, Self);
+  Client.ExecuteEvent(ceAfterClose, Self);
 end;
 
 procedure TCTable.AfterOpen(DataSet: TDataSet);
@@ -3492,22 +3535,22 @@ begin
   if ((DataSet is TCTableDataSet) and (DataSet.FieldCount > 0)) then
     TCTableDataSet(DataSet).FFilterSQL := FFilterSQL;
 
-  Client.ExecuteEvent(ceAfterOpen, Database, Database.Tables, Self);
+  Client.ExecuteEvent(ceAfterOpen, Self);
 end;
 
 procedure TCTable.AfterPost(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceAfterPost, Database, Database.Tables, Self);
+  Client.ExecuteEvent(ceAfterPost, Self);
 end;
 
 procedure TCTable.AfterReceivingRecords(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceAfterReceivingRecords, Database, Database.Tables, Self);
+  Client.ExecuteEvent(ceAfterReceivingRecords, Self);
 end;
 
 procedure TCTable.AfterScroll(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceAfterScroll, Database, Database.Tables, Self);
+  Client.ExecuteEvent(ceAfterScroll, Self);
 end;
 
 procedure TCTable.Assign(const Source: TCTable);
@@ -3535,32 +3578,32 @@ end;
 
 procedure TCTable.BeforeCancel(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceBeforeCancel, Database, Database.Tables, Self);
+  Client.ExecuteEvent(ceBeforeCancel, Self);
 end;
 
 procedure TCTable.BeforeClose(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceBeforeClose, Database, Database.Tables, Self);
+  Client.ExecuteEvent(ceBeforeClose, Self);
 end;
 
 procedure TCTable.BeforeOpen(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceBeforeOpen, Database, Database.Tables, Self);
+  Client.ExecuteEvent(ceBeforeOpen, Self);
 end;
 
 procedure TCTable.BeforePost(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceBeforePost, Database, Database.Tables, Self);
+  Client.ExecuteEvent(ceBeforePost, Self);
 end;
 
 procedure TCTable.BeforeReceivingRecords(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceBeforeReceivingRecords, Database, Database.Tables, Self);
+  Client.ExecuteEvent(ceBeforeReceivingRecords, Self);
 end;
 
 procedure TCTable.BeforeScroll(DataSet: TDataSet);
 begin
-  Client.ExecuteEvent(ceBeforeScroll, Database, Database.Tables, Self);
+  Client.ExecuteEvent(ceBeforeScroll, Self);
 end;
 
 procedure TCTable.Clear();
@@ -4838,7 +4881,13 @@ procedure TCBaseTable.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create Table'));
 
-  Client.ExecuteEvent(ceBuild, Self);
+  Client.ExecuteEvent(ceBuild, Self, Indices);
+  Client.ExecuteEvent(ceBuild, Self, Fields);
+  if (Assigned(ForeignKeys)) then
+    Client.ExecuteEvent(ceBuild, Self, ForeignKeys);
+  if (Assigned(Database.Triggers)) then
+    Client.ExecuteEvent(ceBuild, Self, Database.Triggers);
+  Client.ExecuteEvent(ceItemBuild, Database, Tables, Self);
 end;
 
 function TCBaseTable.SQLGetSource(): string;
@@ -5006,9 +5055,9 @@ procedure TCView.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create View'));
 
-  Client.ExecuteEvent(ceObjStatus, Client, Client.Databases, Database);
-  Client.ExecuteEvent(ceObjStatus, Database, Tables, Self);
-  // Client.ExecuteEvent(ceObjBuild,  ... will be called from TCTables.BuildViewFields
+  Client.ExecuteEvent(ceItemStatus, Database, Tables, Self);
+  Client.ExecuteEvent(ceStatus, Database, Tables);
+  // Client.ExecuteEvent(ceBuild,  ... will be called from TCTables.BuildViewFields
 end;
 
 procedure TCView.SetSource(const ASource: string);
@@ -5186,11 +5235,11 @@ begin
           BaseTable.BuildStatus(DataSet, UseInformationSchema);
         end;
 
-        Client.ExecuteEvent(ceObjStatus, Database, Self, Table[Index]);
+        Client.ExecuteEvent(ceItemStatus, Database, Self, Table[Index]);
       until (not DataSet.FindNext());
 
     if (Count > 0) then
-      Client.ExecuteEvent(ceObjStatus, Client, Client.Databases, Database);
+      Client.ExecuteEvent(ceStatus, Client, Database.Databases);
 
     Result := False;
   end;
@@ -5213,8 +5262,9 @@ begin
         if (Assigned(View)) then
         begin
           View.Fields.FValid := True;
-          Client.ExecuteEvent(ceBuild, View);
-          Client.ExecuteEvent(ceObjStatus, Database, Database.Tables, View);
+          Client.ExecuteEvent(ceBuild, View, View.Fields);
+          Client.ExecuteEvent(ceItemBuild, Database, Self, View);
+          Client.ExecuteEvent(ceItemStatus, Database, Self, View);
         end;
       end;
 
@@ -5255,9 +5305,12 @@ begin
   if (Assigned(View)) then
   begin
     View.Fields.FValid := True;
-    Client.ExecuteEvent(ceBuild, View);
-    Client.ExecuteEvent(ceObjStatus, Database, Database.Tables, View);
+    Client.ExecuteEvent(ceBuild, View, View.Fields);
+    Client.ExecuteEvent(ceItemBuild, Database, Self, View);
+    Client.ExecuteEvent(ceItemStatus, Database, Self, View);
   end;
+
+  Client.ExecuteEvent(ceStatus, Database, Self);
 end;
 
 constructor TCTables.Create(const ADatabase: TCDatabase);
@@ -5777,8 +5830,8 @@ begin
 
   OldSource := FSource;
 
-  Client.ExecuteEvent(ceObjStatus, Client, Client.Databases, Database);
-  Client.ExecuteEvent(ceObjStatus, Database, Routines, Self);
+  Client.ExecuteEvent(ceStatus, Database, Routines);
+  Client.ExecuteEvent(ceItemStatus, Database, Routines, Self);
 end;
 
 procedure TCRoutine.SetSource(const ASource: string);
@@ -5804,8 +5857,8 @@ procedure TCProcedure.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create Procedure'));
 
-  Client.ExecuteEvent(ceObjStatus, Client, Client.Databases, Database);
-  Client.ExecuteEvent(ceObjStatus, Database, Routines, Self);
+  Client.ExecuteEvent(ceStatus, Database, Routines);
+  Client.ExecuteEvent(ceItemStatus, Database, Routines, Self);
 end;
 
 function TCProcedure.SQLGetSource(): string;
@@ -5875,8 +5928,8 @@ procedure TCFunction.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create Function'));
 
-  Client.ExecuteEvent(ceObjStatus, Client, Client.Databases, Database);
-  Client.ExecuteEvent(ceObjStatus, Database, Routines, Self);
+  Client.ExecuteEvent(ceStatus, Database, Routines);
+  Client.ExecuteEvent(ceItemStatus, Database, Routines, Self);
 end;
 
 function TCFunction.SQLGetSource(): string;
@@ -6154,7 +6207,7 @@ procedure TCTrigger.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('SQL Original Statement'));
 
-  Client.ExecuteEvent(ceBuild, Self);
+  Client.ExecuteEvent(ceItemBuild, Database, Triggers, Self);
 end;
 
 function TCTrigger.SQLDelete(): string;
@@ -6215,10 +6268,7 @@ begin
       TList(Self).Add(AEntity);
 
   if (ExecuteEvent) then
-  begin
-    Table := Database.BaseTableByName(TCTrigger(AEntity).TableName);
-    Client.ExecuteEvent(ceObjCreated, Table, Self, AEntity);
-  end;
+    Client.ExecuteEvent(ceItemCreated, Database, Self, AEntity);
 end;
 
 function TCTriggers.Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean; Filtered: Boolean = False): Boolean;
@@ -6331,8 +6381,7 @@ begin
   begin
     TList(Self).Delete(Index);
 
-    Table := Database.BaseTableByName(TCTrigger(AEntity).TableName);
-    Client.ExecuteEvent(ceObjDroped, Table, Self, AEntity);
+    Client.ExecuteEvent(ceItemDroped, Database, Self, AEntity);
 
     AEntity.Free();
   end;
@@ -6518,8 +6567,8 @@ procedure TCEvent.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create Event'));
 
-  Client.ExecuteEvent(ceObjStatus, Client, Client.Databases, Database);
-  Client.ExecuteEvent(ceObjStatus, Database, Events, Self);
+  Client.ExecuteEvent(ceStatus, Database, Events);
+  Client.ExecuteEvent(ceItemStatus, Database, Events, Self);
 end;
 
 procedure TCEvent.SetSource(const ASource: string);
@@ -8254,7 +8303,7 @@ begin
   if (Index >= 0) then
     Delete(Index);
 
-  Client.ExecuteEvent(ceObjDroped, Client, Self, AEntity);
+  Client.ExecuteEvent(ceItemDroped, Client, Self, AEntity);
 
   AEntity.Free();
 end;
@@ -10108,7 +10157,6 @@ begin
 
   Sender := nil;
   CItems := nil;
-  CItem := nil;
   Update := nil;
 end;
 
@@ -10169,7 +10217,7 @@ begin
   if (not Assigned(Processes) and ((ServerVersion < 50000) or not Assigned(UserRights) or UserRights.RProcess)) then
     FProcesses := TCProcesses.Create(Self);
 
-  ExecuteEvent(ceBuild, User);
+  ExecuteEvent(ceItemBuild, Self, Users, User);
 end;
 
 procedure TCClient.ConnectChange(Sender: TObject; Connecting: Boolean);
@@ -11465,7 +11513,7 @@ begin
             if (Database.Valid or Database.ValidSource or Database.ValidSources) then
             begin
               Database.Invalidate();
-              ExecuteEvent(ceObjAltered, Self, Databases, Database);
+              ExecuteEvent(ceItemAltered, Self, Databases, Database);
             end;
           end;
         dtDrop:
@@ -11502,14 +11550,10 @@ begin
                       Table := Database.TableByName(ObjectName);
                       if (Assigned(Table)) then
                       begin
-                        Database.Tables.Delete(Table.Index);
-
-                        ExecuteEvent(ceObjDroped, Database, Database.Tables, Table);
-
-                        Table.FDatabase := DatabaseByName(NewDatabaseName);
+                        Table.SetDatabase(DatabaseByName(NewDatabaseName));
                         Table.Name := NewObjectName;
 
-                        Table.Database.Tables.Add(Table, True);
+                        ExecuteEvent(ceItemAltered, Database, Database.Tables, Table);
                       end;
                     end;
                   end;
@@ -11522,21 +11566,21 @@ begin
                   begin
                     if (DDLStmt.DefinitionType = dtAlterRename) then
                     begin
-                      Table.FDatabase := DatabaseByName(DDLStmt.NewDatabaseName);
+                      Table.SetDatabase(DatabaseByName(DDLStmt.NewDatabaseName));
                       Table.Name := DDLStmt.NewObjectName;
                     end;
 
                     if ((Table.Database <> Database) and Table.Database.Valid) then
                     begin
                       Table.Database.Invalidate();
-                      ExecuteEvent(ceObjAltered, Self, Databases, Database);
+                      ExecuteEvent(ceItemAltered, Database, Database.Tables, Table);
                     end
                     else if (Table.ValidSource
                       or (Table is TCBaseTable) and TCBaseTable(Table).ValidStatus
                       or (Table is TCView) and TCView(Table).Valid) then
                     begin
                       Table.Invalidate();
-                      ExecuteEvent(ceObjAltered, Table.Database, Table.Database.Tables, Table);
+                      ExecuteEvent(ceItemAltered, Database, Database.Tables, Table);
                     end;
                   end;
                 end;
@@ -11574,7 +11618,7 @@ begin
                   if (Routine.ValidSource) then
                   begin
                     Routine.Invalidate();
-                    ExecuteEvent(ceObjAltered, Database, Database.Routines, Routine);
+                    ExecuteEvent(ceItemAltered, Database, Database.Routines, Routine);
                   end;
                 end;
               dtDrop:
@@ -11651,7 +11695,7 @@ begin
           if (Assigned(User)) then
           begin
             User.Name := ObjectName;
-            ExecuteEvent(ceObjAltered, Self, Users, User);
+            ExecuteEvent(ceItemAltered, Self, Users, User);
           end;
         end;
       until (not SQLParseChar(Parse, ','))
@@ -11664,7 +11708,7 @@ begin
             ObjectName := SQLParseValue(Parse);
             User := UserByName(ObjectName);
             if (Assigned(User)) then
-              ExecuteEvent(ceObjAltered, Self, Users, User);
+              ExecuteEvent(ceItemAltered, Self, Users, User);
             while (not SQLParseChar(Parse, ';') and not SQLParseEnd(Parse) and not SQLParseKeyword(Parse, 'REQUIRE', False) and not SQLParseKeyword(Parse, 'WITH', False) and not SQLParseChar(Parse, ',', False)) do
               SQLParseValue(Parse);
           until (not SQLParseChar(Parse, ','));
@@ -11678,7 +11722,7 @@ begin
             ObjectName := SQLParseValue(Parse);
             User := UserByName(ObjectName);
             if (Assigned(User)) then
-              ExecuteEvent(ceObjAltered, Self, Users, User);
+              ExecuteEvent(ceItemAltered, Self, Users, User);
           until (not SQLParseChar(Parse, ','));
       end
     else if (SQLParseKeyword(Parse, 'DROP USER')) then

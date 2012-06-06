@@ -383,7 +383,7 @@ end;
 
 procedure TDView.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceBuild]) and (Event.Sender = View)) then
+  if ((Event.EventType in [ceItemBuild]) and (Event.CItem = View)) then
     Built();
 end;
 

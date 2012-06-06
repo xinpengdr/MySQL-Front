@@ -4313,7 +4313,7 @@ begin
 
   TempActiveControl := Window.ActiveControl;
 
-  if (Assigned(ClientEvent) and not Assigned(ClientEvent.CItem)) then
+  if (Assigned(ClientEvent)) then
   begin
     Client.SQLEditorResult.Clear();
     Client.QueryBuilderResult.Clear();
@@ -4322,44 +4322,51 @@ begin
   OldAddress := Address;
 
   if (Assigned(ClientEvent)) then
-    if (ClientEvent.EventType in [ceBuild, ceObjCreated, ceObjDroped, ceObjAltered]) then
+    if (ClientEvent.EventType in [ceBuild, ceItemCreated, ceItemDroped, ceItemAltered]) then
       FNavigatorRefresh(ClientEvent);
 
   if (Assigned(ClientEvent)) then
   begin
     if (ClientEvent.Sender is TCDatabase) then
     begin
-      ListViewRefresh(ClientEvent, lkServer, FServerListView);
+      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
+        ListViewRefresh(ClientEvent, lkServer, FServerListView);
       ListViewRefresh(ClientEvent, lkDatabase, TDatabaseDesktop(TCDatabase(ClientEvent.Sender).Desktop).FListView);
     end
     else if (ClientEvent.Sender is TCTable) then
     begin
-      ListViewRefresh(ClientEvent, lkDatabase, TDatabaseDesktop(TCTable(ClientEvent.Sender).Database.Desktop).ListView);
+      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
+        ListViewRefresh(ClientEvent, lkDatabase, TDatabaseDesktop(TCTable(ClientEvent.Sender).Database.Desktop).ListView);
       ListViewRefresh(ClientEvent, lkTable, TTableDesktop(TCTable(ClientEvent.Sender).Desktop).ListView);
     end
     else if (ClientEvent.CItems is TCHosts) then
     begin
-      ListViewRefresh(ClientEvent, lkServer, FServerListView);
+      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
+        ListViewRefresh(ClientEvent, lkServer, FServerListView);
       ListViewRefresh(ClientEvent, lkHosts, HostsListView);
     end
     else if (ClientEvent.CItems is TCProcesses) then
     begin
-      ListViewRefresh(ClientEvent, lkServer, FServerListView);
+      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
+        ListViewRefresh(ClientEvent, lkServer, FServerListView);
       ListViewRefresh(ClientEvent, lkProcesses, ProcessesListView);
     end
     else if (ClientEvent.CItems is TCStati) then
     begin
-      ListViewRefresh(ClientEvent, lkServer, FServerListView);
+      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
+        ListViewRefresh(ClientEvent, lkServer, FServerListView);
       ListViewRefresh(ClientEvent, lkStati, StatiListView);
     end
     else if (ClientEvent.CItems is TCUsers) then
     begin
-      ListViewRefresh(ClientEvent, lkServer, FServerListView);
+      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
+        ListViewRefresh(ClientEvent, lkServer, FServerListView);
       ListViewRefresh(ClientEvent, lkUsers, UsersListView);
     end
     else if (ClientEvent.CItems is TCVariables) then
     begin
-      ListViewRefresh(ClientEvent, lkServer, FServerListView);
+      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
+        ListViewRefresh(ClientEvent, lkServer, FServerListView);
       ListViewRefresh(ClientEvent, lkVariables, VariablesListView);
     end
     else
@@ -4382,14 +4389,14 @@ begin
   if (Assigned(ActiveWorkbench)) then
     ActiveWorkbench.Refresh();
 
-  if (Assigned(ClientEvent) and (ClientEvent.EventType = ceObjCreated) and (ClientEvent.Sender is TCDatabase) and (TCDatabase(ClientEvent.Sender) = TCDatabase(FNavigator.Selected.Data))) then
+  if (Assigned(ClientEvent) and (ClientEvent.EventType = ceItemCreated) and (ClientEvent.Sender is TCDatabase) and (TCDatabase(ClientEvent.Sender) = TCDatabase(FNavigator.Selected.Data))) then
     case (View) of
       vDiagram:
-        if (ClientEvent.CItem is TCBaseTable) then
+        if (ClientEvent.Sender is TCBaseTable) then
         begin
           ActiveWorkbench.BeginUpdate();
           WTable := TWTable.Create(ActiveWorkbench.Tables);
-          WTable.Caption := ClientEvent.CItem.Name;
+          WTable.Caption := TCBaseTable(ClientEvent.Sender).Name;
           FWorkbenchValidateControl(nil, WTable);
           WTable.Move(nil, [], FWorkbenchMouseDownPoint);
           ActiveWorkbench.Tables.Add(WTable);
@@ -4613,10 +4620,7 @@ begin
 
   FSQLEditorPrint.Font := FSQLEditorSynMemo.Font;
 
-  {$IFNDEF Debug}
-  // Bug in SynEdit: Bei Verwendung in der Delphi IDE hängt sich diess Programm auf
   FSQLEditorCompletion.Font.Name := FSQLEditorSynMemo.Font.Name;
-  {$ENDIF}
   FSQLEditorCompletion.Font.Style := FSQLEditorSynMemo.Font.Style;
   FSQLEditorCompletion.Font.Color := FSQLEditorSynMemo.Font.Color;
   FSQLEditorCompletion.Font.Size := FSQLEditorSynMemo.Font.Size;
@@ -5492,6 +5496,14 @@ begin
   ListView.Perform(CM_PARENTBIDIMODECHANGED, 0, 0);
   ListView.Perform(CM_PARENTDOUBLEBUFFEREDCHANGED, 0, 0);
   ListView.Perform(CM_PARENTTABLETOPTIONSCHANGED, 0, 0);
+
+  if (ListView.Align = alClient) then
+  begin
+    ListView.Left := 0;
+    ListView.Top := 0;
+    ListView.Width := Parent.ClientWidth;
+    ListView.Height := Parent.ClientHeight;
+  end;
 
   NonClientMetrics.cbSize := SizeOf(NonClientMetrics);
   if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, SizeOf(NonClientMetrics), @NonClientMetrics, 0)) then
@@ -7742,7 +7754,7 @@ procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
       ceBuild:
         begin
           for I := Node.Count - 1 downto 0 do
-            if ((GroupIDByImageIndex(ImageIndexByData(ClientEvent.CItem)) = GroupIDByImageIndex(Node.Item[I].ImageIndex)) and (CItems.IndexOf(Node.Item[I].Data) < 0)) then
+            if ((ClientEvent.CItems = TCItem(Node.Data).CItems) and (CItems.IndexOf(Node.Item[I].Data) < 0)) then
             begin
               if (Node.Item[I] = FNavigatorNodeToExpand) then
                 FNavigatorNodeToExpand := nil;
@@ -7753,13 +7765,13 @@ procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
             if (not (CItems is TCTriggers)) then
               InsertChild(Node, CItems[I]);
         end;
-      ceObjCreated:
+      ceItemCreated:
         InsertChild(Node, ClientEvent.CItem);
-      ceObjAltered:
+      ceItemAltered:
         for I := 0 to Node.Count - 1 do
           if (Node.Item[I].Data = ClientEvent.CItem) then
-            Node.Text := ClientEvent.CItem.Name;
-      ceObjDroped:
+            Node.Item[I].Text := ClientEvent.CItem.Name;
+      ceItemDroped:
         for I := Node.Count - 1 downto 0 do
           if (Node.Item[I].Data = ClientEvent.CItem) then
           begin
@@ -8051,12 +8063,18 @@ begin
   if (not (csDestroying in ComponentState)) then
     case (Event.EventType) of
       ceBuild,
-      ceObjCreated,
-      ceObjDroped,
-      ceObjStatus:
+      ceStatus,
+//      ceObjBuild,
+      ceItemCreated,
+      ceItemDroped,
+      ceItemStatus:
         ClientRefresh(Event);
-      ceObjAltered:
-        if (Event.CItem is TCObject) then Wanted.Update := TCObject(Event.CItem).Update;
+      ceItemAltered:
+        begin
+          ClientRefresh(Event);
+          if (Event.Sender is TCObject) then
+            Wanted.Update := TCObject(Event.CItem).Update;
+        end;
       ceMonitor:
         Perform(CM_POST_MONITOR, 0, 0);
       ceBeforeExecuteSQL:
@@ -10008,8 +10026,8 @@ begin
       ListView.Columns.Add();
       ListView.Columns.EndUpdate();
       SetColumnWidths(ListView, lkServer);
-//      ListView.Columns[1].Alignment := taRightJustify;
-//      ListView.Columns[2].Alignment := taRightJustify;
+      ListView.Columns[1].Alignment := taRightJustify;
+      ListView.Columns[2].Alignment := taRightJustify;
 
       ListView.Groups.Add().GroupID := giDatabases;
       ListView.Groups.Add().GroupID := giSystemTools;
@@ -10384,7 +10402,11 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     S: string;
     S2: string;
   begin
+try
     Assert(Item.Data = Data);
+except
+    Assert(Item.Data = Data);
+end;
 
 
     Item.SubItems.BeginUpdate();
@@ -10795,27 +10817,33 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
           if (not Assigned(ListView.ItemFocused) and (ListView.Items.Count > 0)) then
             ListView.ItemFocused := ListView.Items[0];
         end;
-      ceObjCreated:
+      ceStatus:
+        for I := 0 to ListView.Items.Count - 1 do
+          if (TCItem(ListView.Items[I].Data).CItems = ClientEvent.CItems) then
+            for J := 0 to TCItem(ListView.Items[I].Data).CItems.Count - 1 do
+              if (ListView.Items[I].Data = TCItem(ListView.Items[I].Data).CItems[J]) then
+                UpdateItem(ListView.Items[I], TCItem(ListView.Items[I].Data).CItems[J]);
+      ceItemCreated:
         begin
           Item := InsertItem(ClientEvent.CItem);
           if (not Assigned(ListView.Selected)) then
             ListView.Selected := Item;
         end;
-      ceObjAltered:
+      ceItemAltered:
         for I := 0 to ListView.Items.Count - 1 do
           if (ListView.Items[I].Data = ClientEvent.CItem) then
             UpdateItem(ListView.Items[I], ClientEvent.CItem);
-      ceObjDroped:
+      ceItemDroped:
         for I := ListView.Items.Count - 1 downto 0 do
           if (ListView.Items[I].Data = ClientEvent.CItem) then
             ListView.Items.Delete(I);
-      ceObjStatus:
+      ceItemStatus:
         for I := 0 to ListView.Items.Count - 1 do
           if (ListView.Items[I].Data = ClientEvent.CItem) then
             UpdateItem(ListView.Items[I], ClientEvent.CItem);
     end;
 
-    if (ClientEvent.EventType in [ceBuild, ceObjCreated, ceObjDroped]) then
+    if (ClientEvent.EventType in [ceBuild, ceItemCreated, ceItemDroped]) then
       case (GroupID) of
         giDatabases:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(265) + ' (' + IntToStr(ClientEvent.CItems.Count) + ')', '&', '');
