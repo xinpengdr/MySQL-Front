@@ -4,13 +4,10 @@
 			<MainSource>MySQLFront.dpr</MainSource>
 			<ProjectVersion>13.4</ProjectVersion>
 			<FrameworkType>VCL</FrameworkType>
-			<TargetedPlatforms>1</TargetedPlatforms>
 			<AppType>Application</AppType>
-			<MainSource>MySQLFront.dpr</MainSource>
+			<TargetedPlatforms>1</TargetedPlatforms>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
 			<Config Condition="'$(Config)'==''">Base</Config>
-			<Base>True</Base>
-
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<SkipResGeneration>true</SkipResGeneration>
 		</PropertyGroup>
@@ -35,11 +32,7 @@
 			<DCC_UNIT_PLATFORM>false</DCC_UNIT_PLATFORM>
 			<DCC_DependencyCheckOutputName>..\Temp\MySQLFront.exe</DCC_DependencyCheckOutputName>
 			<DCC_Platform>x86</DCC_Platform>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Base_Win32)'!=''">
-			<Manifest_File>None</Manifest_File>
-			<VerInfo_Locale>1031</VerInfo_Locale>
-			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0</VerInfo_Keys>
+			<DCC_MapFile>3</DCC_MapFile>
 		</PropertyGroup>
 		<ProjectExtensions>
 			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
