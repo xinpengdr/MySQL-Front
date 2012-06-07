@@ -8,7 +8,6 @@
 			<TargetedPlatforms>1</TargetedPlatforms>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
 			<Config Condition="'$(Config)'==''">Base</Config>
-			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<SkipResGeneration>true</SkipResGeneration>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
