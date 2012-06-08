@@ -103,6 +103,7 @@ object DColumns: TDColumns
       Height = 29
       Align = alNone
       TabOrder = 1
+      Transparent = False
       object tbUp: TToolButton
         Left = 0
         Top = 0
@@ -118,6 +119,7 @@ object DColumns: TDColumns
       Height = 29
       Align = alNone
       TabOrder = 2
+      Transparent = False
       object tbDown: TToolButton
         Left = 0
         Top = 0

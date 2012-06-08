@@ -467,7 +467,6 @@ object DAccount: TDAccount
           Height = 13
           Caption = 'FLMultiStatements'
           FocusControl = FMultiStatements
-          Transparent = False
         end
         object FLAsynchron: TLabel
           Left = 8

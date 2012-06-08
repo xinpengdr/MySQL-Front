@@ -5335,7 +5335,7 @@ begin
           if ((NewIndex + 1 = InternRecordBuffers.Count) and not Filtered) then
             if (Assigned(Handle) and Assigned(RecordReceived)) then
               RecordReceived.WaitFor(NET_WAIT_TIMEOUT * 1000)
-            else if ((not Assigned(SynchroThread) or not SynchroThread.IsRunning) and (Self is TMySQLTable) and TMySQLTable(Self).LimitedDataReceived and TMySQLTable(Self).AutomaticLoadNextRecords) then
+            else if ((Self is TMySQLTable) and TMySQLTable(Self).LimitedDataReceived and TMySQLTable(Self).AutomaticLoadNextRecords) then
               if (TMySQLTable(Self).LoadNextRecords()) then
                 RecordReceived.WaitFor(NET_WAIT_TIMEOUT * 1000);
 

@@ -316,6 +316,7 @@ type
     function GetTable(): TCBaseTable;
   protected
     function GetCaption(): string; override;
+    procedure SetName(const AName: string); override;
   public
     Fulltext: Boolean;
     IndexType: string;
@@ -416,6 +417,7 @@ type
     function GetTable(): TCBaseTable;
   protected
     function GetIndex(): Integer; override;
+    procedure SetName(const AName: string); override;
   public
     Moved: Boolean;
     OnUpdate: string;
@@ -469,6 +471,7 @@ type
   protected
     Created: Boolean;
     OriginalName: string;
+    procedure SetName(const AName: string); override;
   public
     Fields: array of TCTableField;
     Match: TMySQLForeignKeyMatchType;
@@ -683,6 +686,7 @@ type
     function Optimize(): Boolean; virtual;
     function PartitionByName(const PartitionName: string): TCPartition; virtual;
     function Repair(): Boolean; virtual;
+    function Update(const Status: Boolean = False): Boolean; reintroduce; virtual;
     property AutoIncrement: LargeInt read FAutoIncrement write FAutoIncrement;
     property AutoIncrementField: TCBaseTableField read GetAutoIncrementField;
     property AvgRowLength: LargeInt read FAvgRowLength;
@@ -2600,6 +2604,11 @@ begin
   inherited;
 end;
 
+procedure TCIndex.SetName(const AName: string);
+begin
+  FName := AName;
+end;
+
 { TIndices ********************************************************************}
 
 procedure TCIndices.Assign(const Source: TCIndices);
@@ -3043,6 +3052,11 @@ begin
     Result := TCBaseTable(Fields.Table);
 end;
 
+procedure TCBaseTableField.SetName(const AName: string);
+begin
+  FName := AName;
+end;
+
 { TCViewField *****************************************************************}
 
 function TCViewField.GetIndex(): Integer;
@@ -3332,6 +3346,11 @@ end;
 function TCForeignKey.GetTable(): TCBaseTable;
 begin
   Result := ForeignKeys.Table;
+end;
+
+procedure TCForeignKey.SetName(const AName: string);
+begin
+  FName := AName;
 end;
 
 { TCForeignKeys ***************************************************************}
@@ -4647,7 +4666,9 @@ begin
       SQLParseKeyword(Parse, 'INDEX');
 
       if (not SQLParseKeyword(Parse, 'TYPE', False) and not SQLParseKeyword(Parse, 'USING', False) and not SQLParseChar(Parse, '(', False)) then
-        Name := SQLParseValue(Parse);
+        Name := SQLParseValue(Parse)
+      else
+        Name := '';
 
       if (Index = FIndices.Count) then
         Index := FIndices.Add(TCIndex.Create(FIndices, Name))
@@ -4973,6 +4994,16 @@ end;
 function TCBaseTable.SQLGetSource(): string;
 begin
   Result := 'SHOW CREATE TABLE ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(Name) + ';' + #13#10
+end;
+
+function TCBaseTable.Update(const Status: Boolean = False): Boolean;
+var
+  List: TList;
+begin
+  List := TList.Create();
+  List.Add(Self);
+  Result := Client.Update(List, Status);
+  List.Free();
 end;
 
 { TCSystemView ****************************************************************}

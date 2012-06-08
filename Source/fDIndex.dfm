@@ -125,6 +125,7 @@ object DIndex: TDIndex
         Height = 24
         Align = alNone
         TabOrder = 3
+        Transparent = False
         object tbAddAll: TToolButton
           Left = 0
           Top = 0
@@ -142,6 +143,7 @@ object DIndex: TDIndex
         Align = alNone
         AutoSize = True
         TabOrder = 5
+        Transparent = False
         object tbAddOne: TToolButton
           Left = 0
           Top = 0
@@ -159,6 +161,7 @@ object DIndex: TDIndex
         Align = alNone
         AutoSize = True
         TabOrder = 0
+        Transparent = False
         object tbUp: TToolButton
           Left = 0
           Top = 0
@@ -176,6 +179,7 @@ object DIndex: TDIndex
         Align = alNone
         AutoSize = True
         TabOrder = 1
+        Transparent = False
         object tbDown: TToolButton
           Left = 0
           Top = 0
@@ -193,6 +197,7 @@ object DIndex: TDIndex
         Align = alNone
         AutoSize = True
         TabOrder = 2
+        Transparent = False
         object tbRemoveOne: TToolButton
           Left = 0
           Top = 0
@@ -210,6 +215,7 @@ object DIndex: TDIndex
         Align = alNone
         AutoSize = True
         TabOrder = 4
+        Transparent = False
         object tbRemoveAll: TToolButton
           Left = 0
           Top = 0

@@ -564,6 +564,7 @@ object DTable: TDTable
         ParentShowHint = False
         ShowHint = True
         TabOrder = 1
+        Transparent = False
         object tbCreateField: TToolButton
           Left = 0
           Top = 0
@@ -647,6 +648,7 @@ object DTable: TDTable
         ParentShowHint = False
         ShowHint = True
         TabOrder = 1
+        Transparent = False
         object tbCreateIndex: TToolButton
           Left = 0
           Top = 0
@@ -713,6 +715,7 @@ object DTable: TDTable
         ParentShowHint = False
         ShowHint = True
         TabOrder = 1
+        Transparent = False
         object tbCreateForeignKey: TToolButton
           Left = 0
           Top = 0

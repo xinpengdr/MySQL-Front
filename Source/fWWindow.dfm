@@ -173,8 +173,6 @@ object WWindow: TWWindow
     AutoSize = True
     BevelOuter = bvNone
     ParentBackground = False
-    ParentShowHint = False
-    ShowHint = True
     TabOrder = 0
     object ToolBar: TToolBar
       Left = 0
@@ -184,6 +182,7 @@ object WWindow: TWWindow
       AutoSize = True
       EdgeBorders = [ebTop, ebBottom]
       TabOrder = 0
+      Transparent = False
       object tbVRefresh: TToolButton
         Left = 0
         Top = 0
@@ -486,6 +485,7 @@ object WWindow: TWWindow
     ParentShowHint = False
     ShowHint = True
     TabOrder = 3
+    Transparent = False
     Visible = False
     object tcOpenAccount: TToolButton
       Left = 0

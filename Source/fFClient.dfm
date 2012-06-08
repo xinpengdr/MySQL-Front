@@ -733,6 +733,7 @@ object FClient: TFClient
         Align = alNone
         Caption = 'TBLimitEnabled'
         TabOrder = 4
+        Transparent = False
         object FLimitEnabled: TToolButton
           Left = 0
           Top = 0
@@ -763,6 +764,7 @@ object FClient: TFClient
         Anchors = [akTop]
         Caption = 'TBFilterEnabled'
         TabOrder = 6
+        Transparent = False
         object FFilterEnabled: TToolButton
           Left = 0
           Top = 0
@@ -793,8 +795,8 @@ object FClient: TFClient
         Align = alNone
         Anchors = [akTop]
         AutoSize = True
-        Caption = 'TBQuickSearchEnabled'
         TabOrder = 8
+        Transparent = False
         object FQuickSearchEnabled: TToolButton
           Left = 0
           Top = 0
@@ -944,6 +946,7 @@ object FClient: TFClient
           ShowCaptions = True
           ShowHint = True
           TabOrder = 0
+          Transparent = False
           Wrapable = False
           OnResize = ToolBarBlobResize
           object tbBlobText: TToolButton
@@ -1204,6 +1207,7 @@ object FClient: TFClient
         ParentShowHint = False
         ShowHint = True
         TabOrder = 0
+        Transparent = False
         Wrapable = False
         OnResize = ToolBarResize
         object tbNavigator: TToolButton
@@ -1235,7 +1239,8 @@ object FClient: TFClient
       Width = 465
       Height = 27
       BevelOuter = bvNone
-      ParentBackground = False
+      DoubleBuffered = False
+      ParentDoubleBuffered = False
       TabOrder = 1
       object ToolBar: TToolBar
         Left = 2
@@ -1250,6 +1255,7 @@ object FClient: TFClient
         PopupMenu = MToolBar
         ShowCaptions = True
         TabOrder = 0
+        Transparent = False
         Wrapable = False
         OnResize = ToolBarResize
         object tbObjectBrowser: TToolButton

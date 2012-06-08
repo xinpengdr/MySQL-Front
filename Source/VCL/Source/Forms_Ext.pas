@@ -23,9 +23,9 @@ type
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure Paint(); override;
   public
-    constructor Create(AOwner: TComponent); override;
     procedure Activate(); override;
     procedure ApplyWinAPIUpdates(const Control: TWinControl; const StatusFont: TLogFont); virtual;
+    constructor Create(AOwner: TComponent); override;
     procedure Deactivate(); override;
   end;
 
@@ -94,22 +94,15 @@ begin
     if (Assigned(TUpDown(Control).Associate) and (TUpDown(Control).Associate is TEdit)) then
       SetWindowLong(TEdit(TUpDown(Control).Associate).Handle, GWL_STYLE, GetWindowLong(TEdit(TUpDown(Control).Associate).Handle, GWL_STYLE) or ES_NUMBER or ES_RIGHT);
   end
-  else if (Control is TToolbar) then
+  else if (Control is TToolBar) then
   begin
-    if (Control.Parent is TPanel) then
-    begin
-      TToolbar(Control).ParentDoubleBuffered := False;
-      TToolbar(Control).DoubleBuffered := True;
-      TPanel(Control.Parent).ParentDoubleBuffered := False;
-      TPanel(Control.Parent).DoubleBuffered := False;
-    end;
     if (CheckWin32Version(6)) then
-      for I := 0 to TToolbar(Control).ButtonCount - 1 do
-        if (not StyleServices.Enabled and (TToolbar(Control).Buttons[I].Style = tbsSeparator)) then
+      for I := 0 to TToolBar(Control).ButtonCount - 1 do
+        if (not StyleServices.Enabled and (TToolBar(Control).Buttons[I].Style = tbsSeparator)) then
         begin
-          TToolbar(Control).Buttons[I].AutoSize := True;
-          TToolbar(Control).Buttons[I].Enabled := False;
-          TToolbar(Control).Buttons[I].Style := tbsButton;
+          TToolBar(Control).Buttons[I].AutoSize := True;
+          TToolBar(Control).Buttons[I].Enabled := False;
+          TToolBar(Control).Buttons[I].Style := tbsButton;
         end;
   end;
 end;

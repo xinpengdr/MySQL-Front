@@ -1159,7 +1159,7 @@ end;
 
 procedure TDTable.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceObjBuild]) and (Event.Sender = Table)) then
+  if ((Event.EventType in [ceObjStatus]) and (Event.CObject = Table)) then
     Built();
 end;
 
@@ -1412,7 +1412,7 @@ begin
     end
     else
     begin
-      PageControl.Visible := not Table.Update();
+      PageControl.Visible := not Table.Update(True);
       PSQLWait.Visible := not PageControl.Visible;
 
       if (PageControl.Visible) then
