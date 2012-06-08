@@ -173,7 +173,6 @@ begin
       AwkFile.Add('  gsub("{BuildInternetPadFile}", "' + Ini.ReadString('Internet', 'PadFile', '') + '", $0)');
       AwkFile.Add('  gsub("{BuildInternetPadFileIcon}", "' + Ini.ReadString('Internet', 'PadFileIcon', '') + '", $0)');
       AwkFile.Add('  gsub("{BuildInternetPadFileScreenshot}", "' + Ini.ReadString('Internet', 'PadFileScreenshot', '') + '", $0)');
-      AwkFile.Add('  gsub("{BuildInternetMail}", "' + Ini.ReadString('Internet', 'Mail', '') + '", $0)');
       AwkFile.Add('  gsub("{BuildImagesPath}", "' + StringReplace(GetEnvironmentVariable('BuildImagesPath'), '\', '\\', [rfReplaceAll]) + '", $0)');
       AwkFile.Add('  gsub("{BuildLanguagesPath}", "' + StringReplace(GetEnvironmentVariable('BuildLanguagesPath'), '\', '\\', [rfReplaceAll]) + '", $0)');
       AwkFile.Add('  gsub("{BuildManualPath}", "' + StringReplace(GetEnvironmentVariable('BuildManualPath'), '\', '\\', [rfReplaceAll]) + '", $0)');

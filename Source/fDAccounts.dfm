@@ -86,7 +86,7 @@ object DAccounts: TDAccounts
           end
           item
             Caption = 'LastLogin'
-            Width = 146
+            Width = 150
           end>
         HideSelection = False
         ReadOnly = True

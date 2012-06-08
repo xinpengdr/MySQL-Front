@@ -50,7 +50,6 @@ type
     FSelected: TAAccount;
     procedure ListViewShowSortDirection(const ListView: TListView);
     procedure SetFAccounts(const ASelected: TAAccount);
-    procedure CMApplyAutosize(var Message: TMessage); message CM_APPLYAUTOSIZE;
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Open: Boolean;
@@ -133,11 +132,6 @@ begin
   else
     if (Boolean(SendMessage(Application.MainForm.Handle, CM_ADDTAB, 0, LPARAM(Accounts.AccountByName(FAccounts.Selected.Caption).Desktop.Address)))) then
       FBOk.Click();
-end;
-
-procedure TDAccounts.CMApplyAutosize(var Message: TMessage);
-begin
-  ListViewShowSortDirection(FAccounts);
 end;
 
 procedure TDAccounts.CMChangePreferences(var Message: TMessage);
@@ -296,12 +290,24 @@ begin
 end;
 
 procedure TDAccounts.FAccountsResize(Sender: TObject);
+var
+  I: Integer;
+  LastLoginWidth: Integer;
 begin
+  LastLoginWidth := 0;
+  for I := 0 to FAccounts.Items.Count - 1 do
+    if (LastLoginWidth < FAccounts.Canvas.TextWidth(FAccounts.Items[I].SubItems[0])) then
+      LastLoginWidth := FAccounts.Canvas.TextWidth(FAccounts.Items[I].SubItems[0]);
+  if (LastLoginWidth = 0) then
+    LastLoginWidth := FAccounts.Width div 2
+  else
+    Inc(LastLoginWidth, 35);
+
+  FAccounts.Column[0].Width := FAccounts.ClientWidth - (LastLoginWidth);
+  FAccounts.Column[1].Width := LastLoginWidth;
+
   if (Assigned(FAccounts.ItemFocused) and (FAccounts.Items.Count > 1) and (FAccounts.ItemFocused.Position.Y - FAccounts.ClientHeight + (FAccounts.Items[1].Top - FAccounts.Items[0].Top) > 0)) then
     FAccounts.Scroll(0, FAccounts.ItemFocused.Position.Y - FAccounts.ClientHeight + (FAccounts.Items[1].Top - FAccounts.Items[0].Top));
-
-  if (not (csDestroying in ComponentState)) then
-    PostMessage(Handle, CM_APPLYAUTOSIZE, 0, 0);
 end;
 
 procedure TDAccounts.FAccountsSelectItem(Sender: TObject; Item: TListItem;
@@ -326,16 +332,8 @@ var
   Column: TListColumn;
   HDItem: THDItem;
   I: Integer;
-  MaxWidth: Integer;
 begin
   Column := ListView.Column[ListView.Tag];
-
-  MaxWidth := 0;
-  for I := 0 to FAccounts.Items.Count - 1 do
-    if (MaxWidth < FAccounts.Canvas.TextWidth(FAccounts.Items[I].SubItems[0])) then
-      MaxWidth := FAccounts.Canvas.TextWidth(FAccounts.Items[I].SubItems[0]);
-  if (MaxWidth = 0) then
-    MaxWidth := FAccounts.Width div 2;
 
   HDItem.Mask := HDI_WIDTH or HDI_FORMAT;
   for I := 0 to ListView.Columns.Count - 1 do
@@ -347,10 +345,6 @@ begin
         else HDItem.fmt := HDItem.fmt and not HDF_SORTUP and not HDF_SORTDOWN;
       end;
 
-      case (I) of
-        0: HDItem.cxy := FAccounts.ClientWidth - (MaxWidth + 20);
-        1: HDItem.cxy := MaxWidth + 20;
-      end;
       SendMessage(ListView_GetHeader(ListView.Handle), HDM_SETITEM, I, LParam(@HDItem));
     end;
 
@@ -406,8 +400,6 @@ begin
   FAccountsResize(nil);
 
   FAccounts.EnableAlign(); FAccounts.Items.EndUpdate();
-
-  Perform(CM_APPLYAUTOSIZE, 0, 0);
 end;
 
 initialization

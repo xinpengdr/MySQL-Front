@@ -43,7 +43,7 @@ type
     msUndo: TMenuItem;
     N1: TMenuItem;
     N2: TMenuItem;
-    PageControl_DRoutine: TPageControl;
+    PageControl: TPageControl;
     TSBasics: TTabSheet;
     TSInformations: TTabSheet;
     TSSource: TTabSheet;
@@ -59,6 +59,8 @@ type
     procedure FSecurityKeyPress(Sender: TObject; var Key: Char);
     procedure FSourceChange(Sender: TObject);
   private
+    procedure Built();
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Database: TCDatabase;
@@ -93,6 +95,15 @@ begin
 end;
 
 { TDRoutine *******************************************************************}
+
+procedure TDRoutine.Built();
+begin
+  FSize.Caption := FormatFloat('#,##0', Length(Routine.Source), LocaleFormatSettings);
+
+  FSource.Text := Trim(Routine.Source) + #13#10;
+
+  TSSource.TabVisible := Routine.Source <> '';
+end;
 
 procedure TDRoutine.CMChangePreferences(var Message: TMessage);
 begin
@@ -196,6 +207,12 @@ begin
   FBOkCheckEnabled(Sender);
 end;
 
+procedure TDRoutine.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if ((Event.EventType in [ceObjBuild]) and (Event.Sender = Routine)) then
+    Built();
+end;
+
 procedure TDRoutine.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   NewRoutine: TCRoutine;
@@ -242,6 +259,8 @@ end;
 
 procedure TDRoutine.FormHide(Sender: TObject);
 begin
+  Database.Client.UnRegisterEventProc(FormClientEvent);
+
   Preferences.Routine.Width := Width;
   Preferences.Routine.Height := Height;
 end;
@@ -251,6 +270,8 @@ var
   I: Integer;
   RoutineName: string;
 begin
+  Database.Client.RegisterEventProc(FormClientEvent);
+
   if (not Assigned(Routine)) then
   begin
     Caption := Preferences.LoadStr(775);
@@ -307,6 +328,8 @@ begin
     end
     else
       FSource.Lines.Clear();
+
+    TSSource.TabVisible := True;
   end
   else
   begin
@@ -321,28 +344,30 @@ begin
     if (Double(Routine.Created) = 0) then FCreated.Caption := '???' else FCreated.Caption := SysUtils.DateTimeToStr(Routine.Created, LocaleFormatSettings);
     if (Double(Routine.Modified) = 0) then FUpdated.Caption := '???' else FUpdated.Caption := SysUtils.DateTimeToStr(Routine.Modified, LocaleFormatSettings);
     FDefiner.Caption := Routine.Definer;
-    FSize.Caption := FormatFloat('#,##0', Length(Routine.Source), LocaleFormatSettings);
+    FSize.Caption := '';
 
-    FSource.Text := Trim(Routine.Source) + #13#10;
+    if (not Routine.Update()) then
+      Built()
+    else
+      TSSource.TabVisible := False;
   end;
 
   TSBasics.TabVisible := Assigned(Routine);
   TSInformations.TabVisible := Assigned(Routine);
-  TSSource.TabVisible := not Assigned(Routine) or (Routine.Source <> '');
+
+  FBOk.Enabled := not Assigned(Routine);
 
   ActiveControl := FBCancel;
   if (TSBasics.TabVisible) then
   begin
-    PageControl_DRoutine.ActivePage := TSBasics;
+    PageControl.ActivePage := TSBasics;
     ActiveControl := FComment;
   end
   else if (TSSource.TabVisible) then
   begin
-    PageControl_DRoutine.ActivePage := TSSource;
+    PageControl.ActivePage := TSSource;
     ActiveControl := FSource;
   end;
-
-  FBOk.Enabled := not Assigned(Routine);
 end;
 
 procedure TDRoutine.FSecurityClick(Sender: TObject);

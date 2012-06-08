@@ -62,7 +62,9 @@ type
     procedure FTimingKeyPress(Sender: TObject; var Key: Char);
     procedure HideTSSource(Sender: TObject);
   private
+    procedure Built();
     procedure FBOkCheckEnabled(Sender: TObject);
+    procedure FormClientEvent(const Event: TCClient.TEvent);
   protected
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
@@ -96,6 +98,13 @@ begin
 end;
 
 { TDTrigger *******************************************************************}
+
+procedure TDTrigger.Built();
+begin
+  FSource.Text := Trigger.Source;
+
+  TSSource.TabVisible := True;
+end;
 
 procedure TDTrigger.CMChangePreferences(var Message: TMessage);
 begin
@@ -189,6 +198,12 @@ begin
   HideTSSource(Sender);
 end;
 
+procedure TDTrigger.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if ((Event.EventType in [ceObjBuild]) and (Event.Sender = Trigger)) then
+    Built();
+end;
+
 procedure TDTrigger.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   NewTrigger: TCTrigger;
@@ -245,6 +260,8 @@ end;
 
 procedure TDTrigger.FormHide(Sender: TObject);
 begin
+  Table.Client.UnRegisterEventProc(FormClientEvent);
+
   Preferences.Trigger.Width := Width;
   Preferences.Trigger.Height := Height;
 
@@ -255,6 +272,8 @@ procedure TDTrigger.FormShow(Sender: TObject);
 var
   TriggerName: string;
 begin
+  Table.Client.RegisterEventProc(FormClientEvent);
+
   if (not Assigned(Trigger)) then
   begin
     Caption := Preferences.LoadStr(795);
@@ -281,6 +300,8 @@ begin
     FBefore.Checked := True;
     FInsert.Checked := True;
     FStatement.Text := 'SET @A = 1;';
+
+    TSSource.TabVisible := False;
   end
   else
   begin
@@ -296,10 +317,12 @@ begin
     FDefiner.Caption := Trigger.Definer;
     FSize.Caption := FormatFloat('#,##0', Length(Trigger.Source), LocaleFormatSettings);
 
-    FSource.Text := Trigger.Source;
+    if (not Trigger.Update) then
+      Built()
+    else
+      TSSource.TabVisible := False;
   end;
 
-  TSSource.TabVisible := Assigned(Trigger);
   TSInformations.TabVisible := Assigned(Trigger);
 
   FBOk.Enabled := not Assigned(Trigger);

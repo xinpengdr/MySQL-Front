@@ -1494,16 +1494,10 @@ end;
 procedure TWWindow.EurekaLogCustomDataRequest(
   EurekaExceptionRecord: TEurekaExceptionRecord; DataFields: TStrings);
 var
-  Handle: THandle;
   I: Integer;
 begin
-  Handle := LoadLibrary(PChar('Kernel32.dll'));
-  if (Handle <> 0) then
-  begin
-    if (Assigned(GetProcAddress(Handle, 'wine_get_unix_file_name'))) then
-      DataFields.Add('Wine=Yes');
-    FreeLibrary(Handle);
-  end;
+  if (IsWine()) then
+    DataFields.Add('Wine=Yes');
 
   for I := 0 to Clients.Count - 1 do
     if (Clients[I].Connected) then

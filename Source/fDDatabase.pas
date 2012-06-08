@@ -53,7 +53,9 @@ type
     procedure TSInformationsShow(Sender: TObject);
     procedure TSSourceShow(Sender: TObject);
   private
-    function GetName: string;
+    procedure Built();
+    procedure FormClientEvent(const Event: TCClient.TEvent);
+    function GetName(): string;
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Client: TCClient;
@@ -86,6 +88,13 @@ begin
 end;
 
 { TDDatabase ******************************************************************}
+
+procedure TDDatabase.Built();
+begin
+  FSource.Lines.Text := Database.Source;
+
+  TSSource.TabVisible := Database.Source <> '';
+end;
 
 procedure TDDatabase.CMChangePreferences(var Message: TMessage);
 begin
@@ -201,6 +210,12 @@ begin
   TSSource.TabVisible := False;
 end;
 
+procedure TDDatabase.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if ((Event.EventType in [ceObjBuild]) and (Event.Sender = Database)) then
+    Built();
+end;
+
 procedure TDDatabase.FormCloseQuery(Sender: TObject;
   var CanClose: Boolean);
 var
@@ -251,8 +266,12 @@ end;
 
 procedure TDDatabase.FormHide(Sender: TObject);
 begin
+  Client.UnRegisterEventProc(FormClientEvent);
+
   Preferences.Database.Width := Width;
   Preferences.Database.Height := Height;
+
+  FSource.Lines.Clear();
 
   PageControl.ActivePage := TSBasics; // TSInformationsShow soll nicht vorzeitig aufgerufen werden
 end;
@@ -262,6 +281,8 @@ var
   DatabaseName: string;
   I: Integer;
 begin
+  Client.RegisterEventProc(FormClientEvent);
+
   if (not Assigned(Database)) then
     Caption := Preferences.LoadStr(147)
   else
@@ -297,6 +318,8 @@ begin
 
     FDefaultCharset.ItemIndex := FDefaultCharset.Items.IndexOf(Client.DefaultCharset); FDefaultCharsetChange(Sender);
     FCollation.ItemIndex := -1;
+
+    TSSource.TabVisible := False;
   end
   else
   begin
@@ -304,19 +327,22 @@ begin
 
     FDefaultCharset.ItemIndex := FDefaultCharset.Items.IndexOf(Database.DefaultCharset); FDefaultCharsetChange(Sender);
     FCollation.ItemIndex := FCollation.Items.IndexOf(Database.Collation);
-  end;
 
-  FSource.Lines.Clear();
+    if (not Database.Update(True)) then
+      Built()
+    else
+      TSSource.TabVisible := False;
+  end;
 
   FName.Enabled := not Assigned(Database) or not Assigned(Client.DatabaseByName(Database.Name));
   FDefaultCharset.Visible := Client.ServerVersion >= 40101; FLDefaultCharset.Visible := FDefaultCharset.Visible;
   FCollation.Visible := Client.ServerVersion >= 40101; FLCollation.Visible := FCollation.Visible;
   TSInformations.TabVisible := not FName.Enabled;
-  TSSource.TabVisible := not FName.Enabled;
 
   FName.SelectAll();
 
-  PageControl.ActivePage := TSBasics;
+  FBOkCheckEnabled(Sender);
+
   ActiveControl := FBCancel;
   if (FName.Enabled) then
     ActiveControl := FName
@@ -324,8 +350,6 @@ begin
     ActiveControl := FDefaultCharset
   else
     ActiveControl := FBCancel;
-
-  FBOkCheckEnabled(Sender);
 end;
 
 procedure TDDatabase.FSourceChange(Sender: TObject);

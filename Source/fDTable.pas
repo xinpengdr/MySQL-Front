@@ -605,8 +605,6 @@ begin
 
     PageControl.Visible := True;
     PSQLWait.Visible := not PageControl.Visible;
-
-    ActiveControl := FName;
   end
   else
   begin
@@ -646,8 +644,6 @@ begin
       if (FTablesRowType.Items.IndexOf(TCBaseTable(Tables[I]).DBRowTypeStr()) <> Index) then
         Index := 0;
     FTablesRowType.ItemIndex := Index;
-
-    ActiveControl := FTablesEngine;
   end;
 
   TSInformations.TabVisible := Assigned(Table) and (Table.DataSize >= 0) or Assigned(Tables);
@@ -658,6 +654,11 @@ begin
   TSPartitions.TabVisible := not Assigned(Tables) and Assigned(NewTable.Partitions);
   TSExtras.TabVisible := Assigned(Table) or Assigned(Tables);
   TSSource.TabVisible := Assigned(Table) or Assigned(Tables);
+
+  if (not Assigned(Tables)) then
+    ActiveControl := FName
+  else
+    ActiveControl := FTablesEngine;
 end;
 
 procedure TDTable.CMChangePreferences(var Message: TMessage);
@@ -1158,7 +1159,7 @@ end;
 
 procedure TDTable.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceItemBuild]) and (Event.CItem = Table)) then
+  if ((Event.EventType in [ceObjBuild]) and (Event.Sender = Table)) then
     Built();
 end;
 
@@ -1450,6 +1451,13 @@ begin
 
   FBOk.Enabled := PageControl.Visible and not Assigned(Tables) and not Assigned(Table);
   FBCancel.Caption := Preferences.LoadStr(30);
+
+  ActiveControl := FBCancel;
+  if (PageControl.Visible) then
+    if (not Assigned(Tables)) then
+      ActiveControl := FName
+    else
+      ActiveControl := FTablesEngine;
 end;
 
 procedure TDTable.FPartitionCountChange(Sender: TObject);

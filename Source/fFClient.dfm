@@ -1246,9 +1246,7 @@ object FClient: TFClient
         AutoSize = True
         ButtonHeight = 20
         ButtonWidth = 105
-        Color = clBtnFace
         List = True
-        ParentColor = False
         PopupMenu = MToolBar
         ShowCaptions = True
         TabOrder = 0

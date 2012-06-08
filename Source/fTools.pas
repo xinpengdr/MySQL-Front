@@ -7185,8 +7185,12 @@ begin
         begin
           NewTrigger := TCTrigger.Create(TargetDatabase.Tables);
           NewTrigger.Assign(SourceDatabase.Triggers[I]);
-          while ((Success = daSuccess) and not TargetDatabase.AddTrigger(NewTrigger)) do
-            DoError(DatabaseError(TargetDatabase.Client), ToolsItem(Target));
+          while (Success = daSuccess) do
+          begin
+            TargetDatabase.AddTrigger(NewTrigger);
+            if (TargetDatabase.Client.ErrorCode <> 0) then
+              DoError(DatabaseError(TargetDatabase.Client), ToolsItem(Target));
+          end;
           NewTrigger.Free();
         end;
 

@@ -48,7 +48,8 @@ function SQLEscape(const Value: string; const ODBCEncoding: Boolean): string; ov
 function SQLEscape(const Value: string; const Quoter: Char = ''''): string; overload;
 function SQLEscape(const Value: PAnsiChar; const Length: Integer; const ODBCEncoding: Boolean): string; overload;
 function SQLParseCallStmt(const SQL: PChar; const Len: Integer; out ProcedureName: string; const Version: Integer): Boolean;
-function SQLParseChar(var Handle: TSQLParse; const Character: Char; const IncrementIndex: Boolean = True): Boolean;
+function SQLParseChar(var Handle: TSQLParse; const IncrementIndex: Boolean = True): Char; overload;
+function SQLParseChar(var Handle: TSQLParse; const Character: Char; const IncrementIndex: Boolean = True): Boolean; overload;
 function SQLParseCLStmt(out CLStmt: TSQLCLStmt; const SQL: PChar; const Len: Integer; const Version: Integer): Boolean;
 function SQLParseDDLStmt(out DDLStmt: TSQLDDLStmt; const SQL: PChar; const Len: Integer; const Version: Integer): Boolean;
 function SQLParseDMLStmt(out DMLStmt: TSQLDMLStmt; const SQL: PChar; const Len: Integer; const Version: Integer): Boolean;
@@ -72,7 +73,7 @@ function SQLUnwrapStmt(const SQL: string): string;
 implementation {***************************************************************}
 
 uses
-  RTLConsts, Classes;
+  RTLConsts, Classes, SysConst;
 
 resourcestring
   SInvalidSQLText = 'Invalid SQL text near "%s".';
@@ -593,16 +594,83 @@ begin
 end;
 
 function IntToBitString(const Value: UInt64; const Width: Integer = 1): string;
+label
+  ValueHiL, ValueHiL1, ValueHiL0, ValueHiLE,
+  ValueLoL, ValueLoL1, ValueLoL0, ValueLoLE,
+  Finish;
 var
-  I: Integer;
+  Len: Word;
+  ValueRec: Int64Rec;
 begin
-  Result := '';
-  for I := SizeOf(Value) * 8 - 1 downto 0 do
-    if ((Value shr I and 1) = 0) then
-      Result := Result + '0'
-    else
-      Result := Result + '1';
-  while ((Result[1] = '0') and (Length(Result) > Width)) do Delete(Result, 1, 1);
+  SetLength(Result, 64);
+
+  Move(Value, ValueRec, SizeOf(Value));
+  asm
+      PUSH ES
+      PUSH EDI
+      PUSH EAX
+      PUSH ECX
+      PUSH EDX
+
+      MOV EAX,Result                   // Store into Result
+      MOV EDI,[EAX]
+
+      MOV AX,0                         // First '1' not found!
+      MOV BX,0                         // Characters in Result
+
+      MOV EDX,ValueRec.Hi              // Handle higher 32 bit
+      MOV ECX,32                       // Handle 32 bit
+    ValueHiL:
+      TEST EDX,$80000000               // Highest bit set?
+      JZ ValueHiL0                     // No!
+      MOV WORD PTR [EDI],'1'           // '1' into Result
+      INC BX                           // One character more in Result
+      ADD EDI,2                        // Next character in Result
+      MOV AX,1                         // First '1' found
+      JMP ValueHiLE
+    ValueHiL0:
+      TEST AX,1                        // Already one '1' found?
+      JZ ValueHiLE                     // No!
+      MOV WORD PTR [EDI],'0'           // '0' into Result
+      INC BX                           // One character more in Result
+      ADD EDI,2                        // Next character in Result
+      JMP ValueHiLE
+    ValueHiLE:
+      SHL EDX,1                        // Switch to next bit
+      LOOP ValueHiL                    // Handle next bit
+
+      MOV EDX,ValueRec.Lo              // Handle Lower 32 bit
+      MOV ECX,32                       // Handle 32 bit
+    ValueLoL:
+      TEST EDX,$80000000               // Loghest bit set?
+      JZ ValueLoL0                     // No!
+      MOV WORD PTR [EDI],'1'           // '1' into Result
+      INC BX                           // One character more in Result
+      ADD EDI,2                        // Next character in Result
+      MOV AX,1                         // First '1' found
+      JMP ValueLoLE
+    ValueLoL0:
+      TEST AX,1                        // Already one '1' found?
+      JZ ValueLoLE                     // No!
+      MOV WORD PTR [EDI],'0'           // '0' into Result
+      INC BX                           // One character more in Result
+      ADD EDI,2                        // Next character in Result
+      JMP ValueLoLE
+    ValueLoLE:
+      SHL EDX,1                        // Switch to next bit
+      LOOP ValueLoL                    // Handle next bit
+
+    Finish:
+      MOV Len,BX
+
+      POP EDX
+      POP ECX
+      POP EAX
+      POP EDI
+      POP ES
+  end;
+
+  SetLength(Result, Len);
 end;
 
 function SQLCreateParse(out Handle: TSQLParse; const SQL: PChar; const Len: Integer; const Version: Integer; const InCondCode: Boolean = False): Boolean;
@@ -950,6 +1018,21 @@ begin
 
   if (Result and SQLCreateParse(Parse, PChar(@SQL[Index]), Len - Index, Version, InCondCode)) then
     ProcedureName := SQLParseValue(Parse);
+end;
+
+function SQLParseChar(var Handle: TSQLParse; const IncrementIndex: Boolean = True): Char;
+begin
+  if (SQLParseEnd(Handle)) then
+    raise ERangeError.Create(SRangeError)
+  else
+  begin
+    Result := Handle.Pos[0];
+    if (IncrementIndex) then
+    begin
+      Inc(Handle.Pos);
+      Dec(Handle.Len);
+    end;
+  end;
 end;
 
 function SQLParseChar(var Handle: TSQLParse; const Character: Char; const IncrementIndex: Boolean = True): Boolean;
@@ -2416,10 +2499,7 @@ begin
   end;
 end;
 
-//var
-//  SQL: string;
-//begin
-//  SQL := 'SET profiling = 1;'#$D#$A'SHOW PROFILES;'#$D#$A'SHOW PROFILE FOR QUERY 5;'#$D#$A'SET profiling = 0;'#$D#$A'SHOW CREATE TABLE `test`.`neuetabelle`;'#$D#$A'SHOW OPEN TABLES';
-//  SQLStmtLength(DDLStmt, 141);
+begin
+  BitStringToInt('101');
 end.
 

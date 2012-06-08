@@ -7,7 +7,7 @@ uses
   Dialogs, StdCtrls, ComCtrls,
   SynEdit, SynMemo,
   StdCtrls_Ext, ComCtrls_Ext, Forms_Ext,
-  fBase, fClient;
+  fBase, fClient, Vcl.ExtCtrls;
 
 type
   TDEvent = class(TForm_Ext)
@@ -78,6 +78,7 @@ type
     N1: TMenuItem;
     N2: TMenuItem;
     PageControl: TPageControl;
+    PSQLWait: TPanel;
     TSBasics: TTabSheet;
     TSInformations: TTabSheet;
     TSSource: TTabSheet;
@@ -94,7 +95,9 @@ type
     procedure FStartEnabledClick(Sender: TObject);
     procedure FStartEnabledKeyPress(Sender: TObject; var Key: Char);
     procedure TSSourceShow(Sender: TObject);
-  protected
+  private
+    procedure Built();
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Database: TCDatabase;
@@ -129,9 +132,60 @@ end;
 
 { TDEvent *********************************************************************}
 
+procedure TDEvent.Built();
+var
+  Day: Word;
+  Hour: Word;
+  Minute: Word;
+  Month: Word;
+  MSec: Word;
+  Quarter: Word;
+  Second: Word;
+  Week: Word;
+  Year: Word;
+begin
+  FName.Text := Event.Name;
+
+  FSingleExecution.Checked := Event.EventType = etSingle;
+  if (Event.Execute = 0) then FExecuteDate.Date := Now() else FExecuteDate.Date := Event.Execute;
+  FExecuteTime.Time := Event.Execute;
+
+  FMultipleExecution.Checked := Event.EventType = etMultiple;
+  Database.Client.DecodeInterval(Event.IntervalValue, Event.IntervalType, Year, Month, Day, Quarter, Week, Hour, Minute, Second, MSec);
+  FUDIntervalYear.Position := Year;
+  FUDIntervalMonth.Position := Month;
+  FUDIntervalDay.Position := Day;
+  FUDIntervalQuarter.Position := Quarter;
+  FUDIntervalQuarter.Position := Quarter;
+  FUDIntervalWeek.Position := Week;
+  FUDIntervalHour.Position := Hour;
+  FUDIntervalMinute.Position := Minute;
+  FUDIntervalSecond.Position := Second;
+  if (Event.StartDateTime = 0) then FStartDate.Date := Now() else FStartDate.Date := Event.StartDateTime;
+  FStartTime.Time := Event.StartDateTime;
+  if (Event.EndDateTime = 0) then FEndDate.Date := Now() + 1 else FEndDate.Date := Event.EndDateTime;
+  FEndTime.Time := Event.EndDateTime;
+
+  FEnabled.Checked := Event.Enabled;
+  FPreserve.Checked := Event.Preserve;
+  FComment.Text := SQLUnwrapStmt(Event.Comment);
+  FStatement.Lines.Text := Event.Stmt;
+
+  FDefiner.Caption := Event.Definer;
+  FCreated.Caption := SysUtils.DateTimeToStr(Event.Created, LocaleFormatSettings);
+  FUpdated.Caption := SysUtils.DateTimeToStr(Event.Updated, LocaleFormatSettings);
+
+  PageControl.Visible := True;
+  PSQLWait.Visible := not PageControl.Visible;
+
+  ActiveControl := FName;
+end;
+
 procedure TDEvent.CMChangePreferences(var Message: TMessage);
 begin
   Preferences.SmallImages.GetIcon(iiEvent, Icon);
+
+  PSQLWait.Caption := Preferences.LoadStr(882);
 
   TSBasics.Caption := Preferences.LoadStr(108);
   GBasics.Caption := Preferences.LoadStr(85);
@@ -266,6 +320,12 @@ begin
   FExecutionClick(Sender);
 end;
 
+procedure TDEvent.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if ((Event.EventType in [ceObjBuild]) and (Event.Sender = Event)) then
+    Built();
+end;
+
 procedure TDEvent.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   IntervalType: TMySQLIntervalType;
@@ -353,6 +413,8 @@ end;
 
 procedure TDEvent.FormHide(Sender: TObject);
 begin
+  Database.Client.UnRegisterEventProc(FormClientEvent);
+
   Preferences.Event.Width := Width;
   Preferences.Event.Height := Height;
 
@@ -362,18 +424,11 @@ end;
 
 procedure TDEvent.FormShow(Sender: TObject);
 var
-  Day: Word;
   EventName: string;
-  Hour: Word;
   I: Integer;
-  Minute: Word;
-  Month: Word;
-  MSec: Word;
-  Quarter: Word;
-  Second: Word;
-  Week: Word;
-  Year: Word;
 begin
+  Database.Client.RegisterEventProc(FormClientEvent);
+
   if (not Assigned(Event)) then
     Caption := Preferences.LoadStr(820)
   else
@@ -415,39 +470,17 @@ begin
     FPreserve.Checked := False;
     FComment.Text := '';
     FStatement.Lines.Text := 'SET @A = 1;';
+
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
   end
   else
   begin
-    FName.Text := Event.Name;
+    PageControl.Visible := not Event.Update();
+    PSQLWait.Visible := not PageControl.Visible;
 
-    FSingleExecution.Checked := Event.EventType = etSingle;
-    if (Event.Execute = 0) then FExecuteDate.Date := Now() else FExecuteDate.Date := Event.Execute;
-    FExecuteTime.Time := Event.Execute;
-
-    FMultipleExecution.Checked := Event.EventType = etMultiple;
-    Database.Client.DecodeInterval(Event.IntervalValue, Event.IntervalType, Year, Month, Day, Quarter, Week, Hour, Minute, Second, MSec);
-    FUDIntervalYear.Position := Year;
-    FUDIntervalMonth.Position := Month;
-    FUDIntervalDay.Position := Day;
-    FUDIntervalQuarter.Position := Quarter;
-    FUDIntervalQuarter.Position := Quarter;
-    FUDIntervalWeek.Position := Week;
-    FUDIntervalHour.Position := Hour;
-    FUDIntervalMinute.Position := Minute;
-    FUDIntervalSecond.Position := Second;
-    if (Event.StartDateTime = 0) then FStartDate.Date := Now() else FStartDate.Date := Event.StartDateTime;
-    FStartTime.Time := Event.StartDateTime;
-    if (Event.EndDateTime = 0) then FEndDate.Date := Now() + 1 else FEndDate.Date := Event.EndDateTime;
-    FEndTime.Time := Event.EndDateTime;
-
-    FEnabled.Checked := Event.Enabled;
-    FPreserve.Checked := Event.Preserve;
-    FComment.Text := SQLUnwrapStmt(Event.Comment);
-    FStatement.Lines.Text := Event.Stmt;
-
-    FDefiner.Caption := Event.Definer;
-    FCreated.Caption := SysUtils.DateTimeToStr(Event.Created, LocaleFormatSettings);
-    FUpdated.Caption := SysUtils.DateTimeToStr(Event.Updated, LocaleFormatSettings);
+    if (PageControl.Visible) then
+      Built();
   end;
 
   FSource.Lines.Clear();
@@ -455,10 +488,11 @@ begin
   TSInformations.TabVisible := Assigned(Event);
   TSSource.TabVisible := Assigned(Event);
 
-  FBOk.Enabled := not Assigned(Event);
+  FBOk.Enabled := PageControl.Visible and not Assigned(Event);
 
   ActiveControl := FBCancel;
-  ActiveControl := FName;
+  if (PageControl.Visible) then
+    ActiveControl := FName;
 end;
 
 procedure TDEvent.FStartEnabledClick(Sender: TObject);

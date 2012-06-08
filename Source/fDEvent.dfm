@@ -32,7 +32,7 @@ object DEvent: TDEvent
     Caption = 'FBOk'
     Default = True
     ModalResult = 1
-    TabOrder = 2
+    TabOrder = 3
   end
   object FBCancel: TButton
     Left = 315
@@ -43,7 +43,7 @@ object DEvent: TDEvent
     Cancel = True
     Caption = 'FBCancel'
     ModalResult = 2
-    TabOrder = 3
+    TabOrder = 4
   end
   object FBHelp: TButton
     Left = 8
@@ -52,8 +52,20 @@ object DEvent: TDEvent
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'FBHelp'
-    TabOrder = 1
+    TabOrder = 2
     OnClick = FBHelpClick
+  end
+  object PSQLWait: TPanel
+    Left = 8
+    Top = 8
+    Width = 381
+    Height = 483
+    Cursor = crSQLWait
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    Caption = 'PSQLWait'
+    TabOrder = 0
+    Visible = False
   end
   object PageControl: TPageControl
     Left = 8
@@ -63,13 +75,9 @@ object DEvent: TDEvent
     ActivePage = TSBasics
     Anchors = [akLeft, akTop, akRight, akBottom]
     HotTrack = True
-    TabOrder = 0
+    TabOrder = 1
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         373
         455)

@@ -46,11 +46,11 @@ type
     N1: TMenuItem;
     N2: TMenuItem;
     PageControl: TPageControl;
+    PSQLWait: TPanel;
     TSBasics: TTabSheet;
     TSInformations: TTabSheet;
     TSSource: TTabSheet;
     TSFields: TTabSheet;
-    PSQLWait: TPanel;
     procedure FAlgorithmSelect(Sender: TObject);
     procedure FBHelpClick(Sender: TObject);
     procedure FCheckOptionCascadeClick(Sender: TObject);
@@ -163,10 +163,12 @@ begin
 
   FSource.Lines.Text := View.Source + #13#10;
 
-  TSSource.TabVisible := Assigned(View);
+  TSSource.TabVisible := Assigned(View) and (View.Source <> '');
 
   PageControl.Visible := True;
   PSQLWait.Visible := not PageControl.Visible;
+
+  ActiveControl := FName;
 end;
 
 procedure TDView.CMChangePreferences(var Message: TMessage);
@@ -383,7 +385,7 @@ end;
 
 procedure TDView.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceItemBuild]) and (Event.CItem = View)) then
+  if ((Event.EventType in [ceObjBuild]) and (Event.Sender = View)) then
     Built();
 end;
 
@@ -478,7 +480,7 @@ begin
 
     FStmt.Lines.Text := 'SELECT 1;';
 
-    FSource.Lines.Clear();
+    TSSource.TabVisible := False;
 
     PageControl.Visible := True;
     PSQLWait.Visible := not PageControl.Visible;
@@ -494,13 +496,11 @@ begin
 
   TSInformations.TabVisible := Assigned(View);
   TSFields.TabVisible := Assigned(View);
-  TSSource.TabVisible := Assigned(View);
 
   FBOk.Enabled := PageControl.Visible and not Assigned(View);
 
-  if (not PageControl.Visible) then
-    ActiveControl := FBCancel
-  else
+  ActiveControl := FBCancel;
+  if (PageControl.Visible) then
     ActiveControl := FName;
 end;
 

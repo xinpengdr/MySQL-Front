@@ -10,8 +10,6 @@ uses
   Windows,
   ShellAPI,
   SysUtils,
-//  Vcl.Themes,
-//  Vcl.Styles,
   Forms,
   MySQLClient in 'MySQL\Source\MySQLClient.pas',
   MySQLConsts in 'MySQL\Source\MySQLConsts.pas',
@@ -79,8 +77,6 @@ uses
 {$R *.res}
 
 begin
-//  TStyleManager.TrySetStyle('Aqua Light Slate');
-
   Preferences := TPPreferences.Create();
 
   if ((Preferences.SetupProgram <> '') and not Preferences.SetupProgramInstalled and (FindWindow(cWindowClassName + '.UnicodeClass', nil) = 0)) then

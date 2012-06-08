@@ -161,7 +161,7 @@ implementation {***************************************************************}
 {$R *.dfm}
 
 uses
-  FileCtrl, IniFiles,
+  IniFiles,
   StrUtils;
 
 var

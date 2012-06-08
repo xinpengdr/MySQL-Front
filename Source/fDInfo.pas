@@ -17,13 +17,11 @@ type
     FURI: TLabel;
     FVersion: TLabel;
     Image: TImage;
-    FMail: TLabel;
     procedure FBHelpClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FURIClick(Sender: TObject);
-    procedure FMailClick(Sender: TObject);
   private
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
@@ -83,35 +81,6 @@ begin
   Application.HelpContext(HelpContext);
 end;
 
-procedure TDInfo.FMailClick(Sender: TObject);
-var
-  Filename: string;
-begin
-  if (IsConnectedToInternet()) then
-  begin
-    CheckUpdateThread := TCheckUpdateThread.Create(True);
-    CheckUpdateThread.Stream := TStringStream.Create('');
-    CheckUpdateThread.Execute();
-    CheckUpdateThread.Stream.Free();
-
-    if (CheckUpdateThread.UpdateAvailable) then
-    begin
-      MsgBox('An update is available. Please use the latest update before send a feedback.'
-        + #13#10#13#10 + 'You can install the update with menu: Help -> Install Update.',
-        Preferences.LoadStr(43), MB_OK + MB_ICONINFORMATION);
-    end
-    else
-    begin
-      Filename := 'mailto:' + SysUtils.LoadStr(1006)
-        + '?subject=' + SysUtils.LoadStr(1000) + '%20Feedback%20'
-        + IntToStr(Preferences.VerMajor) + '.' + IntToStr(Preferences.VerMinor) + '.' + IntToStr(Preferences.VerPatch) + '.' + IntToStr(Preferences.VerBuild);
-      ShellExecute(0, PChar('open'), PChar(Filename), nil, nil, SW_SHOWNORMAL);
-    end;
-
-    CheckUpdateThread.Free();
-  end;
-end;
-
 procedure TDInfo.FormCreate(Sender: TObject);
 var
   JPEGImage: TJPEGImage;
@@ -123,8 +92,6 @@ begin
   Image.Picture.Graphic := JPEGImage;
   JPEGImage.Free();
   Stream.Free();
-
-  FMail.Caption := SysUtils.LoadStr(1006);
 end;
 
 procedure TDInfo.FormDestroy(Sender: TObject);
@@ -136,8 +103,6 @@ end;
 procedure TDInfo.FormShow(Sender: TObject);
 begin
   ActiveControl := FBOk;
-
-  FMail.Visible := IsConnectedToInternet();
 end;
 
 procedure TDInfo.FURIClick(Sender: TObject);

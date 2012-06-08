@@ -2973,7 +2973,7 @@ begin
   end;
 
   if (Result = 0) then
-    raise ERangeError.CreateFmt(SInvalidCodePage + ' (%s)', [Charset]);
+    raise ERangeError.CreateFmt(SInvalidCodePage + ' ("%s")', [Charset]);
 end;
 
 function TMySQLConnection.CharsetToCodePage(const Charset: Byte): Cardinal;
