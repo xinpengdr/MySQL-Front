@@ -4402,7 +4402,7 @@ begin
         end;
     end;
 
-  if (Wanted.Nothing and (ClientEvent.EventType in [ceObjStatus, ceObjCreated, ceObjDroped, ceObjAltered])) then
+  if (Wanted.Nothing and Assigned(ClientEvent) and (ClientEvent.EventType in [ceObjStatus, ceObjCreated, ceObjDroped, ceObjAltered])) then
     Wanted.Update := UpdateAfterAddressChanged;
 end;
 
@@ -10749,7 +10749,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         Mid := (Right - Left) div 2 + Left;
         case (Compare(Kind, ListView.Items[Mid], Item)) of
           -1: begin Left := Mid + 1; Index := Mid + 1; end;
-          0: raise ERangeError.Create(SRangeError);
+          0: Compare(Kind, ListView.Items[Mid], Item); // raise ERangeError.Create(SRangeError);
           1: begin Right := Mid - 1; Index := Mid; end;
         end;
       end;

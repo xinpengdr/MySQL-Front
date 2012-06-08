@@ -1209,7 +1209,7 @@ begin
       CALL CompareKeyword              // 'ALTER'?
       JNE Create                       // No!
       MOV BYTE PTR [EBX + 0],dtAlter
-      JMP ObjType
+      JMP Algorithm
     Create:
       MOV EAX,[KCreate]
       CALL CompareKeyword              // 'CREATE'?
@@ -2499,7 +2499,12 @@ begin
   end;
 end;
 
-begin
-  BitStringToInt('101');
+//var
+//  DDLStmt: TSQLDDLStmt;
+//  SQL: string;
+//begin
+//  SQL := 'ALTER ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `test`.`neuerview` AS select 1 AS `1`,2 AS `2`,4 AS `4`,5;'#$D#$A;
+//  if (SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), 50522)) then
+//    Write;
 end.
 

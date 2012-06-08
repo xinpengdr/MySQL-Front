@@ -10,6 +10,7 @@
 			<Config Condition="'$(Config)'==''">Base</Config>
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<SkipResGeneration>true</SkipResGeneration>
+			<Base>True</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
 			<Base>true</Base>

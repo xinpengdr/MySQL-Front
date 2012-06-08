@@ -427,6 +427,7 @@ type
   end;
 
   TCViewField = class(TCTableField)
+    function GetIndex(): Integer; override;
   end;
 
   TCTableFields = class(TCItems)
@@ -3040,6 +3041,13 @@ begin
     Result := nil
   else
     Result := TCBaseTable(Fields.Table);
+end;
+
+{ TCViewField *****************************************************************}
+
+function TCViewField.GetIndex(): Integer;
+begin
+  Result := Table.Fields.IndexOf(Self);
 end;
 
 { TCTableFields ***************************************************************}
@@ -11582,14 +11590,17 @@ begin
           dtAlter:
             begin
               Database := DatabaseByName(DDLStmt.DatabaseName);
-              if (Database.Valid or Database.ValidSource or Database.ValidSources) then
+              if (Assigned(Database) and Database.Valid or Database.ValidSource or Database.ValidSources) then
               begin
                 Database.Invalidate();
                 ExecuteEvent(ceObjAltered, Self, Databases, Database);
               end;
             end;
           dtDrop:
-            Databases.Delete(DatabaseByName(DDLStmt.ObjectName));
+            begin
+              Database := DatabaseByName(DDLStmt.DatabaseName);
+              Databases.Delete(Database);
+            end;
         end
       else
       begin

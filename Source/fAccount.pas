@@ -244,7 +244,7 @@ var
 implementation {***************************************************************}
 
 uses
-  Windows, Graphics, CommCtrl, Consts, ShlObj, WinINet, ActiveX,
+  Windows, Graphics, CommCtrl, Consts, SysConst, ShlObj, WinINet, ActiveX,
   Variants, RTLConsts, StrUtils, Registry, WinSock,
   MySQLConsts,
   CSVUtils,
@@ -743,6 +743,9 @@ end;
 procedure TADesktop.SetAddress(AAddress: string);
 begin
   FAddress := Account.PackAddress(AAddress);
+
+  if (FAddress = '/.') then
+    raise ERangeError.Create(SRangeError);
 end;
 
 { TAConnection ****************************************************************}

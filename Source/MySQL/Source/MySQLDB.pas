@@ -244,6 +244,7 @@ type
     FThreadDeep: Integer;
     FThreadId: my_uint;
     FUsername: string;
+    InOnResult: Boolean;
     local_infile: Plocal_infile;
     function GetCommandText(): string;
     function GetCompression(): Boolean;
@@ -2697,10 +2698,6 @@ begin
   begin
     S := '--> Error #' + IntToStr(Lib.mysql_errno(SynchroThread.LibHandle)) + ': ' + Error(SynchroThread.LibHandle);
     WriteMonitor(PChar(S), Length(S), ttInfo);
-
-    SynchroThread.State := ssReady;
-    if (not Assigned(SynchroThread.OnResult) or not SynchroThread.OnResult(Self, Assigned(SynchroThread.ResultHandle))) then
-      DoError(Lib.mysql_errno(SynchroThread.LibHandle), Error(SynchroThread.LibHandle));
   end
   else
   begin
@@ -2760,13 +2757,21 @@ begin
         end;
       end;
     end;
-
-    SynchroThread.State := ssResult;
-    if (Assigned(SynchroThread.OnResult)) then
-      SynchroThread.OnResult(Self, Assigned(SynchroThread.ResultHandle));
-    if (SynchroThread.State = ssResult) then
-      SyncHandledResult(SynchroThread);
   end;
+
+  if (Lib.mysql_errno(SynchroThread.LibHandle) > 0) then
+    SynchroThread.State := ssReady
+  else
+    SynchroThread.State := ssResult;
+
+  InOnResult := True;
+  if ((not Assigned(SynchroThread.OnResult) or not SynchroThread.OnResult(Self, Assigned(SynchroThread.ResultHandle))) 
+    and (Lib.mysql_errno(SynchroThread.LibHandle) > 0)) then
+    DoError(Lib.mysql_errno(SynchroThread.LibHandle), Error(SynchroThread.LibHandle));
+  InOnResult := False;
+
+  if (SynchroThread.State = ssResult) then
+    SyncHandledResult(SynchroThread);
 end;
 
 procedure TMySQLConnection.SyncHandledResult(const SynchroThread: TSynchroThread);
@@ -3079,6 +3084,7 @@ begin
   FThreadDeep := 0;
   FThreadId := 0;
   FUserName := '';
+  InOnResult := False;
   local_infile := nil;
   TimeDiff := 0;
 end;
@@ -3121,6 +3127,9 @@ end;
 
 function TMySQLConnection.ExecuteSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean;
 begin
+  if (InOnResult) then
+    raise Exception.Create(SOutOfSync);
+
   if (Assigned(SynchroThread) and not (SynchroThread.State in [ssClose, ssReady])) then
     Terminate();
   if (not Assigned(SynchroThread)) then
@@ -3308,6 +3317,9 @@ end;
 
 procedure TMySQLConnection.SendSQL(const SQL: string; const OnResult: TResultEvent = nil);
 begin
+  if (InOnResult) then
+    raise Exception.Create(SOutOfSync);
+
   if (Assigned(SynchroThread) and not (SynchroThread.State in [ssClose, ssReady])) then
     Terminate();
   if (not Assigned(SynchroThread)) then
@@ -3324,6 +3336,9 @@ var
   Retry: Integer;
 begin
   Assert(Connected and Assigned(Lib.mysql_shutdown));
+
+  if (InOnResult) then
+    raise Exception.Create(SOutOfSync);
 
   if (Assigned(SynchroThread) and (SynchroThread.State <> ssReady)) then
     Terminate();
