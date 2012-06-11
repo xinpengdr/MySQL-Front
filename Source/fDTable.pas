@@ -1205,7 +1205,7 @@ begin
       else
         FCreatedName := NewTable.Name;
 
-      PageControl.Visible := CanClose;
+      PageControl.Visible := CanClose or not Database.Client.Asynchron;
       PSQLWait.Visible := not PageControl.Visible;
 
       FBOk.Enabled := False;

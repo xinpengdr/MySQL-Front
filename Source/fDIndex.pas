@@ -334,11 +334,11 @@ begin
       else
         NewTable.Indices[Index.Index].Assign(NewIndex);
 
-      CanClose := not Database.UpdateTable(Table, NewTable);
+      CanClose := Database.UpdateTable(Table, NewTable);
 
       NewTable.Free();
 
-      GBasics.Visible := CanClose;
+      GBasics.Visible := CanClose or not Database.Client.Asynchron;
       GAttributes.Visible := GBasics.Visible;
       PSQLWait.Visible := not GBasics.Visible;
       if (PSQLWait.Visible) then

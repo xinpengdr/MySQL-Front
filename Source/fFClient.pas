@@ -901,7 +901,7 @@ type
     procedure FImageShow(Sender: TObject);
     procedure FNavigatorEmptyExecute(Sender: TObject);
     procedure FNavigatorInitialize(Sender: TObject);
-    procedure FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
+    procedure FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
     procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure FormAccountEvent(const ClassType: TClass);
     procedure FRTFShow(Sender: TObject);
@@ -4338,7 +4338,7 @@ begin
   begin
     if (Event.EventType in [ceItemsValid, ceItemCreated, ceItemAltered, ceItemDroped]) then
     begin
-      FNavigatorRefresh(Event);
+      FNavigatorUpdate(Event);
 
       if (Event.Sender is TCClient) then
         ListViewUpdate(Event, lkServer, FServerListView)
@@ -7616,7 +7616,7 @@ begin
     end;
 end;
 
-procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
+procedure TFClient.FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
 
   function GroupIDByImageIndex(const ImageIndex: Integer): Integer;
   begin
@@ -7673,8 +7673,8 @@ procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
       Result := Sign(GroupIDByImageIndex(Item1.ImageIndex) - GroupIDByImageIndex(Item2.ImageIndex))
     else if (GroupIDByImageIndex(Item1.ImageIndex) = giSystemTools) then
       Result := Sign(Pos(Chr(Item1.ImageIndex), ImageIndexSort) - Pos(Chr(Item2.ImageIndex), ImageIndexSort))
-    else if (TObject(Item1.Data) is TCItem) then
-      Result := TCItem(Item1.Data).CItems.NameCmp(Item1.Text, Item2.Text)
+    else if ((TObject(Item1.Data) is TCItem) and (TObject(Item2.Data) is TCItem)) then
+      Result := Sign(TCItem(Item1.Data).Index - TCItem(Item2.Data).Index)
     else
       raise ERangeError.Create(SRangeError);
   end;

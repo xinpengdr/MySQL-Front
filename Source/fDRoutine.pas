@@ -260,13 +260,13 @@ begin
     NewRoutine.Source := Trim(FSource.Text);
 
     if (not Assigned(Routine)) then
-      CanClose := not Database.AddRoutine(NewRoutine)
+      CanClose := Database.AddRoutine(NewRoutine)
     else
-      CanClose := not Database.UpdateRoutine(Routine, NewRoutine);
+      CanClose := Database.UpdateRoutine(Routine, NewRoutine);
 
     NewRoutine.Free();
 
-    PageControl.Visible := CanClose;
+    PageControl.Visible := CanClose or not Database.Client.Asynchron;
     PSQLWait.Visible := not PageControl.Visible;
     if (PSQLWait.Visible) then
       ModalResult := mrNone;

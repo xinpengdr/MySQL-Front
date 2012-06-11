@@ -231,7 +231,9 @@ begin
       Rect.Right := Max(Rect.Right, Rect.Left + FHintWindow.Canvas.TextWidth(StringList[I]) + 6);
     Rect.Bottom := Rect.Top + FHintWindow.Canvas.TextHeight('H') * StringList.Count + 2;
 
-    if ((Rect.Right - Rect.Left - 2 > Columns[FMouseMoveCell.X].Width) or (StringList.Count > 1)) then
+    if ((Rect.Right - Rect.Left - 2 > Columns[FMouseMoveCell.X].Width)
+      or (Columns[FMouseMoveCell.X].Field.DataType = ftWideMemo)
+      or (StringList.Count > 1)) then
     begin
       FHintWindow.ActivateHint(Rect, StringList.Text);
       SetTimer(Handle, tiHideHint, Application.HintHidePause, nil);

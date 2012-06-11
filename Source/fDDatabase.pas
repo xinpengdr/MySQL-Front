@@ -258,13 +258,13 @@ begin
       NewDatabase.Collation := Trim(FCollation.Text);
 
     if (not Assigned(Database) or not Assigned(Client.DatabaseByName(Database.Name))) then
-      CanClose := not Client.AddDatabase(NewDatabase)
+      CanClose := Client.AddDatabase(NewDatabase)
     else
-      CanClose := not Client.UpdateDatabase(Database, NewDatabase);
+      CanClose := Client.UpdateDatabase(Database, NewDatabase);
 
     NewDatabase.Free();
 
-    PageControl.Visible := CanClose;
+    PageControl.Visible := CanClose or not Client.Asynchron;
     PSQLWait.Visible := not PageControl.Visible;
     if (PSQLWait.Visible) then
       ModalResult := mrNone;

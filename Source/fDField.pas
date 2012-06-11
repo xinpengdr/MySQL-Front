@@ -711,9 +711,9 @@ begin
           TCBaseTableFields(NewTable.Fields).MoveField(NewTable.Fields[Field.Index], NewField.FieldBefore);
         end;
 
-        CanClose := not Database.UpdateTable(Table, NewTable);
+        CanClose := Database.UpdateTable(Table, NewTable);
 
-        GBasics.Visible := CanClose;
+        GBasics.Visible := CanClose or not Database.Client.Asynchron;
         GAttributes.Visible := GBasics.Visible;
         PSQLWait.Visible := not GBasics.Visible;
         if (PSQLWait.Visible) then

@@ -251,13 +251,13 @@ begin
     NewTrigger.Stmt := SQLTrimStmt(PChar(FStatement.Text));
 
     if (not Assigned(Trigger)) then
-      CanClose := not Table.Database.AddTrigger(NewTrigger)
+      CanClose := Table.Database.AddTrigger(NewTrigger)
     else
-      CanClose := not Table.Database.UpdateTrigger(Trigger, NewTrigger);
+      CanClose := Table.Database.UpdateTrigger(Trigger, NewTrigger);
 
     NewTrigger.Free();
 
-    PageControl.Visible := CanClose;
+    PageControl.Visible := CanClose or not Table.Database.Client.Asynchron;
     PSQLWait.Visible := not PageControl.Visible;
     if (PSQLWait.Visible) then
       ModalResult := mrNone;

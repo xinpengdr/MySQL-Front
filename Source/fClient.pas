@@ -8051,16 +8051,16 @@ begin
     if (SQL[Length(SQL)] = ';') then Delete(SQL, Length(SQL), 1);
   end;
 
-  Result := SQL <> '';
-  if (Result) then
+  if (SQL = '') then
+    Result := True
+  else
   begin
     if (not Assigned(Event)) then
       SQL := 'CREATE EVENT ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(NewEvent.Name) + #13#10 + TrimRight(SQL) + ';' + #13#10
     else
       SQL := 'ALTER EVENT ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(Event.Name) + #13#10 + TrimRight(SQL) + ';' + #13#10;
 
-    Client.SendSQL(SQL);
-    Result := Client.Asynchron;
+    Result := Client.SendSQL(SQL);
   end;
 end;
 
@@ -8116,15 +8116,14 @@ begin
         end;
     end;
 
-    Result := SQL <> '';
-
-    if (Result) then
+    if (SQL = '') then
+      Result := True
+    else
     begin
       if (Client.DatabaseName <> Name) then
         SQL := SQLUse() + SQL;
 
-      Client.SendSQL(SQL);
-      Result := Client.Asynchron;
+      Result := Client.SendSQL(SQL);
     end;
   end;
 
@@ -8163,12 +8162,7 @@ begin
 
   SQL := SQLAlterTable(Table, NewTable);
 
-  Result := SQL <> '';
-  if (Result) then
-  begin
-    Client.SendSQL(SQL);
-    Result := Client.Asynchron;
-  end;
+  Result := (SQL = '') or Client.SendSQL(SQL);
 end;
 
 function TCDatabase.UpdateTables(const TableNames: TStringList; const ACharset, ACollation, AEngine: string; const ARowType: TMySQLRowType): Boolean;
@@ -8237,12 +8231,7 @@ begin
 
   SQL := SQL + NewTrigger.GetSourceEx();
 
-  Result := SQL <> '';
-  if (Result) then
-  begin
-    Client.SendSQL(SQL);
-    Result := Client.Asynchron;
-  end;
+  Result := (SQL = '') or Client.SendSQL(SQL);
 
 // Is this workaround still needed? Or was it a bug in previous versions? In which versions?
 //  if (Client.Connected and Client.MultiStatements and Assigned(Client.Lib.mysql_set_server_option)) then
@@ -8302,12 +8291,7 @@ begin
   if (Client.DatabaseName <> Name) then
     SQL := SQLUse() + SQL;
 
-  Result := SQL <> '';
-  if (Result) then
-  begin
-    Client.SendSQL(SQL);
-    Result := Client.Asynchron;
-  end;
+  Result := (SQL = '') or Client.SendSQL(SQL);
 end;
 
 function TCDatabase.ViewByName(const TableName: string): TCView;
@@ -11101,14 +11085,12 @@ begin
       SQL := SQL + 'DROP USER ' + EscapeUser(User.Name) + ';' + #13#10;
   end;
 
-  Result := SQL <> '';
-  if (Result) then
+  if (SQL = '') then
+    Result := True
+  else
   begin
     SQL := SQL + 'FLUSH PRIVILEGES;' + #13#10;
-    Result := ExecuteSQL(SQL);
-
-    if (Result) then
-      Users.Clear();
+    Result := (SQL = '') or SendSQL(SQL);
   end;
 end;
 
@@ -12321,12 +12303,7 @@ begin
     else
       SQL := 'ALTER DATABASE ' + EscapeIdentifier(Database.Name) + SQL + ';' + #13#10;
 
-  Result := SQL <> '';
-  if (Result) then
-  begin
-    SendSQL(SQL);
-    Result := Asynchron;
-  end;
+  Result := (SQL = '') or SendSQL(SQL);
 end;
 
 function TCClient.UpdateHost(const Host, NewHost: TCHost): Boolean;
@@ -12397,16 +12374,16 @@ begin
       SQL := SQL + 'UPDATE ' + EscapeIdentifier('mysql') + '.' + EscapeIdentifier('host') + ' SET ' + Updates + ' WHERE ' + EscapeIdentifier('Host') + '=' + SQLEscape(Host.Name) + ' AND ' + EscapeIdentifier('Db') + '=' + SQLEscape(OldDatabase.Name) + ';' + #13#10;
   end;
 
-  Result := SQL <> '';
-  if (Result) then
+  if (SQL = '') then
+    Result := True
+  else
   begin
     if (DatabaseName <> 'mysql') then
       SQL := SQLUse('mysql') + SQL;
 
     SQL := SQL + 'FLUSH PRIVILEGES;' + #13#10;
 
-    SendSQL(SQL);
-    Result := Asynchron;
+    Result := SendSQL(SQL);
   end;
 
   if (Result) then
@@ -12740,12 +12717,7 @@ begin
   else
     SQL := SQL + Variable.Name + '=' + SQLEscape(NewVariable.Value) + ';';
 
-  Result := SQL <> '';
-  if (Result) then
-  begin
-    SendSQL(SQL);
-    Result := Asynchron;
-  end;
+  Result := (SQL = '') or SendSQL(SQL);
 end;
 
 function TCClient.UserByCaption(const Caption: string): TCUser;

@@ -305,11 +305,11 @@ begin
       NewUser.Right[I].NewPassword := NewUser.NewPassword;
 
     if (not Assigned(User)) then
-      CanClose := not Client.AddUser(NewUser)
+      CanClose := Client.AddUser(NewUser)
     else
-      CanClose := not Client.UpdateUser(User, NewUser);
+      CanClose := Client.UpdateUser(User, NewUser);
 
-    PageControl.Visible := CanClose;
+    PageControl.Visible := CanClose or not Client.Asynchron;
     PSQLWait.Visible := not PageControl.Visible;
     if (PSQLWait.Visible) then
       ModalResult := mrNone;

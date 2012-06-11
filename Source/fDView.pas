@@ -375,13 +375,13 @@ begin
     NewView.Stmt := Trim(FStmt.Lines.Text);
 
     if (not Assigned(View)) then
-      CanClose := not Database.AddView(NewView)
+      CanClose := Database.AddView(NewView)
     else
-      CanClose := not Database.UpdateView(View, NewView);
+      CanClose := Database.UpdateView(View, NewView);
 
     NewView.Free();
 
-    PageControl.Visible := CanClose;
+    PageControl.Visible := CanClose or not Database.Client.Asynchron;
     PSQLWait.Visible := not PageControl.Visible;
     if (PSQLWait.Visible) then
       ModalResult := mrNone;

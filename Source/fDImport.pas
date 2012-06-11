@@ -152,7 +152,6 @@ type
     procedure OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMExecutedDone(var Message: TMessage); message CM_EXECUTIONDONE;
-    procedure CMPostShow(var Message: TMessage); message CM_POSTSHOW;
     procedure CMSysFontChanged(var Message: TMessage); message CM_SYSFONTCHANGED;
     procedure CMUpdateProgressInfo(var Message: TMessage); message CM_UPDATEPROGRESSINFO;
   public
@@ -325,20 +324,6 @@ begin
 
   if (Assigned(Import)) then
     FreeAndNil(Import);
-end;
-
-procedure TDImport.CMPostShow(var Message: TMessage);
-var
-  I: Integer;
-begin
-  for I := 0 to PageControl.PageCount - 1 do
-    if ((PageControl.ActivePageIndex < 0) and PageControl.Pages[I].Enabled) then
-      PageControl.ActivePageIndex := I;
-
-  if (FBForward.Enabled) then
-    ActiveControl := FBForward
-  else
-    ActiveControl := FBCancel;
 end;
 
 procedure TDImport.CMSysFontChanged(var Message: TMessage);
@@ -836,12 +821,19 @@ begin
   if (not TSTables.Enabled) then
     TSTablesHide(Sender);
 
+  for I := 0 to PageControl.PageCount - 1 do
+    if ((PageControl.ActivePageIndex < 0) and PageControl.Pages[I].Enabled) then
+      PageControl.ActivePageIndex := I;
+
   FBBack.Visible := not (ImportType in [itSQLFile]);
   FBForward.Visible := not (ImportType in [itSQLFile]);
   FBCancel.ModalResult := mrCancel;
   FBCancel.Caption := Preferences.LoadStr(30);
 
-  PostMessage(Self.Handle, CM_POSTSHOW, 0, 0);
+  if (FBForward.Enabled) then
+    ActiveControl := FBForward
+  else
+    ActiveControl := FBCancel;
 end;
 
 procedure TDImport.FQuoteClick(Sender: TObject);

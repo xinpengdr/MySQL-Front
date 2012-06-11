@@ -336,7 +336,7 @@ type
     function local_infile_init(var local_infile: Plocal_infile; const filename: my_char): my_int; virtual;
     function local_infile_read(const local_infile: Plocal_infile; buf: my_char; const buf_len: my_uint): my_int; virtual;
     procedure RollbackTransaction(); virtual;
-    procedure SendSQL(const SQL: string; const OnResult: TResultEvent = nil); virtual;
+    function SendSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean; virtual;
     function Shutdown(): Boolean; virtual;
     function SQLUse(const DatabaseName: string): string; virtual;
     procedure StartTransaction(); virtual;
@@ -1229,16 +1229,6 @@ end;
 
 { Callback functions **********************************************************}
 
-function local_infile_init(var local_infile: TMySQLConnection.Plocal_infile; filename: my_char; userdata: Pointer): my_int; cdecl;
-begin
-  Result := TMySQLConnection(userdata).local_infile_init(local_infile, filename);
-end;
-
-function local_infile_read(local_infile: TMySQLConnection.Plocal_infile; buf: my_char; buf_len: my_uint): my_int; cdecl;
-begin
-  Result := local_infile^.Connection.local_infile_read(local_infile, buf, buf_len);
-end;
-
 procedure local_infile_end(local_infile: TMySQLConnection.Plocal_infile); cdecl;
 begin
   local_infile^.Connection.local_infile_end(local_infile);
@@ -1247,6 +1237,16 @@ end;
 function local_infile_error(local_infile: TMySQLConnection.Plocal_infile; error_msg: my_char; error_msg_len: my_uint): my_int; cdecl;
 begin
   Result := local_infile^.Connection.local_infile_error(local_infile, error_msg, error_msg_len);
+end;
+
+function local_infile_init(var local_infile: TMySQLConnection.Plocal_infile; filename: my_char; userdata: Pointer): my_int; cdecl;
+begin
+  Result := TMySQLConnection(userdata).local_infile_init(local_infile, filename);
+end;
+
+function local_infile_read(local_infile: TMySQLConnection.Plocal_infile; buf: my_char; buf_len: my_uint): my_int; cdecl;
+begin
+  Result := local_infile^.Connection.local_infile_read(local_infile, buf, buf_len);
 end;
 
 function TMySQLLibrary.GetVersionStr(): string;
@@ -3321,7 +3321,7 @@ begin
   end;
 end;
 
-procedure TMySQLConnection.SendSQL(const SQL: string; const OnResult: TResultEvent = nil);
+function TMySQLConnection.SendSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean;
 begin
   if (InOnResult) then
     raise Exception.Create(SOutOfSync);
@@ -3336,7 +3336,7 @@ begin
   SynchroThread.OnResult := OnResult;
   SynchroThread.SQL := SQL;
 
-  SyncExecuteSQL(SynchroThread, False);
+  Result := SyncExecuteSQL(SynchroThread, False) and not Asynchron;
 end;
 
 function TMySQLConnection.Shutdown(): Boolean;
@@ -4051,6 +4051,7 @@ procedure TMySQLQuery.InternalInitFieldDefs();
 var
   Binary: Boolean;
   CreateField: Boolean;
+  Decimals: Word;
   DName: string;
   Field: TField;
   I: Integer;
@@ -4297,10 +4298,12 @@ begin
                     S := StringOfChar('0', Len)
                   else
                     S := StringOfChar('#', Len - 1) + '0';
-                  if ((Field.DataType in [ftSingle, ftFloat, ftExtended]) and (Connection.Lib.Field(LibField).decimals > 0)) then
+                  Decimals := Connection.Lib.Field(LibField).decimals;
+                  if (Decimals > Len) then Decimals := Len;
+                  if ((Field.DataType in [ftSingle, ftFloat, ftExtended]) and (Decimals > 0)) then
                   begin
-                    System.Delete(S, 1, Connection.Lib.Field(LibField).decimals + 1);
-                    S := S + '.' + StringOfChar('0', Connection.Lib.Field(LibField).decimals);
+                    System.Delete(S, 1, Decimals + 1);
+                    S := S + '.' + StringOfChar('0', Decimals);
                   end;
                   if (Length(S) > 256 - 32) then // Limit given because of the usage of SysUtils.FormatFloat
                     System.Delete(S, 1, Length(S) - 32);

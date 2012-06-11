@@ -117,11 +117,11 @@ begin
     if (FGlobal.Checked) then Include(UpdateModes, vuGlobal);
     if (FSession.Checked) then Include(UpdateModes, vuSession);
 
-    CanClose := not Client.UpdateVariable(Variable, NewVariable, UpdateModes);
+    CanClose := Client.UpdateVariable(Variable, NewVariable, UpdateModes);
 
     NewVariable.Free();
 
-    GroupBox.Visible := CanClose;
+    GroupBox.Visible := CanClose or not Client.Asynchron;
     PSQLWait.Visible := not GroupBox.Visible;
     if (PSQLWait.Visible) then
       ModalResult := mrNone;

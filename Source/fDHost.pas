@@ -251,11 +251,11 @@ begin
 
 
     if (not Assigned(Host)) then
-      CanClose := not Client.AddHost(NewHost)
+      CanClose := Client.AddHost(NewHost)
     else
-      CanClose := not Client.UpdateHost(Host, NewHost);
+      CanClose := Client.UpdateHost(Host, NewHost);
 
-    PageControl.Visible := CanClose;
+    PageControl.Visible := CanClose or not Client.Asynchron;
     PSQLWait.Visible := not PageControl.Visible;
     if (PSQLWait.Visible) then
       ModalResult := mrNone;

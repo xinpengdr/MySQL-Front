@@ -384,13 +384,13 @@ begin
     NewEvent.Stmt := FStatement.Lines.Text;
 
     if (not Assigned(Event)) then
-      CanClose := not Database.AddEvent(NewEvent)
+      CanClose := Database.AddEvent(NewEvent)
     else
-      CanClose := not Database.UpdateEvent(Event, NewEvent);
+      CanClose := Database.UpdateEvent(Event, NewEvent);
 
     NewEvent.Free();
 
-    PageControl.Visible := CanClose;
+    PageControl.Visible := CanClose or not Database.Client.Asynchron;
     PSQLWait.Visible := not PageControl.Visible;
     if (PSQLWait.Visible) then
       ModalResult := mrNone;

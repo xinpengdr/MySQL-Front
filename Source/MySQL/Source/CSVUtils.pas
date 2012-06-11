@@ -306,6 +306,7 @@ begin
 
         MOV ECX,Len
         MOV EOF,False
+        MOV BYTE PTR [Result],True
 
       // -------------------
 
@@ -402,7 +403,8 @@ begin
       Finish:
         CMP ECX,1                        // Is there one characters left in SQL?
         JGE Finish1                      // Yes!
-        MOV EOL,True
+        MOV BYTE PTR [Result],False
+        JMP FinishE
       Finish1:
         MOV AX,[ESI]
         CMP AX,Delimiter                 // Delimiter?
@@ -456,12 +458,10 @@ begin
         Values[Value].Length := ValueLength;
         Inc(Value);
       end;
-    until (EOL);
+    until (EOL or not Result);
 
     if (Value <> Length(Values)) then
       SetLength(Values, Value);
-
-    Result := EOL;
   end;
 end;
 

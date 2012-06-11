@@ -256,11 +256,11 @@ begin
       else
         NewTable.ForeignKeys[ForeignKey.Index].Assign(NewForeignKey);
 
-      CanClose := not Database.UpdateTable(Table, NewTable);
+      CanClose := Database.UpdateTable(Table, NewTable);
 
       NewTable.Free();
 
-      GBasics.Visible := CanClose;
+      GBasics.Visible := CanClose or not Database.Client.Asynchron;
       GAttributes.Visible := GBasics.Visible;
       PSQLWait.Visible := not GBasics.Visible;
       if (PSQLWait.Visible) then

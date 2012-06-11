@@ -22,13 +22,13 @@ type
     FIndex: Integer;
     FMemSize: Integer;
   public
-    property Buffer: PChar read FBuffer;
-    property Size: Integer read FIndex;
     procedure Clear(); virtual;
     constructor Create(const AMemSize: Integer); virtual;
     destructor Destroy(); override;
     function Read(): string; virtual;
     procedure Write(const Content: string); virtual;
+    property Buffer: PChar read FBuffer;
+    property Size: Integer read FIndex;
   end;
 
   TTools = class(TThread)
@@ -52,6 +52,14 @@ type
       TimeDone, TimeSum: TDateTime;
       Progress: Byte;
     end;
+    TSQLThread = class(TThread)
+    private
+      Client: TCClient;
+      SQL: string;
+    public
+      constructor Create(const AClient: TCClient; const ASQL: string);
+      procedure Execute(); override;
+    end;
   private
     CriticalSection: TCriticalSection;
     FErrorCount: Integer;
@@ -61,7 +69,6 @@ type
   protected
     StartTime: TDateTime;
     Success: TDataAction;
-    property OnError: TErrorEvent read FOnError write FOnError;
     procedure AfterExecute(); virtual;
     procedure BackupTable(const Item: TItem; const Rename: Boolean = False); virtual;
     procedure BeforeExecute(); virtual;
@@ -71,14 +78,15 @@ type
     procedure DoUpdateGUI(); virtual; abstract;
     function EmptyToolsItem(): TItem; virtual;
     function NoPrimaryIndexError(): TError; virtual;
+    property OnError: TErrorEvent read FOnError write FOnError;
   public
     ExecutedMessage: UINT;
     UpdateMessage: UINT;
     Wnd: HWND;
-    property ErrorCount: Integer read FErrorCount;
-    property UserAbort: THandle read FUserAbort;
     constructor Create(); virtual;
     destructor Destroy(); override;
+    property ErrorCount: Integer read FErrorCount;
+    property UserAbort: THandle read FUserAbort;
   end;
 
   TTImport = class(TTools)
@@ -92,15 +100,11 @@ type
       SourceTableName: string;
     end;
   private
-    PipeSentE: TEvent;
     FClient: TCClient;
     FDatabase: TCDatabase;
     FieldNames: string;
-    function PipeSent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
   protected
     Items: array of TItem;
-    property Client: TCClient read FClient;
-    property Database: TCDatabase read FDatabase;
     procedure AfterExecute(); override;
     procedure AfterExecuteData(var Item: TItem); virtual;
     procedure BeforeExecute(); override;
@@ -114,6 +118,8 @@ type
     function GetValues(const Item: TItem; var Values: TSQLStrings): Boolean; overload; virtual;
     procedure Open(); virtual;
     function ToolsItem(const Item: TItem): TTools.TItem; virtual;
+    property Client: TCClient read FClient;
+    property Database: TCDatabase read FDatabase;
   public
     Fields: array of TCTableField;
     Data: Boolean;
@@ -123,9 +129,9 @@ type
     end;
     ImportType: TImportType;
     Structure: Boolean;
-    property OnError;
     constructor Create(const AClient: TCClient; const ADatabase: TCDatabase); reintroduce; virtual;
     procedure Execute(); override;
+    property OnError;
   end;
 
   TTImportFile = class(TTImport)
@@ -146,16 +152,16 @@ type
     end;
     FilePos: TLargeInteger;
     Handle: THandle;
-    property FileSize: DWord read FFileSize;
     function DoOpenFile(const Filename: TFileName; out Handle: THandle; out Error: TTools.TError): Boolean; virtual;
     function ReadContent(const NewFilePos: TLargeInteger = -1): Boolean; virtual;
     procedure DoUpdateGUI(); override;
     procedure Open(); override;
+    property FileSize: DWord read FFileSize;
   public
-    property CodePage: Cardinal read FCodePage;
-    property Filename: TFileName read FFilename;
     procedure Close(); override;
     constructor Create(const AFilename: TFileName; const ACodePage: Cardinal; const AClient: TCClient; const ADatabase: TCDatabase); reintroduce; virtual;
+    property CodePage: Cardinal read FCodePage;
+    property Filename: TFileName read FFilename;
   end;
 
   TTImportSQL = class(TTImportFile)
@@ -163,9 +169,9 @@ type
     FSetCharacterSetApplied: Boolean;
   public
     Text: PString;
-    property SetCharacterSetApplied: Boolean read FSetCharacterSetApplied;
     constructor Create(const AFilename: TFileName; const ACodePage: Cardinal; const AClient: TCClient; const ADatabase: TCDatabase); override;
     procedure Execute(); overload; override;
+    property SetCharacterSetApplied: Boolean read FSetCharacterSetApplied;
   end;
 
   TTImportText = class(TTImportFile)
@@ -192,14 +198,14 @@ type
     Quoter: Char;
     RowType: TMySQLRowType;
     UseHeadline: Boolean;
-    property HeadlineNameCount: Integer read GetHeadlineNameCount;
-    property HeadlineNames[Index: Integer]: string read GetHeadlineName;
     procedure Add(const TableName: string); virtual;
     procedure Close(); override;
     constructor Create(const AFilename: TFileName; const ACodePage: Cardinal; const AClient: TCClient; const ADatabase: TCDatabase); reintroduce; virtual;
     destructor Destroy(); override;
     function GetPreviewValues(var Values: TSQLStrings): Boolean; virtual;
     procedure Open(); override;
+    property HeadlineNameCount: Integer read GetHeadlineNameCount;
+    property HeadlineNames[Index: Integer]: string read GetHeadlineName;
   end;
 
   TTImportODBC = class(TTImport)
@@ -290,7 +296,6 @@ type
     FClient: TCClient;
     ExportObjects: array of TExportObject;
   protected
-    property DBGrids: TExportDBGrids read FDBGrids;
     procedure AfterExecute(); override;
     procedure BeforeExecute(); override;
     procedure DoUpdateGUI(); override;
@@ -309,6 +314,7 @@ type
     procedure ExecuteTrigger(const Trigger: TCTrigger); virtual;
     function ToolsItem(const ExportDBGrid: TExportDBGrid): TTools.TItem; overload; virtual;
     function ToolsItem(const ExportObject: TExportObject): TTools.TItem; overload; virtual;
+    property DBGrids: TExportDBGrids read FDBGrids;
   public
     Data: Boolean;
     TargetFields: array of record
@@ -317,13 +323,13 @@ type
     Fields: array of TField;
     Structure: Boolean;
     TableFields: array of TCTableField;
-    property Client: TCClient read FClient;
-    property OnError;
     procedure Add(const ADBGrid: TDBGrid); overload; virtual;
     procedure Add(const ADBObject: TCDBObject); overload; virtual;
     constructor Create(const AClient: TCClient); reintroduce; virtual;
     destructor Destroy(); override;
     procedure Execute(); override;
+    property Client: TCClient read FClient;
+    property OnError;
   end;
 
   TTExportFile = class(TTExport)
@@ -343,10 +349,10 @@ type
     function FileCreate(const Filename: TFileName; out Error: TTools.TError): Boolean; virtual;
     procedure WriteContent(const Content: string); virtual;
   public
-    property CodePage: Cardinal read FCodePage;
-    property Filename: TFileName read FFilename;
     constructor Create(const AClient: TCClient; const AFilename: TFileName; const ACodePage: Cardinal); reintroduce; virtual;
     destructor Destroy(); override;
+    property CodePage: Cardinal read FCodePage;
+    property Filename: TFileName read FFilename;
   end;
 
   TTExportSQL = class(TTExportFile)
@@ -454,14 +460,14 @@ type
     end;
   protected
     TableName: string;
-    property Handle: SQLHDBC read FHandle;
-    property ODBC: SQLHENV read FODBC;
-    property Stmt: SQLHSTMT read FStmt;
     procedure ExecuteHeader(); override;
     procedure ExecuteFooter(); override;
     procedure ExecuteTableFooter(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery); override;
     procedure ExecuteTableHeader(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery); override;
     procedure ExecuteTableRecord(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery); override;
+    property Handle: SQLHDBC read FHandle;
+    property ODBC: SQLHENV read FODBC;
+    property Stmt: SQLHSTMT read FStmt;
   public
     constructor Create(const AClient: TCClient; const AODBC: SQLHDBC = SQL_NULL_HANDLE; const AHandle: SQLHDBC = SQL_NULL_HANDLE); reintroduce; virtual;
   end;
@@ -519,7 +525,6 @@ type
   protected
     FItem: PItem;
     Items: array of TItem;
-    property Client: TCClient read FClient;
     procedure AfterExecute(); override;
     procedure BeforeExecute(); override;
     function DoExecuteSQL(const Client: TCClient; var Item: TItem; var SQL: string): Boolean; virtual;
@@ -528,6 +533,7 @@ type
     procedure ExecuteMatchCase(var Item: TItem; const Table: TCBaseTable); virtual;
     procedure ExecuteWholeValue(var Item: TItem; const Table: TCBaseTable); virtual;
     function ToolsItem(const Item: TItem): TTools.TItem; virtual;
+    property Client: TCClient read FClient;
   public
     FindText: string;
     MatchCase: Boolean;
@@ -543,8 +549,8 @@ type
   private
     FReplaceClient: TCClient;
   protected
-    property ReplaceConnection: TCClient read FReplaceClient;
     procedure ExecuteMatchCase(var Item: TTFind.TItem; const Table: TCBaseTable); override;
+    property ReplaceConnection: TCClient read FReplaceClient;
   public
     ReplaceText: string;
     Backup: Boolean;
@@ -568,8 +574,6 @@ type
     TErrorEvent = procedure(const ErrorCode: Integer; const Element: TElement; var Success: TDataAction) of object;
   private
     Items: array of TItem;
-    PipeSentE: TEvent;
-    function PipeSent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
   protected
     procedure AfterExecute(); override;
     procedure BeforeExecute(); override;
@@ -588,11 +592,11 @@ type
     Structure: Boolean;
     UpdateData: Boolean;
     UpdateStructure: Boolean;
-    property OnError;
     procedure Add(const MasterClient: TCClient; const MasterDatabaseName, MasterTableName: string; const SlaveClient: TCClient; const SlaveDatabaseName, SlaveTableName: string); virtual;
     constructor Create(); override;
     destructor Destroy(); override;
     procedure Execute(); override;
+    property OnError;
   end;
 
   EODBCError = EDatabaseError;
@@ -1025,6 +1029,21 @@ begin
   end;
 end;
 
+{ TTools.TSQLThread ***********************************************************}
+
+constructor TTools.TSQLThread.Create(const AClient: TCClient; const ASQL: string);
+begin
+  inherited Create(False);
+
+  Client := AClient;
+  SQL := ASQL;
+end;
+
+procedure TTools.TSQLThread.Execute();
+begin
+  Client.ExecuteSQL(SQL);
+end;
+
 { TTools **********************************************************************}
 
 procedure TTools.AfterExecute();
@@ -1167,6 +1186,7 @@ procedure TTImport.BeforeExecute();
 begin
   inherited;
 
+  Client.Asynchron := False; // We're still in a thread
   Client.BeginSilent();
   Client.StartTransaction();
 end;
@@ -1197,7 +1217,6 @@ begin
 
   Data := False;
   Structure := False;
-  PipeSentE := nil;
 end;
 
 procedure TTImport.DoExecuteSQL(const Item: TItem; var SQL: string);
@@ -1325,6 +1344,7 @@ var
   Pipename: string;
   S: string;
   SQL: string;
+  SQLThread: TSQLThread;
   SQLValues: TSQLStrings;
   Values: string;
   WhereClausel: string;
@@ -1362,8 +1382,7 @@ begin
           SQL := SQL + Database.SQLUse();
         SQL := SQL + SQLLoadDataInfile(Database, False, ImportType = itReplace, Pipename, Client.Charset, Database.Name, Table.Name, FieldNames, '''', ',', #13#10);
 
-        PipeSentE := TEvent.Create(nil, False, False, '');
-        Client.SendSQL(SQL, PipeSent);
+        SQLThread := TSQLThread.Create(Client, SQL);
 
         if (ConnectNamedPipe(Pipe, nil)) then
         begin
@@ -1388,14 +1407,14 @@ begin
           end;
 
           if (FlushFileBuffers(Pipe) and WriteFile(Pipe, PAnsiChar(DBValues)^, 0, BytesWritten, nil) and FlushFileBuffers(Pipe)) then
-            PipeSentE.WaitFor(INFINITE);
+            SQLThread.WaitFor();
           DisconnectNamedPipe(Pipe);
 
           if (not Client.ErrorCode = 0) then
             DoError(DatabaseError(Client), ToolsItem(Item), SQL);
         end;
 
-        FreeAndNil(PipeSentE);
+        FreeAndNil(SQLThread);
         CloseHandle(Pipe);
       end;
 
@@ -1517,13 +1536,6 @@ end;
 
 procedure TTImport.Open();
 begin
-end;
-
-function TTImport.PipeSent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
-begin
-  PipeSentE.SetEvent();
-
-  Result := False;
 end;
 
 function TTImport.ToolsItem(const Item: TItem): TTools.TItem;
@@ -1666,6 +1678,7 @@ var
   DistanceToMove: TLargeInteger;
   Error: TTools.TError;
   Len: Integer;
+  Index: Integer;
   ReadSize: DWord;
   UTF8Bytes: Byte;
 begin
@@ -1696,16 +1709,18 @@ begin
   begin
     if (FilePos = 0) then
     begin
-      if ((FileBuffer.Mem[FileBuffer.Index + 0] = BOM_UTF8[0]) and (FileBuffer.Mem[FileBuffer.Index + 1] = BOM_UTF8[1]) and (FileBuffer.Mem[FileBuffer.Index + 2] = BOM_UTF8[2])) then
+      if (CompareMem(@FileBuffer.Mem[FileBuffer.Index + 0], BOM_UTF8, Length(BOM_UTF8))) then
       begin
         FCodePage := CP_UTF8;
-        Inc(FilePos, Length(BOM_UTF8));
+        FilePos := Length(BOM_UTF8);
       end
-      else if ((FileBuffer.Mem[FileBuffer.Index + 0] = BOM_UTF8[0]) and (FileBuffer.Mem[FileBuffer.Index + 1] = BOM_UTF8[1])) then
+      else if (CompareMem(@FileBuffer.Mem[FileBuffer.Index + 0], BOM_UNICODE, Length(BOM_UNICODE))) then
       begin
         FCodePage := CP_UNICODE;
-        Inc(FilePos, Length(BOM_UNICODE));
-      end;
+        FilePos := Length(BOM_UNICODE);
+      end
+      else
+        FilePos := 0;
 
       Inc(FileBuffer.Index, FilePos);
     end;
@@ -1713,9 +1728,10 @@ begin
     case (CodePage) of
       CP_UNICODE:
         begin
-          Len := (BytesPerSector - FileBuffer.Index) + ReadSize;
+          Len := ReadSize - FileBuffer.Index;
+          Index := 1 + Length(FileContent.Str);
           SetLength(FileContent.Str, Length(FileContent.Str) + Len div SizeOf(Char));
-          MoveMemory(@FileContent.Str[Length(FileContent.Str) - Len + 1], @FileBuffer.Mem[FileBuffer.Index], Len);
+          MoveMemory(@FileContent.Str[Index], @FileBuffer.Mem[FileBuffer.Index], Len);
         end;
       else
         begin
@@ -1885,19 +1901,14 @@ var
 begin
   inherited;
 
-  if (not Structure and (Length(Items) = 1)) then
+  SetLength(CSVColumns, Length(SourceFields));
+  for I := 0 to Length(SourceFields) - 1 do
   begin
-    SetLength(CSVColumns, Length(SourceFields));
-    for I := 0 to Length(SourceFields) - 1 do
-    begin
-      CSVColumns[I] := -1;
-      for J := 0 to HeadlineNameCount - 1 do
-        if (SourceFields[I].Name = HeadlineNames[J]) then
-          CSVColumns[I] := J;
-    end;
-  end
-  else
-    SetLength(CSVColumns, 0);
+    CSVColumns[I] := -1;
+    for J := 0 to HeadlineNameCount - 1 do
+      if (SourceFields[I].Name = HeadlineNames[J]) then
+        CSVColumns[I] := J;
+  end;
 end;
 
 procedure TTImportText.Close();
@@ -1970,16 +1981,19 @@ begin
 
   NewTable.Free();
 
+  if (Success = daSuccess) then
+  begin
+    NewTable := Database.BaseTableByName(Item.TableName);
+    NewTable.Update();
 
-  NewTable := Database.BaseTableByName(Item.TableName);
+    SetLength(Fields, NewTable.Fields.Count);
+    for I := 0 to NewTable.Fields.Count - 1 do
+      Fields[I] := NewTable.Fields[I];
 
-  SetLength(Fields, NewTable.Fields.Count);
-  for I := 0 to NewTable.Fields.Count - 1 do
-    Fields[I] := NewTable.Fields[I];
-
-  SetLength(SourceFields, NewTable.Fields.Count);
-  for I := 0 to HeadlineNameCount - 1 do
-    SourceFields[I].Name := HeadlineNames[I];
+    SetLength(SourceFields, NewTable.Fields.Count);
+    for I := 0 to HeadlineNameCount - 1 do
+      SourceFields[I].Name := HeadlineNames[I];
+  end;
 end;
 
 function TTImportText.GetHeadlineNameCount(): Integer;
@@ -2021,6 +2035,9 @@ begin
   end;
 end;
 
+var
+  Nils: Integer;
+
 function TTImportText.GetValues(const Item: TTImport.TItem; out Values: RawByteString): Boolean;
 var
   EOF: Boolean;
@@ -2038,6 +2055,7 @@ begin
       EOF := not ReadContent();
       OldFileContentIndex := FileContent.Index;
     end;
+    Inc(Nils);
   end;
 
   if (FileContent.Index - OldFileContentIndex > 0) then
@@ -3341,6 +3359,7 @@ begin
     DBGrids[I].DBGrid.DataSource.DataSet.EnableControls();
 
   FClient.EndSilent();
+  FClient.Asynchron := FClient.Account.Connection.Asynchron;
 
   inherited;
 end;
@@ -3351,6 +3370,7 @@ var
 begin
   inherited;
 
+  FClient.Asynchron := False; // We're still in a thread
   FClient.BeginSilent();
 
   for I := 0 to Length(DBGrids) - 1 do
@@ -5065,7 +5085,14 @@ begin
     begin SQLFreeHandle(SQL_HANDLE_STMT, FStmt); FStmt := SQL_NULL_HANDLE; end;
 
   if (Handle <> SQL_NULL_HANDLE) then
+  begin
     SQLEndTran(SQL_HANDLE_DBC, Handle, SQL_COMMIT);
+
+    SQLDisconnect(Handle);
+    SQLFreeHandle(SQL_HANDLE_DBC, FHandle); FHandle := SQL_NULL_HANDLE;
+  end;
+  if (ODBC <> SQL_NULL_HANDLE) then
+    begin SQLFreeHandle(SQL_HANDLE_ENV, FODBC); FODBC := SQL_NULL_HANDLE; end;
 end;
 
 procedure TTExportODBC.ExecuteHeader();
@@ -5503,14 +5530,6 @@ procedure TTExportAccess.ExecuteFooter();
 begin
   inherited;
 
-  if (Handle <> SQL_NULL_HANDLE) then
-  begin
-    SQLDisconnect(Handle);
-    SQLFreeHandle(SQL_HANDLE_DBC, FHandle); FHandle := SQL_NULL_HANDLE;
-  end;
-  if (ODBC <> SQL_NULL_HANDLE) then
-    begin SQLFreeHandle(SQL_HANDLE_ENV, FODBC); FODBC := SQL_NULL_HANDLE; end;
-
   if (Success = daAbort) then
     DeleteFile(Filename);
 end;
@@ -5824,6 +5843,7 @@ end;
 procedure TTFind.AfterExecute();
 begin
   Client.EndSilent();
+  Client.Asynchron := FClient.Account.Connection.Asynchron;
 
   inherited;
 end;
@@ -5832,6 +5852,7 @@ procedure TTFind.BeforeExecute();
 begin
   inherited;
 
+  Client.Asynchron := False; // We're still in a thread
   Client.BeginSilent();
 end;
 
@@ -6359,8 +6380,10 @@ begin
   if (Length(Items) > 0) then
   begin
     Items[0].Master.Client.EndSilent();
+    Items[0].Master.Client.Asynchron := Items[0].Master.Client.Account.Connection.Asynchron;
 
     Items[0].Slave.Client.EndSilent();
+    Items[0].Master.Client.Asynchron := Items[0].Slave.Client.Account.Connection.Asynchron;
   end;
 
   inherited;
@@ -6372,8 +6395,10 @@ begin
 
   if (Length(Items) > 0) then
   begin
+    Items[0].Master.Client.Asynchron := False; // We're still in a thread
     Items[0].Master.Client.BeginSilent();
 
+    Items[0].Slave.Client.Asynchron := False; // We're still in a thread
     Items[0].Slave.Client.BeginSilent();
   end;
 end;
@@ -6601,6 +6626,7 @@ var
   SourceTable: TCBaseTable;
   SourceValues: string;
   SQL: string;
+  SQLThread: TSQLThread;
   SQLValues: TSQLStrings;
   TargetDatabase: TCDatabase;
   TargetDataSet: TMySQLQuery;
@@ -6781,8 +6807,7 @@ begin
               SQL := SQL + TargetDatabase.SQLUse();
             SQL := SQL + SQLLoadDataInfile(TargetDatabase, False, UpdateData, Pipename, TargetDatabase.Client.Charset, TargetDatabase.Name, TargetTable.Name, TargetFieldNames, '''', ',', #13#10);
 
-            PipeSentE := TEvent.Create(nil, False, False, '');
-            TargetDatabase.Client.SendSQL(SQL, PipeSent);
+            SQLThread := TSQLThread.Create(TargetDatabase.Client, SQL);
 
             if (ConnectNamedPipe(Pipe, nil)) then
             begin
@@ -6828,14 +6853,14 @@ begin
               until ((Success <> daSuccess) or not SourceDataSet.FindNext());
 
               if (FlushFileBuffers(Pipe) and WriteFile(Pipe, PAnsiChar(DBValues)^, 0, WrittenSize, nil) and FlushFileBuffers(Pipe)) then
-                PipeSentE.WaitFor(INFINITE);
+                SQLThread.WaitFor();
               DisconnectNamedPipe(Pipe);
 
               if (TargetDatabase.Client.ErrorCode <> 0) then
                 DoError(DatabaseError(TargetDatabase.Client), ToolsItem(TargetItem), SQL);
             end;
 
-            FreeAndNil(PipeSentE);
+            FreeAndNil(SQLThread);
             CloseHandle(Pipe);
           end;
         end
@@ -7198,13 +7223,6 @@ begin
 
     DoUpdateGUI();
   end;
-end;
-
-function TTTransfer.PipeSent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
-begin
-  PipeSentE.SetEvent();
-
-  Result := False;
 end;
 
 function TTTransfer.ToolsItem(const Element: TElement): TTools.TItem;
