@@ -119,7 +119,6 @@ type
     Password: string;
     PipeName: string;
     Port: Integer;
-    Prefetch: Integer;
     SavePassword: Boolean;
     UseInformationSchema: Boolean;
     User: string;
@@ -764,7 +763,6 @@ begin
   Password := Source.Password;
   PipeName := Source.PipeName;
   Port := Source.Port;
-  Prefetch := Source.Prefetch;
   SavePassword := Source.SavePassword;
   UseInformationSchema := Source.UseInformationSchema;
   User := Source.User;
@@ -789,7 +787,6 @@ begin
   Password := '';
   PipeName := MYSQL_NAMEDPIPE;
   Port := MYSQL_PORT;
-  Prefetch := 1;
   SavePassword := False;
   UseInformationSchema := True;
   User := '';
@@ -824,7 +821,6 @@ begin
     if (Assigned(XMLNode(XML, 'multistatements'))) then TryStrToBool(XMLNode(XML, 'multistatements').Text, MultiStatements);
     if (Assigned(XMLNode(XML, 'password')) and (XMLNode(XML, 'password').Attributes['encode'] = 'none')) then Password := XMLNode(XML, 'password').Text;
     if (Assigned(XMLNode(XML, 'port'))) then TryStrToInt(XMLNode(XML, 'port').Text, Port);
-    if (Assigned(XMLNode(XML, 'prefetch'))) then TryStrToInt(XMLNode(XML, 'prefetch').Text, Prefetch);
     if (Assigned(XMLNode(XML, 'savepassword'))) then TryStrToBool(XMLNode(XML, 'savepassword').Text, SavePassword);
     if (Assigned(XMLNode(XML, 'information_schema'))) then
       UseInformationSchema := UpperCase(XMLNode(XML, 'information_schema').Text) <> 'IGNORE';
@@ -859,10 +855,6 @@ begin
   XMLNode(XML, 'password').Attributes['encode'] := 'none';
   XMLNode(XML, 'password').Text := Password;
   XMLNode(XML, 'port').Text := IntToStr(Port);
-  if (Prefetch = 1) then
-    XML.ChildNodes.Delete('prefetch')
-  else
-    XMLNode(XML, 'prefetch').Text := IntToStr(Prefetch);
   XMLNode(XML, 'savepassword').Text := BoolToStr(SavePassword, True);
   if (UseInformationSchema) then
     XML.ChildNodes.Delete('information_schema')

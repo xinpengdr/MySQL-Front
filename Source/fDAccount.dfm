@@ -45,7 +45,7 @@ object DAccount: TDAccount
     Top = 8
     Width = 313
     Height = 277
-    ActivePage = TSLogin
+    ActivePage = TSBasics
     HotTrack = True
     MultiLine = True
     TabOrder = 0
@@ -434,7 +434,7 @@ object DAccount: TDAccount
         Left = 4
         Top = 4
         Width = 297
-        Height = 161
+        Height = 135
         Caption = 'GDebug'
         TabOrder = 0
         object FLCacheSize: TLabel
@@ -475,14 +475,6 @@ object DAccount: TDAccount
           Height = 13
           Caption = 'FLAsynchron'
           FocusControl = FAsynchron
-        end
-        object FLPrefetch: TLabel
-          Left = 8
-          Top = 133
-          Width = 52
-          Height = 13
-          Caption = 'FLPrefetch'
-          FocusControl = FPrefetch
         end
         object FLUseInformationSchema: TLabel
           Left = 8
@@ -533,14 +525,6 @@ object DAccount: TDAccount
           Height = 17
           Caption = 'FAsynchron'
           TabOrder = 4
-        end
-        object FPrefetch: TComboBox
-          Left = 128
-          Top = 130
-          Width = 145
-          Height = 21
-          Style = csDropDownList
-          TabOrder = 6
         end
         object FUseInformationSchema: TCheckBox
           Left = 128

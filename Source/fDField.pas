@@ -7,7 +7,7 @@ uses
   Dialogs, ComCtrls, StdCtrls, Mask,
   ComCtrls_Ext, StdCtrls_Ext, Forms_Ext,
   fClient, fBase,
-  MySQLDB;
+  MySQLDB, Vcl.ExtCtrls;
 
 type
   TDField = class (TForm_Ext)
@@ -56,6 +56,7 @@ type
     FUpdateTime: TCheckBox;
     GAttributes: TGroupBox_Ext;
     GBasics: TGroupBox_Ext;
+    PSQLWait: TPanel;
     procedure FBHelpClick(Sender: TObject);
     procedure FBOkCheckEnabled(Sender: TObject);
     procedure FCharsetChange(Sender: TObject);
@@ -98,6 +99,7 @@ type
     function GetDefaultSize(): Integer;
     function GetMaxLength(): Integer;
     function GetType(): TMySQLFieldType;
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     function IsBinaryType(): Boolean;
     function IsCharType(): Boolean;
     function IsDateType(): Boolean;
@@ -105,7 +107,6 @@ type
     function IsIntType(): Boolean;
     function IsMemoType(): Boolean;
     function IsUnionType(): Boolean;
-  protected
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Database: TCDatabase;
@@ -170,6 +171,8 @@ end;
 procedure TDField.CMChangePreferences(var Message: TMessage);
 begin
   Preferences.SmallImages.GetIcon(iiField, Icon);
+
+  PSQLWait.Caption := Preferences.LoadStr(882);
 
   GBasics.Caption := Preferences.LoadStr(85);
   FLName.Caption := Preferences.LoadStr(35) + ':';
@@ -557,6 +560,18 @@ begin
   FBOkCheckEnabled(Sender);
 end;
 
+procedure TDField.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if ((Event.EventType = ceItemAltered) and (Event.CItem = Table)) then
+    ModalResult := mrOk
+  else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
+  begin
+    GBasics.Visible := True;
+    GAttributes.Visible := GBasics.Visible;
+    PSQLWait.Visible := not GBasics.Visible;
+  end;
+end;
+
 procedure TDField.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   FieldName: string;
@@ -565,7 +580,7 @@ var
   NewField: TCBaseTableField;
   NewTable: TCBaseTable;
 begin
-  if (ModalResult = mrOk) then
+  if ((ModalResult = mrOk) and GBasics.Visible) then
   begin
     if (not Assigned(Database)) then
       NewTable := Table
@@ -696,12 +711,20 @@ begin
           TCBaseTableFields(NewTable.Fields).MoveField(NewTable.Fields[Field.Index], NewField.FieldBefore);
         end;
 
-        CanClose := Database.UpdateTable(Table, NewTable);
+        CanClose := not Database.UpdateTable(Table, NewTable);
+
+        NewTable.Free();
+
+        GBasics.Visible := CanClose;
+        GAttributes.Visible := GBasics.Visible;
+        PSQLWait.Visible := not GBasics.Visible;
+        if (PSQLWait.Visible) then
+          ModalResult := mrNone;
+
+        FBOk.Enabled := False;
       end;
 
       NewField.Free();
-      if (Assigned(Database)) then
-        NewTable.Free();
     end;
   end;
 end;
@@ -722,6 +745,8 @@ end;
 
 procedure TDField.FormHide(Sender: TObject);
 begin
+  Database.Client.UnRegisterEventProc(FormClientEvent);
+
   Preferences.Field.Width := Width;
   Preferences.Field.Height := Height;
 end;
@@ -732,6 +757,8 @@ var
   I: Integer;
   S: string;
 begin
+  Database.Client.RegisterEventProc(FormClientEvent);
+
   if (not Assigned(Field)) then
   begin
     Caption := Preferences.LoadStr(87);

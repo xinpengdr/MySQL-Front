@@ -23,6 +23,18 @@ object DTrigger: TDTrigger
     377)
   PixelsPerInch = 106
   TextHeight = 13
+  object PSQLWait: TPanel
+    Left = 8
+    Top = 8
+    Width = 321
+    Height = 325
+    Cursor = crSQLWait
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    Caption = 'PSQLWait'
+    TabOrder = 0
+    Visible = False
+  end
   object PageControl: TPageControl
     Left = 8
     Top = 8
@@ -31,9 +43,13 @@ object DTrigger: TDTrigger
     ActivePage = TSBasics
     Anchors = [akLeft, akTop, akRight, akBottom]
     HotTrack = True
-    TabOrder = 0
+    TabOrder = 1
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         297)
@@ -296,7 +312,7 @@ object DTrigger: TDTrigger
     Caption = 'FBOk'
     Default = True
     ModalResult = 1
-    TabOrder = 2
+    TabOrder = 3
   end
   object FBCancel: TButton
     Left = 255
@@ -307,7 +323,7 @@ object DTrigger: TDTrigger
     Cancel = True
     Caption = 'FBCancel'
     ModalResult = 2
-    TabOrder = 3
+    TabOrder = 4
   end
   object FBHelp: TButton
     Left = 8
@@ -316,7 +332,7 @@ object DTrigger: TDTrigger
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'FBHelp'
-    TabOrder = 1
+    TabOrder = 2
     OnClick = FBHelpClick
   end
   object MSource: TPopupMenu

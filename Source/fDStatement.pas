@@ -13,8 +13,7 @@ type
   TDStatementViewType = (vtQuery, vtStatement, vtProcess);
 
   TDStatement = class(TForm_Ext)
-    FBCancel: TButton;
-    FBOk: TButton;
+    FBClose: TButton;
     FDatabase: TLabel;
     FExecutionTime: TLabel;
     FFieldCount: TLabel;
@@ -137,7 +136,7 @@ begin
     FSource.Gutter.Color := Preferences.Editor.LineNumbersBackground;
   FSource.Gutter.Font.Style := Preferences.Editor.LineNumbersStyle;
 
-  FBOk.Caption := Preferences.LoadStr(29);
+  FBClose.Caption := Preferences.LoadStr(231);
 end;
 
 function TDStatement.Execute(): Boolean;
@@ -178,19 +177,16 @@ begin
       begin
         Preferences.SmallImages.GetIcon(iiStatement, Icon);
         Caption := ReplaceStr(Preferences.LoadStr(794), '&', '');
-        FBCancel.Caption := Preferences.LoadStr(231);
       end;
     vtStatement:
       begin
         Preferences.SmallImages.GetIcon(iiQuery, Icon);
         Caption := ReplaceStr(Preferences.LoadStr(794), '&', '');
-        FBCancel.Caption := Preferences.LoadStr(231);
       end;
     vtProcess:
       begin
         Preferences.SmallImages.GetIcon(iiProcess, Icon);
         Caption := ReplaceStr(Preferences.LoadStr(562), '&', '');
-        FBCancel.Caption := Preferences.LoadStr(231);
       end;
   end;
 
@@ -236,11 +232,8 @@ begin
     FSource.ReadOnly := True;
   end;
 
-  FBOk.Enabled := False;
-  FBOk.Visible := FBOk.Enabled;
-
   PageControl.ActivePage := TSInformations;
-  ActiveControl := FBCancel;
+  ActiveControl := FBClose;
 end;
 
 initialization

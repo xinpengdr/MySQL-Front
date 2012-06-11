@@ -7,7 +7,7 @@ uses
   Dialogs, StdCtrls, ComCtrls, Menus, 
   SynEdit, SynMemo,
   Forms_Ext,  
-  fClient, fBase, StdCtrls_Ext, ComCtrls_Ext;
+  fClient, fBase, StdCtrls_Ext, ComCtrls_Ext, Vcl.ExtCtrls;
 
 type
   TDUser = class (TForm_Ext)
@@ -46,6 +46,7 @@ type
     msSelectAll: TMenuItem;
     N1: TMenuItem;
     PageControl: TPageControl;
+    PSQLWait: TPanel;
     TSBasics: TTabSheet;
     TSLimits: TTabSheet;
     TSRights: TTabSheet;
@@ -76,6 +77,7 @@ type
   private
     NewUser: TCUser;
     RightsModified: Boolean;
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure FRightsRefresh(Sender: TObject);
     procedure ListViewShowSortDirection(const ListView: TListView);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
@@ -270,11 +272,22 @@ begin
     FHost.Text := '%';
 end;
 
+procedure TDUser.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if ((Event.EventType in [ceItemCreated, ceItemAltered]) and (Event.CItem is TCUser)) then
+    ModalResult := mrOk
+  else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
+  begin
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
+  end;
+end;
+
 procedure TDUser.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   I: Integer;
 begin
-  if (ModalResult = mrOk) then
+  if ((ModalResult = mrOk) and PageControl.Visible) then
   begin
     if (Trim(FHost.Text) = '') then
       NewUser.Name := Trim(FName.Text)
@@ -292,9 +305,16 @@ begin
       NewUser.Right[I].NewPassword := NewUser.NewPassword;
 
     if (not Assigned(User)) then
-      Client.AddUser(NewUser)
+      CanClose := not Client.AddUser(NewUser)
     else
-      Client.UpdateUser(User, NewUser);
+      CanClose := not Client.UpdateUser(User, NewUser);
+
+    PageControl.Visible := CanClose;
+    PSQLWait.Visible := not PageControl.Visible;
+    if (PSQLWait.Visible) then
+      ModalResult := mrNone;
+
+    FBOk.Enabled := False;
   end;
 end;
 
@@ -324,6 +344,8 @@ end;
 
 procedure TDUser.FormHide(Sender: TObject);
 begin
+  Client.UnRegisterEventProc(FormClientEvent);
+
   Preferences.User.Width := Width;
   Preferences.User.Height := Height;
 
@@ -345,6 +367,8 @@ var
   NewUserRight: TCUserRight;
   UserName: string;
 begin
+  Client.RegisterEventProc(FormClientEvent);
+
   NewUser := TCUser.Create(Client.Users);
   if (Assigned(User)) then
     NewUser.Assign(User);

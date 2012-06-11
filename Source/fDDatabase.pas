@@ -7,7 +7,7 @@ uses
   Dialogs, StdCtrls, Menus, ComCtrls,
   SynEdit, SynMemo,
   Forms_Ext, StdCtrls_Ext,
-  fClient, fBase;
+  fClient, fBase, Vcl.ExtCtrls;
                                                              
 type
   TDDatabase = class (TForm_Ext)
@@ -35,6 +35,7 @@ type
     msSelectAll: TMenuItem;
     N1: TMenuItem;
     PageControl: TPageControl;
+    PSQLWait: TPanel;
     TSBasics: TTabSheet;
     TSInformations: TTabSheet;
     TSSource: TTabSheet;
@@ -91,14 +92,26 @@ end;
 
 procedure TDDatabase.Built();
 begin
+  FName.Text := Database.Name;
+
+  FDefaultCharset.ItemIndex := FDefaultCharset.Items.IndexOf(Database.DefaultCharset); FDefaultCharsetChange(nil);
+  FCollation.ItemIndex := FCollation.Items.IndexOf(Database.Collation);
+
   FSource.Lines.Text := Database.Source;
 
   TSSource.TabVisible := Database.Source <> '';
+
+  PageControl.Visible := True;
+  PSQLWait.Visible := not PageControl.Visible;
+
+  ActiveControl := FName;
 end;
 
 procedure TDDatabase.CMChangePreferences(var Message: TMessage);
 begin
   Preferences.SmallImages.GetIcon(iiDatabase, Icon);
+
+  PSQLWait.Caption := Preferences.LoadStr(882);
 
   TSBasics.Caption := Preferences.LoadStr(108);
   GBasics.Caption := Preferences.LoadStr(85);
@@ -212,8 +225,15 @@ end;
 
 procedure TDDatabase.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceObjBuild]) and (Event.Sender = Database)) then
-    Built();
+  if ((Event.EventType = ceItemValid) and (Event.CItem = Database)) then
+    Built()
+  else if ((Event.EventType in [ceItemCreated, ceItemAltered]) and (Event.CItem is TCDatabase)) then
+    ModalResult := mrOk
+  else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
+  begin
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
+  end;
 end;
 
 procedure TDDatabase.FormCloseQuery(Sender: TObject;
@@ -221,7 +241,7 @@ procedure TDDatabase.FormCloseQuery(Sender: TObject;
 var
   NewDatabase: TCDatabase;
 begin
-  if (ModalResult = mrOk) then
+  if ((ModalResult = mrOk) and PageControl.Visible) then
   begin
     NewDatabase := TCDatabase.Create(Client);
     if (Assigned(Database)) then
@@ -238,11 +258,18 @@ begin
       NewDatabase.Collation := Trim(FCollation.Text);
 
     if (not Assigned(Database) or not Assigned(Client.DatabaseByName(Database.Name))) then
-      CanClose := Client.AddDatabase(NewDatabase)
+      CanClose := not Client.AddDatabase(NewDatabase)
     else
-      CanClose := Client.UpdateDatabase(Database, NewDatabase);
+      CanClose := not Client.UpdateDatabase(Database, NewDatabase);
 
     NewDatabase.Free();
+
+    PageControl.Visible := CanClose;
+    PSQLWait.Visible := not PageControl.Visible;
+    if (PSQLWait.Visible) then
+      ModalResult := mrNone;
+
+    FBOk.Enabled := False;
   end;
 end;
 
@@ -320,18 +347,17 @@ begin
     FCollation.ItemIndex := -1;
 
     TSSource.TabVisible := False;
+
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
   end
   else
   begin
-    FName.Text := Database.Name;
+    PageControl.Visible := not Database.Update();
+    PSQLWait.Visible := not PageControl.Visible;
 
-    FDefaultCharset.ItemIndex := FDefaultCharset.Items.IndexOf(Database.DefaultCharset); FDefaultCharsetChange(Sender);
-    FCollation.ItemIndex := FCollation.Items.IndexOf(Database.Collation);
-
-    if (not Database.Update(True)) then
-      Built()
-    else
-      TSSource.TabVisible := False;
+    if (PageControl.Visible) then
+      Built();
   end;
 
   FName.Enabled := not Assigned(Database) or not Assigned(Client.DatabaseByName(Database.Name));
@@ -341,15 +367,16 @@ begin
 
   FName.SelectAll();
 
-  FBOkCheckEnabled(Sender);
+  FBOk.Enabled := PageControl.Visible and not Assigned(Database);
 
   ActiveControl := FBCancel;
-  if (FName.Enabled) then
-    ActiveControl := FName
-  else if (FDefaultCharset.Visible) then
-    ActiveControl := FDefaultCharset
-  else
-    ActiveControl := FBCancel;
+  if (PageControl.Visible) then
+    if (FName.Enabled) then
+      ActiveControl := FName
+    else if (FDefaultCharset.Visible) then
+      ActiveControl := FDefaultCharset
+    else
+      ActiveControl := FBCancel;
 end;
 
 procedure TDDatabase.FSourceChange(Sender: TObject);

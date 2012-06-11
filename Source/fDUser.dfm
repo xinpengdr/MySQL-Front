@@ -23,6 +23,18 @@ object DUser: TDUser
     294)
   PixelsPerInch = 106
   TextHeight = 13
+  object PSQLWait: TPanel
+    Left = 8
+    Top = 8
+    Width = 321
+    Height = 241
+    Cursor = crSQLWait
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    Caption = 'PSQLWait'
+    TabOrder = 0
+    Visible = False
+  end
   object FBCancel: TButton
     Left = 255
     Top = 260
@@ -32,7 +44,7 @@ object DUser: TDUser
     Cancel = True
     Caption = 'FBCancel'
     ModalResult = 2
-    TabOrder = 3
+    TabOrder = 4
   end
   object FBOk: TButton
     Left = 167
@@ -43,7 +55,7 @@ object DUser: TDUser
     Caption = 'FBOk'
     Default = True
     ModalResult = 1
-    TabOrder = 2
+    TabOrder = 3
   end
   object PageControl: TPageControl
     Left = 8
@@ -54,7 +66,7 @@ object DUser: TDUser
     Anchors = [akLeft, akTop, akRight, akBottom]
     HotTrack = True
     MultiLine = True
-    TabOrder = 0
+    TabOrder = 1
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
       ExplicitLeft = 0
@@ -427,7 +439,7 @@ object DUser: TDUser
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'FBHelp'
-    TabOrder = 1
+    TabOrder = 2
     OnClick = FBHelpClick
   end
   object MSource: TPopupMenu

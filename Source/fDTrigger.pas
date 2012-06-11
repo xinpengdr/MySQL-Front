@@ -44,6 +44,7 @@ type
     N2: TMenuItem;
     PageControl: TPageControl;
     PEvent: TPanel_Ext;
+    PSQLWait: TPanel;
     PTiming: TPanel_Ext;
     TSBasics: TTabSheet;
     TSInformations: TTabSheet;
@@ -101,14 +102,33 @@ end;
 
 procedure TDTrigger.Built();
 begin
+  FName.Text := Trigger.Name;
+
+  FBefore.Checked := Trigger.Timing = ttBefore;
+  FAfter.Checked := Trigger.Timing = ttAfter;
+  FInsert.Checked := Trigger.Event = teInsert;
+  FUpdate.Checked := Trigger.Event = teUpdate;
+  FDelete.Checked := Trigger.Event = teDelete;
+  FStatement.Text := Trigger.Stmt + #13#10;
+
+  FDefiner.Caption := Trigger.Definer;
+  FSize.Caption := FormatFloat('#,##0', Length(Trigger.Source), LocaleFormatSettings);
+
   FSource.Text := Trigger.Source;
 
-  TSSource.TabVisible := True;
+  TSSource.TabVisible := FSource.Text <> '';
+
+  PageControl.Visible := True;
+  PSQLWait.Visible := not PageControl.Visible;
+
+  ActiveControl := FName;
 end;
 
 procedure TDTrigger.CMChangePreferences(var Message: TMessage);
 begin
   Preferences.SmallImages.GetIcon(iiTrigger, Icon);
+
+  PSQLWait.Caption := Preferences.LoadStr(882);
 
   TSBasics.Caption := Preferences.LoadStr(108);
   GBasics.Caption := Preferences.LoadStr(85);
@@ -200,15 +220,22 @@ end;
 
 procedure TDTrigger.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceObjBuild]) and (Event.Sender = Trigger)) then
-    Built();
+  if ((Event.EventType = ceItemValid) and (Event.CItem = Trigger)) then
+    Built()
+  else if ((Event.EventType in [ceItemCreated, ceItemAltered]) and (Event.CItem is TCTrigger)) then
+    ModalResult := mrOk
+  else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
+  begin
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
+  end;
 end;
 
 procedure TDTrigger.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   NewTrigger: TCTrigger;
 begin
-  if (ModalResult = mrOk) then
+  if ((ModalResult = mrOk) and PageControl.Visible) then
   begin
     NewTrigger := TCTrigger.Create(Table.Database.Triggers);
     if (Assigned(Trigger)) then
@@ -224,11 +251,18 @@ begin
     NewTrigger.Stmt := SQLTrimStmt(PChar(FStatement.Text));
 
     if (not Assigned(Trigger)) then
-      CanClose := Table.Database.AddTrigger(NewTrigger)
+      CanClose := not Table.Database.AddTrigger(NewTrigger)
     else
-      CanClose := Table.Database.UpdateTrigger(Trigger, NewTrigger);
+      CanClose := not Table.Database.UpdateTrigger(Trigger, NewTrigger);
 
     NewTrigger.Free();
+
+    PageControl.Visible := CanClose;
+    PSQLWait.Visible := not PageControl.Visible;
+    if (PSQLWait.Visible) then
+      ModalResult := mrNone;
+
+    FBOk.Enabled := False;
   end;
 end;
 
@@ -302,33 +336,26 @@ begin
     FStatement.Text := 'SET @A = 1;';
 
     TSSource.TabVisible := False;
+
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
   end
   else
   begin
-    FName.Text := Trigger.Name;
+    PageControl.Visible := not Trigger.Update();
+    PSQLWait.Visible := not PageControl.Visible;
 
-    FBefore.Checked := Trigger.Timing = ttBefore;
-    FAfter.Checked := Trigger.Timing = ttAfter;
-    FInsert.Checked := Trigger.Event = teInsert;
-    FUpdate.Checked := Trigger.Event = teUpdate;
-    FDelete.Checked := Trigger.Event = teDelete;
-    FStatement.Text := Trigger.Stmt + #13#10;
-
-    FDefiner.Caption := Trigger.Definer;
-    FSize.Caption := FormatFloat('#,##0', Length(Trigger.Source), LocaleFormatSettings);
-
-    if (not Trigger.Update) then
-      Built()
-    else
-      TSSource.TabVisible := False;
+    if (PageControl.Visible) then
+      Built();
   end;
 
   TSInformations.TabVisible := Assigned(Trigger);
 
-  FBOk.Enabled := not Assigned(Trigger);
+  FBOk.Enabled := PageControl.Visible and not Assigned(Trigger);
 
   ActiveControl := FBCancel;
-  ActiveControl := FName;
+  if (PageControl.Visible) then
+    ActiveControl := FName;
 end;
 
 procedure TDTrigger.FStatementChange(Sender: TObject);

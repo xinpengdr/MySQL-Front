@@ -22,16 +22,16 @@ object DStatement: TDStatement
     307)
   PixelsPerInch = 106
   TextHeight = 13
-  object FBCancel: TButton
+  object FBClose: TButton
     Left = 255
     Top = 274
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
     Cancel = True
-    Caption = 'FBCancel'
+    Caption = 'FBClose'
     ModalResult = 2
-    TabOrder = 2
+    TabOrder = 1
   end
   object PageControl: TPageControl
     Left = 8
@@ -255,10 +255,6 @@ object DStatement: TDStatement
       Caption = 'TSSource'
       ParentShowHint = False
       ShowHint = True
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         227)
@@ -287,17 +283,6 @@ object DStatement: TDStatement
         ScrollHintFormat = shfTopToBottom
       end
     end
-  end
-  object FBOk: TButton
-    Left = 167
-    Top = 274
-    Width = 75
-    Height = 25
-    Anchors = [akRight, akBottom]
-    Caption = 'FBOk'
-    Default = True
-    ModalResult = 1
-    TabOrder = 1
   end
   object MSource: TPopupMenu
     Left = 88

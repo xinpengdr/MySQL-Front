@@ -557,6 +557,7 @@ begin
     DHost.Host := nil;
     if (DHost.Execute()) then
     begin
+      Client.Update();
       FHosts.Items.Clear();
       TSHostsShow(Sender);
     end;
@@ -685,6 +686,7 @@ begin
     DHost.Host := Client.HostByCaption(FHosts.Selected.Caption);
     if (DHost.Execute()) then
     begin
+      Client.Update();
       FHosts.Items.BeginUpdate();
       FHosts.Items.Clear();
       FHosts.Items.EndUpdate();

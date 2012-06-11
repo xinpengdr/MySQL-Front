@@ -348,7 +348,7 @@ procedure TDView.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   NewView: TCView;
 begin
-  if (ModalResult = mrOk) then
+  if ((ModalResult = mrOk) and PageControl.Visible) then
   begin
     NewView := TCView.Create(Database.Tables);
     if (Assigned(View)) then
@@ -375,18 +375,32 @@ begin
     NewView.Stmt := Trim(FStmt.Lines.Text);
 
     if (not Assigned(View)) then
-      CanClose := Database.AddView(NewView)
+      CanClose := not Database.AddView(NewView)
     else
-      CanClose := Database.UpdateView(View, NewView);
+      CanClose := not Database.UpdateView(View, NewView);
 
     NewView.Free();
+
+    PageControl.Visible := CanClose;
+    PSQLWait.Visible := not PageControl.Visible;
+    if (PSQLWait.Visible) then
+      ModalResult := mrNone;
+
+    FBOk.Enabled := False;
   end;
 end;
 
 procedure TDView.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceObjBuild]) and (Event.Sender = View)) then
-    Built();
+  if ((Event.EventType = ceItemValid) and (Event.CItem = View)) then
+    Built()
+  else if ((Event.EventType in [ceItemCreated, ceItemAltered]) and (Event.CItem is TCView)) then
+    ModalResult := mrOk
+  else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
+  begin
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
+  end;
 end;
 
 procedure TDView.FormCreate(Sender: TObject);

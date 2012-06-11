@@ -6,7 +6,7 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, ComCtrls, StdCtrls,
   StdCtrls_Ext, Forms_Ext,
-  fClient, fBase;
+  fClient, fBase, Vcl.ExtCtrls;
 
 type
   TDForeignKey = class (TForm_Ext)
@@ -35,6 +35,7 @@ type
     FTable: TEdit;
     GAttributes: TGroupBox_Ext;
     GBasics: TGroupBox_Ext;
+    PSQLWait: TPanel;
     procedure FBHelpClick(Sender: TObject);
     procedure FBOkCheckEnabled(Sender: TObject);
     procedure FMatchFullClick(Sender: TObject);
@@ -55,7 +56,6 @@ type
     function GetParentTable(): TCBaseTable;
     property SelectedParentDatabase: TCDatabase read GetParentDatabase;
     property SelectedParentTable: TCBaseTable read GetParentTable;
-  protected
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Database: TCDatabase;
@@ -94,6 +94,8 @@ end;
 procedure TDForeignKey.CMChangePreferences(var Message: TMessage);
 begin
   Preferences.SmallImages.GetIcon(iiForeignKey, Icon);
+
+  PSQLWait.Caption := Preferences.LoadStr(882);
 
   GBasics.Caption := Preferences.LoadStr(85);
   FLName.Caption := Preferences.LoadStr(35) + ':';
@@ -176,12 +178,20 @@ end;
 
 procedure TDForeignKey.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType = ceBuild) and (Event.Sender = Database.Tables)) then
+  if ((Event.EventType = ceItemsValid) and (Event.Sender = Database.Tables)) then
     FTableChange(Event.Sender)
-  else if ((Event.EventType = ceBuild) and (Event.Sender = Table.Client.Databases)) then
+  else if ((Event.EventType = ceItemsValid) and (Event.Sender = Table.Client.Databases)) then
     FParentDatabaseChange(Event.Sender)
-  else if ((Event.EventType = ceBuild) and (Event.Sender = SelectedParentDatabase.Tables)) then
-    FParentTableChange(Event.Sender);
+  else if ((Event.EventType = ceItemsValid) and (Event.Sender = SelectedParentDatabase.Tables)) then
+    FParentTableChange(Event.Sender)
+  else if ((Event.EventType = ceItemAltered) and (Event.CItem = Table)) then
+    ModalResult := mrOk
+  else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
+  begin
+    GBasics.Visible := True;
+    GAttributes.Visible := GBasics.Visible;
+    PSQLWait.Visible := not GBasics.Visible;
+  end;
 end;
 
 procedure TDForeignKey.FormCloseQuery(Sender: TObject;
@@ -246,9 +256,17 @@ begin
       else
         NewTable.ForeignKeys[ForeignKey.Index].Assign(NewForeignKey);
 
-      CanClose := Database.UpdateTable(Table, NewTable);
+      CanClose := not Database.UpdateTable(Table, NewTable);
 
       NewTable.Free();
+
+      GBasics.Visible := CanClose;
+      GAttributes.Visible := GBasics.Visible;
+      PSQLWait.Visible := not GBasics.Visible;
+      if (PSQLWait.Visible) then
+        ModalResult := mrNone;
+
+      FBOk.Enabled := False;
     end;
 
     NewForeignKey.Free();

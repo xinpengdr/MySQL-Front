@@ -24,6 +24,18 @@ object DDatabase: TDDatabase
     248)
   PixelsPerInch = 106
   TextHeight = 13
+  object PSQLWait: TPanel
+    Left = 8
+    Top = 8
+    Width = 321
+    Height = 196
+    Cursor = crSQLWait
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    Caption = 'PSQLWait'
+    TabOrder = 0
+    Visible = False
+  end
   object FBOk: TButton
     Left = 167
     Top = 215
@@ -33,7 +45,7 @@ object DDatabase: TDDatabase
     Caption = 'FBOk'
     Default = True
     ModalResult = 1
-    TabOrder = 1
+    TabOrder = 2
   end
   object FBCancel: TButton
     Left = 255
@@ -44,7 +56,7 @@ object DDatabase: TDDatabase
     Cancel = True
     Caption = 'FBCancel'
     ModalResult = 2
-    TabOrder = 3
+    TabOrder = 4
   end
   object FBHelp: TButton
     Left = 8
@@ -53,7 +65,7 @@ object DDatabase: TDDatabase
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'FBHelp'
-    TabOrder = 0
+    TabOrder = 1
     OnClick = FBHelpClick
   end
   object PageControl: TPageControl
@@ -64,9 +76,13 @@ object DDatabase: TDDatabase
     ActivePage = TSBasics
     Anchors = [akLeft, akTop, akRight, akBottom]
     HotTrack = True
-    TabOrder = 2
+    TabOrder = 3
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         168)

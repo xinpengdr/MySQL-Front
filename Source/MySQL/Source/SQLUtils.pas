@@ -606,68 +606,68 @@ begin
 
   Move(Value, ValueRec, SizeOf(Value));
   asm
-      PUSH ES
-      PUSH EDI
-      PUSH EAX
-      PUSH ECX
-      PUSH EDX
+        PUSH ES
+        PUSH EDI
+        PUSH EAX
+        PUSH ECX
+        PUSH EDX
 
-      MOV EAX,Result                   // Store into Result
-      MOV EDI,[EAX]
+        MOV EAX,Result                   // Store into Result
+        MOV EDI,[EAX]
 
-      MOV AX,0                         // First '1' not found!
-      MOV BX,0                         // Characters in Result
+        MOV AX,0                         // First '1' not found!
+        MOV BX,0                         // Characters in Result
 
-      MOV EDX,ValueRec.Hi              // Handle higher 32 bit
-      MOV ECX,32                       // Handle 32 bit
-    ValueHiL:
-      TEST EDX,$80000000               // Highest bit set?
-      JZ ValueHiL0                     // No!
-      MOV WORD PTR [EDI],'1'           // '1' into Result
-      INC BX                           // One character more in Result
-      ADD EDI,2                        // Next character in Result
-      MOV AX,1                         // First '1' found
-      JMP ValueHiLE
-    ValueHiL0:
-      TEST AX,1                        // Already one '1' found?
-      JZ ValueHiLE                     // No!
-      MOV WORD PTR [EDI],'0'           // '0' into Result
-      INC BX                           // One character more in Result
-      ADD EDI,2                        // Next character in Result
-      JMP ValueHiLE
-    ValueHiLE:
-      SHL EDX,1                        // Switch to next bit
-      LOOP ValueHiL                    // Handle next bit
+        MOV EDX,ValueRec.Hi              // Handle higher 32 bit
+        MOV ECX,32                       // Handle 32 bit
+      ValueHiL:
+        TEST EDX,$80000000               // Highest bit set?
+        JZ ValueHiL0                     // No!
+        MOV WORD PTR [EDI],'1'           // '1' into Result
+        INC BX                           // One character more in Result
+        ADD EDI,2                        // Next character in Result
+        MOV AX,1                         // First '1' found
+        JMP ValueHiLE
+      ValueHiL0:
+        TEST AX,1                        // Already one '1' found?
+        JZ ValueHiLE                     // No!
+        MOV WORD PTR [EDI],'0'           // '0' into Result
+        INC BX                           // One character more in Result
+        ADD EDI,2                        // Next character in Result
+        JMP ValueHiLE
+      ValueHiLE:
+        SHL EDX,1                        // Switch to next bit
+        LOOP ValueHiL                    // Handle next bit
 
-      MOV EDX,ValueRec.Lo              // Handle Lower 32 bit
-      MOV ECX,32                       // Handle 32 bit
-    ValueLoL:
-      TEST EDX,$80000000               // Loghest bit set?
-      JZ ValueLoL0                     // No!
-      MOV WORD PTR [EDI],'1'           // '1' into Result
-      INC BX                           // One character more in Result
-      ADD EDI,2                        // Next character in Result
-      MOV AX,1                         // First '1' found
-      JMP ValueLoLE
-    ValueLoL0:
-      TEST AX,1                        // Already one '1' found?
-      JZ ValueLoLE                     // No!
-      MOV WORD PTR [EDI],'0'           // '0' into Result
-      INC BX                           // One character more in Result
-      ADD EDI,2                        // Next character in Result
-      JMP ValueLoLE
-    ValueLoLE:
-      SHL EDX,1                        // Switch to next bit
-      LOOP ValueLoL                    // Handle next bit
+        MOV EDX,ValueRec.Lo              // Handle Lower 32 bit
+        MOV ECX,32                       // Handle 32 bit
+      ValueLoL:
+        TEST EDX,$80000000               // Loghest bit set?
+        JZ ValueLoL0                     // No!
+        MOV WORD PTR [EDI],'1'           // '1' into Result
+        INC BX                           // One character more in Result
+        ADD EDI,2                        // Next character in Result
+        MOV AX,1                         // First '1' found
+        JMP ValueLoLE
+      ValueLoL0:
+        TEST AX,1                        // Already one '1' found?
+        JZ ValueLoLE                     // No!
+        MOV WORD PTR [EDI],'0'           // '0' into Result
+        INC BX                           // One character more in Result
+        ADD EDI,2                        // Next character in Result
+        JMP ValueLoLE
+      ValueLoLE:
+        SHL EDX,1                        // Switch to next bit
+        LOOP ValueLoL                    // Handle next bit
 
-    Finish:
-      MOV Len,BX
+      Finish:
+        MOV Len,BX
 
-      POP EDX
-      POP ECX
-      POP EAX
-      POP EDI
-      POP ES
+        POP EDX
+        POP ECX
+        POP EAX
+        POP EDI
+        POP ES
   end;
 
   SetLength(Result, Len);
@@ -2503,7 +2503,7 @@ end;
 //  DDLStmt: TSQLDDLStmt;
 //  SQL: string;
 //begin
-//  SQL := 'ALTER ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `test`.`neuerview` AS select 1 AS `1`,2 AS `2`,4 AS `4`,5;'#$D#$A;
+//  SQL := 'DROP DATABASE `neuedatenbank`;'#$D#$A;
 //  if (SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), 50522)) then
 //    Write;
 end.

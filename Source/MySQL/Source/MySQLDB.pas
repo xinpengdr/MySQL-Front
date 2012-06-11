@@ -244,6 +244,7 @@ type
     FThreadDeep: Integer;
     FThreadId: my_uint;
     FUsername: string;
+    InMonitor: Boolean;
     InOnResult: Boolean;
     local_infile: Plocal_infile;
     function GetCommandText(): string;
@@ -2941,9 +2942,11 @@ procedure TMySQLConnection.WriteMonitor(const AText: PChar; const Length: Intege
 var
   I: Integer;
 begin
+  InMonitor := True;
   for I := 0 to System.Length(FSQLMonitors) - 1 do
     if (ATraceType in FSQLMonitors[I].TraceTypes) then
       FSQLMonitors[I].DoMonitor(Self, AText, Length, ATraceType);
+  InMonitor := False;
 end;
 
 { TMySQLConnection ************************************************************}
@@ -3084,6 +3087,7 @@ begin
   FThreadDeep := 0;
   FThreadId := 0;
   FUserName := '';
+  InMonitor := False;
   InOnResult := False;
   local_infile := nil;
   TimeDiff := 0;
@@ -3128,6 +3132,8 @@ end;
 function TMySQLConnection.ExecuteSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean;
 begin
   if (InOnResult) then
+    raise Exception.Create(SOutOfSync);
+  if (InMonitor) then
     raise Exception.Create(SOutOfSync);
 
   if (Assigned(SynchroThread) and not (SynchroThread.State in [ssClose, ssReady])) then
@@ -3319,6 +3325,8 @@ procedure TMySQLConnection.SendSQL(const SQL: string; const OnResult: TResultEve
 begin
   if (InOnResult) then
     raise Exception.Create(SOutOfSync);
+  if (InMonitor) then
+    raise Exception.Create(SOutOfSync);
 
   if (Assigned(SynchroThread) and not (SynchroThread.State in [ssClose, ssReady])) then
     Terminate();
@@ -3338,6 +3346,8 @@ begin
   Assert(Connected and Assigned(Lib.mysql_shutdown));
 
   if (InOnResult) then
+    raise Exception.Create(SOutOfSync);
+  if (InMonitor) then
     raise Exception.Create(SOutOfSync);
 
   if (Assigned(SynchroThread) and (SynchroThread.State <> ssReady)) then
@@ -3864,7 +3874,7 @@ begin
             PRecordBufferData(Source^)^.LibRow^[Field.FieldNo - 1], PRecordBufferData(Source^)^.LibLengths^[Field.FieldNo - 1],
             nil, 0);
           if (Len > Field.DataSize) then
-            DatabaseErrorFmt(SInvalidFieldSize, [Field.DisplayName])
+            DatabaseErrorFmt(SInvalidFieldSize + ' (%s: %s > %s)', [Field.DisplayName, IntToStr(Len), IntToStr(Field.DataSize)])
           else if (Len > 0) then
             MultiByteToWideChar(Connection.CodePage, 0,
               PRecordBufferData(Source^)^.LibRow^[Field.FieldNo - 1], PRecordBufferData(Source^)^.LibLengths^[Field.FieldNo - 1],

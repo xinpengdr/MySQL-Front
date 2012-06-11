@@ -143,7 +143,7 @@ end;
 
 procedure TDDatabases.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceBuild]) and (Event.CItems = Client.Databases)) then
+  if ((Event.EventType in [ceItemsValid]) and (Event.CItems = Client.Databases)) then
     Built();
 end;
 

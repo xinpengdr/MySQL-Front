@@ -216,7 +216,6 @@ type
     procedure FIndicesRefresh(Sender: TObject);
     procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure FPartitionsRefresh(Sender: TObject);
-  protected
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Charset: string;
@@ -1159,8 +1158,15 @@ end;
 
 procedure TDTable.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceObjStatus]) and (Event.CObject = Table)) then
-    Built();
+  if ((Event.EventType = ceItemValid) and (Event.CItem = Table)) then
+    Built()
+  else if ((Event.EventType = ceItemAltered) and (Event.CItem = Table)) then
+    ModalResult := mrOk
+  else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
+  begin
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
+  end;
 end;
 
 procedure TDTable.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -1193,10 +1199,16 @@ begin
         CanClose := Database.AddTable(NewTable)
       else
         CanClose := Database.UpdateTable(Table, NewTable);
+
       if (Assigned(Table) or not CanClose) then
         FCreatedName := ''
       else
         FCreatedName := NewTable.Name;
+
+      PageControl.Visible := CanClose;
+      PSQLWait.Visible := not PageControl.Visible;
+
+      FBOk.Enabled := False;
     end
     else
     begin
@@ -1412,7 +1424,7 @@ begin
     end
     else
     begin
-      PageControl.Visible := not Table.Update(True);
+      PageControl.Visible := not Table.Update();
       PSQLWait.Visible := not PageControl.Visible;
 
       if (PageControl.Visible) then

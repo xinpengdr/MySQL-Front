@@ -47,7 +47,7 @@ http://upx.sourceforge.net/
 Help & Manual:
 http://www.ec-software.com/
 
-HTML Help Workshop:  (only required, if Help & Manual is used)
+HTML Help Workshop:
 http://go.microsoft.com/fwlink/?LinkId=14188
 
 Inno Setup:
@@ -72,6 +72,6 @@ Source\FastMM folder.
 Building the setup program:
 ===========================
 
-The Setup Program will be built with the Built_Setup.bat file.
+The setup program will be built with the Build_Setup.bat file.
 
 With Clean.bat all temporary files can be deleted easily.

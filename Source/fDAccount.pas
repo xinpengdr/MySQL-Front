@@ -48,7 +48,6 @@ type
     FLName: TLabel;
     FLPassword: TLabel;
     FLPort: TLabel;
-    FLPrefetch: TLabel;
     FLUseInformationSchema: TLabel;
     FLUser: TLabel;
     FMultiStatements: TCheckBox;
@@ -56,7 +55,6 @@ type
     FName: TEdit;
     FPassword: TEdit;
     FPort: TEdit;
-    FPrefetch: TComboBox;
     FStartup: TSynMemo;
     FUDCacheSize: TUpDown;
     FUDPort: TUpDown;
@@ -236,8 +234,6 @@ begin
   FAsynchron.Caption := 'enabled';
   FLUseInformationSchema.Caption := 'Fetch informations' + ':';
   FUseInformationSchema.Caption := 'information_schema';
-  FLPrefetch.Caption := 'Prefetch' + ':';
-  FPrefetch.Items.Text := 'disabled' + #13#10 + 'automatic' + #13#10 + 'enabled';
 
   FBHelp.Caption := Preferences.LoadStr(167);
   FBOk.Caption := Preferences.LoadStr(29);
@@ -477,7 +473,6 @@ begin
       NewAccount.Connection.Compression := FCompression.Checked;
       NewAccount.Connection.MultiStatements := FMultiStatements.Checked;
       NewAccount.Connection.UseInformationSchema := FUseInformationSchema.Checked;
-      NewAccount.Connection.Prefetch := FPrefetch.ItemIndex;
 
       Username := NewAccount.Connection.User;
       Password := NewAccount.Connection.Password;
@@ -557,7 +552,6 @@ begin
     FMultiStatements.Checked := True;
     FAsynchron.Checked := True;
     FUseInformationSchema.Checked := True;
-    FPrefetch.ItemIndex := 1;
   end
   else
   begin
@@ -604,7 +598,6 @@ begin
     FMultiStatements.Checked := Account.Connection.MultiStatements;
     FAsynchron.Checked := Account.Connection.ASynchron;
     FUseInformationSchema.Checked := Account.Connection.UseInformationSchema;
-    FPrefetch.ItemIndex := Account.Connection.Prefetch;
   end;
 
 

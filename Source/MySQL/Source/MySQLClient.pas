@@ -301,12 +301,6 @@ const
   AF_INET6 = 23;
 
   ctSHA1HashSize = 20;
-  ctSHAKeys: array[0..4] of Longint =
-    (Longint($67452301),
-     Longint($EFCDAB89),
-     Longint($98BADCFE),
-     Longint($10325476),
-     Longint($C3D2E1F0));
 
 type
   TWSAConnectByNameA = function(
@@ -341,79 +335,82 @@ const
   ctKeys: array[0..3] of Longint =
     (Longint($5A827999), Longint($6ED9EBA1), Longint($8F1BBCDC), Longint($CA62C1D6));
 var
-  a: Longint;
-  b: Longint;
-  c: Longint;
-  d: Longint;
-  e: Longint;
-  i: Integer;
-  j: Integer;
+  A: Longint;
+  B: Longint;
+  C: Longint;
+  D: Longint;
+  E: Longint;
+  I: Integer;
+  J: Integer;
   temp: Longint;
-  w: array [0..79] of Longint;
+  W: array [0..79] of Longint;
 begin
-  for i := 0 to 15 do
-    begin
-      j := i*4;
-      W[i] := context.FMsgBlock[j] shl 24;
-      W[i] := W[i] or context.FMsgBlock[j+1] shl 16;
-      W[i] := W[i] or context.FMsgBlock[j+2] shl 8;
-      W[i] := W[i] or context.FMsgBlock[j+3];
-    end;
-  for i := 16 to 79 do
-    begin
-      W[i] := W[i-3] xor W[i-8] xor W[i-14] xor W[i-16];
-      W[i] := (W[i] shl 1) or (W[i] shr 31);
-    end;
+  for I := 0 to 15 do
+  begin
+    J := I * 4;
+    W[I] := context.FMsgBlock[J] shl 24;
+    W[I] := W[I] or context.FMsgBlock[J + 1] shl 16;
+    W[I] := W[I] or context.FMsgBlock[J + 2] shl 8;
+    W[I] := W[I] or context.FMsgBlock[J + 3];
+  end;
+  for I := 16 to 79 do
+  begin
+    W[I] := W[I-3] xor W[I-8] xor W[I-14] xor W[I-16];
+    W[I] := (W[I] shl 1) or (W[I] shr 31);
+  end;
   A := context.FInterimHash[0];
   B := context.FInterimHash[1];
   C := context.FInterimHash[2];
   D := context.FInterimHash[3];
   E := context.FInterimHash[4];
-  for i := 0 to 19 do
-    begin
-      temp := ((A shl 5) or (A shr 27))+((B and C)or((not B)and D))+E+W[i]+ctKeys[0];
-      E := D;
-      D := C;
-      C := (B shl 30) or (B shr 2);
-      B := A;
-      A := temp;
-    end;
-  for i := 20 to 39 do
-    begin
-      temp := ((A shl 5) or (A shr 27))+(B xor C xor D)+E+W[i]+ctKeys[1];
-      E := D;
-      D := C;
-      C := (B shl 30) or (B shr 2);
-      B := A;
-      A := temp;
-    end;
-  for i := 40 to 59 do
-    begin
-      temp := ((A shl 5) or (A shr 27))+((B and C)or(B and D)or(C and D))+E+W[i]+ctKeys[2];
-      E := D;
-      D := C;
-      C := (B shl 30) or (B shr 2);
-      B := A;
-      A := temp;
-    end;
-  for i := 60 to 79 do
-    begin
-      temp := ((A shl 5) or (A shr 27))+(B xor C xor D)+E+W[i]+ctKeys[3];
-      E := D;
-      D := C;
-      C := (B shl 30) or (B shr 2);
-      B := A;
-      A := temp;
-    end;
-  context.FInterimHash[0] := context.FInterimHash[0]+A;
-  context.FInterimHash[1] := context.FInterimHash[1]+B;
-  context.FInterimHash[2] := context.FInterimHash[2]+C;
-  context.FInterimHash[3] := context.FInterimHash[3]+D;
-  context.FInterimHash[4] := context.FInterimHash[4]+E;
+  for I := 0 to 19 do
+  begin
+    temp := ((A shl 5) or (A shr 27)) + ((B and C) or ((not B) and D)) + E + W[I] + ctKeys[0];
+    E := D;
+    D := C;
+    C := (B shl 30) or (B shr 2);
+    B := A;
+    A := temp;
+  end;
+  for I := 20 to 39 do
+  begin
+    temp := ((A shl 5) or (A shr 27)) + (B xor C xor D) + E + W[I] + ctKeys[1];
+    E := D;
+    D := C;
+    C := (B shl 30) or (B shr 2);
+    B := A;
+    A := temp;
+  end;
+  for I := 40 to 59 do
+  begin
+    temp := ((A shl 5) or (A shr 27)) + ((B and C) or (B and D) or (C and D)) + E + W[I] + ctKeys[2];
+    E := D;
+    D := C;
+    C := (B shl 30) or (B shr 2);
+    B := A;
+    A := temp;
+  end;
+  for I := 60 to 79 do
+  begin
+    temp := ((A shl 5) or (A shr 27)) + (B xor C xor D) + E + W[I] + ctKeys[3];
+    E := D;
+    D := C;
+    C := (B shl 30) or (B shr 2);
+    B := A;
+    A := temp;
+  end;
+  context.FInterimHash[0] := context.FInterimHash[0] + A;
+  context.FInterimHash[1] := context.FInterimHash[1] + B;
+  context.FInterimHash[2] := context.FInterimHash[2] + C;
+  context.FInterimHash[3] := context.FInterimHash[3] + D;
+  context.FInterimHash[4] := context.FInterimHash[4] + E;
   context.FMsgBlockIndex := 0;
 end;
 
 procedure sha1_reset(var context: TSHA1Context);
+const
+  ctSHAKeys: array[0..4] of Longint =
+    (Longint($67452301), Longint($EFCDAB89), Longint($98BADCFE), Longint($10325476), Longint($C3D2E1F0));
 begin
   context.FLength := 0;
   context.FMsgBlockIndex := 0;
@@ -429,67 +426,70 @@ end;
 
 procedure sha1_input(var context: TSHA1Context; msgArray :PAnsiChar; msgLen:cardinal);
 begin
-  assert(assigned(msgArray), 'Empty array paased to sha1Input');
-  if context.FComputed then
-    context.FCorrupted := true;
-  if not context.FCorrupted then
-    while msgLen>0 do
-      begin
-        context.FMsgBlock[context.FMsgBlockIndex] := byte(msgArray[0]);
-        inc(context.FMsgBlockIndex);
-        context.FLength := context.FLength+8;
-        if context.FMsgBlockIndex=64 then
-          sha1_ProcessMessageBlock(context);
-        dec(msgLen);
-        inc(msgArray);
-      end;
+  Assert(Assigned(msgArray), 'Empty array paased to sha1Input');
+
+  if (context.FComputed) then
+    context.FCorrupted := True;
+  if (not context.FCorrupted) then
+    while (msgLen > 0) do
+    begin
+      context.FMsgBlock[context.FMsgBlockIndex] := byte(msgArray[0]);
+      Inc(context.FMsgBlockIndex);
+      context.FLength := context.FLength+8;
+      if (context.FMsgBlockIndex = 64) then
+        sha1_ProcessMessageBlock(context);
+      Dec(msgLen);
+      Inc(msgArray);
+    end;
 end;
 
 procedure sha1_result(var context: TSHA1Context; msgDigest: PAnsiChar);
 var
-  i: Integer;
+  I: Integer;
 begin
-  assert(assigned(msgDigest), 'Empty array passed to sha1Result');
-  if not context.FCorrupted then
+  Assert(Assigned(msgDigest), 'Empty array passed to sha1Result');
+
+  if (not context.FCorrupted) then
+  begin
+    if (not context.FComputed) then
     begin
-      if not context.FComputed then
-        begin
-          i := context.FMsgBlockIndex;
-          if i>55 then
-            begin
-              context.FMsgBlock[i] := $80;
-              inc(i);
-              FillChar(context.FMsgBlock[i], (64-i), #0);
-              context.FMsgBlockIndex := 64;
-              sha1_ProcessMessageBlock(context);
-              FillChar(context.FMsgBlock[0], 56, #0);
-              context.FMsgBlockIndex := 56;
-            end
-          else
-            begin
-              context.FMsgBlock[i] := $80;
-              inc(i);
-              FillChar(context.FMsgBlock[i], (56-i), #0);
-              context.FMsgBlockIndex := 56;
-            end;
-          context.FMsgBlock[56] := (context.FLength shr 56) and $FF;
-          context.FMsgBlock[57] := (context.FLength shr 48) and $FF;
-          context.FMsgBlock[58] := (context.FLength shr 40) and $FF;
-          context.FMsgBlock[59] := (context.FLength shr 32) and $FF;
-          context.FMsgBlock[60] := (context.FLength shr 24) and $FF;
-          context.FMsgBlock[61] := (context.FLength shr 16) and $FF;
-          context.FMsgBlock[62] := (context.FLength shr  8) and $FF;
-          context.FMsgBlock[63] := (context.FLength       ) and $FF;
+      I := context.FMsgBlockIndex;
+      if (I <= 55) then
+      begin
+        context.FMsgBlock[I] := $80;
+        Inc(I);
+        FillChar(context.FMsgBlock[I], (56-I), #0);
+        context.FMsgBlockIndex := 56;
+      end
+      else
+      begin
+        context.FMsgBlock[I] := $80;
+        Inc(I);
+        FillChar(context.FMsgBlock[I], (64-I), #0);
+        context.FMsgBlockIndex := 64;
+        sha1_ProcessMessageBlock(context);
+        FillChar(context.FMsgBlock[0], 56, #0);
+        context.FMsgBlockIndex := 56;
+      end;
+      context.FMsgBlock[56] := (context.FLength shr 56) and $FF;
+      context.FMsgBlock[57] := (context.FLength shr 48) and $FF;
+      context.FMsgBlock[58] := (context.FLength shr 40) and $FF;
+      context.FMsgBlock[59] := (context.FLength shr 32) and $FF;
+      context.FMsgBlock[60] := (context.FLength shr 24) and $FF;
+      context.FMsgBlock[61] := (context.FLength shr 16) and $FF;
+      context.FMsgBlock[62] := (context.FLength shr  8) and $FF;
+      context.FMsgBlock[63] := (context.FLength       ) and $FF;
 
-          sha1_ProcessMessageBlock(context);
+      sha1_ProcessMessageBlock(context);
 
-          FillChar(context.FMsgBlock, SizeOf(context.FMsgBlock), #0);
-          context.FLength := 0;
-          context.FComputed := True;
-        end;
-      for i := 0 to ctSHA1HashSize -1 do
-        msgDigest[i] := AnsiChar(context.FInterimHash[i shr 2] shr (8 * (3 - (i and 3))) and $FF);
+      FillChar(context.FMsgBlock, SizeOf(context.FMsgBlock), #0);
+      context.FLength := 0;
+      context.FComputed := True;
     end;
+
+    for I := 0 to ctSHA1HashSize -1 do
+      msgDigest[I] := AnsiChar(context.FInterimHash[I shr 2] shr (8 * (3 - (I and 3))) and $FF);
+  end;
 end;
 
 function Scramble(const Password: my_char; const Salt: my_char): RawByteString;
@@ -505,7 +505,7 @@ function Scramble(const Password: my_char; const Salt: my_char): RawByteString;
     nr := 1345345333;
     add := 7;
     nr2 := $12345671;
-    len := length(pass)-1;
+    len := Length(pass)-1;
     for I := 0 to len do
     begin
       if (Pass[I] = #20) or (Pass[I] = #9)then

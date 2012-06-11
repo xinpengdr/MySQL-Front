@@ -7,7 +7,7 @@ uses
   Dialogs, StdCtrls, ComCtrls,
   Forms_Ext,
   SynEdit, SynMemo,
-  fBase, fClient, StdCtrls_Ext;
+  fBase, fClient, StdCtrls_Ext, Vcl.ExtCtrls;
 
 type
   TDRoutine = class(TForm_Ext)
@@ -44,6 +44,7 @@ type
     N1: TMenuItem;
     N2: TMenuItem;
     PageControl: TPageControl;
+    PSQLWait: TPanel;
     TSBasics: TTabSheet;
     TSInformations: TTabSheet;
     TSSource: TTabSheet;
@@ -98,15 +99,34 @@ end;
 
 procedure TDRoutine.Built();
 begin
+  FName.Text := Routine.Name;
+
+  case (Routine.Security) of
+    seDefiner: FSecurityDefiner.Checked := True;
+    seInvoker: FSecurityInvoker.Checked := True;
+  end;
+  FComment.Text := SQLUnwrapStmt(Routine.Comment);
+
+  if (Double(Routine.Created) = 0) then FCreated.Caption := '???' else FCreated.Caption := SysUtils.DateTimeToStr(Routine.Created, LocaleFormatSettings);
+  if (Double(Routine.Modified) = 0) then FUpdated.Caption := '???' else FUpdated.Caption := SysUtils.DateTimeToStr(Routine.Modified, LocaleFormatSettings);
+  FDefiner.Caption := Routine.Definer;
+
   FSize.Caption := FormatFloat('#,##0', Length(Routine.Source), LocaleFormatSettings);
 
   FSource.Text := Trim(Routine.Source) + #13#10;
 
   TSSource.TabVisible := Routine.Source <> '';
+
+  PageControl.Visible := True;
+  PSQLWait.Visible := not PageControl.Visible;
+
+  ActiveControl := FName;
 end;
 
 procedure TDRoutine.CMChangePreferences(var Message: TMessage);
 begin
+  PSQLWait.Caption := Preferences.LoadStr(882);
+
   TSBasics.Caption := Preferences.LoadStr(108);
   GBasics.Caption := Preferences.LoadStr(85);
   FLName.Caption := Preferences.LoadStr(35) + ':';
@@ -209,15 +229,22 @@ end;
 
 procedure TDRoutine.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceObjBuild]) and (Event.Sender = Routine)) then
-    Built();
+  if ((Event.EventType = ceItemValid) and (Event.CItem = Routine)) then
+    Built()
+  else if ((Event.EventType in [ceItemCreated, ceItemAltered]) and (Event.CItem is TCRoutine)) then
+    ModalResult := mrOk
+  else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
+  begin
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
+  end;
 end;
 
 procedure TDRoutine.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   NewRoutine: TCRoutine;
 begin
-  if (ModalResult = mrOk) then
+  if ((ModalResult = mrOk) and PageControl.Visible) then
   begin
     NewRoutine := TCRoutine.Create(Database.Routines);
     if (Assigned(Routine)) then
@@ -233,11 +260,18 @@ begin
     NewRoutine.Source := Trim(FSource.Text);
 
     if (not Assigned(Routine)) then
-      CanClose := Database.AddRoutine(NewRoutine)
+      CanClose := not Database.AddRoutine(NewRoutine)
     else
-      CanClose := Database.UpdateRoutine(Routine, NewRoutine);
+      CanClose := not Database.UpdateRoutine(Routine, NewRoutine);
 
     NewRoutine.Free();
+
+    PageControl.Visible := CanClose;
+    PSQLWait.Visible := not PageControl.Visible;
+    if (PSQLWait.Visible) then
+      ModalResult := mrNone;
+
+    FBOk.Enabled := False;
   end;
 end;
 
@@ -330,44 +364,36 @@ begin
       FSource.Lines.Clear();
 
     TSSource.TabVisible := True;
+
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
   end
   else
   begin
-    FName.Text := Routine.Name;
+    PageControl.Visible := not Routine.Update();
+    PSQLWait.Visible := not PageControl.Visible;
 
-    case (Routine.Security) of
-      seDefiner: FSecurityDefiner.Checked := True;
-      seInvoker: FSecurityInvoker.Checked := True;
-    end;
-    FComment.Text := SQLUnwrapStmt(Routine.Comment);
-
-    if (Double(Routine.Created) = 0) then FCreated.Caption := '???' else FCreated.Caption := SysUtils.DateTimeToStr(Routine.Created, LocaleFormatSettings);
-    if (Double(Routine.Modified) = 0) then FUpdated.Caption := '???' else FUpdated.Caption := SysUtils.DateTimeToStr(Routine.Modified, LocaleFormatSettings);
-    FDefiner.Caption := Routine.Definer;
-    FSize.Caption := '';
-
-    if (not Routine.Update()) then
-      Built()
-    else
-      TSSource.TabVisible := False;
+    if (PageControl.Visible) then
+      Built();
   end;
 
   TSBasics.TabVisible := Assigned(Routine);
   TSInformations.TabVisible := Assigned(Routine);
 
-  FBOk.Enabled := not Assigned(Routine);
+  FBOk.Enabled := PageControl.Visible and not Assigned(Routine);
 
   ActiveControl := FBCancel;
-  if (TSBasics.TabVisible) then
-  begin
-    PageControl.ActivePage := TSBasics;
-    ActiveControl := FComment;
-  end
-  else if (TSSource.TabVisible) then
-  begin
-    PageControl.ActivePage := TSSource;
-    ActiveControl := FSource;
-  end;
+  if (PageControl.Visible) then
+    if (TSBasics.TabVisible) then
+    begin
+      PageControl.ActivePage := TSBasics;
+      ActiveControl := FComment;
+    end
+    else if (TSSource.TabVisible) then
+    begin
+      PageControl.ActivePage := TSSource;
+      ActiveControl := FSource;
+    end;
 end;
 
 procedure TDRoutine.FSecurityClick(Sender: TObject);

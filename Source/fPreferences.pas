@@ -306,7 +306,7 @@ type
 
   TPPreferences = class(TRegistry)
   type
-    TToolbarTabs = set of (ttObjectBrowser, ttDataBrowser, ttObjectIDE, ttQueryBuilder, ttSQLEditor, ttDiagram);
+    TToolbarTabs = set of (ttObjects, ttBrowser, ttIDE, ttBuilder, ttEditor, ttDiagram);
   private
     FInternetAgent: string;
     FLanguage: TPLanguage;
@@ -1424,7 +1424,7 @@ begin
   LanguageFilename := 'English.ini';
   SkinFilename := 'Gio_medium.ini';
   TabsVisible := False;
-  ToolbarTabs := [ttObjectBrowser, ttDataBrowser, ttSQLEditor];
+  ToolbarTabs := [ttObjects, ttBrowser, ttEditor];
   UpdateCheck := utNever;
   UpdateChecked := Now();
 
@@ -1777,15 +1777,15 @@ begin
   if (Assigned(XMLNode(XML, 'log/time'))) then TryStrToBool(XMLNode(XML, 'log/time').Attributes['visible'], LogTime);
   if (Assigned(XMLNode(XML, 'windowstate'))) then TryStrToWindowState(XMLNode(XML, 'windowstate').Text, WindowState);
   if (Assigned(XMLNode(XML, 'toolbar/objects')) and TryStrToBool(XMLNode(XML, 'toolbar/objects').Attributes['visible'], Visible)) then
-    if (Visible) then ToolbarTabs := ToolbarTabs + [ttObjectBrowser] else ToolbarTabs := ToolbarTabs - [ttObjectBrowser];
+    if (Visible) then ToolbarTabs := ToolbarTabs + [ttObjects] else ToolbarTabs := ToolbarTabs - [ttObjects];
   if (Assigned(XMLNode(XML, 'toolbar/browser')) and TryStrToBool(XMLNode(XML, 'toolbar/browser').Attributes['visible'], Visible)) then
-    if (Visible) then ToolbarTabs := ToolbarTabs + [ttDataBrowser] else ToolbarTabs := ToolbarTabs - [ttDataBrowser];
+    if (Visible) then ToolbarTabs := ToolbarTabs + [ttBrowser] else ToolbarTabs := ToolbarTabs - [ttBrowser];
   if (Assigned(XMLNode(XML, 'toolbar/ide')) and TryStrToBool(XMLNode(XML, 'toolbar/ide').Attributes['visible'], Visible)) then
-    if (Visible) then ToolbarTabs := ToolbarTabs + [ttObjectIDE] else ToolbarTabs := ToolbarTabs - [ttObjectIDE];
+    if (Visible) then ToolbarTabs := ToolbarTabs + [ttIDE] else ToolbarTabs := ToolbarTabs - [ttIDE];
   if (Assigned(XMLNode(XML, 'toolbar/builder')) and TryStrToBool(XMLNode(XML, 'toolbar/builder').Attributes['visible'], Visible)) then
-    if (Visible) then ToolbarTabs := ToolbarTabs + [ttQueryBuilder] else ToolbarTabs := ToolbarTabs - [ttQueryBuilder];
+    if (Visible) then ToolbarTabs := ToolbarTabs + [ttBuilder] else ToolbarTabs := ToolbarTabs - [ttBuilder];
   if (Assigned(XMLNode(XML, 'toolbar/editor')) and TryStrToBool(XMLNode(XML, 'toolbar/editor').Attributes['visible'], Visible)) then
-    if (Visible) then ToolbarTabs := ToolbarTabs + [ttSQLEditor] else ToolbarTabs := ToolbarTabs - [ttSQLEditor];
+    if (Visible) then ToolbarTabs := ToolbarTabs + [ttEditor] else ToolbarTabs := ToolbarTabs - [ttEditor];
   if (Assigned(XMLNode(XML, 'toolbar/diagram')) and TryStrToBool(XMLNode(XML, 'toolbar/diagram').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttDiagram] else ToolbarTabs := ToolbarTabs - [ttDiagram];
   if (Assigned(XMLNode(XML, 'skin/file'))) then SkinFilename := ExtractFileName(XMLNode(XML, 'skin/file').Text);
@@ -2047,11 +2047,11 @@ begin
   XMLNode(XML, 'log/time').Attributes['visible'] := LogTime;
   if (WindowState in [wsNormal, wsMaximized	]) then
     XMLNode(XML, 'windowstate').Text := WindowStateToStr(WindowState);
-  XMLNode(XML, 'toolbar/objects').Attributes['visible'] := ttObjectBrowser in ToolbarTabs;
-  XMLNode(XML, 'toolbar/browser').Attributes['visible'] := ttDataBrowser in ToolbarTabs;
-  XMLNode(XML, 'toolbar/ide').Attributes['visible'] := ttObjectIDE in ToolbarTabs;
-  XMLNode(XML, 'toolbar/builder').Attributes['visible'] := ttQueryBuilder in ToolbarTabs;
-  XMLNode(XML, 'toolbar/editor').Attributes['visible'] := ttSQLEditor in ToolbarTabs;
+  XMLNode(XML, 'toolbar/objects').Attributes['visible'] := ttObjects in ToolbarTabs;
+  XMLNode(XML, 'toolbar/browser').Attributes['visible'] := ttBrowser in ToolbarTabs;
+  XMLNode(XML, 'toolbar/ide').Attributes['visible'] := ttIDE in ToolbarTabs;
+  XMLNode(XML, 'toolbar/builder').Attributes['visible'] := ttBuilder in ToolbarTabs;
+  XMLNode(XML, 'toolbar/editor').Attributes['visible'] := ttEditor in ToolbarTabs;
   XMLNode(XML, 'toolbar/diagram').Attributes['visible'] := ttDiagram in ToolbarTabs;
   XMLNode(XML, 'skin/file').Text := ExtractFileName(SkinFilename);
   XMLNode(XML, 'sql/font/charset').Text := IntToStr(SQLFontCharset);

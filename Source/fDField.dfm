@@ -22,6 +22,18 @@ object DField: TDField
     433)
   PixelsPerInch = 106
   TextHeight = 13
+  object PSQLWait: TPanel
+    Left = 8
+    Top = 8
+    Width = 321
+    Height = 373
+    Cursor = crSQLWait
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    Caption = 'PSQLWait'
+    TabOrder = 0
+    Visible = False
+  end
   object GBasics: TGroupBox_Ext
     Left = 8
     Top = 8
@@ -29,7 +41,7 @@ object DField: TDField
     Height = 289
     Anchors = [akLeft, akTop, akRight]
     Caption = 'GBasics'
-    TabOrder = 0
+    TabOrder = 1
     DesignSize = (
       321
       289)
@@ -389,7 +401,7 @@ object DField: TDField
     Caption = 'FBOk'
     Default = True
     ModalResult = 1
-    TabOrder = 3
+    TabOrder = 4
   end
   object FBCancel: TButton
     Left = 256
@@ -400,7 +412,7 @@ object DField: TDField
     Cancel = True
     Caption = 'FBCancel'
     ModalResult = 2
-    TabOrder = 4
+    TabOrder = 5
   end
   object GAttributes: TGroupBox_Ext
     Left = 8
@@ -409,7 +421,7 @@ object DField: TDField
     Height = 81
     Anchors = [akLeft, akTop, akRight]
     Caption = 'GAttributes'
-    TabOrder = 1
+    TabOrder = 2
     object FFlagNational: TCheckBox
       Left = 8
       Top = 36
@@ -488,7 +500,7 @@ object DField: TDField
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'FBHelp'
-    TabOrder = 2
+    TabOrder = 3
     OnClick = FBHelpClick
   end
 end

@@ -7,7 +7,7 @@ uses
   Dialogs, StdCtrls, ComCtrls,
   SynEdit, SynMemo,
   Forms_Ext, StdCtrls_Ext,
-  fClient, fBase, Menus;
+  fClient, fBase, Menus, Vcl.ExtCtrls;
 
 type
   TDHost = class(TForm_Ext)
@@ -28,6 +28,7 @@ type
     msSelectAll: TMenuItem;
     N1: TMenuItem;
     PageControl: TPageControl;
+    PSQLWait: TPanel;
     TSBasics: TTabSheet;
     TSDatabases: TTabSheet;
     TSSource: TTabSheet;
@@ -49,6 +50,7 @@ type
   private
     NewHost: TCHost;
     procedure FDatabasesRefresh(Sender: TObject);
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Client: TCClient;
@@ -227,6 +229,17 @@ begin
   FBOkCheckEnabled(Sender);
 end;
 
+procedure TDHost.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if ((Event.EventType in [ceItemCreated, ceItemAltered]) and (Event.CItem is TCHost)) then
+    ModalResult := mrOk
+  else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
+  begin
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
+  end;
+end;
+
 procedure TDHost.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
   if (ModalResult = mrOk) then
@@ -238,9 +251,16 @@ begin
 
 
     if (not Assigned(Host)) then
-      Client.AddHost(NewHost)
+      CanClose := not Client.AddHost(NewHost)
     else
-      Client.UpdateHost(Host, NewHost);
+      CanClose := not Client.UpdateHost(Host, NewHost);
+
+    PageControl.Visible := CanClose;
+    PSQLWait.Visible := not PageControl.Visible;
+    if (PSQLWait.Visible) then
+      ModalResult := mrNone;
+
+    FBOk.Enabled := False;
   end;
 end;
 
@@ -267,6 +287,8 @@ end;
 
 procedure TDHost.FormHide(Sender: TObject);
 begin
+  Client.UnRegisterEventProc(FormClientEvent);
+
   if (Assigned(NewHost)) then
     FreeAndNil(NewHost);
 
@@ -282,6 +304,8 @@ procedure TDHost.FormShow(Sender: TObject);
 var
   NewHostDatabase: TCHostDatabase;
 begin
+  Client.RegisterEventProc(FormClientEvent);
+
   NewHost := TCHost.Create(Client.Hosts);
   if (Assigned(Host)) then
     NewHost.Assign(Host);

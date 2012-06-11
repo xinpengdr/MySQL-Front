@@ -15,9 +15,25 @@ object DVariable: TDVariable
   OldCreateOrder = False
   Position = poOwnerFormCenter
   OnCloseQuery = FormCloseQuery
+  OnHide = FormHide
   OnShow = FormShow
+  DesignSize = (
+    249
+    153)
   PixelsPerInch = 106
   TextHeight = 13
+  object PSQLWait: TPanel
+    Left = 8
+    Top = 8
+    Width = 233
+    Height = 89
+    Cursor = crSQLWait
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    Caption = 'PSQLWait'
+    TabOrder = 0
+    Visible = False
+  end
   object FBOk: TButton
     Left = 80
     Top = 120
@@ -26,7 +42,7 @@ object DVariable: TDVariable
     Caption = 'FBOk'
     Default = True
     ModalResult = 1
-    TabOrder = 1
+    TabOrder = 2
   end
   object FBCancel: TButton
     Left = 168
@@ -36,7 +52,7 @@ object DVariable: TDVariable
     Cancel = True
     Caption = 'FBCancel'
     ModalResult = 2
-    TabOrder = 2
+    TabOrder = 3
   end
   object GroupBox: TGroupBox_Ext
     Left = 8
@@ -44,7 +60,7 @@ object DVariable: TDVariable
     Width = 233
     Height = 89
     Caption = 'GroupBox'
-    TabOrder = 0
+    TabOrder = 1
     object FLValue: TLabel
       Left = 8
       Top = 16

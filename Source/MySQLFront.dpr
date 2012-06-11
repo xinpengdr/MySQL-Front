@@ -1,12 +1,8 @@
 ﻿program MySQLFront;
 
 uses
-  {$IFDEF Debug}
   FastMM4,
-  {$ENDIF}
-  {$IFDEF EurekaLog}
   ExceptionLog,
-  {$ENDIF}
   Windows,
   ShellAPI,
   SysUtils,
@@ -61,7 +57,6 @@ uses
   fDServer in 'fDServer.pas' {DServer},
   fDSQLHelp in 'fDSQLHelp.pas' {DSQLHelp},
   fDStatement in 'fDStatement.pas' {DStatement},
-  fDTable in 'fDTable.pas' {DTable},
   fDTableService in 'fDTableService.pas' {DTableService},
   fDTransfer in 'fDTransfer.pas' {DTransfer},
   fDTrigger in 'fDTrigger.pas' {DTrigger},

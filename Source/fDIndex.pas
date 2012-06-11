@@ -29,6 +29,7 @@ type
     GAttributes: TGroupBox_Ext;
     GBasics: TGroupBox_Ext;
     Panel: TPanel;
+    PSQLWait: TPanel;
     tbAddAll: TToolButton;
     tbAddOne: TToolButton;
     tbDown: TToolButton;
@@ -70,7 +71,7 @@ type
     procedure tbUpDownClick(Sender: TObject);
   private
     Lengths: array of Integer;
-  protected
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Database: TCDatabase;
@@ -107,6 +108,8 @@ end;
 procedure TDIndex.CMChangePreferences(var Message: TMessage);
 begin
   Preferences.SmallImages.GetIcon(iiIndex, Icon);
+
+  PSQLWait.Caption := Preferences.LoadStr(882);
 
   GBasics.Caption := Preferences.LoadStr(85);
   FLName.Caption := Preferences.LoadStr(35) + ':';
@@ -270,6 +273,18 @@ begin
   FBOkCheckEnabled(Sender);
 end;
 
+procedure TDIndex.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if ((Event.EventType = ceItemAltered) and (Event.CItem = Table)) then
+    ModalResult := mrOk
+  else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
+  begin
+    GBasics.Visible := True;
+    GAttributes.Visible := GBasics.Visible;
+    PSQLWait.Visible := not GBasics.Visible;
+  end;
+end;
+
 procedure TDIndex.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   I: Integer;
@@ -279,7 +294,7 @@ var
 begin
   FLengthExit(Sender);
 
-  if (ModalResult = mrOk) then
+  if ((ModalResult = mrOk) and GBasics.Visible) then
   begin
     NewIndex := TCIndex.Create(Table.Indices);
     if (Assigned(Index)) then
@@ -303,10 +318,12 @@ begin
     NewIndex.Fulltext := FFulltext.Checked;
 
     if (not Assigned(Database)) then
+    begin
       if (not Assigned(Index)) then
         Table.Indices.AddIndex(NewIndex)
       else
-        Table.Indices[Index.Index].Assign(NewIndex)
+        Table.Indices[Index.Index].Assign(NewIndex);
+    end
     else
     begin
       NewTable := TCBaseTable.Create(Database.Tables);
@@ -317,9 +334,17 @@ begin
       else
         NewTable.Indices[Index.Index].Assign(NewIndex);
 
-      CanClose := Database.UpdateTable(Table, NewTable);
+      CanClose := not Database.UpdateTable(Table, NewTable);
 
       NewTable.Free();
+
+      GBasics.Visible := CanClose;
+      GAttributes.Visible := GBasics.Visible;
+      PSQLWait.Visible := not GBasics.Visible;
+      if (PSQLWait.Visible) then
+        ModalResult := mrNone;
+
+      FBOk.Enabled := False;
     end;
 
     NewIndex.Free();
@@ -353,6 +378,8 @@ end;
 
 procedure TDIndex.FormHide(Sender: TObject);
 begin
+  Database.Client.UnRegisterEventProc(FormClientEvent);
+
   Preferences.Index.Width := Width;
   Preferences.Index.Height := Height;
 
@@ -381,6 +408,8 @@ var
   I: Integer;
   J: Integer;
 begin
+  Database.Client.RegisterEventProc(FormClientEvent);
+
   if (not Assigned(Index)) then
   begin
     Caption := Preferences.LoadStr(160);

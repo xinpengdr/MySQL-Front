@@ -321,7 +321,6 @@ object FClient: TFClient
         PopupMenu = MList
         TabOrder = 0
         ViewStyle = vsReport
-        OnChange = ListViewChange
         OnChanging = ListViewChanging
         OnColumnClick = ListViewColumnClick
         OnCompare = ListViewCompare
@@ -336,7 +335,7 @@ object FClient: TFClient
         OnSelectItem = ListViewSelectItem
       end
     end
-    object PSQLEditor: TPanel_Ext
+    object PSynMemo: TPanel_Ext
       Left = 0
       Top = 310
       Width = 467
@@ -1240,17 +1239,18 @@ object FClient: TFClient
       Height = 27
       BevelOuter = bvNone
       DoubleBuffered = False
+      ParentBackground = False
       ParentDoubleBuffered = False
       TabOrder = 1
       object ToolBar: TToolBar
         Left = 2
         Top = 2
-        Width = 530
+        Width = 374
         Height = 20
         Align = alNone
         AutoSize = True
         ButtonHeight = 20
-        ButtonWidth = 105
+        ButtonWidth = 68
         List = True
         PopupMenu = MToolBar
         ShowCaptions = True
@@ -1258,53 +1258,53 @@ object FClient: TFClient
         Transparent = False
         Wrapable = False
         OnResize = ToolBarResize
-        object tbObjectBrowser: TToolButton
+        object tbObjects: TToolButton
           Left = 0
           Top = 0
           AutoSize = True
-          Caption = 'tbObjectBrowser'
+          Caption = 'tbObjects'
           ImageIndex = 1
           PopupMenu = MToolBar
           Style = tbsCheck
         end
-        object tbDataBrowser: TToolButton
-          Left = 109
+        object tbBrowser: TToolButton
+          Left = 70
           Top = 0
           AutoSize = True
-          Caption = 'tbDataBrowser'
+          Caption = 'tbBrowser'
           ImageIndex = 2
           PopupMenu = MToolBar
           Style = tbsCheck
         end
-        object tbObjectIDE: TToolButton
-          Left = 206
+        object tbIDE: TToolButton
+          Left = 142
           Top = 0
           AutoSize = True
-          Caption = 'tbObjectIDE'
+          Caption = 'tbIDE'
           PopupMenu = MToolBar
           Style = tbsCheck
           Visible = False
         end
-        object tbQueryBuilder: TToolButton
-          Left = 285
+        object tbBuilder: TToolButton
+          Left = 184
           Top = 0
           AutoSize = True
-          Caption = 'tbQueryBuilder'
+          Caption = 'tbBuilder'
           ImageIndex = 0
           PopupMenu = MToolBar
           Style = tbsCheck
         end
-        object tbSQLEditor: TToolButton
-          Left = 382
+        object tbEditor: TToolButton
+          Left = 248
           Top = 0
           AutoSize = True
-          Caption = 'tbSQLEditor'
+          Caption = 'tbEditor'
           ImageIndex = 3
           PopupMenu = MToolBar
           Style = tbsCheck
         end
         object tbDiagram: TToolButton
-          Left = 464
+          Left = 308
           Top = 0
           AutoSize = True
           Caption = 'tbDiagram'
@@ -2237,25 +2237,24 @@ object FClient: TFClient
     OnPopup = MToolBarPopup
     Left = 160
     Top = 8
-    object mtObjectBrowser: TMenuItem
-      Caption = 'mtObjectBrowser'
-      Enabled = False
+    object mtObjects: TMenuItem
+      Caption = 'mtObjects'
       OnClick = ToolBarTabsClick
     end
-    object mtDataBrowser: TMenuItem
-      Caption = 'mtDataBrowser'
+    object mtBrowser: TMenuItem
+      Caption = 'mtBrowser'
       OnClick = ToolBarTabsClick
     end
-    object mtObjectIDE: TMenuItem
-      Caption = 'mtObjectIDE'
+    object mtIDE: TMenuItem
+      Caption = 'mtIDE'
       OnClick = ToolBarTabsClick
     end
-    object mtQueryBuilder: TMenuItem
-      Caption = 'mtQueryBuilder'
+    object mtBuilder: TMenuItem
+      Caption = 'mtBuilder'
       OnClick = ToolBarTabsClick
     end
-    object mtSQLEditor: TMenuItem
-      Caption = 'mtSQLEditor'
+    object mtEditor: TMenuItem
+      Caption = 'mtEditor'
       OnClick = ToolBarTabsClick
     end
     object mtDiagram: TMenuItem

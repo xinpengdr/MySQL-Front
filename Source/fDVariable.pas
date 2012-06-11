@@ -6,7 +6,7 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls,
   Forms_Ext,
-  fClient, fBase, StdCtrls_Ext;
+  fClient, fBase, StdCtrls_Ext, Vcl.ExtCtrls;
 
 type
   TDVariable = class (TForm_Ext)
@@ -18,12 +18,15 @@ type
     FSession: TCheckBox;
     FValue: TEdit;
     GroupBox: TGroupBox_Ext;
+    PSQLWait: TPanel;
     procedure FBOkButtonEnable(Sender: TObject);
     procedure FGlobalClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormShow(Sender: TObject);
     procedure FSessionClick(Sender: TObject);
-  protected
+    procedure FormHide(Sender: TObject);
+  private
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Client: TCClient;
@@ -85,6 +88,17 @@ begin
   FBOkButtonEnable(Sender);
 end;
 
+procedure TDVariable.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if ((Event.EventType in [ceItemAltered]) and (Event.CItem is TCVariable)) then
+    ModalResult := mrOk
+  else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
+  begin
+    GroupBox.Visible := True;
+    PSQLWait.Visible := not GroupBox.Visible;
+  end;
+end;
+
 procedure TDVariable.FormCloseQuery(Sender: TObject;
   var CanClose: Boolean);
 var
@@ -103,14 +117,28 @@ begin
     if (FGlobal.Checked) then Include(UpdateModes, vuGlobal);
     if (FSession.Checked) then Include(UpdateModes, vuSession);
 
-    CanClose := Client.UpdateVariable(Variable, NewVariable, UpdateModes);
+    CanClose := not Client.UpdateVariable(Variable, NewVariable, UpdateModes);
 
     NewVariable.Free();
+
+    GroupBox.Visible := CanClose;
+    PSQLWait.Visible := not GroupBox.Visible;
+    if (PSQLWait.Visible) then
+      ModalResult := mrNone;
+
+    FBOk.Enabled := False;
   end;
+end;
+
+procedure TDVariable.FormHide(Sender: TObject);
+begin
+  Client.UnRegisterEventProc(FormClientEvent);
 end;
 
 procedure TDVariable.FormShow(Sender: TObject);
 begin
+  Client.RegisterEventProc(FormClientEvent);
+
   Caption := Preferences.LoadStr(842, Variable.Name);
 
   FValue.Text := Variable.Value;

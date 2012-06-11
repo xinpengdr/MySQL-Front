@@ -96,6 +96,7 @@ begin
   end
   else if (Control is TToolBar) then
   begin
+    Assert(not TToolBar(Control).Transparent); // Needs not to be transparent with styles in Delphi XE2
     if (CheckWin32Version(6)) then
       for I := 0 to TToolBar(Control).ButtonCount - 1 do
         if (not StyleServices.Enabled and (TToolBar(Control).Buttons[I].Style = tbsSeparator)) then

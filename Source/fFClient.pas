@@ -241,14 +241,14 @@ type
     MSideBar: TPopupMenu;
     MSQLEditor: TPopupMenu;
     MSQLHistory: TPopupMenu;
-    mtDataBrowser: TMenuItem;
+    mtBrowser: TMenuItem;
     mtDiagram: TMenuItem;
-    mtObjectBrowser: TMenuItem;
+    mtObjects: TMenuItem;
     MText: TPopupMenu;
-    mtObjectIDE: TMenuItem;
+    mtIDE: TMenuItem;
     MToolBar: TPopupMenu;
-    mtQueryBuilder: TMenuItem;
-    mtSQLEditor: TMenuItem;
+    mtBuilder: TMenuItem;
+    mtEditor: TMenuItem;
     mwAddTable: TMenuItem;
     mwCreateLine: TMenuItem;
     mwCreateSection: TMenuItem;
@@ -337,7 +337,7 @@ type
     PrintDialog: TPrintDialog_Ext;
     PSideBar: TPanel_Ext;
     PSideBarHeader: TPanel_Ext;
-    PSQLEditor: TPanel_Ext;
+    PSynMemo: TPanel_Ext;
     PSQLHistory: TPanel_Ext;
     PToolBar: TPanel_Ext;
     PToolBarBlob: TPanel;
@@ -362,14 +362,14 @@ type
     tbBlobSpacer: TPanel_Ext;
     tbBlobText: TToolButton;
     tbBookmarks: TToolButton;
-    tbDataBrowser: TToolButton;
+    tbBrowser: TToolButton;
     tbDiagram: TToolButton;
     tbNavigator: TToolButton;
-    tbObjectBrowser: TToolButton;
-    tbObjectIDE: TToolButton;
-    tbQueryBuilder: TToolButton;
+    tbObjects: TToolButton;
+    tbIDE: TToolButton;
+    tbBuilder: TToolButton;
     TBSideBar: TToolBar;
-    tbSQLEditor: TToolButton;
+    tbEditor: TToolButton;
     tbSQLHistory: TToolButton;
     TCResult: TTabControl;
     tmECopy: TMenuItem;
@@ -645,8 +645,6 @@ type
       Shift: TShiftState; X, Y: Integer);
     procedure ToolBarResize(Sender: TObject);
     procedure PDataBrowserResize(Sender: TObject);
-    procedure ListViewChange(Sender: TObject; Item: TListItem;
-      Change: TItemChange);
   type
     TNewLineFormat = (nlWindows, nlUnix, nlMacintosh);
     TTabState = set of (tsLoading, tsActive);
@@ -673,6 +671,7 @@ type
     TTableDesktop = class(TCObjectDesktop)
     private
       FColumnIndices: array of Integer;
+      FListView: TListView;
       FXML: IXMLNode;
       function GetColumnIndex(Index: Integer): Integer;
       function GetColunns(): Integer;
@@ -691,14 +690,13 @@ type
       procedure SetLimit(const Limit: Integer);
       procedure SetLimited(const ALimited: Boolean);
     protected
-      FListView: TListView;
       procedure Clear(); override;
       procedure SaveToXML(); override;
       property GridXML[FieldName: string]: IXMLNode read GetGridXML;
     public
       procedure AddFilter(const AFilter: string);
       constructor Create(const AFClient: TFClient; const ATable: TCTable);
-      procedure CreateListView(); virtual;
+      function CreateListView(): TListView; virtual;
       destructor Destroy(); override;
       property Columns: Integer read GetColunns;
       property ColumnIndices[Index: Integer]: Integer read GetColumnIndex write SetColumnIndex;
@@ -706,21 +704,19 @@ type
       property FilterCount: Integer read GetFilterCount;
       property GridVisible[FieldName: string]: Boolean read GetGridVisible write SetGridVisible;
       property GridWidths[FieldName: string]: Integer read GetGridWidth write SetGridWidth;
+      property ListView: TListView read FListView;
       property Limit: Integer read GetLimit write SetLimit;
       property Limited: Boolean read GetLimited write SetLimited;
-      property ListView: TListView read FListView write FListView;
       property Table: TCTable read GetTable;
       property XML: IXMLNode read GetXML;
     end;
 
     TViewDesktop = class(TTableDesktop)
-    private
-      FSynMemo: TSynMemo;
-      function GetSynMemo(): TSynMemo;
     public
+      SynMemo: TSynMemo;
       constructor Create(const AFClient: TFClient; const AView: TCView);
+      function CreateSynMemo(): TSynMemo; virtual;
       destructor Destroy(); override;
-      property SynMemo: TSynMemo read GetSynMemo write FSynMemo;
     end;
 
     TRoutineDesktop = class(TCObjectDesktop)
@@ -758,21 +754,21 @@ type
 
     TDatabaseDesktop = class(TCObjectDesktop)
     private
+      FListView: TListView;
       FXML: IXMLNode;
       function GetDatabase(): TCDatabase; inline;
       function GetWorkbench(): TWWorkbench;
       function GetXML(): IXMLNode;
     protected
-      FListView: TListView;
       FWorkbench: TWWorkbench;
     public
       procedure CloseQuery(Sender: TObject; var CanClose: Boolean);
       constructor Create(const AFClient: TFClient; const ADatabase: TCDatabase);
-      procedure CreateListView(); virtual;
+      function CreateListView(): TListView; virtual;
       destructor Destroy(); override;
       procedure SaveToXML(); override;
       property Database: TCDatabase read GetDatabase;
-      property ListView: TListView read FListView write FListView;
+      property ListView: TListView read FListView;
       property Workbench: TWWorkbench read GetWorkbench;
       property XML: IXMLNode read GetXML;
     end;
@@ -802,6 +798,8 @@ type
   private
     ActiveControlOnDeactivate: TWinControl;
     ActiveListView: TListView;
+    ActiveSynMemo: TSynMemo;
+    ActiveWorkbench: TWWorkbench;
     aDRunExecuteSelStart: Integer;
     CloseButton: TPicture;
     CreateLine: Boolean;
@@ -879,11 +877,12 @@ type
     procedure BeforeConnect(Sender: TObject);
     procedure BeforeExecuteSQL(Sender: TObject);
     procedure BeginEditLabel(Sender: TObject);
-    procedure ClientRefresh(Sender: TObject);
+    procedure ClientUpdate(const Event: TCClient.TEvent);
     function ColumnWidthKindFromImageIndex(const AImageIndex: Integer): TADesktop.TListViewKind;
     function CreateDesktop(const CObject: TCObject): TCObject.TDesktop;
     function CreateSynMemo(): TSynMemo;
     function CreateWorkbench(const ADatabase: TCDatabase): TWWorkbench;
+    function DatabaseDesktop(const Database: TObject): TDatabaseDesktop; inline;
     function Dragging(const Sender: TObject): Boolean;
     procedure EndEditLabel(Sender: TObject);
     function FBuilderActiveSelectList(): TacQueryBuilderSelectListControl;
@@ -943,7 +942,7 @@ type
     procedure ImportError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
     procedure ListViewEmpty(Sender: TObject);
     procedure ListViewInitialize(const Sender: TObject; const ListView: TListView; const Data: TCustomData);
-    procedure ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kind: TADesktop.TListViewKind; const ListView: TListView; const Data: TCustomData = nil);
+    procedure ListViewUpdate(const ClientEvent: TCClient.TEvent; const Kind: TADesktop.TListViewKind; const ListView: TListView; const Data: TCustomData = nil);
     procedure MGridHeaderMenuOrderClick(Sender: TObject);
     procedure MGridTitleMenuVisibleClick(Sender: TObject);
     function NavigatorNodeToAddress(const Node: TTreeNode): string;
@@ -956,7 +955,7 @@ type
     procedure PObjectIDERefresh(Sender: TObject);
     function PostObject(Sender: TObject): Boolean;
     procedure PropertiesServerExecute(Sender: TObject);
-    procedure PSQLEditorRefresh(Sender: TObject);
+    procedure PSQLEditorUpdate();
     procedure PWorkbenchRefresh(Sender: TObject);
     function RenameCItem(const CItem: TCItem; const NewName: string): Boolean;
     function ResultSetEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
@@ -972,9 +971,11 @@ type
     procedure SQLHelp();
     procedure SynMemoApllyPreferences(const SynMemo: TSynMemo);
     procedure SynMemoPrintExecute(Sender: TObject);
+    function TableDesktop(const Table: TObject): TTableDesktop; inline;
     procedure TableOpen(Sender: TObject);
     procedure TSymMemoGotoExecute(Sender: TObject);
     function UpdateAfterAddressChanged(): Boolean; virtual;
+    function ViewDesktop(const View: TObject): TViewDesktop; inline;
     procedure CMActivateFGrid(var Message: TMessage); message CM_ACTIVATEFGRID;
     procedure CMActivateFText(var Message: TMessage); message CM_ACTIVATEFTEXT;
     procedure CMBeforeReceivingDataSet(var Message: TMessage); message CM_BEFORE_RECEIVING_DATASET;
@@ -993,8 +994,6 @@ type
     procedure WMNotify(var Message: TWMNotify); message WM_NOTIFY;
     procedure WMParentNotify(var Message: TWMParentNotify); message WM_PARENTNOTIFY;
     procedure WMTimer(var Message: TWMTimer); message WM_TIMER;
-    property ActiveSynMemo: TSynMemo read GetActiveSynMemo;
-    property ActiveWorkbench: TWWorkbench read GetActiveWorkbench;
     property FocusedCItem: TCItem read GetFocusedCItem;
     property FocusedDatabases: string read GetFocusedDatabaseName;
     property FocusedTables: string read GetFocusedTableName;
@@ -1071,9 +1070,6 @@ const
   giStati = 12;
   giUsers = 13;
   giVariables = 14;
-
-const
-  PrefetchObjectCount = 50;
 
 const
   Filters: array[0 .. 12 - 1] of
@@ -1167,30 +1163,26 @@ begin
   FXML := nil;
 end;
 
-procedure TFClient.TDatabaseDesktop.CreateListView();
+function TFClient.TDatabaseDesktop.CreateListView(): TListView;
 begin
   if (not Assigned(FListView)) then
   begin
     FClient.CreateListView(Database, Database, FListView);
     if (Database.Valid) then
-    begin
-      Database.Tables.PushBuildEvent(Database);
-      if (Assigned(Database.Routines)) then
-        Database.Routines.PushBuildEvent(Database);
-      if (Assigned(Database.Events)) then
-        Database.Events.PushBuildEvent(Database);
-    end;
+      Database.PushBuildEvents();
   end;
+
+  Result := FListView;
 end;
 
 destructor TFClient.TDatabaseDesktop.Destroy();
 begin
-  if (Assigned(FListView)) then
+  if (Assigned(ListView)) then
   begin
-    FListView.Items.BeginUpdate();
-    FListView.Items.Clear();
-    FListView.Items.EndUpdate();
-    FListView.Free();
+    ListView.Items.BeginUpdate();
+    ListView.Items.Clear();
+    ListView.Items.EndUpdate();
+    ListView.Free();
   end;
   if (Assigned(FWorkbench)) then
     FWorkbench.Free();
@@ -1292,7 +1284,7 @@ begin
   FXML := nil;
 end;
 
-procedure TFClient.TTableDesktop.CreateListView();
+function TFClient.TTableDesktop.CreateListView(): TListView;
 begin
   if (not Assigned(FListView)) then
   begin
@@ -1300,14 +1292,16 @@ begin
     if (Table.Valid) then
       Table.Tables.PushBuildEvent(Table);
   end;
+
+  Result := FListView;
 end;
 
 destructor TFClient.TTableDesktop.Destroy();
 begin
   inherited;
 
-  if (Assigned(FListView)) then
-    FClient.FreeListView(FListView);
+  if (Assigned(ListView)) then
+    FClient.FreeListView(ListView);
 end;
 
 function TFClient.TTableDesktop.GetColumnIndex(Index: Integer): Integer;
@@ -1496,25 +1490,29 @@ end;
 
 constructor TFClient.TViewDesktop.Create(const AFClient: TFClient; const AView: TCView);
 begin
-  FSynMemo := nil;
-
   inherited Create(AFClient, AView);
+
+  SynMemo := nil;
+end;
+
+function TFClient.TViewDesktop.CreateSynMemo(): TSynMemo;
+begin
+  if (not Assigned(SynMemo)) then
+  begin
+    SynMemo := FClient.CreateSynMemo();
+    if (Table.Valid) then
+      Table.PushBuildEvent();
+  end;
+
+  Result := SynMemo;
 end;
 
 destructor TFClient.TViewDesktop.Destroy();
 begin
   inherited;
 
-  if (Assigned(FSynMemo)) then
-    FSynMemo.Free();
-end;
-
-function TFClient.TViewDesktop.GetSynMemo(): TSynMemo;
-begin
-  if (not Assigned(FSynMemo)) then
-    FSynMemo := FClient.CreateSynMemo();
-
-  Result := FSynMemo;
+  if (Assigned(SynMemo)) then
+    SynMemo.Free();
 end;
 
 { TFClient.TRoutineDesktop *******************************************************}
@@ -1766,7 +1764,8 @@ begin
 
   DDatabase.Client := Client;
   DDatabase.Database := nil;
-  DDatabase.Execute();
+  if (DDatabase.Execute()) then
+    Client.Update();
 end;
 
 procedure TFClient.aDCreateEventExecute(Sender: TObject);
@@ -1777,7 +1776,8 @@ begin
   begin
     DEvent.Database := TCDatabase(FocusedCItem);
     DEvent.Event := nil;
-    DEvent.Execute();
+    if (DEvent.Execute()) then
+      Client.Update();
   end;
 end;
 
@@ -1811,7 +1811,8 @@ begin
     DField.Table := TCBaseTable(FocusedCItem);
     DField.Database := DField.Table.Database;
     DField.Field := nil;
-    DField.Execute();
+    if (DField.Execute()) then
+      Client.Update();
   end;
 end;
 
@@ -1835,7 +1836,8 @@ begin
 
   DHost.Client := Client;
   DHost.Host := nil;
-  DHost.Execute();
+  if (DHost.Execute()) then
+    Client.Update();
 end;
 
 procedure TFClient.aDCreateIndexExecute(Sender: TObject);
@@ -1847,7 +1849,8 @@ begin
     DIndex.Table := TCBaseTable(FocusedCItem);
     DIndex.Database := DIndex.Table.Database;
     DIndex.Index := nil;
-    DIndex.Execute();
+    if (DIndex.Execute()) then
+      Client.Update();
   end;
 end;
 
@@ -1865,7 +1868,8 @@ begin
     else
       DRoutine.RoutineType := rtUnknown;
     DRoutine.Routine := nil;
-    DRoutine.Execute();
+    if (DRoutine.Execute()) then
+      Client.Update();
   end;
 end;
 
@@ -1877,7 +1881,8 @@ begin
   begin
     DTable.Database := TCDatabase(FocusedCItem);
     DTable.Table := nil;
-    DTable.Execute();
+    if (DTable.Execute()) then
+      Client.Update();
   end;
 end;
 
@@ -1889,7 +1894,8 @@ begin
   begin
     DTrigger.Table := TCBaseTable(FocusedCItem);
     DTrigger.Trigger := nil;
-    DTrigger.Execute();
+    if (DTrigger.Execute()) then
+      Client.Update();
   end;
 end;
 
@@ -1899,7 +1905,8 @@ begin
 
   DUser.Client := Client;
   DUser.User := nil;
-  DUser.Execute();
+  if (DUser.Execute()) then
+    Client.Update();
 end;
 
 procedure TFClient.aDCreateViewExecute(Sender: TObject);
@@ -1910,7 +1917,8 @@ begin
   begin
     DView.Database := TCDatabase(FocusedCItem);
     DView.View := nil;
-    DView.Execute();
+    if (DView.Execute()) then
+      Client.Update();
   end;
 end;
 
@@ -2177,11 +2185,11 @@ begin
 
     UsedView := View;
     case (View) of
-      vObjects: if (not (ttObjectBrowser in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttObjectBrowser); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
-      vBrowser: if (not (ttDataBrowser in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttDataBrowser); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
-      vIDE: if (not (ttObjectIDE in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttObjectIDE); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
-      vBuilder: if (not (ttQueryBuilder in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttQueryBuilder); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
-      vEditor: if (not (ttSQLEditor in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttSQLEditor); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
+      vObjects: if (not (ttObjects in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttObjects); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
+      vBrowser: if (not (ttBrowser in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttBrowser); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
+      vIDE: if (not (ttIDE in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttIDE); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
+      vBuilder: if (not (ttBuilder in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttBuilder); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
+      vEditor: if (not (ttEditor in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttEditor); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
       vDiagram: if (not (ttDiagram in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttDiagram); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
     end;
 
@@ -2285,16 +2293,16 @@ begin
         else if (PBookmarks.Visible) then Window.ActiveControl := FBookmarks
         else if (PListView.Visible) then Window.ActiveControl := ActiveListView
         else if (PBuilder.Visible) then Window.ActiveControl := FBuilder
-        else if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo
+        else if (PSynMemo.Visible) then Window.ActiveControl := FSQLEditorSynMemo
         else if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
       end
       else
         case (View) of
           vObjects: if (PListView.Visible) then Window.ActiveControl := ActiveListView;
           vBrowser: if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
-          vIDE: if (PSQLEditor.Visible and Assigned(ActiveSynMemo)) then Window.ActiveControl := ActiveSynMemo;
+          vIDE: if (PSynMemo.Visible and Assigned(ActiveSynMemo)) then Window.ActiveControl := ActiveSynMemo;
           vBuilder: if (PBuilder.Visible and Assigned(FBuilderActiveWorkArea())) then Window.ActiveControl := FBuilderActiveWorkArea();
-          vEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo;
+          vEditor: if (PSynMemo.Visible) then Window.ActiveControl := FSQLEditorSynMemo;
           vDiagram: if (PWorkbench.Visible) then Window.ActiveControl := ActiveWorkbench;
         end;
       Exclude(FrameState, tsLoading);
@@ -2339,7 +2347,7 @@ begin
     MessageBeep(MB_ICONERROR)
   else
   begin
-    if (Client.Update((URI.Database = '') and (URI.Param['view'] = Null)) and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
+    if (Client.Update() and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
       AllowChange := False
     else if (URI.Param['system'] = 'hosts') then
       Client.Hosts.Update()
@@ -2356,7 +2364,7 @@ begin
       Database := Client.DatabaseByName(URI.Database);
       if (not Assigned(Database)) then
         NotFound := True
-      else if (Database.Update((URI.Table = '') and (URI.Param['object'] = Null) and (URI.Param['view'] = Null)) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
+      else if (Database.Update((URI.Table = '') and (URI.Param['object'] = Null)) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
         AllowChange := False
       else if ((URI.Table <> '') or (URI.Param['object'] <> Null)) then
       begin
@@ -2443,7 +2451,7 @@ end;
 
 function TFClient.AddressToNavigatorNode(const Address: string): TTreeNode;
 var
-  B: Boolean;
+  AllowExpansion: Boolean;
   Child: TTreeNode;
   DatabaseNode: TTreeNode;
   ObjectIDENode: TTreeNode;
@@ -2515,7 +2523,10 @@ begin
           if ((URI.Table <> '') or (URI.Param['objecttype'] = 'trigger') and (URI.Param['object'] <> Null)) then
           begin
             if (Child.Count = 0) then
-              FNavigatorExpanding(nil, DatabaseNode, B);
+            begin
+              AllowExpansion := False;
+              FNavigatorExpanding(nil, DatabaseNode, AllowExpansion);
+            end;
             Child := DatabaseNode.getFirstChild();
             if (URI.Table <> '') then
               TableName := URI.Table
@@ -2597,9 +2608,12 @@ begin
 end;
 
 procedure TFClient.aDPropertiesExecute(Sender: TObject);
+type
+  TExecute = function(): Boolean of Object;
 var
   CItem: TCItem;
   Database: TCDatabase;
+  Execute: TExecute;
   I: Integer;
   Process: TCProcess;
 begin
@@ -2616,6 +2630,8 @@ begin
 
     DTable.Database := Database;
     DTable.Table := nil;
+    if (DTable.Execute()) then
+      Client.Update();
   end
   else if ((Window.ActiveControl = ActiveWorkbench) and (ActiveWorkbench.Selected is TWSection)) then
   begin
@@ -2631,57 +2647,57 @@ begin
     begin
       DDatabase.Client := Client;
       DDatabase.Database := TCDatabase(CItem);
-      DDatabase.Execute();
+      Execute := DDatabase.Execute;
     end
     else if (CItem is TCBaseTable) then
     begin
       DTable.Database := TCBaseTable(CItem).Database;
       DTable.Table := TCBaseTable(CItem);
-      DTable.Execute();
+      Execute := DTable.Execute;
     end
     else if (CItem is TCView) then
     begin
       DView.Database := TCView(CItem).Database;
       DView.View := TCView(CItem);
-      DView.Execute();
+      Execute := DView.Execute;
     end
     else if (CItem is TCProcedure) then
     begin
       DRoutine.Database := TCRoutine(CItem).Database;
       DRoutine.Routine := TCRoutine(CItem);
-      DRoutine.Execute();
+      Execute := DRoutine.Execute;
     end
     else if (CItem is TCFunction) then
     begin
       DRoutine.Database := TCRoutine(CItem).Database;
       DRoutine.Routine := TCRoutine(CItem);
-      DRoutine.Execute();
+      Execute := DRoutine.Execute;
     end
     else if (CItem is TCTrigger) then
     begin
       DTrigger.Table := TCTrigger(CItem).Table;
       DTrigger.Trigger := TCTrigger(CItem);
-      DTrigger.Execute();
+      Execute := DTrigger.Execute;
     end
     else if (CItem is TCEvent) then
     begin
       DEvent.Database := TCEvent(CItem).Database;
       DEvent.Event := TCEvent(CItem);
-      DEvent.Execute();
+      Execute := DEvent.Execute;
     end
     else if (CItem is TCIndex) then
     begin
       DIndex.Database := TCIndex(CItem).Table.Database;
       DIndex.Table := TCIndex(CItem).Table;
       DIndex.Index := TCIndex(CItem);
-      DIndex.Execute();
+      Execute := DIndex.Execute;
     end
     else if (CItem is TCBaseTableField) then
     begin
       DField.Database := TCBaseTableField(CItem).Table.Database;
       DField.Table := TCBaseTable(TCBaseTableField(CItem).Table);
       DField.Field := TCBaseTableField(CItem);
-      DField.Execute();
+      Execute := DField.Execute;
     end
     else if (CItem is TCForeignKey) then
     begin
@@ -2689,13 +2705,13 @@ begin
       DForeignKey.Table := TCForeignKey(CItem).Table;
       DForeignKey.ParentTable := nil;
       DForeignKey.ForeignKey := TCForeignKey(CItem);
-      DForeignKey.Execute();
+      Execute := DForeignKey.Execute;
     end
     else if (CItem is TCHost) then
     begin
       DHost.Client := Client;
       DHost.Host := TCHost(CItem);
-      DHost.Execute();
+      Execute := DHost.Execute;
     end
     else if (CItem is TCProcess) then
     begin
@@ -2713,20 +2729,25 @@ begin
       DStatement.UserName := Process.UserName;
       DStatement.ViewType := vtProcess;
 
-      DStatement.Execute();
+      Execute := DStatement.Execute;
     end
     else if (CItem is TCUser) then
     begin
       DUser.Client := Client;
       DUser.User := TCUser(CItem);
-      DUser.Execute();
+      Execute := DUser.Execute;
     end
     else if (CItem is TCVariable) then
     begin
       DVariable.Client := Client;
       DVariable.Variable := TCVariable(CItem);
-      DVariable.Execute();
-    end;
+      Execute := DVariable.Execute;
+    end
+    else
+      Execute := nil;
+
+    if (Assigned(Execute) and Execute()) then
+      Client.Update();
   end;
 end;
 
@@ -4054,11 +4075,11 @@ begin
       AllowChange := False;
     end;
 
-  tbObjectBrowser.Down := MainAction('aVObjectBrowser').Checked;
-  tbDataBrowser.Down := MainAction('aVDataBrowser').Checked;
-  tbObjectIDE.Down := MainAction('aVObjectIDE').Checked;
-  tbQueryBuilder.Down := MainAction('aVQueryBuilder').Checked;
-  tbSQLEditor.Down := MainAction('aVSQLEditor').Checked;
+  tbObjects.Down := MainAction('aVObjectBrowser').Checked;
+  tbBrowser.Down := MainAction('aVDataBrowser').Checked;
+  tbIDE.Down := MainAction('aVObjectIDE').Checked;
+  tbBuilder.Down := MainAction('aVQueryBuilder').Checked;
+  tbEditor.Down := MainAction('aVSQLEditor').Checked;
   tbDiagram.Down := MainAction('aVDiagram').Checked;
 
   if (AllowChange) then
@@ -4068,9 +4089,9 @@ begin
     case (View) of
       vObjects: if (PListView.Visible) then Window.ActiveControl := ActiveListView;
       vBrowser: if (PResult.Visible and PGrid.Visible) then Window.ActiveControl := FGrid;
-      vIDE: if (PSQLEditor.Visible and Assigned(ActiveSynMemo)) then Window.ActiveControl := ActiveSynMemo;
+      vIDE: if (PSynMemo.Visible and Assigned(ActiveSynMemo)) then Window.ActiveControl := ActiveSynMemo;
       vBuilder: if (PBuilder.Visible and Assigned(FBuilderActiveWorkArea())) then Window.ActiveControl := FBuilderActiveWorkArea();
-      vEditor: if (PSQLEditor.Visible) then Window.ActiveControl := FSQLEditorSynMemo;
+      vEditor: if (PSynMemo.Visible) then Window.ActiveControl := FSQLEditorSynMemo;
       vDiagram: if (PWorkbench.Visible) then Window.ActiveControl := ActiveWorkbench;
     end;
   end;
@@ -4296,82 +4317,96 @@ begin
   end;
 end;
 
-procedure TFClient.ClientRefresh(Sender: TObject);
+procedure TFClient.ClientUpdate(const Event: TCClient.TEvent);
 var
   Control: TWinControl;
-  ClientEvent: TCClient.TEvent;
   TempActiveControl: TWinControl;
   WTable: TWTable;
+  I: Integer;
 begin
-  if (Sender is TCClient.TEvent) then
-    ClientEvent := TCClient.TEvent(Sender)
-  else
-    ClientEvent := nil;
-
   LeftMousePressed := False;
 
   TempActiveControl := Window.ActiveControl;
 
-  if (Assigned(ClientEvent)) then
+  if (Assigned(Event)) then
   begin
     Client.SQLEditorResult.Clear();
     Client.QueryBuilderResult.Clear();
   end;
 
-  if (Assigned(ClientEvent)) then
-    if (ClientEvent.EventType in [ceBuild, ceObjBuild, ceObjCreated, ceObjDroped, ceObjAltered]) then
-      FNavigatorRefresh(ClientEvent);
-
-  if (Assigned(ClientEvent)) then
+  if (Assigned(Event)) then
   begin
-    if (ClientEvent.Sender is TCDatabase) then
+    if (Event.EventType in [ceItemsValid, ceItemCreated, ceItemAltered, ceItemDroped]) then
     begin
-      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
-        ListViewRefresh(ClientEvent, lkServer, FServerListView);
-      ListViewRefresh(ClientEvent, lkDatabase, TDatabaseDesktop(TCDatabase(ClientEvent.Sender).Desktop).FListView);
-      if ((ClientEvent.EventType in [ceObjCreated, ceObjDroped]) and (ClientEvent.CObject is TCTrigger)) then
-        ListViewRefresh(ClientEvent, lkTable, TTableDesktop(TCTrigger(ClientEvent.CObject).Table.Desktop).ListView);
-    end
-    else if (ClientEvent.Sender is TCTable) then
-    begin
-      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
-        ListViewRefresh(ClientEvent, lkDatabase, TDatabaseDesktop(TCTable(ClientEvent.Sender).Database.Desktop).ListView);
-      ListViewRefresh(ClientEvent, lkTable, TTableDesktop(TCTable(ClientEvent.Sender).Desktop).ListView);
-    end
-    else if (ClientEvent.CItems is TCHosts) then
-    begin
-      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
-        ListViewRefresh(ClientEvent, lkServer, FServerListView);
-      ListViewRefresh(ClientEvent, lkHosts, HostsListView);
-    end
-    else if (ClientEvent.CItems is TCProcesses) then
-    begin
-      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
-        ListViewRefresh(ClientEvent, lkServer, FServerListView);
-      ListViewRefresh(ClientEvent, lkProcesses, ProcessesListView);
-    end
-    else if (ClientEvent.CItems is TCStati) then
-    begin
-      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
-        ListViewRefresh(ClientEvent, lkServer, FServerListView);
-      ListViewRefresh(ClientEvent, lkStati, StatiListView);
-    end
-    else if (ClientEvent.CItems is TCUsers) then
-    begin
-      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
-        ListViewRefresh(ClientEvent, lkServer, FServerListView);
-      ListViewRefresh(ClientEvent, lkUsers, UsersListView);
-    end
-    else if (ClientEvent.CItems is TCVariables) then
-    begin
-      if (ClientEvent.EventType in [ceBuild, ceStatus]) then
-        ListViewRefresh(ClientEvent, lkServer, FServerListView);
-      ListViewRefresh(ClientEvent, lkVariables, VariablesListView);
-    end
-    else
-    begin
-      ListViewRefresh(ClientEvent, lkServer, FServerListView);
+      FNavigatorRefresh(Event);
+
+      if (Event.Sender is TCClient) then
+        ListViewUpdate(Event, lkServer, FServerListView)
+      else if (Event.Sender is TCDatabase) then
+      begin
+        ListViewUpdate(Event, lkServer, FServerListView);
+        if (not (Event.CItems is TCTriggers)) then
+          ListViewUpdate(Event, lkDatabase, DatabaseDesktop(Event.Sender).ListView)
+        else
+          for I := 0 to TCTriggers(Event.CItems).Count - 1 do
+            ListViewUpdate(Event, lkTable, TableDesktop(TCTriggers(Event.CItems)[I].Table).ListView);
+      end
+      else if (Event.Sender is TCTable) then
+      begin
+        ListViewUpdate(Event, lkDatabase, DatabaseDesktop(TCTable(Event.Sender).Database).ListView);
+        ListViewUpdate(Event, lkTable, TableDesktop(Event.Sender).ListView);
+      end
+      else if (Event.CItems is TCHosts) then
+      begin
+        ListViewUpdate(Event, lkServer, FServerListView);
+        ListViewUpdate(Event, lkHosts, HostsListView);
+      end
+      else if (Event.CItems is TCProcesses) then
+      begin
+        ListViewUpdate(Event, lkServer, FServerListView);
+        ListViewUpdate(Event, lkProcesses, ProcessesListView);
+      end
+      else if (Event.CItems is TCStati) then
+      begin
+        ListViewUpdate(Event, lkServer, FServerListView);
+        ListViewUpdate(Event, lkStati, StatiListView);
+      end
+      else if (Event.CItems is TCUsers) then
+      begin
+        ListViewUpdate(Event, lkServer, FServerListView);
+        ListViewUpdate(Event, lkUsers, UsersListView);
+      end
+      else if (Event.CItems is TCVariables) then
+      begin
+        ListViewUpdate(Event, lkServer, FServerListView);
+        ListViewUpdate(Event, lkVariables, VariablesListView);
+      end;
     end;
+
+    if (Event.EventType = ceItemValid) then
+      if ((Event.CItem is TCView) and Assigned(ViewDesktop(Event.CItem).SynMemo)) then
+        ViewDesktop(Event.CItem).SynMemo.Text := Trim(SQLWrapStmt(TCView(Event.CItem).Stmt, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10;
+
+
+    if (Assigned(ActiveWorkbench)) then
+      ActiveWorkbench.Refresh();
+
+    if ((Event.EventType = ceItemCreated) and (Event.Sender is TCDatabase) and (TCDatabase(Event.Sender) = TCDatabase(FNavigator.Selected.Data))) then
+      case (View) of
+        vDiagram:
+          if (Event.Sender is TCBaseTable) then
+          begin
+            ActiveWorkbench.BeginUpdate();
+            WTable := TWTable.Create(ActiveWorkbench.Tables);
+            WTable.Caption := TCBaseTable(Event.Sender).Name;
+            FWorkbenchValidateControl(nil, WTable);
+            WTable.Move(nil, [], FWorkbenchMouseDownPoint);
+            ActiveWorkbench.Tables.Add(WTable);
+            FWorkbenchValidateForeignKeys(nil, WTable);
+            ActiveWorkbench.Selected := WTable;
+            ActiveWorkbench.EndUpdate();
+          end;
+      end;
   end;
 
   if (PContent.Visible and Assigned(TempActiveControl) and TempActiveControl.Visible) then
@@ -4382,28 +4417,8 @@ begin
       Window.ActiveControl := TempActiveControl;
   end;
 
-  if (Assigned(ActiveWorkbench)) then
-    ActiveWorkbench.Refresh();
-
-  if (Assigned(ClientEvent) and (ClientEvent.EventType = ceObjCreated) and (ClientEvent.Sender is TCDatabase) and (TCDatabase(ClientEvent.Sender) = TCDatabase(FNavigator.Selected.Data))) then
-    case (View) of
-      vDiagram:
-        if (ClientEvent.Sender is TCBaseTable) then
-        begin
-          ActiveWorkbench.BeginUpdate();
-          WTable := TWTable.Create(ActiveWorkbench.Tables);
-          WTable.Caption := TCBaseTable(ClientEvent.Sender).Name;
-          FWorkbenchValidateControl(nil, WTable);
-          WTable.Move(nil, [], FWorkbenchMouseDownPoint);
-          ActiveWorkbench.Tables.Add(WTable);
-          FWorkbenchValidateForeignKeys(nil, WTable);
-          ActiveWorkbench.Selected := WTable;
-          ActiveWorkbench.EndUpdate();
-        end;
-    end;
-
-  if (Wanted.Nothing and Assigned(ClientEvent) and (ClientEvent.EventType in [ceObjStatus, ceObjCreated, ceObjDroped, ceObjAltered])) then
-    Wanted.Update := UpdateAfterAddressChanged;
+  if (Assigned(Event) and (Event.EventType in [ceItemCreated, ceItemAltered]) and (Screen.ActiveForm = Window) and Wanted.Nothing) then
+    Wanted.Update := Client.Update;
 end;
 
 procedure TFClient.CMActivateFGrid(var Message: TMessage);
@@ -4509,11 +4524,11 @@ begin
     if (ActionList.Actions[I] is TCustomAction) and (TCustomAction(ActionList.Actions[I]).Hint = '') then
       TCustomAction(ActionList.Actions[I]).Hint := TCustomAction(ActionList.Actions[I]).Caption;
 
-  tbObjectBrowser.Caption := ReplaceStr(Preferences.LoadStr(4), '&', '');
-  tbDataBrowser.Caption := ReplaceStr(Preferences.LoadStr(5), '&', '');
-  tbObjectIDE.Caption := ReplaceStr(Preferences.LoadStr(865), '&', '');
-  tbQueryBuilder.Caption := ReplaceStr(tbQueryBuilder.Caption, '&', '');
-  tbSQLEditor.Caption := ReplaceStr(Preferences.LoadStr(6), '&', '');
+  tbObjects.Caption := ReplaceStr(Preferences.LoadStr(4), '&', '');
+  tbBrowser.Caption := ReplaceStr(Preferences.LoadStr(5), '&', '');
+  tbIDE.Caption := ReplaceStr(Preferences.LoadStr(865), '&', '');
+  tbBuilder.Caption := ReplaceStr(tbBuilder.Caption, '&', '');
+  tbEditor.Caption := ReplaceStr(Preferences.LoadStr(6), '&', '');
   tbDiagram.Caption := ReplaceStr(Preferences.LoadStr(800), '&', '');
 
   miNImport.Caption := Preferences.LoadStr(371);
@@ -4551,23 +4566,23 @@ begin
   FSQLHistory.Font.Size := Preferences.SQLFontSize;
   FSQLHistory.Font.Charset := Preferences.SQLFontCharset;
 
-  mtObjectBrowser.Caption := tbObjectBrowser.Caption;
-  mtDataBrowser.Caption := tbDataBrowser.Caption;
-  mtObjectIDE.Caption := tbObjectIDE.Caption;
-  mtQueryBuilder.Caption := tbQueryBuilder.Caption;
-  mtSQLEditor.Caption := tbSQLEditor.Caption;
+  mtObjects.Caption := tbObjects.Caption;
+  mtBrowser.Caption := tbBrowser.Caption;
+  mtIDE.Caption := tbIDE.Caption;
+  mtBuilder.Caption := tbBuilder.Caption;
+  mtEditor.Caption := tbEditor.Caption;
   mtDiagram.Caption := tbDiagram.Caption;
 
-  tbObjectBrowser.Visible := ttObjectBrowser in Preferences.ToolbarTabs;
-  tbDataBrowser.Visible := ttDataBrowser in Preferences.ToolbarTabs;
-  tbObjectIDE.Visible := ttObjectIDE in Preferences.ToolbarTabs;
-  tbQueryBuilder.Visible := ttQueryBuilder in Preferences.ToolbarTabs;
-  tbSQLEditor.Visible := ttSQLEditor in Preferences.ToolbarTabs;
+  tbObjects.Visible := ttObjects in Preferences.ToolbarTabs;
+  tbBrowser.Visible := ttBrowser in Preferences.ToolbarTabs;
+  tbIDE.Visible := ttIDE in Preferences.ToolbarTabs;
+  tbBuilder.Visible := ttBuilder in Preferences.ToolbarTabs;
+  tbEditor.Visible := ttEditor in Preferences.ToolbarTabs;
   tbDiagram.Visible := ttDiagram in Preferences.ToolbarTabs;
 
 
   if (not (tsLoading in FrameState)) then
-    ClientRefresh(nil);
+    ClientUpdate(nil);
 
   acQBLanguageManager.CurrentLanguageIndex := -1;
   for I := 0 to acQBLanguageManager.LanguagesCount - 1 do
@@ -4611,9 +4626,9 @@ begin
   else
     FSQLEditorSynMemo.ActiveLineColor := Preferences.Editor.CurrRowBGColor;
 
-  for I := 0 to PSQLEditor.ControlCount - 1 do
-    if (PSQLEditor.Controls[I] is TSynMemo) then
-      SynMemoApllyPreferences(TSynMemo(PSQLEditor.Controls[I]));
+  for I := 0 to PSynMemo.ControlCount - 1 do
+    if (PSynMemo.Controls[I] is TSynMemo) then
+      SynMemoApllyPreferences(TSynMemo(PSynMemo.Controls[I]));
 
   SynMemoApllyPreferences(FBuilderSynMemo);
 
@@ -5000,7 +5015,7 @@ begin
     PSQLHistory.BevelInner := bvRaised; PSQLHistory.BevelOuter := bvLowered;
     PListView.BevelInner := bvRaised; PListView.BevelOuter := bvLowered;
     PBuilderQuery.BevelInner := bvRaised; PBuilderQuery.BevelOuter := bvLowered;
-    PSQLEditor.BevelInner := bvRaised; PSQLEditor.BevelOuter := bvLowered;
+    PSynMemo.BevelInner := bvRaised; PSynMemo.BevelOuter := bvLowered;
     PWorkbench.BevelInner := bvRaised; PWorkbench.BevelOuter := bvLowered;
     PGrid.BevelInner := bvRaised; PGrid.BevelOuter := bvLowered;
     PBlob.BevelInner := bvRaised; PBlob.BevelOuter := bvLowered;
@@ -5016,7 +5031,7 @@ begin
     PSQLHistory.BevelInner := bvNone; PSQLHistory.BevelOuter := bvNone;
     PListView.BevelInner := bvNone; PListView.BevelOuter := bvNone;
     PBuilderQuery.BevelInner := bvNone; PBuilderQuery.BevelOuter := bvNone;
-    PSQLEditor.BevelInner := bvNone; PSQLEditor.BevelOuter := bvNone;
+    PSynMemo.BevelInner := bvNone; PSynMemo.BevelOuter := bvNone;
     PWorkbench.BevelInner := bvNone; PWorkbench.BevelOuter := bvNone;
     PGrid.BevelInner := bvNone; PGrid.BevelOuter := bvNone;
     PBlob.BevelInner := bvNone; PBlob.BevelOuter := bvNone;
@@ -5189,6 +5204,8 @@ begin
   Param := AParam;
   ActiveControlOnDeactivate := nil;
   ActiveListView := FServerListView;
+  ActiveSynMemo := nil;
+  ActiveWorkbench := nil;
   HostsListView := nil;
   ProcessesListView := nil;
   StatiListView := nil;
@@ -5225,11 +5242,11 @@ begin
   tbBookmarks.Action := MainAction('aVBookmarks');
   tbSQLHistory.Action := MainAction('aVSQLHistory');
 
-  tbObjectBrowser.Action := MainAction('aVObjectBrowser'); tbObjectBrowser.Caption := ReplaceStr(tbObjectBrowser.Caption, '&', '');
-  tbDataBrowser.Action := MainAction('aVDataBrowser'); tbDataBrowser.Caption := ReplaceStr(tbDataBrowser.Caption, '&', '');
-  tbObjectIDE.Action := MainAction('aVObjectIDE'); tbObjectIDE.Caption := ReplaceStr(tbObjectIDE.Caption, '&', '');
-  tbQueryBuilder.Action := MainAction('aVQueryBuilder'); tbQueryBuilder.Caption := ReplaceStr(tbQueryBuilder.Caption, '&', '');
-  tbSQLEditor.Action := MainAction('aVSQLEditor'); tbSQLEditor.Caption := ReplaceStr(tbSQLEditor.Caption, '&', '');
+  tbObjects.Action := MainAction('aVObjectBrowser'); tbObjects.Caption := ReplaceStr(tbObjects.Caption, '&', '');
+  tbBrowser.Action := MainAction('aVDataBrowser'); tbBrowser.Caption := ReplaceStr(tbBrowser.Caption, '&', '');
+  tbIDE.Action := MainAction('aVObjectIDE'); tbIDE.Caption := ReplaceStr(tbIDE.Caption, '&', '');
+  tbBuilder.Action := MainAction('aVQueryBuilder'); tbBuilder.Caption := ReplaceStr(tbBuilder.Caption, '&', '');
+  tbEditor.Action := MainAction('aVSQLEditor'); tbEditor.Caption := ReplaceStr(tbEditor.Caption, '&', '');
   tbDiagram.Action := MainAction('aVDiagram'); tbDiagram.Caption := ReplaceStr(tbDiagram.Caption, '&', '');
 
   miSNavigator.Action := MainAction('aVNavigator');
@@ -5374,7 +5391,7 @@ begin
   FSQLHistory.RowSelect := CheckWin32Version(6, 1);
 
   PListView.Align := alClient;
-  PSQLEditor.Align := alClient;
+  PSynMemo.Align := alClient;
   PBuilder.Align := alClient;
 
   FServerListView.RowSelect := CheckWin32Version(6);
@@ -5446,8 +5463,10 @@ function TFClient.CreateDesktop(const CObject: TCObject): TCObject.TDesktop;
 begin
   if (CObject is TCDatabase) then
     Result := TDatabaseDesktop.Create(Self, TCDatabase(CObject))
-  else if (CObject is TCTable) then
-    Result := TTableDesktop.Create(Self, TCTable(CObject))
+  else if (CObject is TCBaseTable) then
+    Result := TTableDesktop.Create(Self, TCBaseTable(CObject))
+  else if (CObject is TCView) then
+    Result := TViewDesktop.Create(Self, TCView(CObject))
   else
     Result := nil;
 end;
@@ -5512,6 +5531,8 @@ begin
 end;
 
 function TFClient.CreateSynMemo(): TSynMemo;
+var
+  NonClientMetrics: TNonClientMetrics;
 begin
   Result := TSynMemo.Create(FSQLEditorSynMemo.Owner);
 
@@ -5540,7 +5561,26 @@ begin
 
   SynMemoApllyPreferences(Result);
 
-  Result.Parent := FSQLEditorSynMemo.Parent;
+  Result.Parent := PSynMemo;
+
+  Result.Perform(CM_PARENTCOLORCHANGED, 0, 0);
+  Result.Perform(CM_PARENTFONTCHANGED, 0, 0);
+  Result.Perform(CM_PARENTSHOWHINTCHANGED, 0, 0);
+  Result.Perform(CM_PARENTBIDIMODECHANGED, 0, 0);
+  Result.Perform(CM_PARENTDOUBLEBUFFEREDCHANGED, 0, 0);
+  Result.Perform(CM_PARENTTABLETOPTIONSCHANGED, 0, 0);
+
+  if (Result.Align = alClient) then
+  begin
+    Result.Left := 0;
+    Result.Top := 0;
+    Result.Width := Parent.ClientWidth;
+    Result.Height := Parent.ClientHeight;
+  end;
+
+  NonClientMetrics.cbSize := SizeOf(NonClientMetrics);
+  if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, SizeOf(NonClientMetrics), @NonClientMetrics, 0)) then
+    Window.ApplyWinAPIUpdates(Result, NonClientMetrics.lfStatusFont);
 end;
 
 function TFClient.CreateWorkbench(const ADatabase: TCDatabase): TWWorkbench;
@@ -5571,6 +5611,13 @@ begin
     Result.LoadFromFile(Client.Account.DataPath + SelectedDatabase + PathDelim + 'Diagram.xml');
 end;
 
+function TFClient.DatabaseDesktop(const Database: TObject): TDatabaseDesktop;
+begin
+  Assert(Database is TCDatabase);
+
+  Result := TDatabaseDesktop(TCDatabase(Database).Desktop);
+end;
+
 procedure TFClient.DataSetAfterCancel(DataSet: TDataSet);
 begin
   DBGridColEnter(FGrid);
@@ -5584,12 +5631,12 @@ begin
     PResult.Align := alBottom;
     PResult.Height := PResultHeight;
     if (PBuilder.Visible) then PBuilder.Align := alClient;
-    if (PSQLEditor.Visible) then PSQLEditor.Align := alClient;
+    if (PSynMemo.Visible) then PSynMemo.Align := alClient;
   end;
 
   PResult.Visible := False; SResult.Visible := False;
   PBuilder.Update(); // TSynMemo aktualisiert leider nicht sofort nach Änderung von TSynMemo.Align
-  PSQLEditor.Update(); // TSynMemo aktualisiert leider nicht sofort nach Änderung von TSynMemo.Align
+  PSynMemo.Update(); // TSynMemo aktualisiert leider nicht sofort nach Änderung von TSynMemo.Align
 
   aDPrev.Enabled := False;
   aDNext.Enabled := False;
@@ -6046,7 +6093,10 @@ begin
   FNavigator.Items.Clear();
   FNavigator.Items.EndUpdate();
 
-  FreeListView(FServerListView);
+  FServerListView.OnChanging := nil;
+  FServerListView.Items.BeginUpdate();
+  FServerListView.Items.Clear();
+  FServerListView.Items.EndUpdate();
   if (Assigned(HostsListView)) then FreeListView(HostsListView);
   if (Assigned(ProcessesListView)) then FreeListView(ProcessesListView);
   if (Assigned(StatiListView)) then FreeListView(StatiListView);
@@ -6952,7 +7002,7 @@ begin
       end;
     end;
 
-    SResult.Visible := PResult.Visible and (PBuilder.Visible or PSQLEditor.Visible);
+    SResult.Visible := PResult.Visible and (PBuilder.Visible or PSynMemo.Visible);
   end;
 end;
 
@@ -7506,20 +7556,20 @@ begin
       iiSystemDatabase:
         begin
           Database := TCDatabase(Node.Data);
-          AllowExpansion := not Database.Update();
+          AllowExpansion := AllowExpansion and not Database.Update();
         end;
       iiBaseTable,
       iiSystemView,
       iiView:
         begin
           Table := TCTable(Node.Data);
-          AllowExpansion := not Table.Update();
+          AllowExpansion := AllowExpansion and not Table.Update();
         end;
     end;
 
     if (not AllowExpansion and (Sender = FNavigator)) then
-      FNavigatorNodeToExpand := Node
-    else if (AllowExpansion and Node.HasChildren and (Node.Count = 0)) then
+      FNavigatorNodeToExpand := Node;
+    if (Node.HasChildren and (Node.Count = 0)) then
     begin
       FNavigatorNodeToExpand := Node;
       if (Assigned(Table)) then
@@ -7741,22 +7791,22 @@ procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
     end;
     Child.Data := Data;
     Child.ImageIndex := ImageIndexByData(Data);
+    Child.Text := Text;
     if (Added and (Child.ImageIndex in [iiDatabase, iiSystemDatabase, iiSystemView, iiBaseTable, iiView])) then
       Child.HasChildren := True;
   end;
 
-  procedure UpdateGroup(const Node: TTreeNode; const CItems: TCItems);
+  procedure UpdateGroup(const Node: TTreeNode; const GroupID: Integer; const CItems: TCItems);
   var
     Child: TTreeNode;
     Destination: TTreeNode;
     I: Integer;
   begin
     case (ClientEvent.EventType) of
-      ceBuild,
-      ceObjBuild:
+      ceItemsValid:
         begin
           for I := Node.Count - 1 downto 0 do
-            if ((TCItem(Node.Data).CItems = CItems) and (CItems.IndexOf(Node.Item[I].Data) < 0)) then
+            if ((GroupIDByImageIndex(Node.Item[I].ImageIndex) = GroupID) and (CItems.IndexOf(Node.Item[I].Data) < 0)) then
             begin
               if (Node.Item[I] = FNavigatorNodeToExpand) then
                 FNavigatorNodeToExpand := nil;
@@ -7767,16 +7817,16 @@ procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
             if (not (CItems is TCTriggers) or (TCTriggers(CItems)[I].Table = ClientEvent.Sender)) then
               InsertChild(Node, CItems[I]);
         end;
-      ceObjCreated:
-        InsertChild(Node, ClientEvent.CObject);
-      ceObjAltered:
+      ceItemCreated:
+        InsertChild(Node, ClientEvent.CItem);
+      ceItemAltered:
         begin
           Child := Node.getFirstChild();
-          while (Assigned(Child) and (Child.Data <> ClientEvent.CObject)) do
+          while (Assigned(Child) and (Child.Data <> ClientEvent.CItem)) do
             Child := Child.getNextSibling();
-          if (Assigned(Child) and (Child.Text <> ClientEvent.CObject.Caption)) then
+          if (Assigned(Child) and (Child.Text <> ClientEvent.CItem.Caption)) then
           begin
-            Child.Text := ClientEvent.CObject.Caption;
+            Child.Text := ClientEvent.CItem.Caption;
             Destination := Node.getFirstChild();
             while (Assigned(Destination) and ((Destination = Child) or (Compare(Node.ImageIndex, Destination, Child) < 0))) do
               Destination := Destination.getNextSibling();
@@ -7786,9 +7836,9 @@ procedure TFClient.FNavigatorRefresh(const ClientEvent: TCClient.TEvent);
               Child.MoveTo(Node, naAddChild);
           end;
         end;
-      ceObjDroped:
+      ceItemDroped:
         for I := Node.Count - 1 downto 0 do
-          if (Node.Item[I].Data = ClientEvent.CObject) then
+          if (Node.Item[I].Data = ClientEvent.CItem) then
           begin
             if (Node.Item[I] = FNavigatorNodeToExpand) then
               FNavigatorNodeToExpand := nil;
@@ -7825,7 +7875,7 @@ begin
     end;
 
     if (ClientEvent.CItems is TCDatabases) then
-      UpdateGroup(Node, ClientEvent.CItems);
+      UpdateGroup(Node, giDatabases, ClientEvent.CItems);
   end
   else if (ClientEvent.Sender is TCDatabase) then
   begin
@@ -7838,7 +7888,7 @@ begin
     begin
       if (not (ClientEvent.CItems is TCTriggers)) then
       begin
-        UpdateGroup(Node, ClientEvent.CItems);
+        UpdateGroup(Node, giTriggers, ClientEvent.CItems);
 
         Node.HasChildren := (Node.Count > 0)
           or not Database.Tables.Valid or (Database.Tables.Count > 0)
@@ -7849,7 +7899,7 @@ begin
       begin
         for I := 0 to Node.Count - 1 do
           if (Node.Item[I].ImageIndex = iiBaseTable) then
-            UpdateGroup(Node.Item[I], ClientEvent.CItems);
+            UpdateGroup(Node.Item[I], giTables, ClientEvent.CItems);
       end;
     end;
   end
@@ -7870,12 +7920,12 @@ begin
         Expanded := Node.Expanded;
 
         if (Table is TCBaseTable) then
-          UpdateGroup(Node, TCBaseTable(Table).Indices);
-        UpdateGroup(Node, Table.Fields);
+          UpdateGroup(Node, giIndices, TCBaseTable(Table).Indices);
+        UpdateGroup(Node, giFields, Table.Fields);
         if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).ForeignKeys)) then
-          UpdateGroup(Node, TCBaseTable(Table).ForeignKeys);
+          UpdateGroup(Node, giForeignKeys, TCBaseTable(Table).ForeignKeys);
         if ((Table is TCBaseTable) and Assigned(Table.Database.Triggers)) then
-          UpdateGroup(Node, Table.Database.Triggers);
+          UpdateGroup(Node, giTriggers, Table.Database.Triggers);
 
         Node.HasChildren := Node.Count > 0;
         Node.Expanded := Expanded;
@@ -8051,14 +8101,12 @@ var
 begin
   if (not (csDestroying in ComponentState)) then
     case (Event.EventType) of
-      ceBuild,
-      ceStatus,
-      ceObjBuild,
-      ceObjCreated,
-      ceObjAltered,
-      ceObjDroped,
-      ceObjStatus:
-        ClientRefresh(Event);
+      ceItemsValid,
+      ceItemValid,
+      ceItemCreated,
+      ceItemAltered,
+      ceItemDroped:
+        ClientUpdate(Event);
       ceMonitor:
         Perform(CM_POST_MONITOR, 0, 0);
       ceBeforeExecuteSQL:
@@ -9179,7 +9227,9 @@ begin
           DForeignKey.ParentTable := DForeignKey.Database.BaseTableByName(TWForeignKey(Control).ParentTable.Caption);
           DForeignKey.ForeignKey := nil;
           if (not DForeignKey.Execute()) then
-            PostMessage(Handle, CM_REMOVE_WFOREIGENKEY, wParam(Workbench), lParam(TWForeignKey(Control)));
+            PostMessage(Handle, CM_REMOVE_WFOREIGENKEY, wParam(Workbench), lParam(TWForeignKey(Control)))
+          else
+            Client.Update();
         end;
       end;
   end;
@@ -9244,13 +9294,7 @@ end;
 function TFClient.GetActiveListView(): TListView;
 var
   I: Integer;
-  OldListView: TListView;
 begin
-  OldListView := nil;
-  for I := 0 to PListView.ControlCount - 1 do
-    if (PListView.Controls[I].Visible and (PListView.Controls[I] is TListView)) then
-      OldListView := TListView(PListView.Controls[I]);
-
   if (not Assigned(FNavigator.Selected)) then
     Result := FServerListView
   else
@@ -9258,19 +9302,11 @@ begin
       iiServer: Result := FServerListView;
       iiDatabase,
       iiSystemDatabase:
-        begin
-          if (not Assigned(TDatabaseDesktop(TCDatabase(FNavigator.Selected.Data).Desktop).ListView)) then
-            TDatabaseDesktop(TCDatabase(FNavigator.Selected.Data).Desktop).CreateListView();
-          Result := TDatabaseDesktop(TCDatabase(FNavigator.Selected.Data).Desktop).ListView;
-        end;
+        Result := DatabaseDesktop(FNavigator.Selected.Data).CreateListView();
       iiBaseTable,
       iiSystemView,
       iiView:
-        begin
-          if (not Assigned(TTableDesktop(TCTable(FNavigator.Selected.Data).Desktop).ListView)) then
-            TTableDesktop(TCTable(FNavigator.Selected.Data).Desktop).CreateListView();
-          Result := TTableDesktop(TCTable(FNavigator.Selected.Data).Desktop).ListView;
-        end;
+        Result := TableDesktop(FNavigator.Selected.Data).CreateListView();
       iiHosts:
         begin
           if (not Assigned(HostsListView)) then
@@ -9316,25 +9352,23 @@ begin
           end;
           Result := VariablesListView;
         end;
-      else Result := nil;
+      else
+        Result := nil;
     end;
 
-  for I := 0 to PListView.ControlCount - 1 do
-    if (PListView.Controls[I] = Result) then
-    begin
-      Result.SendToBack();
-      Result.Visible := True;
-    end;
-  if (Assigned(OldListView) and (Result <> OldListView)) then
-    OldListView.Visible := False;
+  if (Assigned(Result)) then
+    for I := 0 to PListView.ControlCount - 1 do
+      PListView.Controls[I].Visible := PListView.Controls[I] = Result;
 end;
 
 function TFClient.GetActiveSynMemo(): TSynMemo;
+var
+  I: Integer;
 begin
   case (View) of
     vIDE:
       case (SelectedImageIndex) of
-        iiView: Result := TViewDesktop(TCView(FNavigator.Selected.Data).Desktop).SynMemo;
+        iiView: Result := ViewDesktop(FNavigator.Selected.Data).CreateSynMemo();
         iiProcedure,
         iiFunction: Result := TRoutineDesktop(TCRoutine(FNavigator.Selected.Data).Desktop).SynMemo;
         iiEvent: Result := TEventDesktop(TCEvent(FNavigator.Selected.Data).Desktop).SynMemo;
@@ -9348,6 +9382,10 @@ begin
     else
       Result := nil;
   end;
+
+  if (Assigned(Result) and (Result <> FBuilderSynMemo)) then
+    for I := 0 to PSynMemo.ControlCount - 1 do
+      PSynMemo.Controls[I].Visible := PSynMemo.Controls[I] = Result;
 end;
 
 function TFClient.GetActiveWorkbench(): TWWorkbench;
@@ -9679,23 +9717,6 @@ begin
   MsgBox(Error.ErrorMessage, Preferences.LoadStr(45), MB_OK + MB_ICONERROR);
 
   Success := daAbort;
-end;
-
-procedure TFClient.ListViewChange(Sender: TObject; Item: TListItem;
-  Change: TItemChange);
-var
-  I: Integer;
-  List: TList;
-begin
-  if ((Sender is TListView) and not Client.InUse) then
-  begin
-    List := TList.Create();
-    for I := 0 to TListView(Sender).Items.Count - 1 do
-      if (TListView(Sender).Items[I].Selected and (TObject(TListView(Sender).Items[I].Data) is TCObject)) then
-        List.Add(TCObject(TListView(Sender).Items[I].Data));
-    Client.Update(List, True);
-    List.Free();
-  end;
 end;
 
 procedure TFClient.ListViewChanging(Sender: TObject; Item: TListItem;
@@ -10359,7 +10380,7 @@ begin
   mlEProperties.ShortCut := 0;
 end;
 
-procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kind: TADesktop.TListViewKind; const ListView: TListView; const Data: TCustomData = nil);
+procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const Kind: TADesktop.TListViewKind; const ListView: TListView; const Data: TCustomData = nil);
 
   function Compare(const Kind: TADesktop.TListViewKind; const Item1, Item2: TListItem): Integer;
   begin
@@ -10441,7 +10462,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         Item.SubItems.Add(ReplaceStr(Preferences.LoadStr(738), '&', ''))
       else
         Item.SubItems.Add('');
-      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ValidStatus) then
+      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).Valid) then
         Item.SubItems.Add('')
       else if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(TCTable(Data)).Rows < 0)) then
         Item.SubItems.Add('')
@@ -10451,7 +10472,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
         Item.SubItems.Add(FormatFloat('#,##0', TCBaseTable(TCTable(Data)).Rows, LocaleFormatSettings))
       else
         Item.SubItems.Add('');
-      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ValidStatus) then
+      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).Valid) then
         Item.SubItems.Add('')
       else if (TCTable(Data) is TCBaseTable) then
         if ((TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize < 0)) then
@@ -10460,7 +10481,7 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
           Item.SubItems.Add(SizeToStr(TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize + 1))
       else
         Item.SubItems.Add(SizeToStr(Length(TCView(TCTable(Data)).Source)));
-      if (not (TCTable(Data) is TCBaseTable) or not TCBaseTable(TCTable(Data)).ValidStatus or (TCBaseTable(TCTable(Data)).Updated <= 0)) then
+      if (not (TCTable(Data) is TCBaseTable) or not TCBaseTable(TCTable(Data)).Valid or (TCBaseTable(TCTable(Data)).Updated <= 0)) then
         Item.SubItems.Add('')
       else
         Item.SubItems.Add(SysUtils.DateTimeToStr(TCBaseTable(TCTable(Data)).Updated, LocaleFormatSettings));
@@ -10802,59 +10823,52 @@ procedure TFClient.ListViewRefresh(const ClientEvent: TCClient.TEvent; const Kin
     ItemFocused: Boolean;
   begin
     case (ClientEvent.EventType) of
-      ceBuild,
-      ceObjBuild:
+      ceItemsValid:
         begin
           for I := ListView.Items.Count - 1 downto 0 do
-            if ((TCItem(ListView.Items[I].Data).CItems = CItems) and (CItems.IndexOf(ListView.Items[I].Data) < 0)) then
+            if ((ListView.Items[I].GroupID = GroupID) and (CItems.IndexOf(ListView.Items[I].Data) < 0)) then
               ListView.Items.Delete(I);
 
           for I := 0 to CItems.Count - 1 do
             if (not (CItems is TCTriggers) or (TCTriggers(CItems)[I].Table = ClientEvent.Sender)) then
               InsertItem(CItems[I]);
         end;
-      ceStatus:
+      ceItemValid:
         for I := 0 to ListView.Items.Count - 1 do
-          if (TCItem(ListView.Items[I].Data).CItems = ClientEvent.CItems) then
-            for J := 0 to TCItem(ListView.Items[I].Data).CItems.Count - 1 do
-              if (ListView.Items[I].Data = TCItem(ListView.Items[I].Data).CItems[J]) then
-                UpdateItem(ListView.Items[I], TCItem(ListView.Items[I].Data).CItems[J]);
-      ceObjCreated:
+          if (ListView.Items[I].Data = ClientEvent.CItem) then
+            UpdateItem(ListView.Items[I], ClientEvent.CItem);
+      ceItemCreated:
         begin
-          Item := InsertItem(ClientEvent.CObject);
+          Item := InsertItem(ClientEvent.CItem);
           if (not Assigned(ListView.Selected)) then
             ListView.Selected := Item;
         end;
-      ceObjAltered:
+      ceItemAltered:
         begin
           Index := 0;
-          while ((Index < ListView.Items.Count) and (ListView.Items[Index].Data <> ClientEvent.CObject)) do
+          while ((Index < ListView.Items.Count) and (ListView.Items[Index].Data <> ClientEvent.CItem)) do
             Inc(Index);
           if (Index = ListView.Items.Count) then
-            InsertItem(ClientEvent.CObject)
-          else if (ListView.Items[Index].Caption = ClientEvent.CObject.Caption) then
-            UpdateItem(ListView.Items[Index], ClientEvent.CObject)
+            InsertItem(ClientEvent.CItem)
+          else if (ListView.Items[Index].Caption = ClientEvent.CItem.Caption) then
+            UpdateItem(ListView.Items[Index], ClientEvent.CItem)
           else
           begin
             ItemSelected := ListView.Items[Index].Selected;
             ItemFocused := ListView.Items[Index].Focused;
             ListView.Items.Delete(Index);
-            Item := InsertItem(ClientEvent.CObject);
+            Item := InsertItem(ClientEvent.CItem);
             Item.Selected := ItemSelected;
             Item.Focused := ItemFocused;
           end;
         end;
-      ceObjDroped:
+      ceItemDroped:
         for I := ListView.Items.Count - 1 downto 0 do
-          if (ListView.Items[I].Data = ClientEvent.CObject) then
+          if (ListView.Items[I].Data = ClientEvent.CItem) then
             ListView.Items.Delete(I);
-      ceObjStatus:
-        for I := 0 to ListView.Items.Count - 1 do
-          if (ListView.Items[I].Data = ClientEvent.CObject) then
-            UpdateItem(ListView.Items[I], ClientEvent.CObject);
     end;
 
-    if (ClientEvent.EventType in [ceBuild, ceObjBuild, ceObjCreated, ceObjDroped]) then
+    if (ClientEvent.EventType in [ceItemsValid, ceItemCreated, ceItemDroped]) then
       case (GroupID) of
         giDatabases:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(265) + ' (' + IntToStr(ClientEvent.CItems.Count) + ')', '&', '');
@@ -10906,7 +10920,7 @@ var
   I: Integer;
   Table: TCTable;
 begin
-  if (Assigned(ListView)) then
+  if (Assigned(ListView) and (Assigned(ClientEvent.CItems) or (ClientEvent.Sender is TCTable))) then
   begin
     ChangingEvent := ListView.OnChanging;
     ListView.OnChanging := nil;
@@ -10961,9 +10975,6 @@ begin
         begin
           Table := TCTable(ClientEvent.Sender);
 
-          for I := ListView.Items.Count - 1 downto 0 do
-            if ((ClientEvent.CItems is TCTriggers) = (ListView.Items[I].ImageIndex in [iiTrigger])) then
-              ListView.Items.Delete(I);
           if (Table is TCBaseTable) then
             UpdateGroup(giIndices, TCBaseTable(Table).Indices);
           UpdateGroup(giFields, Table.Fields);
@@ -10972,7 +10983,7 @@ begin
           if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).Database.Triggers)) then
             UpdateGroup(giTriggers, TCBaseTable(Table).Database.Triggers);
         end
-        else if ((ClientEvent.Sender is TCDatabase) and (ClientEvent.CObject is TCTrigger)) then
+        else if ((ClientEvent.Sender is TCDatabase) and (ClientEvent.CItem is TCTrigger)) then
           UpdateGroup(giTriggers, ClientEvent.CItems);
       lkHosts:
         UpdateGroup(giHosts, ClientEvent.CItems);
@@ -11836,12 +11847,19 @@ var
   Checked: Integer;
   I: Integer;
 begin
-  mtObjectBrowser.Checked := ttObjectBrowser in Preferences.ToolbarTabs;
-  mtDataBrowser.Checked := ttDataBrowser in Preferences.ToolbarTabs;
-  mtObjectIDE.Checked := ttObjectIDE in Preferences.ToolbarTabs;
-  mtQueryBuilder.Checked := ttQueryBuilder in Preferences.ToolbarTabs;
-  mtSQLEditor.Checked := ttSQLEditor in Preferences.ToolbarTabs;
+  mtObjects.Checked := ttObjects in Preferences.ToolbarTabs;
+  mtBrowser.Checked := ttBrowser in Preferences.ToolbarTabs;
+  mtIDE.Checked := ttIDE in Preferences.ToolbarTabs;
+  mtBuilder.Checked := ttBuilder in Preferences.ToolbarTabs;
+  mtEditor.Checked := ttEditor in Preferences.ToolbarTabs;
   mtDiagram.Checked := ttDiagram in Preferences.ToolbarTabs;
+
+  mtObjects.Enabled := View <> vObjects;
+  mtBrowser.Checked := View <> vBrowser;
+  mtIDE.Checked := View <> vIDE;
+  mtBuilder.Checked := View <> vBuilder;
+  mtEditor.Checked := View <> vEditor;
+  mtDiagram.Checked := View <> vDiagram;
 
   Checked := 0;
   for I := 0 to MToolBar.Items.Count - 1 do
@@ -12092,7 +12110,7 @@ var
   Import: TTImportSQL;
   Text: string;
 begin
-  tbSQLEditor.Click();
+  tbEditor.Click();
 
   OpenDialog.Title := ReplaceStr(Preferences.LoadStr(581), '&', '');
   if (AFilename = '') then
@@ -12387,6 +12405,8 @@ begin
                 begin
                   SourceDatabase := SourceClient.DatabaseByName(StringList.ValueFromIndex[I]);
                   Success := Client.CloneDatabase(SourceDatabase, Client.DatabaseByName(DDatabase.Name), DPaste.Data);
+                  if (Success) then
+                    Client.Update();
                 end;
               end;
             end;
@@ -12715,13 +12735,13 @@ begin
 
     if (PListView.Align = alClient) then PListView.Align := alNone;
     if (PBuilder.Align = alClient) then PBuilder.Align := alNone;
-    if (PSQLEditor.Align = alClient) then PSQLEditor.Align := alNone;
+    if (PSynMemo.Align = alClient) then PSynMemo.Align := alNone;
     if (PResult.Align = alClient) then PResult.Align := alNone;
     PListView.Align := alNone;
     PDataBrowser.Align := alNone;
     PObjectIDE.Align := alNone;
     PBuilder.Align := alNone;
-    PSQLEditor.Align := alNone;
+    PSynMemo.Align := alNone;
     SResult.Align := alNone;
     PResult.Align := alNone;
     SBlob.Align := alNone;
@@ -12729,7 +12749,16 @@ begin
 
     PBlob.Visible := False;
 
-    ActiveListView := GetActiveListView();
+
+
+    case (View) of
+      vObjects:
+        ActiveListView := GetActiveListView();
+      vIDE:
+        ActiveSynMemo := GetActiveSynMemo();
+      vDiagram:
+        ActiveWorkbench := GetActiveWorkbench();
+    end;
 
     EnableAligns(PContent);
 
@@ -12858,13 +12887,13 @@ begin
 
     if ((View = vEditor) and (SelectedImageIndex in [iiServer, iiDatabase, iiSystemDatabase]) or (View = vIDE) and (SelectedImageIndex in [iiView, iiFunction, iiProcedure, iiEvent, iiTrigger])) then
     begin
-      PSQLEditorRefresh(Sender);
+      PSQLEditorUpdate();
       if (Assigned(ActiveSynMemo)) then ActiveSynMemo.BringToFront();
-      PSQLEditor.Align := alClient;
-      PSQLEditor.Visible := True;
+      PSynMemo.Align := alClient;
+      PSynMemo.Visible := True;
     end
     else
-      PSQLEditor.Visible := False;
+      PSynMemo.Visible := False;
 
     if ((View = vObjects) and not (SelectedImageIndex in [iiIndex, iiField, iiForeignKey]) or ((View = vBrowser) and (SelectedImageIndex = iiServer))) then
     begin
@@ -12883,10 +12912,9 @@ end;
 
 procedure TFClient.PContentRefresh(Sender: TObject);
 begin
-  if (PSQLEditor.Visible) then PSQLEditorRefresh(Sender);
-  if (PListView.Visible) then ActiveListView := GetActiveListView();
+  if (PSynMemo.Visible) then PSQLEditorUpdate();
   if (PObjectIDE.Visible) then PObjectIDERefresh(Sender);
-  if (PWorkbench.Visible) then PWorkbenchRefresh(Sender);
+  if (PWorkbench.Visible) then begin ActiveWorkbench := GetActiveWorkbench(); PWorkbenchRefresh(Sender); end;
 
   if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView])) then
   begin
@@ -13021,7 +13049,8 @@ begin
 
         NewView.Stmt := Trim(ActiveSynMemo.Text);
 
-        Result := Database.UpdateView(View, NewView);
+        Database.UpdateView(View, NewView);
+        Result := True;
 
         NewView.Free();
       end;
@@ -13109,20 +13138,14 @@ begin
   PToolBar.Left := PContent.Left;
 end;
 
-procedure TFClient.PSQLEditorRefresh(Sender: TObject);
+procedure TFClient.PSQLEditorUpdate();
 var
   Event: TCEvent;
   Routine: TCRoutine;
   Trigger: TCTrigger;
-  View: TCView;
 begin
   if (Self.View = vIDE) then
     case (SelectedImageIndex) of
-      iiView:
-        begin
-          View := TCView(FNavigator.Selected.Data);
-          TViewDesktop(View.Desktop).SynMemo.Text := Trim(SQLWrapStmt(View.Stmt, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10
-        end;
       iiProcedure,
       iiFunction:
         begin
@@ -13577,11 +13600,11 @@ begin
     MainAction('aVSQLEditor').Checked := NewView = vEditor;
     MainAction('aVDiagram').Checked := NewView = vDiagram;
 
-    tbObjectBrowser.Down := MainAction('aVObjectBrowser').Checked;
-    tbDataBrowser.Down := MainAction('aVDataBrowser').Checked;
-    tbObjectIDE.Down := MainAction('aVObjectIDE').Checked;
-    tbQueryBuilder.Down := MainAction('aVQueryBuilder').Checked;
-    tbSQLEditor.Down := MainAction('aVSQLEditor').Checked;
+    tbObjects.Down := MainAction('aVObjectBrowser').Checked;
+    tbBrowser.Down := MainAction('aVDataBrowser').Checked;
+    tbIDE.Down := MainAction('aVObjectIDE').Checked;
+    tbBuilder.Down := MainAction('aVQueryBuilder').Checked;
+    tbEditor.Down := MainAction('aVSQLEditor').Checked;
     tbDiagram.Down := MainAction('aVDiagram').Checked;
 
     case (NewView) of
@@ -14250,6 +14273,13 @@ begin
   end;
 end;
 
+function TFClient.TableDesktop(const Table: TObject): TTableDesktop;
+begin
+  Assert(Table is TCTable);
+
+  Result := TTableDesktop(TCTable(Table).Desktop);
+end;
+
 procedure TFClient.TableOpen(Sender: TObject);
 var
   Database: TCDatabase;
@@ -14338,31 +14368,31 @@ procedure TFClient.ToolBarTabsClick(Sender: TObject);
 begin
   Wanted.Clear();
 
-  if (Sender = mtObjectBrowser) then
-    if (mtObjectBrowser.Checked) then
-      Exclude(Preferences.ToolbarTabs, ttObjectBrowser)
+  if (Sender = mtObjects) then
+    if (mtObjects.Checked) then
+      Exclude(Preferences.ToolbarTabs, ttObjects)
     else
-      Include(Preferences.ToolbarTabs, ttObjectBrowser);
-  if (Sender = mtDataBrowser) then
-    if (mtDataBrowser.Checked) then
-      Exclude(Preferences.ToolbarTabs, ttDataBrowser)
+      Include(Preferences.ToolbarTabs, ttObjects);
+  if (Sender = mtBrowser) then
+    if (mtBrowser.Checked) then
+      Exclude(Preferences.ToolbarTabs, ttBrowser)
     else
-      Include(Preferences.ToolbarTabs, ttDataBrowser);
-  if (Sender = mtObjectIDE) then
-    if (mtObjectIDE.Checked) then
-      Exclude(Preferences.ToolbarTabs, ttObjectIDE)
+      Include(Preferences.ToolbarTabs, ttBrowser);
+  if (Sender = mtIDE) then
+    if (mtIDE.Checked) then
+      Exclude(Preferences.ToolbarTabs, ttIDE)
     else
-      Include(Preferences.ToolbarTabs, ttObjectIDE);
-  if (Sender = mtQueryBuilder) then
-    if (mtQueryBuilder.Checked) then
-      Exclude(Preferences.ToolbarTabs, ttQueryBuilder)
+      Include(Preferences.ToolbarTabs, ttIDE);
+  if (Sender = mtBuilder) then
+    if (mtBuilder.Checked) then
+      Exclude(Preferences.ToolbarTabs, ttBuilder)
     else
-      Include(Preferences.ToolbarTabs, ttQueryBuilder);
-  if (Sender = mtSQLEditor) then
-    if (mtSQLEditor.Checked) then
-      Exclude(Preferences.ToolbarTabs, ttSQLEditor)
+      Include(Preferences.ToolbarTabs, ttBuilder);
+  if (Sender = mtEditor) then
+    if (mtEditor.Checked) then
+      Exclude(Preferences.ToolbarTabs, ttEditor)
     else
-      Include(Preferences.ToolbarTabs, ttSQLEditor);
+      Include(Preferences.ToolbarTabs, ttEditor);
   if (Sender = mtDiagram) then
     if (mtDiagram.Checked) then
       Exclude(Preferences.ToolbarTabs, ttDiagram)
@@ -14469,57 +14499,51 @@ begin
     vEditor:
       case (SelectedImageIndex) of
         iiServer:
-          if (Client.Account.Connection.Prefetch > 0) then
-            begin
-              List := TList.Create();
-              for I := 0 to Client.Databases.Count - 1 do
-                List.Add(Client.Databases[I]);
-              Result := Client.Update(List, View = vObjects);
-              List.Free();
-            end;
+          begin
+            List := TList.Create();
+
+            for I := 0 to Client.Databases.Count - 1 do
+              List.Add(Client.Databases[I]);
+
+            Result := Client.Update(List, View = vObjects);
+
+            List.Free();
+          end;
         iiDatabase,
-        iiSystemDatabase,
-        iiBaseTable,
-        iiSystemView,
-        iiView:
+        iiSystemDatabase:
           begin
             Database := Client.DatabaseByName(SelectedDatabase);
 
-            if (Client.Account.Connection.Prefetch > 0) then
-            begin
-              List := TList.Create();
+            List := TList.Create();
 
-              if ((Client.Account.Connection.Prefetch = 1) and (Database.Count > PrefetchObjectCount)) then
-              begin
-                for I := 0 to Database.Tables.Count - 1 do
-                  if (Database.Tables[I].Opened) then
-                    List.Add(Database.Tables[I]);
-              end
-              else
-              begin
-                for I := 0 to Database.Tables.Count - 1 do
-                  List.Add(Database.Tables[I]);
-                if (Assigned(Database.Routines)) then
-                  for I := 0 to Database.Routines.Count - 1 do
-                    List.Add(Database.Routines[I]);
-                if (Assigned(Database.Events)) then
-                  for I := 0 to Database.Routines.Count - 1 do
-                    List.Add(Database.Routines[I]);
-                if (Assigned(Database.Triggers)) then
-                  for I := 0 to Database.Triggers.Count - 1 do
-                    List.Add(Database.Triggers[I]);
-              end;
+            for I := 0 to Database.Tables.Count - 1 do
+              List.Add(Database.Tables[I]);
+            if (Assigned(Database.Routines)) then
+              for I := 0 to Database.Routines.Count - 1 do
+                List.Add(Database.Routines[I]);
+            if (Assigned(Database.Events)) then
+              for I := 0 to Database.Routines.Count - 1 do
+                List.Add(Database.Routines[I]);
+            if (Assigned(Database.Triggers)) then
+              for I := 0 to Database.Triggers.Count - 1 do
+                List.Add(Database.Triggers[I]);
 
-              Result := Client.Update(List, View = vObjects);
+            Result := Client.Update(List);
 
-              List.Free();
-            end;
+            List.Free();
           end;
       end;
     vBrowser:
       if (not TCTable(FNavigator.Selected.Data).ValidDataSet) then
         TableOpen(nil);
   end;
+end;
+
+function TFClient.ViewDesktop(const View: TObject): TViewDesktop;
+begin
+  Assert(View is TCView);
+
+  Result := TViewDesktop(TCView(View).Desktop);
 end;
 
 procedure TFClient.WMNotify(var Message: TWMNotify);

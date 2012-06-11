@@ -322,8 +322,15 @@ end;
 
 procedure TDEvent.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceObjBuild]) and (Event.Sender = Event)) then
-    Built();
+  if ((Event.EventType = ceItemValid) and (Event.CItem = Self.Event)) then
+    Built()
+  else if ((Event.EventType in [ceItemCreated, ceItemAltered]) and (Event.CItem is TCEvent)) then
+    ModalResult := mrOk
+  else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
+  begin
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
+  end;
 end;
 
 procedure TDEvent.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -332,7 +339,7 @@ var
   IntervalValue: string;
   NewEvent: TCEvent;
 begin
-  if (ModalResult = mrOk) then
+  if ((ModalResult = mrOk) and PageControl.Visible) then
   begin
     NewEvent := TCEvent.Create(Database.Events);
     if (Assigned(Event)) then
@@ -377,11 +384,18 @@ begin
     NewEvent.Stmt := FStatement.Lines.Text;
 
     if (not Assigned(Event)) then
-      CanClose := Database.AddEvent(NewEvent)
+      CanClose := not Database.AddEvent(NewEvent)
     else
-      CanClose := Database.UpdateEvent(Event, NewEvent);
+      CanClose := not Database.UpdateEvent(Event, NewEvent);
 
     NewEvent.Free();
+
+    PageControl.Visible := CanClose;
+    PSQLWait.Visible := not PageControl.Visible;
+    if (PSQLWait.Visible) then
+      ModalResult := mrNone;
+
+    FBOk.Enabled := False;
   end;
 end;
 
