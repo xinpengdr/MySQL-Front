@@ -713,8 +713,6 @@ begin
 
         CanClose := not Database.UpdateTable(Table, NewTable);
 
-        NewTable.Free();
-
         GBasics.Visible := CanClose;
         GAttributes.Visible := GBasics.Visible;
         PSQLWait.Visible := not GBasics.Visible;
@@ -725,6 +723,9 @@ begin
       end;
 
       NewField.Free();
+
+      if (Assigned(Database)) then
+        NewTable.Free();
     end;
   end;
 end;
@@ -745,7 +746,7 @@ end;
 
 procedure TDField.FormHide(Sender: TObject);
 begin
-  Database.Client.UnRegisterEventProc(FormClientEvent);
+  Table.Client.UnRegisterEventProc(FormClientEvent);
 
   Preferences.Field.Width := Width;
   Preferences.Field.Height := Height;
@@ -757,7 +758,7 @@ var
   I: Integer;
   S: string;
 begin
-  Database.Client.RegisterEventProc(FormClientEvent);
+  Table.Client.RegisterEventProc(FormClientEvent);
 
   if (not Assigned(Field)) then
   begin

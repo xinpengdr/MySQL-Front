@@ -741,7 +741,7 @@ begin
     EditCopyExecute()
   else if ((Key = Ord('V')) and (Shift = [ssCtrl]) or (Key = VK_INSERT) and (Shift = [ssShift])) then
     PasteFromClipboard()
-  else if ((Key = VK_DELETE) and (Shift = [ssCtrl])) then
+  else if ((Key = VK_DELETE) and (Shift = [])) then
     EditDeleteExecute()
   else if ((Key = VK_DOWN) and (Shift = [ssAlt]) and (Columns[SelectedIndex].ButtonStyle = cbsEllipsis)) then
     EditButtonClick()

@@ -2892,8 +2892,6 @@ end;
 
 procedure TCTableField.Clear();
 begin
-  inherited;
-
   Ascii := False;
   AutoIncrement := False;
   Binary := False;
@@ -2905,6 +2903,8 @@ begin
   NullAllowed := True;
   Unicode := False;
   Zerofill := False;
+
+  inherited;
 end;
 
 constructor TCTableField.Create(const AFields: TCTableFields; const AName: string = '');
@@ -2965,11 +2965,7 @@ end;
 
 function TCTableField.GetTable(): TCTable;
 begin
-try
   Assert(FFields is TCTableFields);
-except
-  Assert(FFields is TCTableFields);
-end;
 
   Result := FFields.Table;
 end;
@@ -3040,13 +3036,13 @@ end;
 
 procedure TCBaseTableField.Clear();
 begin
-  inherited;
-
   FCharset := '';
   FCollation := '';
 
   OnUpdate := '';
   Moved := False;
+
+  inherited;
 end;
 
 constructor TCBaseTableField.Create(const AFields: TCTableFields; const AName: string = '');

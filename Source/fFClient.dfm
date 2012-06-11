@@ -2,16 +2,17 @@ object FClient: TFClient
   Left = 0
   Top = 0
   Width = 591
-  Height = 304
+  Height = 707
   Align = alClient
   Constraints.MinHeight = 300
   Constraints.MinWidth = 200
   TabOrder = 0
   Visible = False
   OnResize = FormResize
+  ExplicitHeight = 304
   object SLog: TSplitter_Ext
     Left = 0
-    Top = 256
+    Top = 659
     Width = 591
     Height = 4
     Cursor = crVSplit
@@ -30,7 +31,7 @@ object FClient: TFClient
     Left = 120
     Top = 27
     Width = 4
-    Height = 229
+    Height = 632
     AutoSnap = False
     Color = clBtnFace
     ParentColor = False
@@ -45,7 +46,7 @@ object FClient: TFClient
     Left = 0
     Top = 27
     Width = 120
-    Height = 229
+    Height = 632
     Align = alLeft
     BevelOuter = bvNone
     Color = clWindow
@@ -53,22 +54,24 @@ object FClient: TFClient
     ParentBackground = False
     TabOrder = 0
     OnResize = PSideBarResize
+    ExplicitHeight = 229
     object PSQLHistory: TPanel_Ext
       Left = 0
       Top = 0
       Width = 120
-      Height = 229
+      Height = 632
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
       ParentBackground = False
       TabOrder = 2
       Visible = False
+      ExplicitHeight = 229
       object FSQLHistory: TTreeView_Ext
         Left = 2
         Top = 2
         Width = 116
-        Height = 225
+        Height = 628
         HelpContext = 1112
         Align = alClient
         BorderStyle = bsNone
@@ -93,24 +96,26 @@ object FClient: TFClient
         OnKeyPress = FSQLHistoryKeyPress
         OnMouseDown = TreeViewMouseDown
         OnMouseUp = TreeViewMouseUp
+        ExplicitHeight = 225
       end
     end
     object PBookmarks: TPanel_Ext
       Left = 0
       Top = 0
       Width = 120
-      Height = 229
+      Height = 632
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
       ParentBackground = False
       TabOrder = 1
       Visible = False
+      ExplicitHeight = 229
       object FBookmarks: TListView
         Left = 2
         Top = 2
         Width = 116
-        Height = 225
+        Height = 628
         HelpContext = 1082
         Align = alClient
         BorderStyle = bsNone
@@ -132,13 +137,14 @@ object FClient: TFClient
         OnExit = FBookmarksExit
         OnDragDrop = FBookmarksDragDrop
         OnDragOver = FBookmarksDragOver
+        ExplicitHeight = 225
       end
     end
     object PNavigator: TPanel_Ext
       Left = 0
       Top = 0
       Width = 120
-      Height = 229
+      Height = 632
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -146,11 +152,12 @@ object FClient: TFClient
       ParentBackground = False
       TabOrder = 0
       Visible = False
+      ExplicitHeight = 229
       object FNavigator: TTreeView_Ext
         Left = 2
         Top = 2
         Width = 116
-        Height = 225
+        Height = 628
         HelpContext = 1038
         Align = alClient
         BorderStyle = bsNone
@@ -184,12 +191,13 @@ object FClient: TFClient
         OnKeyPress = FNavigatorKeyPress
         OnMouseDown = TreeViewMouseDown
         OnMouseUp = TreeViewMouseUp
+        ExplicitHeight = 225
       end
     end
   end
   object PLog: TPanel_Ext
     Left = 0
-    Top = 260
+    Top = 663
     Width = 591
     Height = 44
     Align = alBottom
@@ -198,6 +206,7 @@ object FClient: TFClient
     ParentBackground = False
     TabOrder = 2
     OnResize = PLogResize
+    ExplicitTop = 260
     object FLog: TRichEdit
       Left = 19
       Top = 2
@@ -245,7 +254,7 @@ object FClient: TFClient
     Left = 124
     Top = 27
     Width = 467
-    Height = 229
+    Height = 632
     Align = alClient
     BevelOuter = bvNone
     Color = clWindow
@@ -254,9 +263,10 @@ object FClient: TFClient
     ParentBackground = False
     TabOrder = 1
     OnResize = PContentResize
+    ExplicitHeight = 229
     object SResult: TSplitter_Ext
       Left = 0
-      Top = 13
+      Top = 416
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -275,7 +285,7 @@ object FClient: TFClient
     end
     object SBlob: TSplitter_Ext
       Left = 0
-      Top = 166
+      Top = 569
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -365,8 +375,8 @@ object FClient: TFClient
         TabOrder = 0
         OnDragDrop = SynMemoDragDrop
         OnDragOver = SynMemoDragOver
-        OnEnter = FSQLEditorEnter
-        OnExit = FSQLEditorExit
+        OnEnter = SynMemoEnter
+        OnExit = SynMemoExit
         BorderStyle = bsNone
         Gutter.AutoSize = True
         Gutter.DigitCount = 2
@@ -383,7 +393,7 @@ object FClient: TFClient
         ScrollHintFormat = shfTopToBottom
         SearchEngine = FSQLEditorSearch
         WantTabs = True
-        OnStatusChange = FSQLEditorStatusChange
+        OnStatusChange = SynMemoStatusChange
         RemovedKeystrokes = <
           item
             Command = ecContextHelp
@@ -398,7 +408,7 @@ object FClient: TFClient
     end
     object PResult: TPanel_Ext
       Left = 0
-      Top = 36
+      Top = 439
       Width = 467
       Height = 130
       Align = alBottom
@@ -408,6 +418,7 @@ object FClient: TFClient
       TabOrder = 5
       Visible = False
       OnResize = PSideBarResize
+      ExplicitTop = 36
       object PResultHeader: TPanel_Ext
         Left = 0
         Top = 0
@@ -903,7 +914,7 @@ object FClient: TFClient
     end
     object PBlob: TPanel_Ext
       Left = 0
-      Top = 170
+      Top = 573
       Width = 467
       Height = 59
       Align = alBottom
@@ -913,6 +924,7 @@ object FClient: TFClient
       ParentBackground = False
       TabOrder = 6
       Visible = False
+      ExplicitTop = 170
       object FImage: TImage
         Left = 2
         Top = 27
@@ -1143,7 +1155,7 @@ object FClient: TFClient
     end
     object SBResult: TStatusBar
       Left = 0
-      Top = 17
+      Top = 420
       Width = 467
       Height = 19
       Panels = <
@@ -1168,6 +1180,7 @@ object FClient: TFClient
       ParentFont = True
       UseSystemFont = False
       Visible = False
+      ExplicitTop = 17
     end
   end
   object PHeader: TPanel_Ext

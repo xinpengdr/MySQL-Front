@@ -546,9 +546,6 @@ type
       var CustomDraw: Boolean);
     procedure FSQLEditorCompletionShow(Sender: TObject);
     procedure FSQLEditorCompletionTimerTimer(Sender: TObject);
-    procedure FSQLEditorEnter(Sender: TObject);
-    procedure FSQLEditorExit(Sender: TObject);
-    procedure FSQLEditorStatusChange(Sender: TObject; Changes: TSynStatusChanges);
     procedure FSQLHistoryChange(Sender: TObject; Node: TTreeNode);
     procedure FSQLHistoryDblClick(Sender: TObject);
     procedure FSQLHistoryEnter(Sender: TObject);
@@ -628,6 +625,9 @@ type
     procedure SynMemoDragDrop(Sender, Source: TObject; X, Y: Integer);
     procedure SynMemoDragOver(Sender, Source: TObject; X, Y: Integer;
       State: TDragState; var Accept: Boolean);
+    procedure SynMemoEnter(Sender: TObject);
+    procedure SynMemoExit(Sender: TObject);
+    procedure SynMemoStatusChange(Sender: TObject; Changes: TSynStatusChanges);
     procedure TCResultChange(Sender: TObject);
     procedure TCResultChanging(Sender: TObject; var AllowChange: Boolean);
     procedure ToolBarBlobResize(Sender: TObject);
@@ -3199,7 +3199,7 @@ end;
 procedure TFClient.aERedoExecute(Sender: TObject);
 begin
   FSQLEditorSynMemo.Redo();
-  FSQLEditorStatusChange(Sender, [scAll]);
+  SynMemoStatusChange(Sender, [scAll]);
 end;
 
 procedure TFClient.aERenameExecute(Sender: TObject);
@@ -4863,7 +4863,7 @@ begin
     if (Window.ActiveControl = FNavigator) then FNavigatorEnter(nil)
     else if (Window.ActiveControl = ActiveListView) then ListViewEnter(nil)
     else if (Window.ActiveControl = FLog) then FLogEnter(nil)
-    else if (Window.ActiveControl is TSynMemo) then FSQLEditorEnter(nil)
+    else if (Window.ActiveControl is TSynMemo) then SynMemoEnter(nil)
     else if (Window.ActiveControl = FGrid) then DBGridEnter(FGrid);
   end;
 
@@ -4907,7 +4907,7 @@ begin
   if (Window.ActiveControl = FNavigator) then FNavigatorExit(nil)
   else if (Window.ActiveControl = ActiveListView) then ListViewExit(nil)
   else if (Window.ActiveControl = FLog) then FLogExit(nil)
-  else if (Window.ActiveControl is TSynMemo) then FSQLEditorExit(nil)
+  else if (Window.ActiveControl is TSynMemo) then SynMemoExit(nil)
   else if (Window.ActiveControl = FGrid) then DBGridExit(FGrid);
 
   Include(FrameState, tsActive);
@@ -6334,12 +6334,12 @@ procedure TFClient.FBuilderEditorEnter(Sender: TObject);
 begin
   SQLBuilder.OnSQLUpdated := nil;
 
-  FSQLEditorEnter(Sender);
+  SynMemoEnter(Sender);
 end;
 
 procedure TFClient.FBuilderEditorExit(Sender: TObject);
 begin
-  FSQLEditorExit(Sender);
+  SynMemoExit(Sender);
 
   SQLBuilder.OnSQLUpdated := SQLBuilderSQLUpdated;
 end;
@@ -6407,7 +6407,7 @@ begin
   if ((Sender = FBuilder) or (NewHeight < PBuilderQuery.Height) or (scModified in Changes)) then
     PBuilderQuery.Height := NewHeight;
 
-  FSQLEditorStatusChange(FBuilderSynMemo, Changes);
+  SynMemoStatusChange(FBuilderSynMemo, Changes);
 end;
 
 procedure TFClient.FBuilderEditorTabSheetEnter(Sender: TObject);
@@ -6825,8 +6825,11 @@ begin
     FGrid.PopupMenu := MGrid
   else if ((Key = VK_INSERT) and (Shift = []) and not FGrid.EditorMode) then
     MainAction('aDInsertRecord').Execute()
-  else if ((Key = VK_DELETE) and (Shift = []) and not FGrid.EditorMode) then
-    MainAction('aDDeleteRecord').Execute()
+  else if ((Key = VK_DELETE) and (Shift = [ssCtrl]) and not FGrid.EditorMode) then
+  begin
+    MainAction('aDDeleteRecord').Execute();
+    Key := 0;
+  end
   else if (FGrid.SelectedField.DataType in [ftWideMemo, ftBlob]) then
     if ((Key = VK_RETURN) and not aVBlobText.Visible) then
     begin
@@ -8271,9 +8274,8 @@ end;
 
 procedure TFClient.FSQLEditorCompletionClose(Sender: TObject);
 begin
-  FSQLEditorEnter(Sender);
+  SynMemoEnter(Sender);
 end;
-
 
 procedure TFClient.FSQLEditorCompletionExecute(Kind: SynCompletionType;
   Sender: TObject; var CurrentInput: string; var x, y: Integer;
@@ -8516,76 +8518,6 @@ begin
   begin
     FSQLEditorCompletion.CancelCompletion();
     KillTimer(Handle, tiCodeCompletion);
-  end;
-end;
-
-procedure TFClient.FSQLEditorEnter(Sender: TObject);
-begin
-  MainAction('aECopyToFile').OnExecute := SaveSQLFile;
-  MainAction('aEPasteFromFile').OnExecute := aEPasteFromExecute;
-  MainAction('aSGoto').OnExecute := TSymMemoGotoExecute;
-
-  FSQLEditorStatusChange(Sender, [scAll]);
-  StatusBarRefresh();
-end;
-
-procedure TFClient.FSQLEditorExit(Sender: TObject);
-begin
-  MainAction('aFImportSQL').Enabled := False;
-  MainAction('aFExportSQL').Enabled := False;
-  MainAction('aFPrint').Enabled := False;
-  MainAction('aERedo').Enabled := False;
-  MainAction('aECopyToFile').Enabled := False;
-  MainAction('aEPasteFromFile').Enabled := False;
-  MainAction('aSGoto').Enabled := False;
-end;
-
-procedure TFClient.FSQLEditorStatusChange(Sender: TObject; Changes: TSynStatusChanges);
-var
-  Attri: TSynHighlighterAttributes;
-  DDLStmt: TSQLDDLStmt;
-  Empty: Boolean;
-  Parse: TSQLParse;
-  SelSQL: string;
-  SQL: string;
-  Token: string;
-begin
-  if (not (csDestroying in ComponentState)) then
-  begin
-    if (((scCaretX in Changes) or (scModified in Changes) or (scAll in Changes)) and Assigned(ActiveSynMemo)) then
-    begin
-      SelSQL := ActiveSynMemo.SelText; // Cache, da Abfrage bei vielen Zeilen Zeit benötigt
-      if (View = vIDE) then SQL := ActiveSynMemo.Text;
-
-      Empty := ((ActiveSynMemo.Lines.Count <= 1) and (ActiveSynMemo.Text = '')); // Benötigt bei vielen Zeilen Zeit
-
-      MainAction('aFSave').Enabled := not Empty and ((SQLEditor.Filename = '') or ActiveSynMemo.Modified);
-      MainAction('aFSaveAs').Enabled := not Empty;
-      MainAction('aFPrint').Enabled := (ActiveSynMemo = FSQLEditorSynMemo) and not Empty;
-      MainAction('aERedo').Enabled := ActiveSynMemo.CanRedo;
-      MainAction('aECopyToFile').Enabled := (SelSQL <> '');
-      MainAction('aEPasteFromFile').Enabled := (ActiveSynMemo = FSQLEditorSynMemo);
-      MainAction('aSGoto').Enabled := (Sender = FSQLEditorSynMemo) and not Empty;
-      MainAction('aDRun').Enabled :=
-        ((View = vEditor)
-        or ((View  = vBuilder) and FBuilder.Visible)
-        or ((View = vIDE) and SQLSingleStmt(SQL) and (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent]))) and not Empty;
-      MainAction('aDRunSelection').Enabled := (((ActiveSynMemo = FSQLEditorSynMemo) and not Empty) or Assigned(ActiveSynMemo) and (ActiveSynMemo.SelText <> '')) and True;
-      MainAction('aDPostObject').Enabled := (View = vIDE) and ActiveSynMemo.Modified and SQLSingleStmt(SQL)
-        and ((SelectedImageIndex in [iiView]) and SQLCreateParse(Parse, PChar(SQL), Length(SQL),Client.ServerVersion) and (SQLParseKeyword(Parse, 'SELECT'))
-          or (SelectedImageIndex in [iiProcedure, iiFunction]) and SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), Client.ServerVersion) and (DDLStmt.DefinitionType = dtCreate) and (DDLStmt.ObjectType in [otProcedure, otFunction])
-          or (SelectedImageIndex in [iiEvent, iiTrigger]));
-    end;
-
-    FSQLEditorCompletion.TimerInterval := 0;
-    if ((ActiveSynMemo = FSQLEditorSynMemo) and (FSQLEditorSynMemo.SelStart > 0)
-      and FSQLEditorSynMemo.GetHighlighterAttriAtRowCol(FSQLEditorSynMemo.WordStart(), Token, Attri) and (Attri <> MainHighlighter.StringAttri) and (Attri <> MainHighlighter.CommentAttri) and (Attri <> MainHighlighter.VariableAttri)) then
-    begin
-      FSQLEditorCompletion.Editor := ActiveSynMemo;
-      FSQLEditorCompletion.TimerInterval := Preferences.Editor.CodeCompletionTime;
-    end;
-
-    StatusBarRefresh();
   end;
 end;
 
@@ -11785,13 +11717,13 @@ begin
   if ((View = vBuilder) and not (Window.ActiveControl = FBuilderSynMemo)) then
   begin
     Window.ActiveControl := FBuilderSynMemo;
-    FSQLEditorStatusChange(Sender, []);
+    SynMemoStatusChange(Sender, []);
   end
   else
   if ((View = vEditor) and not (Window.ActiveControl = FSQLEditorSynMemo)) then
   begin
     Window.ActiveControl := FSQLEditorSynMemo;
-    FSQLEditorStatusChange(Sender, []);
+    SynMemoStatusChange(Sender, []);
   end;
 
   ShowEnabledItems(MSQLEditor.Items);
@@ -12756,6 +12688,8 @@ begin
         ActiveListView := GetActiveListView();
       vIDE:
         ActiveSynMemo := GetActiveSynMemo();
+      vEditor:
+        ActiveSynMemo := GetActiveSynMemo();
       vDiagram:
         ActiveWorkbench := GetActiveWorkbench();
     end;
@@ -13116,7 +13050,7 @@ begin
   begin
     PObjectIDERefresh(Sender);
     ActiveSynMemo.Modified := False;
-    FSQLEditorStatusChange(FSQLEditorSynMemo, []);
+    SynMemoStatusChange(FSQLEditorSynMemo, []);
   end;
 end;
 
@@ -14215,6 +14149,27 @@ begin
   end;
 end;
 
+procedure TFClient.SynMemoEnter(Sender: TObject);
+begin
+  MainAction('aECopyToFile').OnExecute := SaveSQLFile;
+  MainAction('aEPasteFromFile').OnExecute := aEPasteFromExecute;
+  MainAction('aSGoto').OnExecute := TSymMemoGotoExecute;
+
+  SynMemoStatusChange(Sender, [scAll]);
+  StatusBarRefresh();
+end;
+
+procedure TFClient.SynMemoExit(Sender: TObject);
+begin
+  MainAction('aFImportSQL').Enabled := False;
+  MainAction('aFExportSQL').Enabled := False;
+  MainAction('aFPrint').Enabled := False;
+  MainAction('aERedo').Enabled := False;
+  MainAction('aECopyToFile').Enabled := False;
+  MainAction('aEPasteFromFile').Enabled := False;
+  MainAction('aSGoto').Enabled := False;
+end;
+
 procedure TFClient.SynMemoPrintExecute(Sender: TObject);
 var
   I: Integer;
@@ -14270,6 +14225,55 @@ begin
             FSQLEditorPrint.PrintRange(PrintDialog.PageRanges[I].FromPage, PrintDialog.PageRanges[I].ToPage);
       end;
     end;
+  end;
+end;
+
+procedure TFClient.SynMemoStatusChange(Sender: TObject; Changes: TSynStatusChanges);
+var
+  Attri: TSynHighlighterAttributes;
+  DDLStmt: TSQLDDLStmt;
+  Empty: Boolean;
+  Parse: TSQLParse;
+  SelSQL: string;
+  SQL: string;
+  Token: string;
+begin
+  if (not (csDestroying in ComponentState)) then
+  begin
+    if (((scCaretX in Changes) or (scModified in Changes) or (scAll in Changes)) and Assigned(ActiveSynMemo)) then
+    begin
+      SelSQL := ActiveSynMemo.SelText; // Cache, da Abfrage bei vielen Zeilen Zeit benötigt
+      if (View = vIDE) then SQL := ActiveSynMemo.Text;
+
+      Empty := ((ActiveSynMemo.Lines.Count <= 1) and (ActiveSynMemo.Text = '')); // Benötigt bei vielen Zeilen Zeit
+
+      MainAction('aFSave').Enabled := not Empty and ((SQLEditor.Filename = '') or ActiveSynMemo.Modified);
+      MainAction('aFSaveAs').Enabled := not Empty;
+      MainAction('aFPrint').Enabled := (ActiveSynMemo = FSQLEditorSynMemo) and not Empty;
+      MainAction('aERedo').Enabled := ActiveSynMemo.CanRedo;
+      MainAction('aECopyToFile').Enabled := (SelSQL <> '');
+      MainAction('aEPasteFromFile').Enabled := (ActiveSynMemo = FSQLEditorSynMemo);
+      MainAction('aSGoto').Enabled := (Sender = FSQLEditorSynMemo) and not Empty;
+      MainAction('aDRun').Enabled :=
+        ((View = vEditor)
+        or ((View  = vBuilder) and FBuilder.Visible)
+        or ((View = vIDE) and SQLSingleStmt(SQL) and (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent]))) and not Empty;
+      MainAction('aDRunSelection').Enabled := (((ActiveSynMemo = FSQLEditorSynMemo) and not Empty) or Assigned(ActiveSynMemo) and (ActiveSynMemo.SelText <> '')) and True;
+      MainAction('aDPostObject').Enabled := (View = vIDE) and ActiveSynMemo.Modified and SQLSingleStmt(SQL)
+        and ((SelectedImageIndex in [iiView]) and SQLCreateParse(Parse, PChar(SQL), Length(SQL),Client.ServerVersion) and (SQLParseKeyword(Parse, 'SELECT'))
+          or (SelectedImageIndex in [iiProcedure, iiFunction]) and SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), Client.ServerVersion) and (DDLStmt.DefinitionType = dtCreate) and (DDLStmt.ObjectType in [otProcedure, otFunction])
+          or (SelectedImageIndex in [iiEvent, iiTrigger]));
+    end;
+
+    FSQLEditorCompletion.TimerInterval := 0;
+    if ((ActiveSynMemo = FSQLEditorSynMemo) and (FSQLEditorSynMemo.SelStart > 0)
+      and FSQLEditorSynMemo.GetHighlighterAttriAtRowCol(FSQLEditorSynMemo.WordStart(), Token, Attri) and (Attri <> MainHighlighter.StringAttri) and (Attri <> MainHighlighter.CommentAttri) and (Attri <> MainHighlighter.VariableAttri)) then
+    begin
+      FSQLEditorCompletion.Editor := ActiveSynMemo;
+      FSQLEditorCompletion.TimerInterval := Preferences.Editor.CodeCompletionTime;
+    end;
+
+    StatusBarRefresh();
   end;
 end;
 
