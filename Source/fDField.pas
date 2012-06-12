@@ -219,10 +219,9 @@ end;
 procedure TDField.FBOkCheckEnabled(Sender: TObject);
 begin
   FBOk.Enabled := Active and (FName.Text <> '')
-    and (not IsFloatType() or (FUDFormatSize.Position = 0) and (FUDFormatDecimals.Position = 0) or (FUDFormatSize.Position <> 0) and (FUDFormatDecimals.Position <> 0))
+    and (not IsFloatType() or (FUDFormatSize.Position = 0) and (FUDFormatDecimals.Position = 0) or (FUDFormatSize.Position <> 0))
     and ((GetType() <> mfEnum) or ((FFormatUnion.Text <> '') and (FDefaultEnum.ItemIndex >= 0)))
-    and (not Assigned(Table.FieldByName(FName.Text)) or (Assigned(Field) and (lstrcmpi(PChar(FName.Text), PChar(Field.Name)) = 0)))
-    and True;
+    and (not Assigned(Table.FieldByName(FName.Text)) or (Assigned(Field) and (Table.Fields.NameCmp(FName.Text, Field.Name) = 0)));
 end;
 
 procedure TDField.FCharsetChange(Sender: TObject);
@@ -615,8 +614,7 @@ begin
       else if (NewField.FieldType = mfTimeStamp) then NewField.Size := Length(FFormatTimestamp.Text)
       else if (NewField.FieldType = mfYear) then NewField.Size := Length(FFormatYear.Text)
       else NewField.Size := 0;
-      if (IsFloatType()) then if (FUDFormatDecimals.Position = 0) then NewField.Decimals := -1 else NewField.Decimals := FUDFormatDecimals.Position
-      else NewField.Decimals := 0;
+      if (IsFloatType()) then NewField.Decimals := FUDFormatDecimals.Position else NewField.Decimals := 0;
       SetLength(NewField.Items, 0);
 
       if (NewField.FieldType = mfEnum) then
@@ -893,9 +891,15 @@ begin
 
   FComment.Visible := Table.Database.Client.ServerVersion >= 40100; FLComment.Visible := FComment.Visible;
 
+  GBasics.Visible := True;
+  GAttributes.Visible := GBasics.Visible;
+  PSQLWait.Visible := not GBasics.Visible;
+
+  FBOk.Enabled := GBasics.Visible and not Assigned(Field);
+
   ActiveControl := FBCancel;
-  ActiveControl := FName;
-  FBOk.Enabled := not Assigned(Field) and True;
+  if (GBasics.Visible) then
+    ActiveControl := FName;
 end;
 
 procedure TDField.FRDefaultClick(Sender: TObject);

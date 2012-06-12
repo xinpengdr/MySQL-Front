@@ -1174,6 +1174,7 @@ begin
   else
     Client.RollbackTransaction();
   Client.EndSilent();
+  Client.EndSynchro();
 
   inherited;
 end;
@@ -1186,8 +1187,8 @@ procedure TTImport.BeforeExecute();
 begin
   inherited;
 
-  Client.Asynchron := False; // We're still in a thread
   Client.BeginSilent();
+  Client.BeginSynchro(); // We're still in a thread
   Client.StartTransaction();
 end;
 
@@ -1677,8 +1678,8 @@ function TTImportFile.ReadContent(const NewFilePos: TLargeInteger = -1): Boolean
 var
   DistanceToMove: TLargeInteger;
   Error: TTools.TError;
-  Len: Integer;
   Index: Integer;
+  Len: Integer;
   ReadSize: DWord;
   UTF8Bytes: Byte;
 begin
@@ -1701,8 +1702,12 @@ begin
 
     FilePos := NewFilePos;
   end
-  else if (FileContent.Index > 1) then
-    Delete(FileContent.Str, 1, FileContent.Index - 1);
+  else
+  begin
+    FileBuffer.Index := BytesPerSector;
+    if (FileContent.Index > 1) then
+      Delete(FileContent.Str, 1, FileContent.Index - 1);
+  end;
   FileContent.Index := 1;
 
   if ((Success = daSuccess) and ReadFile(Handle, FileBuffer.Mem[BytesPerSector], FileBuffer.Size - BytesPerSector, ReadSize, nil) and (ReadSize > 0)) then
@@ -1728,8 +1733,8 @@ begin
     case (CodePage) of
       CP_UNICODE:
         begin
-          Len := ReadSize - FileBuffer.Index;
           Index := 1 + Length(FileContent.Str);
+          Len := Integer(ReadSize - (FileBuffer.Index - BytesPerSector));
           SetLength(FileContent.Str, Length(FileContent.Str) + Len div SizeOf(Char));
           MoveMemory(@FileContent.Str[Index], @FileBuffer.Mem[FileBuffer.Index], Len);
         end;
@@ -2051,13 +2056,16 @@ begin
   RecordComplete := False; EOF := False; OldFileContentIndex := FileContent.Index;
   while ((Success = daSuccess) and not RecordComplete and not EOF) do
   begin
+    if (Nils = 6843) then
+      Write;
     RecordComplete := CSVSplitValues(FileContent.Str, FileContent.Index, Delimiter, Quoter, CSVValues);
     if (not RecordComplete) then
     begin
+      FileContent.Index := OldFileContentIndex;
       EOF := not ReadContent();
-      OldFileContentIndex := FileContent.Index;
-    end;
-    Inc(Nils);
+    end
+    else
+      Inc(Nils);
   end;
 
   if (FileContent.Index - OldFileContentIndex > 0) then
@@ -3361,7 +3369,7 @@ begin
     DBGrids[I].DBGrid.DataSource.DataSet.EnableControls();
 
   FClient.EndSilent();
-  FClient.Asynchron := FClient.Account.Connection.Asynchron;
+  FClient.EndSynchro();
 
   inherited;
 end;
@@ -3372,8 +3380,8 @@ var
 begin
   inherited;
 
-  FClient.Asynchron := False; // We're still in a thread
   FClient.BeginSilent();
+  FClient.BeginSynchro(); // We're still in a thread
 
   for I := 0 to Length(DBGrids) - 1 do
     DBGrids[I].DBGrid.DataSource.DataSet.DisableControls();
@@ -5301,13 +5309,24 @@ begin
         ftSingle,
         ftFloat,
         ftExtended,
-        ftDate,
-        ftDateTime,
-        ftTimestamp,
-        ftTime:
+        ftTimestamp:
           begin
             SQL_C_TYPE := SQL_C_CHAR;
             SQL_TYPE := SQL_CHAR;
+            ColumnSize := 100;
+            Parameter[I].BufferSize := ColumnSize;
+            GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
+          end;
+        ftDate,
+        ftDateTime,
+        ftTime:
+          begin
+            SQL_C_TYPE := SQL_C_CHAR;
+            case (Fields[I].DataType) of
+              ftDate: SQL_TYPE := SQL_DATE;
+              ftDateTime: SQL_TYPE := SQL_TIMESTAMP;
+              else SQL_TYPE := SQL_TIME; // ftTime
+            end;
             ColumnSize := 100;
             Parameter[I].BufferSize := ColumnSize;
             GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
@@ -5380,6 +5399,7 @@ var
   Field: SQLPOINTER;
   I: Integer;
   Index: Integer;
+  RBS: RawByteString;
   ReturnCode: SQLRETURN;
   S: string;
   Size: Integer;
@@ -5408,14 +5428,14 @@ begin
         ftLargeint,
         ftSingle,
         ftFloat,
-        ftExtended:
+        ftExtended,
+        ftTimestamp:
           begin
             Parameter[I].Size := Min(Parameter[I].BufferSize, DataSet.LibLengths^[I]);
             MoveMemory(Parameter[I].Buffer, DataSet.LibRow^[I], Parameter[I].Size);
           end;
         ftDate,
         ftDateTime,
-        ftTimestamp,
         ftTime:
           begin
             SetString(S, DataSet.LibRow^[I], DataSet.LibLengths^[I]);
@@ -5423,8 +5443,13 @@ begin
               Parameter[I].Size := SQL_NULL_DATA
             else
             begin
-              Parameter[I].Size := Min(Parameter[I].BufferSize, DataSet.LibLengths^[I]);
-              MoveMemory(Parameter[I].Buffer, DataSet.LibRow^[I], Parameter[I].Size);
+              case (Fields[I].DataType) of
+                ftDate: RBS := '{d ''' + RawByteString(S) + '''}';
+                ftDateTime: RBS := '{ts ''' + RawByteString(S) + '''}';
+                ftTime: RBS := '{t ''' + RawByteString(S) + '''}';
+              end;
+              Parameter[I].Size := Length(RBS);
+              MoveMemory(Parameter[I].Buffer, PAnsiChar(RBS), Parameter[I].Size);
             end;
           end;
         ftWideString:
@@ -5854,7 +5879,7 @@ end;
 procedure TTFind.AfterExecute();
 begin
   Client.EndSilent();
-  Client.Asynchron := FClient.Account.Connection.Asynchron;
+  Client.EndSynchro();
 
   inherited;
 end;
@@ -5863,8 +5888,8 @@ procedure TTFind.BeforeExecute();
 begin
   inherited;
 
-  Client.Asynchron := False; // We're still in a thread
   Client.BeginSilent();
+  Client.BeginSynchro(); // We're still in a thread
 end;
 
 constructor TTFind.Create(const AClient: TCClient);
@@ -6391,10 +6416,10 @@ begin
   if (Length(Items) > 0) then
   begin
     Items[0].Master.Client.EndSilent();
-    Items[0].Master.Client.Asynchron := Items[0].Master.Client.Account.Connection.Asynchron;
+    Items[0].Master.Client.EndSynchro();
 
     Items[0].Slave.Client.EndSilent();
-    Items[0].Master.Client.Asynchron := Items[0].Slave.Client.Account.Connection.Asynchron;
+    Items[0].Slave.Client.EndSynchro();
   end;
 
   inherited;
@@ -6406,11 +6431,11 @@ begin
 
   if (Length(Items) > 0) then
   begin
-    Items[0].Master.Client.Asynchron := False; // We're still in a thread
     Items[0].Master.Client.BeginSilent();
+    Items[0].Master.Client.BeginSynchro(); // We're still in a thread
 
-    Items[0].Slave.Client.Asynchron := False; // We're still in a thread
     Items[0].Slave.Client.BeginSilent();
+    Items[0].Slave.Client.BeginSynchro(); // We're still in a thread
   end;
 end;
 

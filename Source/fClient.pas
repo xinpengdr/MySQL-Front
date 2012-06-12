@@ -2769,13 +2769,8 @@ begin
     end;
     Result := Result + '(' + S + ')';
   end
-  else if ((FieldType in [mfFloat, mfDouble, mfDecimal]) and ((Size <> 0) or (Decimals <> 0))) then
-  begin
-    S := '';
-    if (Size >= 0) then S := S + IntToStr(Size);
-    if (Decimals >= 0) then S := S + ',' + IntToStr(Decimals);
-    if (S <> '') then Result := Result + '(' + S + ')';
-  end
+  else if ((FieldType in [mfFloat, mfDouble, mfDecimal]) and (Size > 0)) then
+    Result := Result + '(' + IntToStr(Size) + ',' + IntToStr(Decimals) + ')'
   else if (FieldType in [mfChar, mfVarChar, mfBinary, mfVarBinary]) then
     Result := Result + '(' + IntToStr(Size) + ')'
   else if (FieldType in [mfTinyText, mfText, mfMediumText, mfLongText, mfTinyBlob, mfBlob, mfMediumBlob, mfLongBlob]) then

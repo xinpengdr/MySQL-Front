@@ -236,6 +236,7 @@ type
     FServerVersion: Integer;
     FServerVersionStr: string;
     FSilentCount: Integer;
+    FSynchroCount: Integer;
     FSQLMonitors: array of TMySQLMonitor;
     FStartup: string;
     FSynchroThread: TSynchroThread;
@@ -318,6 +319,7 @@ type
     property TerminatedThreads: TTerminatedThreads read FTerminatedThreads;
   public
     procedure BeginSilent(); virtual;
+    procedure BeginSynchro(); virtual;
     function CanShutdown(): Boolean; virtual;
     function CharsetToCodePage(const Charset: string): Cardinal; overload; virtual;
     function CharsetToCodePage(const Charset: Byte): Cardinal; overload; virtual;
@@ -326,6 +328,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy(); override;
     procedure EndSilent(); virtual;
+    procedure EndSynchro(); virtual;
     function EscapeIdentifier(const Identifier: string): string; virtual;
     function ExecuteSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean; virtual;
     function InUse(): Boolean; virtual;
@@ -2092,7 +2095,7 @@ end;
 
 function TMySQLConnection.UseSynchroThread(): Boolean;
 begin
-  Result := Asynchron and Assigned(MySQLConnectionOnSynchronize);
+  Result := Asynchron and Assigned(MySQLConnectionOnSynchronize) and (FSynchroCount = 0);
 end;
 
 function TMySQLConnection.Error(const AHandle: MySQLConsts.MYSQL): string;
@@ -2956,6 +2959,11 @@ begin
   Inc(FSilentCount);
 end;
 
+procedure TMySQLConnection.BeginSynchro();
+begin
+  Inc(FSynchroCount);
+end;
+
 function TMySQLConnection.CanShutdown(): Boolean;
 begin
   Result := Assigned(Lib.mysql_shutdown) and not InUse();
@@ -3122,6 +3130,12 @@ procedure TMySQLConnection.EndSilent();
 begin
   if (FSilentCount > 0) then
     Dec(FSilentCount);
+end;
+
+procedure TMySQLConnection.EndSynchro();
+begin
+  if (FSynchroCount > 0) then
+    Dec(FSynchroCount);
 end;
 
 function TMySQLConnection.EscapeIdentifier(const Identifier: string): string;
@@ -3336,7 +3350,7 @@ begin
   SynchroThread.OnResult := OnResult;
   SynchroThread.SQL := SQL;
 
-  Result := SyncExecuteSQL(SynchroThread, False) and not Asynchron;
+  Result := SyncExecuteSQL(SynchroThread, False) and not UseSynchroThread();
 end;
 
 function TMySQLConnection.Shutdown(): Boolean;
