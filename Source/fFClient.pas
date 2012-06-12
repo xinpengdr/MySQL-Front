@@ -4327,9 +4327,10 @@ begin
   if (Assigned(Event)) then
   begin
     if (Event.EventType in [ceItemsValid, ceItemCreated, ceItemAltered, ceItemDroped]) then
-    begin
       FNavigatorUpdate(Event);
 
+    if (Event.EventType in [ceItemsValid, ceItemValid, ceItemCreated, ceItemAltered, ceItemDroped]) then
+    begin
       if (Event.Sender is TCClient) then
         ListViewUpdate(Event, lkServer, FServerListView)
       else if (Event.Sender is TCDatabase) then
@@ -10733,6 +10734,7 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const Kind
 
   procedure UpdateGroup(const GroupID: Integer; const CItems: TCItems);
   var
+    ColumnWidths: array [0..7] of Integer;
     Count: Integer;
     Header: string;
     I: Integer;
@@ -10747,6 +10749,13 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const Kind
     case (ClientEvent.EventType) of
       ceItemsValid:
         begin
+          ListView.Columns.BeginUpdate();
+          for I := 0 to ListView.Columns.Count - 1 do
+          begin
+            ColumnWidths[I] := ListView.Columns[I].Width;
+            ListView.Columns[I].Width := 50; // Make soure no auto column width will be calculated for each item
+          end;
+
           for I := ListView.Items.Count - 1 downto 0 do
             if ((ListView.Items[I].GroupID = GroupID) and (CItems.IndexOf(ListView.Items[I].Data) < 0)) then
               ListView.Items.Delete(I);
@@ -10754,6 +10763,18 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const Kind
           for I := 0 to CItems.Count - 1 do
             if (not (CItems is TCTriggers) or (TCTriggers(CItems)[I].Table = ClientEvent.Sender)) then
               InsertItem(CItems[I]);
+
+          ListView.Columns.EndUpdate();
+
+          for I := 0 to ListView.Columns.Count - 1 do
+            if ((Kind = lkProcesses) and (I = 5)) then
+              ListView.Columns[I].Width := Preferences.GridMaxColumnWidth
+            else if ((Kind in [lkServer, lkDatabase, lkTable]) or (ListView.Items.Count > 0)) then
+              ListView.Columns[I].Width := ColumnWidths[I]
+            else if (ListView.Items.Count = 0) then
+              ListView.Columns[I].Width := ColumnHeaderWidth
+            else
+              ListView.Columns[I].Width := ColumnTextWidth;
         end;
       ceItemValid:
         for I := 0 to ListView.Items.Count - 1 do
@@ -10841,7 +10862,6 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const Kind
 
 var
   ChangingEvent: TLVChangingEvent;
-  ColumnWidths: array [0..7] of Integer;
   I: Integer;
   Table: TCTable;
 begin
@@ -10850,14 +10870,7 @@ begin
     ChangingEvent := ListView.OnChanging;
     ListView.OnChanging := nil;
     ListView.DisableAlign();
-    ListView.Columns.BeginUpdate();
     ListView.Items.BeginUpdate();
-
-    for I := 0 to ListView.Columns.Count - 1 do
-    begin
-      ColumnWidths[I] := ListView.Columns[I].Width;
-      ListView.Columns[I].Width := 50; // Make soure no auto column width will be calculated for each item
-    end;
 
     case (Kind) of
       lkServer:
@@ -10924,18 +10937,6 @@ begin
 
     if ((Window.ActiveControl = ListView) and Assigned(ListView.OnSelectItem)) then
       ListView.OnSelectItem(nil, ListView.Selected, Assigned(ListView.Selected));
-
-    ListView.Columns.EndUpdate();
-
-    for I := 0 to ListView.Columns.Count - 1 do
-      if ((Kind = lkProcesses) and (I = 5)) then
-        ListView.Columns[I].Width := Preferences.GridMaxColumnWidth
-      else if ((Kind in [lkServer, lkDatabase, lkTable]) or (ListView.Items.Count > 0)) then
-        ListView.Columns[I].Width := ColumnWidths[I]
-      else if (ListView.Items.Count = 0) then
-        ListView.Columns[I].Width := ColumnHeaderWidth
-      else
-        ListView.Columns[I].Width := ColumnTextWidth;
 
     ListView.Items.EndUpdate();
     ListView.EnableAlign();

@@ -830,7 +830,7 @@ begin
   FBCancel.ModalResult := mrCancel;
   FBCancel.Caption := Preferences.LoadStr(30);
 
-  if (FBForward.Enabled) then
+  if (FBForward.Visible and FBForward.Enabled) then
     ActiveControl := FBForward
   else
     ActiveControl := FBCancel;
@@ -1081,242 +1081,239 @@ var
   Success: Boolean;
   TableName: string;
 begin
-  if (Active) then
+  FBBack.Enabled := False;
+  FBForward.Enabled := False;
+  FBForward.Default := False;
+  FBCancel.Default := True;
+
+  ActiveControl := FBCancel;
+
+  FErrors.Caption := '0';
+  FErrorMessages.Lines.Clear();
+
+  ProgressInfos.TablesDone := 0;
+  ProgressInfos.TablesSum := 0;
+  ProgressInfos.RecordsDone := 0;
+  ProgressInfos.RecordsSum := 0;
+  ProgressInfos.TimeDone := 0;
+  ProgressInfos.TimeSum := 0;
+  ProgressInfos.Progress := 0;
+  SendMessage(Self.Handle, CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos));
+
+  if (ImportType = itSQLFile) then
   begin
-    FBBack.Enabled := False;
-    FBForward.Enabled := False;
-    FBForward.Default := False;
-    FBCancel.Default := True;
+    ImportSQL := TTImportSQL.Create(Filename, CodePage, Client, Database);
 
-    ActiveControl := FBCancel;
+    Import := ImportSQL;
+  end
+  else if (ImportType in [itTextFile]) then
+  begin
+    ImportText := TTImportText.Create(Filename, CodePage, Client, Database);
 
-    FErrors.Caption := '0';
-    FErrorMessages.Lines.Clear();
-
-    ProgressInfos.TablesDone := 0;
-    ProgressInfos.TablesSum := 0;
-    ProgressInfos.RecordsDone := 0;
-    ProgressInfos.RecordsSum := 0;
-    ProgressInfos.TimeDone := 0;
-    ProgressInfos.TimeSum := 0;
-    ProgressInfos.Progress := 0;
-    SendMessage(Self.Handle, CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos));
-
-    if (ImportType = itSQLFile) then
+    if (Assigned(ImportText)) then
     begin
-      ImportSQL := TTImportSQL.Create(Filename, CodePage, Client, Database);
+      if (FDelimiterTab.Checked) then
+        ImportText.Delimiter := #9
+      else if (FDelimiter.Text = '') then
+        ImportText.Delimiter := #0
+      else
+        ImportText.Delimiter := FDelimiter.Text[1];
+      if (not FStringQuote.Checked) or (FQuoteChar.Text = '') then
+        ImportText.Quoter := #0
+      else
+        ImportText.Quoter := FQuoteChar.Text[1];
+      ImportText.UseHeadline := FCSVHeadline.Checked;
 
-      Import := ImportSQL;
-    end
-    else if (ImportType in [itTextFile]) then
-    begin
-      ImportText := TTImportText.Create(Filename, CodePage, Client, Database);
-
-      if (Assigned(ImportText)) then
+      if (Assigned(Table)) then
       begin
-        if (FDelimiterTab.Checked) then
-          ImportText.Delimiter := #9
-        else if (FDelimiter.Text = '') then
-          ImportText.Delimiter := #0
+        if (FReplace.Checked) then
+          ImportText.ImportType := fTools.itReplace
+        else if (FUpdate.Checked) then
+          ImportText.ImportType := fTools.itUpdate
         else
-          ImportText.Delimiter := FDelimiter.Text[1];
-        if (not FStringQuote.Checked) or (FQuoteChar.Text = '') then
-          ImportText.Quoter := #0
-        else
-          ImportText.Quoter := FQuoteChar.Text[1];
-        ImportText.UseHeadline := FCSVHeadline.Checked;
-
-        if (Assigned(Table)) then
-        begin
-          if (FReplace.Checked) then
-            ImportText.ImportType := fTools.itReplace
-          else if (FUpdate.Checked) then
-            ImportText.ImportType := fTools.itUpdate
-          else
-            ImportText.ImportType := fTools.itInsert;
-          ImportText.Structure := False;
-
-          ImportText.Add(Table.Name);
-        end
-        else
-        begin
-          ImportText.Charset := FDefaultCharset.Text;
-          ImportText.Collation := FCollation.Text;
-          ImportText.Data := FData.Checked;
-          ImportText.Engine := FEngine.Text;
           ImportText.ImportType := fTools.itInsert;
-          ImportText.RowType := TMySQLRowType(FRowFormat.ItemIndex);
-          ImportText.Structure := True;
+        ImportText.Structure := False;
 
-          Answer := IDYES;
-          TableName := ExtractFileName(Filename);
-          TableName := Copy(TableName, 1, Length(TableName) - Length(ExtractFileExt(TableName)));
-          TableName := Database.Tables.ApplyMySQLTableName(TableName);
-          if (not Assigned(Database.TableByName(TableName))) then
-            Answer := IDYES
-          else if (Answer <> IDYESALL) then
-            Answer := MsgBox(Preferences.LoadStr(700, Database.Name + '.' + TableName), Preferences.LoadStr(101), MB_YESYESTOALLNOCANCEL + MB_ICONQUESTION);
-          if (Answer in [IDYES, IDYESALL]) then
-            ImportText.Add(TableName)
-          else if (Answer = IDCANCEL) then
-            FreeAndNil(ImportText);
-        end;
-      end;
-
-      Import := ImportText;
-    end
-    else if (ImportType in [itExcelFile, itAccessFile, itODBC]) then
-    begin
-      ImportODBC := TTImportODBC.Create(ODBC, Database);
-
-      if (Assigned(ImportODBC)) then
+        ImportText.Add(Table.Name);
+      end
+      else
       begin
-        if (Assigned(Table)) then
-        begin
-          ImportODBC.Charset := Table.DefaultCharset;
-          ImportODBC.Collation := Table.Collation;
-          ImportODBC.Data := True;
-          if (not Assigned(Table.Engine)) then
-            ImportODBC.Engine := ''
-          else
-            ImportODBC.Engine := Table.Engine.Name;
-          if (FReplace.Checked) then
-            ImportODBC.ImportType := fTools.itReplace
-          else if (FUpdate.Checked) then
-            ImportODBC.ImportType := fTools.itUpdate
-          else
-            ImportODBC.ImportType := fTools.itInsert;
-          ImportODBC.RowType := Table.RowType;
-          ImportODBC.Structure := False;
+        ImportText.Charset := FDefaultCharset.Text;
+        ImportText.Collation := FCollation.Text;
+        ImportText.Data := FData.Checked;
+        ImportText.Engine := FEngine.Text;
+        ImportText.ImportType := fTools.itInsert;
+        ImportText.RowType := TMySQLRowType(FRowFormat.ItemIndex);
+        ImportText.Structure := True;
 
-          ImportODBC.Add(Table.Name, FTables.Selected.Caption);
-        end
+        Answer := IDYES;
+        TableName := ExtractFileName(Filename);
+        TableName := Copy(TableName, 1, Length(TableName) - Length(ExtractFileExt(TableName)));
+        TableName := Database.Tables.ApplyMySQLTableName(TableName);
+        if (not Assigned(Database.TableByName(TableName))) then
+          Answer := IDYES
+        else if (Answer <> IDYESALL) then
+          Answer := MsgBox(Preferences.LoadStr(700, Database.Name + '.' + TableName), Preferences.LoadStr(101), MB_YESYESTOALLNOCANCEL + MB_ICONQUESTION);
+        if (Answer in [IDYES, IDYESALL]) then
+          ImportText.Add(TableName)
+        else if (Answer = IDCANCEL) then
+          FreeAndNil(ImportText);
+      end;
+    end;
+
+    Import := ImportText;
+  end
+  else if (ImportType in [itExcelFile, itAccessFile, itODBC]) then
+  begin
+    ImportODBC := TTImportODBC.Create(ODBC, Database);
+
+    if (Assigned(ImportODBC)) then
+    begin
+      if (Assigned(Table)) then
+      begin
+        ImportODBC.Charset := Table.DefaultCharset;
+        ImportODBC.Collation := Table.Collation;
+        ImportODBC.Data := True;
+        if (not Assigned(Table.Engine)) then
+          ImportODBC.Engine := ''
         else
-        begin
-          ImportODBC.Charset := FDefaultCharset.Text;
-          ImportODBC.Collation := FCollation.Text;
-          ImportODBC.Data := FData.Checked;
-          ImportODBC.Engine := FEngine.Text;
+          ImportODBC.Engine := Table.Engine.Name;
+        if (FReplace.Checked) then
+          ImportODBC.ImportType := fTools.itReplace
+        else if (FUpdate.Checked) then
+          ImportODBC.ImportType := fTools.itUpdate
+        else
           ImportODBC.ImportType := fTools.itInsert;
-          ImportODBC.RowType := TMySQLRowType(FRowFormat.ItemIndex);
-          ImportODBC.Structure := not Assigned(Table) and FObjects.Checked;
+        ImportODBC.RowType := Table.RowType;
+        ImportODBC.Structure := False;
 
-          Answer := IDYES;
-          for I := 0 to FTables.Items.Count - 1 do
-            if (FTables.Items.Item[I].Selected) then
-            begin
-              ImportTableName := FTables.Items[I].Caption;
-              TableName := Database.Tables.ApplyMySQLTableName(ImportTableName);
-              if (not Assigned(Database.TableByName(TableName))) then
-                Answer := IDYES
-              else if (Answer <> IDYESALL) then
-                Answer := MsgBox(Preferences.LoadStr(700, Database.Name + '.' + TableName), Preferences.LoadStr(101), MB_YESYESTOALLNOCANCEL + MB_ICONQUESTION);
-              if (Answer in [IDYES, IDYESALL]) then
-                ImportODBC.Add(TableName, ImportTableName)
-              else if (Answer = IDCANCEL) then
-                FreeAndNil(ImportODBC);
-            end;
-        end;
+        ImportODBC.Add(Table.Name, FTables.Selected.Caption);
+      end
+      else
+      begin
+        ImportODBC.Charset := FDefaultCharset.Text;
+        ImportODBC.Collation := FCollation.Text;
+        ImportODBC.Data := FData.Checked;
+        ImportODBC.Engine := FEngine.Text;
+        ImportODBC.ImportType := fTools.itInsert;
+        ImportODBC.RowType := TMySQLRowType(FRowFormat.ItemIndex);
+        ImportODBC.Structure := not Assigned(Table) and FObjects.Checked;
+
+        Answer := IDYES;
+        for I := 0 to FTables.Items.Count - 1 do
+          if (FTables.Items.Item[I].Selected) then
+          begin
+            ImportTableName := FTables.Items[I].Caption;
+            TableName := Database.Tables.ApplyMySQLTableName(ImportTableName);
+            if (not Assigned(Database.TableByName(TableName))) then
+              Answer := IDYES
+            else if (Answer <> IDYESALL) then
+              Answer := MsgBox(Preferences.LoadStr(700, Database.Name + '.' + TableName), Preferences.LoadStr(101), MB_YESYESTOALLNOCANCEL + MB_ICONQUESTION);
+            if (Answer in [IDYES, IDYESALL]) then
+              ImportODBC.Add(TableName, ImportTableName)
+            else if (Answer = IDCANCEL) then
+              FreeAndNil(ImportODBC);
+          end;
+      end;
+    end;
+
+    Import := ImportODBC;
+  end
+  else if (ImportType = itSQLiteFile) then
+  begin
+    ImportSQLite := TTImportSQLite.Create(SQLite, Database);
+
+    if (Assigned(ImportSQLite)) then
+      if (Assigned(Table)) then
+      begin
+        ImportSQLite.Charset := Table.DefaultCharset;
+        ImportSQLite.Collation := Table.Collation;
+        ImportSQLite.Data := True;
+        if (not Assigned(Table.Engine)) then
+          ImportSQLite.Engine := ''
+        else
+          ImportSQLite.Engine := Table.Engine.Name;
+        if (FReplace.Checked) then
+          ImportSQLite.ImportType := fTools.itReplace
+        else if (FUpdate.Checked) then
+          ImportSQLite.ImportType := fTools.itUpdate
+        else
+          ImportSQLite.ImportType := fTools.itInsert;
+        ImportSQLite.RowType := Table.RowType;
+        ImportSQLite.Structure := False;
+
+        ImportSQLite.Add(Table.Name, FTables.Items[0].Caption);
+      end
+      else
+      begin
+        ImportSQLite.Charset := FDefaultCharset.Text;
+        ImportSQLite.Collation := FCollation.Text;
+        ImportSQLite.Data := FData.Checked;
+        ImportSQLite.Engine := FEngine.Text;
+        ImportSQLite.ImportType := fTools.itInsert;
+        ImportSQLite.RowType := TMySQLRowType(FRowFormat.ItemIndex);
+        ImportSQLite.Structure := not Assigned(Table) and FObjects.Checked;
+
+        Answer := IDYES;
+        for I := 0 to FTables.Items.Count - 1 do
+          if (FTables.Items.Item[I].Selected) then
+          begin
+            ImportTableName := FTables.Items[I].Caption;
+            TableName := Database.Tables.ApplyMySQLTableName(ImportTableName);
+            if (not Assigned(Database.TableByName(TableName))) then
+              Answer := IDYES
+            else if (Answer <> IDYESALL) then
+              Answer := MsgBox(Preferences.LoadStr(700, Database.Name + '.' + TableName), Preferences.LoadStr(101), MB_YESYESTOALLNOCANCEL + MB_ICONQUESTION);
+            if (Answer in [IDYES, IDYESALL]) then
+              ImportSQLite.Add(TableName, ImportTableName)
+            else if (Answer = IDCANCEL) then
+              FreeAndNil(ImportSQLite);
+          end;
       end;
 
-      Import := ImportODBC;
-    end
-    else if (ImportType = itSQLiteFile) then
-    begin
-      ImportSQLite := TTImportSQLite.Create(SQLite, Database);
+    Import := ImportSQLite;
+  end
+  else if (ImportType = itXMLFile) then
+  begin
+    ImportXML := TTImportXML.Create(Filename, Table);
+    if (FReplace.Checked) then
+      ImportXML.ImportType := fTools.itReplace
+    else if (FUpdate.Checked) then
+      ImportXML.ImportType := fTools.itUpdate
+    else
+      ImportXML.ImportType := fTools.itInsert;
+    ImportXML.RecordTag := FRecordTag.Text;
 
-      if (Assigned(ImportSQLite)) then
-        if (Assigned(Table)) then
+    Import := ImportXML;
+  end
+  else
+    Import := nil;
+
+  if (Assigned(Import) and Assigned(Table)) then
+    for I := 0 to Table.Fields.Count - 1 do
+      for J := 0 to Length(FFields) - 1 do
+        if ((FSourceFields[J].Text <> '') and (FFields[J].ItemIndex = I + 1)) then
         begin
-          ImportSQLite.Charset := Table.DefaultCharset;
-          ImportSQLite.Collation := Table.Collation;
-          ImportSQLite.Data := True;
-          if (not Assigned(Table.Engine)) then
-            ImportSQLite.Engine := ''
-          else
-            ImportSQLite.Engine := Table.Engine.Name;
-          if (FReplace.Checked) then
-            ImportSQLite.ImportType := fTools.itReplace
-          else if (FUpdate.Checked) then
-            ImportSQLite.ImportType := fTools.itUpdate
-          else
-            ImportSQLite.ImportType := fTools.itInsert;
-          ImportSQLite.RowType := Table.RowType;
-          ImportSQLite.Structure := False;
-
-          ImportSQLite.Add(Table.Name, FTables.Items[0].Caption);
-        end
-        else
-        begin
-          ImportSQLite.Charset := FDefaultCharset.Text;
-          ImportSQLite.Collation := FCollation.Text;
-          ImportSQLite.Data := FData.Checked;
-          ImportSQLite.Engine := FEngine.Text;
-          ImportSQLite.ImportType := fTools.itInsert;
-          ImportSQLite.RowType := TMySQLRowType(FRowFormat.ItemIndex);
-          ImportSQLite.Structure := not Assigned(Table) and FObjects.Checked;
-
-          Answer := IDYES;
-          for I := 0 to FTables.Items.Count - 1 do
-            if (FTables.Items.Item[I].Selected) then
-            begin
-              ImportTableName := FTables.Items[I].Caption;
-              TableName := Database.Tables.ApplyMySQLTableName(ImportTableName);
-              if (not Assigned(Database.TableByName(TableName))) then
-                Answer := IDYES
-              else if (Answer <> IDYESALL) then
-                Answer := MsgBox(Preferences.LoadStr(700, Database.Name + '.' + TableName), Preferences.LoadStr(101), MB_YESYESTOALLNOCANCEL + MB_ICONQUESTION);
-              if (Answer in [IDYES, IDYESALL]) then
-                ImportSQLite.Add(TableName, ImportTableName)
-              else if (Answer = IDCANCEL) then
-                FreeAndNil(ImportSQLite);
-            end;
+          SetLength(ImportText.Fields, Length(ImportText.Fields) + 1);
+          ImportText.Fields[Length(ImportText.Fields) - 1] := Table.Fields[I];
+          SetLength(ImportText.SourceFields, Length(ImportText.SourceFields) + 1);
+          ImportText.SourceFields[Length(ImportText.Fields) - 1].Name := FSourceFields[J].Text;
         end;
 
-      Import := ImportSQLite;
-    end
-    else if (ImportType = itXMLFile) then
-    begin
-      ImportXML := TTImportXML.Create(Filename, Table);
-      if (FReplace.Checked) then
-        ImportXML.ImportType := fTools.itReplace
-      else if (FUpdate.Checked) then
-        ImportXML.ImportType := fTools.itUpdate
-      else
-        ImportXML.ImportType := fTools.itInsert;
-      ImportXML.RecordTag := FRecordTag.Text;
+  Success := Assigned(Import);
 
-      Import := ImportXML;
-    end
+  if (not Success) then
+    SendMessage(Self.Handle, CM_EXECUTIONDONE, WPARAM(Success), 0)
+  else
+  begin
+    Import.Wnd := Self.Handle;
+    Import.UpdateMessage := CM_UPDATEPROGRESSINFO;
+    Import.ExecutedMessage := CM_EXECUTIONDONE;
+    Import.OnError := OnError;
+    if (Client.Asynchron) then
+      Import.Start()
     else
-      Import := nil;
-
-    if (Assigned(Import) and Assigned(Table)) then
-      for I := 0 to Table.Fields.Count - 1 do
-        for J := 0 to Length(FFields) - 1 do
-          if ((FSourceFields[J].Text <> '') and (FFields[J].ItemIndex = I + 1)) then
-          begin
-            SetLength(ImportText.Fields, Length(ImportText.Fields) + 1);
-            ImportText.Fields[Length(ImportText.Fields) - 1] := Table.Fields[I];
-            SetLength(ImportText.SourceFields, Length(ImportText.SourceFields) + 1);
-            ImportText.SourceFields[Length(ImportText.Fields) - 1].Name := FSourceFields[J].Text;
-          end;
-
-    Success := Assigned(Import);
-
-    if (not Success) then
-      SendMessage(Self.Handle, CM_EXECUTIONDONE, WPARAM(Success), 0)
-    else
-    begin
-      Import.Wnd := Self.Handle;
-      Import.UpdateMessage := CM_UPDATEPROGRESSINFO;
-      Import.ExecutedMessage := CM_EXECUTIONDONE;
-      Import.OnError := OnError;
-      if (Client.Asynchron) then
-        Import.Start()
-      else
-        Import.Execute();
-    end;
+      Import.Execute();
   end;
 end;
 

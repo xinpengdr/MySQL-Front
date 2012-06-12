@@ -5008,7 +5008,6 @@ procedure TCBaseTable.PushBuildEvent();
 begin
   if (Valid) then
   begin
-    Client.ExecuteEvent(ceItemsValid, Database, Tables);
     Client.ExecuteEvent(ceItemsValid, Self);
     Client.ExecuteEvent(ceItemValid, Database, Tables, Self);
   end;
@@ -5401,7 +5400,8 @@ begin
           Table[Index].PushBuildEvent();
       until (not DataSet.FindNext());
 
-    Client.ExecuteEvent(ceItemsValid, Client, Client.Databases);
+    if (not Filtered) then
+      Client.ExecuteEvent(ceItemsValid, Client, Client.Databases);
 
     Result := False;
   end;

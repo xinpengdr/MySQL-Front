@@ -1836,7 +1836,9 @@ begin
       else if (Len > 0) then Inc(FilePos, WideCharToMultiByte(CodePage, 0, PChar(@FileContent.Str[Index]), Len, nil, 0, nil, nil));
     end;
 
-    SetCharacterSet := SQLParseCLStmt(CLStmt, @FileContent.Str[Index], Length(FileContent.Str), Client.ServerVersion) and (CLStmt.CommandType in [ctSetNames, ctSetCharacterSet]);
+    SetCharacterSet := not EOF
+      and SQLParseCLStmt(CLStmt, @FileContent.Str[Index], Length(FileContent.Str), Client.ServerVersion)
+      and (CLStmt.CommandType in [ctSetNames, ctSetCharacterSet]);
 
     if ((Index > 1) and (SetCharacterSet or (Index - 1 + Len >= SQLPacketSize))) then
     begin
@@ -3964,8 +3966,6 @@ begin
     Content := Content + '/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;' + #13#10;
   if (Assigned(Client.VariableByName('TIME_ZONE')) and (Client.VariableByName('TIME_ZONE').Value <> 'SYSTEM') and (Client.ServerVersion >= 40103)) then
     Content := Content + '/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;' + #13#10;
-  if (Client.ServerVersion >= 40100) then
-    Content := Content + '/*!40100 SET TIME_ZONE=@OLD_TIME_ZONE */;' + #13#10;
   if ((CodePage <> CP_UNICODE) and (Client.CodePageToCharset(CodePage) <> '') and (Client.ServerVersion >= 40101)) then
   begin
     Content := Content + '/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;' + #13#10;
@@ -5375,6 +5375,7 @@ end;
 
 procedure TTExportODBC.ExecuteTableRecord(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery);
 var
+  DateTime: TDateTime;
   Error: TTools.TError;
   Field: SQLPOINTER;
   I: Integer;
@@ -5407,14 +5408,24 @@ begin
         ftLargeint,
         ftSingle,
         ftFloat,
-        ftExtended,
+        ftExtended:
+          begin
+            Parameter[I].Size := Min(Parameter[I].BufferSize, DataSet.LibLengths^[I]);
+            MoveMemory(Parameter[I].Buffer, DataSet.LibRow^[I], Parameter[I].Size);
+          end;
         ftDate,
         ftDateTime,
         ftTimestamp,
         ftTime:
           begin
-            Parameter[I].Size := Min(Parameter[I].BufferSize, DataSet.LibLengths^[I]);
-            MoveMemory(Parameter[I].Buffer, DataSet.LibRow^[I], Parameter[I].Size);
+            SetString(S, DataSet.LibRow^[I], DataSet.LibLengths^[I]);
+            if (not TryStrToDateTime(S, DateTime, Client.FormatSettings)) then
+              Parameter[I].Size := SQL_NULL_DATA
+            else
+            begin
+              Parameter[I].Size := Min(Parameter[I].BufferSize, DataSet.LibLengths^[I]);
+              MoveMemory(Parameter[I].Buffer, DataSet.LibRow^[I], Parameter[I].Size);
+            end;
           end;
         ftWideString:
           begin
