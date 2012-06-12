@@ -9,6 +9,7 @@
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
 			<Config Condition="'$(Config)'==''">Base</Config>
 			<SkipResGeneration>true</SkipResGeneration>
+			<Base>True</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
 			<Base>true</Base>
@@ -18,15 +19,13 @@
 			<Manifest_File>None</Manifest_File>
 			<DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
 			<DCC_Namespace>Vcl;Vcl.Imaging;Vcl.Shell;System;Xml;Data;Winapi;Bde;System.Win;$(DCC_Namespace)</DCC_Namespace>
+			<DCC_UsePackage>vcl;rtl;vclimg;dbrtl;vcldb;xmlrtl;bdertl;DISQLite3_D2010;MySQL;Win32_Extensions;TPerlRegEx_D2010;$(DCC_UsePackage)</DCC_UsePackage>
 			<DCC_UnitSearchPath>FastMM\Bin;TPerlRegEx\Bin;DISQLite3\API;DISQLite3\Bin;SynEdit\Resource;SynEdit\Bin;MPHexEditor\Resource;MPHexEditor\Bin;QueryBuilder\Resource;QueryBuilder\Bin;Win32\Bin;MySQL\Bin;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
 			<DCC_RangeChecking>true</DCC_RangeChecking>
 			<DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
 			<DCC_Optimize>false</DCC_Optimize>
-			<DCC_UsePackage>vcl;rtl;vclimg;dbrtl;vcldb;xmlrtl;bdertl;DISQLite3_D2010;MySQL;Win32_Extensions;TPerlRegEx_D2010;$(DCC_UsePackage)</DCC_UsePackage>
 			<DCC_ExeOutput>..\Temp</DCC_ExeOutput>
-			<DCC_BplOutput>..\Temp</DCC_BplOutput>
 			<DCC_DcuOutput>..\Temp</DCC_DcuOutput>
-			<DCC_DcpOutput>..\Temp</DCC_DcpOutput>
 			<DCC_SYMBOL_PLATFORM>false</DCC_SYMBOL_PLATFORM>
 			<DCC_UNIT_PLATFORM>false</DCC_UNIT_PLATFORM>
 			<DCC_DependencyCheckOutputName>..\Temp\MySQLFront.exe</DCC_DependencyCheckOutputName>

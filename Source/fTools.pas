@@ -2042,9 +2042,6 @@ begin
   end;
 end;
 
-var
-  Nils: Integer;
-
 function TTImportText.GetValues(const Item: TTImport.TItem; out Values: RawByteString): Boolean;
 var
   EOF: Boolean;
@@ -2056,16 +2053,12 @@ begin
   RecordComplete := False; EOF := False; OldFileContentIndex := FileContent.Index;
   while ((Success = daSuccess) and not RecordComplete and not EOF) do
   begin
-    if (Nils = 6843) then
-      Write;
     RecordComplete := CSVSplitValues(FileContent.Str, FileContent.Index, Delimiter, Quoter, CSVValues);
     if (not RecordComplete) then
     begin
       FileContent.Index := OldFileContentIndex;
       EOF := not ReadContent();
-    end
-    else
-      Inc(Nils);
+    end;
   end;
 
   if (FileContent.Index - OldFileContentIndex > 0) then
@@ -5321,12 +5314,8 @@ begin
         ftDateTime,
         ftTime:
           begin
-            SQL_C_TYPE := SQL_C_CHAR;
-            case (Fields[I].DataType) of
-              ftDate: SQL_TYPE := SQL_DATE;
-              ftDateTime: SQL_TYPE := SQL_TIMESTAMP;
-              else SQL_TYPE := SQL_TIME; // ftTime
-            end;
+            SQL_C_TYPE := SQL_C_TYPE_TIMESTAMP;
+            SQL_TYPE := SQL_TYPE_TIMESTAMP;
             ColumnSize := 100;
             Parameter[I].BufferSize := ColumnSize;
             GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
@@ -5394,15 +5383,22 @@ end;
 
 procedure TTExportODBC.ExecuteTableRecord(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery);
 var
+  DateTimeStruct: SQL_TIMESTAMP_STRUCT;
   DateTime: TDateTime;
+  Day: Word;
   Error: TTools.TError;
   Field: SQLPOINTER;
+  Hour: Word;
   I: Integer;
   Index: Integer;
-  RBS: RawByteString;
+  Minute: Word;
+  Month: Word;
+  MSec: Word;
   ReturnCode: SQLRETURN;
   S: string;
+  Sec: Word;
   Size: Integer;
+  Year: Word;
 begin
   for I := 0 to Length(Fields) - 1 do
     if (Fields[I].IsNull) then
@@ -5437,20 +5433,20 @@ begin
         ftDate,
         ftDateTime,
         ftTime:
-          begin
-            SetString(S, DataSet.LibRow^[I], DataSet.LibLengths^[I]);
-            if (not TryStrToDateTime(S, DateTime, Client.FormatSettings)) then
-              Parameter[I].Size := SQL_NULL_DATA
-            else
-            begin
-              case (Fields[I].DataType) of
-                ftDate: RBS := '{d ''' + RawByteString(S) + '''}';
-                ftDateTime: RBS := '{ts ''' + RawByteString(S) + '''}';
-                ftTime: RBS := '{t ''' + RawByteString(S) + '''}';
-              end;
-              Parameter[I].Size := Length(RBS);
-              MoveMemory(Parameter[I].Buffer, PAnsiChar(RBS), Parameter[I].Size);
-            end;
+          try
+            DecodeDate(Fields[I].AsDateTime, Year, Month, Day);
+            DecodeTime(Fields[I].AsDateTime, Hour, Minute, Sec, MSec);
+            DateTimeStruct.year := Year;
+            DateTimeStruct.month := Month;
+            DateTimeStruct.day := Day;
+            DateTimeStruct.hour := Hour;
+            DateTimeStruct.minute := Minute;
+            DateTimeStruct.second := Sec;
+            DateTimeStruct.fraction := MSec;
+            Parameter[I].Size := SizeOf(DateTimeStruct);
+            MoveMemory(Parameter[I].Buffer, @DateTimeStruct, Parameter[I].Size);
+          except
+            Parameter[I].Size := SQL_NULL_DATA;
           end;
         ftWideString:
           begin
