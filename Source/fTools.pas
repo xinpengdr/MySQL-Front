@@ -5314,8 +5314,12 @@ begin
         ftDateTime,
         ftTime:
           begin
-            SQL_C_TYPE := SQL_C_TYPE_TIMESTAMP;
-            SQL_TYPE := SQL_TYPE_TIMESTAMP;
+            SQL_C_TYPE := SQL_C_CHAR;
+            case (Fields[I].DataType) of
+              ftDate: SQL_TYPE := SQL_DATE;
+              ftDateTime: SQL_TYPE := SQL_TIMESTAMP;
+              else {ftTime} SQL_TYPE := SQL_TIME;
+            end;
             ColumnSize := 100;
             Parameter[I].BufferSize := ColumnSize;
             GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
@@ -5425,28 +5429,13 @@ begin
         ftSingle,
         ftFloat,
         ftExtended,
+        ftDate,
+        ftTime,
+        ftDateTime,
         ftTimestamp:
           begin
             Parameter[I].Size := Min(Parameter[I].BufferSize, DataSet.LibLengths^[I]);
             MoveMemory(Parameter[I].Buffer, DataSet.LibRow^[I], Parameter[I].Size);
-          end;
-        ftDate,
-        ftDateTime,
-        ftTime:
-          try
-            DecodeDate(Fields[I].AsDateTime, Year, Month, Day);
-            DecodeTime(Fields[I].AsDateTime, Hour, Minute, Sec, MSec);
-            DateTimeStruct.year := Year;
-            DateTimeStruct.month := Month;
-            DateTimeStruct.day := Day;
-            DateTimeStruct.hour := Hour;
-            DateTimeStruct.minute := Minute;
-            DateTimeStruct.second := Sec;
-            DateTimeStruct.fraction := MSec;
-            Parameter[I].Size := SizeOf(DateTimeStruct);
-            MoveMemory(Parameter[I].Buffer, @DateTimeStruct, Parameter[I].Size);
-          except
-            Parameter[I].Size := SQL_NULL_DATA;
           end;
         ftWideString:
           begin
