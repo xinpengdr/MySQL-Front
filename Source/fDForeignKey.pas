@@ -242,10 +242,16 @@ begin
     if (FOnUpdate.ItemIndex = 4) then NewForeignKey.OnUpdate := utNoAction;
 
     if (not Assigned(Database)) then
+    begin
       if (not Assigned(ForeignKey)) then
         Table.ForeignKeys.AddForeignKey(NewForeignKey)
       else
-        Table.ForeignKeys[ForeignKey.Index].Assign(NewForeignKey)
+        Table.ForeignKeys[ForeignKey.Index].Assign(NewForeignKey);
+
+      GBasics.Visible := True;
+      GAttributes.Visible := GBasics.Visible;
+      PSQLWait.Visible := not GBasics.Visible;
+    end
     else
     begin
       NewTable := TCBaseTable.Create(Database.Tables);

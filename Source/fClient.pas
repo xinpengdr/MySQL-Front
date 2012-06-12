@@ -2287,7 +2287,10 @@ begin
       TList(Self).Add(AEntity);
 
   if (ExecuteEvent) then
+  begin
+    TCObject(AEntity).Invalidate();
     Client.ExecuteEvent(ceItemCreated, Client, Self, AEntity);
+  end;
 end;
 
 procedure TCObjects.Delete(const AEntity: TCEntity);
@@ -2392,7 +2395,10 @@ begin
       TList(Self).Add(AEntity);
 
   if (ExecuteEvent) then
+  begin
+    TCObject(AEntity).Invalidate();
     Client.ExecuteEvent(ceItemCreated, Database, Self, AEntity);
+  end;
 end;
 
 constructor TCDBObjects.Create(const ADatabase: TCDatabase);
@@ -6434,7 +6440,10 @@ begin
       TList(Self).Add(AEntity);
 
   if (ExecuteEvent) then
+  begin
+    TCTrigger(AEntity).Invalidate();
     Client.ExecuteEvent(ceItemCreated, Database, Self, AEntity);
+  end;
 end;
 
 function TCTriggers.Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean; Filtered: Boolean = False): Boolean;

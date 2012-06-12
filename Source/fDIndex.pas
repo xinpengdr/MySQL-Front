@@ -323,6 +323,10 @@ begin
         Table.Indices.AddIndex(NewIndex)
       else
         Table.Indices[Index.Index].Assign(NewIndex);
+
+      GBasics.Visible := True;
+      GAttributes.Visible := GBasics.Visible;
+      PSQLWait.Visible := not GBasics.Visible;
     end
     else
     begin

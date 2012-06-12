@@ -3712,13 +3712,8 @@ begin
       DImport.CodePage := CP_ACP
     else
       DImport.CodePage := EncodingToCodePage(OpenDialog.Encodings[OpenDialog.EncodingIndex]);
-    if (DImport.Execute()) then
-      if (Assigned(DImport.Table)) then
-        DImport.Table.Clear()
-      else if (Assigned(DImport.Database)) then
-        DImport.Database.Clear()
-      else
-        MainAction('aVRefresh').Execute();
+    DImport.Execute();
+    Client.Update();
   end;
 end;
 
@@ -3746,13 +3741,8 @@ begin
   DImport.Filename := '';
   DImport.CodePage := CP_ACP;
   DImport.ImportType := itODBC;
-  if (DImport.Execute()) then
-    if (Assigned(DImport.Table)) then
-      DImport.Table.Clear()
-    else if (Assigned(DImport.Database)) then
-      DImport.Database.Clear()
-    else
-      MainAction('aVRefresh').Execute();
+  DImport.Execute();
+  Client.Update();
 end;
 
 procedure TFClient.aFImportSQLExecute(Sender: TObject);
@@ -10773,7 +10763,10 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const Kind
         begin
           Item := InsertItem(ClientEvent.CItem);
           if (not Assigned(ListView.Selected)) then
-            ListView.Selected := Item;
+          begin
+            Item.Selected := True;
+            Item.Focused := True;
+          end;
         end;
       ceItemAltered:
         begin
@@ -12085,11 +12078,8 @@ begin
       DImport.Table := nil;
       DImport.FileName := OpenDialog.FileName;
       DImport.CodePage := EncodingToCodePage(OpenDialog.Encodings[OpenDialog.EncodingIndex]);
-      if (DImport.Execute()) then
-        if (Assigned(DImport.Database)) then
-          DImport.Database.Clear()
-        else
-          MainAction('aVRefresh').Execute();
+      DImport.Execute();
+      Client.Update();
     end
     else if (Answer = ID_NO) then
     begin

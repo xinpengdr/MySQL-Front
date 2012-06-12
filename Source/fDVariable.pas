@@ -105,7 +105,7 @@ var
   NewVariable: TCVariable;
   UpdateModes: TCVariable.TUpdateModes;
 begin
-  if (ModalResult = mrOk) then
+  if ((ModalResult = mrOk) and GroupBox.Visible) then
   begin
     NewVariable := TCVariable.Create(Client.Variables);
     if (Assigned(Variable)) then

@@ -694,13 +694,15 @@ begin
         NewField.Comment := Trim(FComment.Text);
 
       if (not Assigned(Database)) then
+      begin
         if (not Assigned(Field)) then
           NewTable.Fields.AddField(NewField)
         else
         begin
           TCBaseTableFields(NewTable.Fields).MoveField(Field, NewField.FieldBefore);
           NewTable.Fields[Field.Index].Assign(NewField)
-        end
+        end;
+      end
       else
       begin
         if (not Assigned(Field)) then

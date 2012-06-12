@@ -1160,7 +1160,7 @@ procedure TDTable.FormClientEvent(const Event: TCClient.TEvent);
 begin
   if ((Event.EventType = ceItemValid) and (Event.CItem = Table)) then
     Built()
-  else if ((Event.EventType = ceItemAltered) and (Event.CItem = Table)) then
+  else if ((Event.EventType in [ceItemCreated, ceItemAltered]) and (Event.CItem is TCTable)) then
     ModalResult := mrOk
   else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
   begin
@@ -1175,7 +1175,7 @@ var
   I64: Int64;
   UpdateTableNames: TStringList;
 begin
-  if (ModalResult = mrOk) then
+  if ((ModalResult = mrOk) and PageControl.Visible) then
     if (not Assigned(Tables)) then
     begin
       NewTable.Name := Trim(FName.Text);
@@ -1421,6 +1421,9 @@ begin
       FRowType.ItemIndex := Integer(NewTable.RowType);
       FAutoIncrement.Visible := NewTable.AutoIncrement > 0; FLAutoIncrement.Visible := FAutoIncrement.Visible;
       FAutoIncrement.Text := IntToStr(NewTable.AutoIncrement);
+
+      PageControl.Visible := True;
+      PSQLWait.Visible := not PageControl.Visible;
     end
     else
     begin

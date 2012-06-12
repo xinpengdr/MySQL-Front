@@ -242,7 +242,7 @@ end;
 
 procedure TDHost.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
-  if (ModalResult = mrOk) then
+  if ((ModalResult = mrOk) and PageControl.Visible) then
   begin
     if (FAll.Checked) then
       NewHost.Name := ''
