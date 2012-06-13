@@ -2,16 +2,17 @@ object FClient: TFClient
   Left = 0
   Top = 0
   Width = 591
-  Height = 304
+  Height = 710
   Align = alClient
   Constraints.MinHeight = 300
   Constraints.MinWidth = 200
   TabOrder = 0
   Visible = False
   OnResize = FormResize
+  ExplicitHeight = 304
   object SLog: TSplitter_Ext
     Left = 0
-    Top = 256
+    Top = 662
     Width = 591
     Height = 4
     Cursor = crVSplit
@@ -30,7 +31,7 @@ object FClient: TFClient
     Left = 120
     Top = 27
     Width = 4
-    Height = 229
+    Height = 635
     AutoSnap = False
     Color = clBtnFace
     ParentColor = False
@@ -45,7 +46,7 @@ object FClient: TFClient
     Left = 0
     Top = 27
     Width = 120
-    Height = 229
+    Height = 635
     Align = alLeft
     BevelOuter = bvNone
     Color = clWindow
@@ -53,22 +54,24 @@ object FClient: TFClient
     ParentBackground = False
     TabOrder = 0
     OnResize = PSideBarResize
+    ExplicitHeight = 229
     object PSQLHistory: TPanel_Ext
       Left = 0
       Top = 0
       Width = 120
-      Height = 229
+      Height = 635
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
       ParentBackground = False
       TabOrder = 2
       Visible = False
+      ExplicitHeight = 229
       object FSQLHistory: TTreeView_Ext
         Left = 2
         Top = 2
         Width = 116
-        Height = 225
+        Height = 631
         HelpContext = 1112
         Align = alClient
         BorderStyle = bsNone
@@ -93,24 +96,26 @@ object FClient: TFClient
         OnKeyPress = FSQLHistoryKeyPress
         OnMouseDown = TreeViewMouseDown
         OnMouseUp = TreeViewMouseUp
+        ExplicitHeight = 225
       end
     end
     object PBookmarks: TPanel_Ext
       Left = 0
       Top = 0
       Width = 120
-      Height = 229
+      Height = 635
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
       ParentBackground = False
       TabOrder = 1
       Visible = False
+      ExplicitHeight = 229
       object FBookmarks: TListView
         Left = 2
         Top = 2
         Width = 116
-        Height = 225
+        Height = 631
         HelpContext = 1082
         Align = alClient
         BorderStyle = bsNone
@@ -132,13 +137,14 @@ object FClient: TFClient
         OnExit = FBookmarksExit
         OnDragDrop = FBookmarksDragDrop
         OnDragOver = FBookmarksDragOver
+        ExplicitHeight = 225
       end
     end
     object PNavigator: TPanel_Ext
       Left = 0
       Top = 0
       Width = 120
-      Height = 229
+      Height = 635
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -146,11 +152,12 @@ object FClient: TFClient
       ParentBackground = False
       TabOrder = 0
       Visible = False
+      ExplicitHeight = 229
       object FNavigator: TTreeView_Ext
         Left = 2
         Top = 2
         Width = 116
-        Height = 225
+        Height = 631
         HelpContext = 1038
         Align = alClient
         BorderStyle = bsNone
@@ -184,12 +191,124 @@ object FClient: TFClient
         OnKeyPress = FNavigatorKeyPress
         OnMouseDown = TreeViewMouseDown
         OnMouseUp = TreeViewMouseUp
+        ExplicitHeight = 225
+      end
+    end
+    object PExplorer: TPanel_Ext
+      Left = 0
+      Top = 0
+      Width = 120
+      Height = 635
+      Align = alClient
+      BevelInner = bvRaised
+      BevelOuter = bvLowered
+      Caption = 'PExplorer'
+      ParentBackground = False
+      TabOrder = 3
+      Visible = False
+      ExplicitHeight = 229
+      object SExplorer: TSplitter_Ext
+        Left = 2
+        Top = 102
+        Width = 116
+        Height = 4
+        Cursor = crVSplit
+        Align = alTop
+        Color = clBtnFace
+        Constraints.MinHeight = 4
+        ParentColor = False
+        OnCanResize = SplitterCanResize
+        ExplicitTop = 150
+      end
+      object PFiles: TPanel_Ext
+        Left = 2
+        Top = 106
+        Width = 116
+        Height = 527
+        Align = alClient
+        BevelOuter = bvNone
+        Color = clWindow
+        Constraints.MinHeight = 50
+        ParentBackground = False
+        TabOrder = 0
+        ExplicitHeight = 121
+        object FFiles: TJamShellList
+          Left = 0
+          Top = 0
+          Width = 116
+          Height = 527
+          HelpContext = 1108
+          AutomaticRefresh = False
+          Filter = '*'
+          SpecialFolder = SF_DESKTOP
+          ShellContextMenu = False
+          ShowFolders = False
+          ShowRecycleBin = False
+          NoFillOnStartup = True
+          ShellLink = ShellLink
+          Align = alClient
+          BorderStyle = bsNone
+          DragMode = dmAutomatic
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -13
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          HideSelection = False
+          IconOptions.AutoArrange = True
+          PopupMenu = MFiles
+          RowSelect = True
+          TabOrder = 0
+          OnDblClick = ListViewDblClick
+          OnKeyDown = ListViewKeyDown
+          OnEnter = FFilesEnter
+          ExplicitHeight = 121
+        end
+      end
+      object PFolders: TPanel_Ext
+        Left = 2
+        Top = 2
+        Width = 116
+        Height = 100
+        Align = alTop
+        BevelOuter = bvNone
+        Color = clWindow
+        Constraints.MinHeight = 50
+        ParentBackground = False
+        TabOrder = 1
+        OnResize = PSideBarResize
+        object FFolders: TJamShellTree
+          Left = 0
+          Top = 0
+          Width = 116
+          Height = 100
+          HelpContext = 1108
+          ShellLink = ShellLink
+          SpecialFolder = SF_DESKTOP
+          ShowRecycleBin = False
+          Filter = '*'
+          AutomaticRefresh = False
+          BorderStyle = bsNone
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -13
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ShowLines = False
+          Indent = 20
+          OnChange = FFoldersChange
+          Align = alClient
+          TabOrder = 0
+          HotTrack = True
+          DoubleBuffered = True
+          ParentDoubleBuffered = False
+        end
       end
     end
   end
   object PLog: TPanel_Ext
     Left = 0
-    Top = 260
+    Top = 666
     Width = 591
     Height = 44
     Align = alBottom
@@ -198,6 +317,7 @@ object FClient: TFClient
     ParentBackground = False
     TabOrder = 2
     OnResize = PLogResize
+    ExplicitTop = 260
     object FLog: TRichEdit
       Left = 19
       Top = 2
@@ -245,7 +365,7 @@ object FClient: TFClient
     Left = 124
     Top = 27
     Width = 467
-    Height = 229
+    Height = 635
     Align = alClient
     BevelOuter = bvNone
     Color = clWindow
@@ -254,9 +374,10 @@ object FClient: TFClient
     ParentBackground = False
     TabOrder = 1
     OnResize = PContentResize
+    ExplicitHeight = 229
     object SResult: TSplitter_Ext
       Left = 0
-      Top = 13
+      Top = 419
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -275,7 +396,7 @@ object FClient: TFClient
     end
     object SBlob: TSplitter_Ext
       Left = 0
-      Top = 166
+      Top = 572
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -398,7 +519,7 @@ object FClient: TFClient
     end
     object PResult: TPanel_Ext
       Left = 0
-      Top = 36
+      Top = 442
       Width = 467
       Height = 130
       Align = alBottom
@@ -408,6 +529,7 @@ object FClient: TFClient
       TabOrder = 5
       Visible = False
       OnResize = PSideBarResize
+      ExplicitTop = 36
       object PResultHeader: TPanel_Ext
         Left = 0
         Top = 0
@@ -864,8 +986,8 @@ object FClient: TFClient
         ParentBackground = False
         TabOrder = 2
         object BINSERT: TButton
-          Left = 8
-          Top = 8
+          Left = 142
+          Top = 88
           Width = 89
           Height = 25
           Caption = 'INSERT'
@@ -903,7 +1025,7 @@ object FClient: TFClient
     end
     object PBlob: TPanel_Ext
       Left = 0
-      Top = 170
+      Top = 576
       Width = 467
       Height = 59
       Align = alBottom
@@ -913,6 +1035,7 @@ object FClient: TFClient
       ParentBackground = False
       TabOrder = 6
       Visible = False
+      ExplicitTop = 170
       object FImage: TImage
         Left = 2
         Top = 27
@@ -924,7 +1047,7 @@ object FClient: TFClient
         Proportional = True
         ExplicitWidth = 315
       end
-      object PToolBarBlob: TPanel
+      object PToolBarBlob: TPanel_Ext
         Left = 2
         Top = 2
         Width = 463
@@ -1148,7 +1271,7 @@ object FClient: TFClient
     end
     object SBResult: TStatusBar
       Left = 0
-      Top = 17
+      Top = 423
       Width = 467
       Height = 19
       Panels = <
@@ -1173,6 +1296,7 @@ object FClient: TFClient
       ParentFont = True
       UseSystemFont = False
       Visible = False
+      ExplicitTop = 17
     end
   end
   object PHeader: TPanel_Ext
@@ -1204,7 +1328,7 @@ object FClient: TFClient
       object TBSideBar: TToolBar
         Left = 2
         Top = 2
-        Width = 69
+        Width = 92
         Height = 22
         Align = alNone
         AutoSize = True
@@ -1232,6 +1356,13 @@ object FClient: TFClient
           Left = 46
           Top = 0
           Caption = 'tbSQLHistory'
+          Grouped = True
+          Style = tbsCheck
+        end
+        object tbExplorer: TToolButton
+          Left = 69
+          Top = 0
+          Caption = 'tbExplorer'
           Grouped = True
           Style = tbsCheck
         end
@@ -1982,8 +2113,8 @@ object FClient: TFClient
     OnShow = FSQLEditorCompletionShow
     ShortCut = 16416
     Editor = FSQLEditorSynMemo
-    Left = 265
-    Top = 208
+    Left = 337
+    Top = 256
   end
   object MGridHeader: TPopupMenu
     OnPopup = MGridHeaderPopup
@@ -2030,6 +2161,9 @@ object FClient: TFClient
     object miSSQLHistory: TMenuItem
       Caption = 'miSSQLHistory'
     end
+    object miSExplorer: TMenuItem
+      Caption = 'miSExplorer'
+    end
   end
   object PrintDialog: TPrintDialog_Ext
     FromPage = 1
@@ -2038,6 +2172,93 @@ object FClient: TFClient
     ToPage = 2
     Left = 369
     Top = 208
+  end
+  object ShellLink: TJamShellLink
+    Left = 64
+    Top = 215
+  end
+  object MFiles: TPopupMenu
+    OnPopup = MFilesPopup
+    Left = 8
+    Top = 212
+    object mfOpen: TMenuItem
+      Caption = 'mfOpen'
+      Default = True
+      OnClick = mfOpenClick
+    end
+    object mfOpenInNewWindow: TMenuItem
+      Action = aPOpenInNewWindow
+    end
+    object mfOpenInNewTab: TMenuItem
+      Action = aPOpenInNewTab
+    end
+    object N30: TMenuItem
+      Caption = '-'
+    end
+    object mfFilter: TMenuItem
+      Caption = 'mfFilter'
+      object mfFilterClear: TMenuItem
+        AutoCheck = True
+        Caption = 'mfFilterClear'
+        RadioItem = True
+        OnClick = mfFilterClearClick
+      end
+      object N31: TMenuItem
+        Caption = '-'
+      end
+      object mfFilterSQL: TMenuItem
+        Caption = 'mfFilterSQL'
+        RadioItem = True
+        OnClick = mfFilterSQLClick
+      end
+      object mfFilterText: TMenuItem
+        Caption = 'mfFilterText'
+        RadioItem = True
+        OnClick = mfFilterTextClick
+      end
+      object mfFilterExcel: TMenuItem
+        Caption = 'mfFilterExcel'
+        RadioItem = True
+        OnClick = mfFilterExcelClick
+      end
+      object mfFilterAccess: TMenuItem
+        Caption = 'mfFilterAccess'
+        RadioItem = True
+        OnClick = mfFilterAccessClick
+      end
+      object mfFilterSQLite: TMenuItem
+        Caption = 'mfFilterSQLite'
+        OnClick = mfFilterSQLiteClick
+      end
+      object mfFilterHTML: TMenuItem
+        Caption = 'mfFilterHTML'
+        RadioItem = True
+        OnClick = mfFilterHTMLClick
+      end
+      object mfFilterXML: TMenuItem
+        Caption = 'mfFilterXML'
+        RadioItem = True
+        OnClick = mfFilterXMLClick
+      end
+    end
+    object N32: TMenuItem
+      Caption = '-'
+    end
+    object mfDelete: TMenuItem
+      Caption = 'mfDelete'
+      OnClick = mfDeleteClick
+    end
+    object mfRename: TMenuItem
+      Caption = 'mfRename'
+      OnClick = mfRenameClick
+    end
+    object N33: TMenuItem
+      Caption = '-'
+    end
+    object mfProperties: TMenuItem
+      Caption = 'mfProperties'
+      OnClick = mfPropertiesClick
+    end
   end
   object MSQLHistory: TPopupMenu
     OnPopup = MSQLHistoryPopup
@@ -2229,7 +2450,7 @@ object FClient: TFClient
     object mwDEmpty: TMenuItem
       Caption = 'aDEmpty'
     end
-    object N30: TMenuItem
+    object N34: TMenuItem
       Caption = '-'
     end
     object mwDProperties: TMenuItem

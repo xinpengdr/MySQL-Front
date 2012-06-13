@@ -2200,7 +2200,7 @@ destructor TCObject.Destroy();
 begin
   if (Assigned(FDesktop)) then
     FDesktop.Free();
-  if (Client.InvalidObjects.IndexOf(Self) > 0) then
+  if (Assigned(Client.InvalidObjects) and (Client.InvalidObjects.IndexOf(Self) > 0)) then
     Client.InvalidObjects.Delete(Client.InvalidObjects.IndexOf(Self));
 
   inherited;
@@ -2241,7 +2241,7 @@ begin
   FSource := '';
   FValidSource := False;
 
-  if (Client.InvalidObjects.IndexOf(Self) < 0) then
+  if (Assigned(Client.InvalidObjects) and (Client.InvalidObjects.IndexOf(Self) < 0)) then
     Client.InvalidObjects.Add(Self);
 end;
 

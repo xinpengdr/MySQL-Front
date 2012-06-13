@@ -14,7 +14,7 @@ uses
   ComCtrls_Ext, StdCtrls_Ext, Dialogs_Ext, Forms_Ext, ExtCtrls_Ext,
   MySQLDB, MySQLDBGrid,
   fDExport, fDImport, fClient, fAccount, fBase, fPreferences, fTools,
-  fCWorkbench;
+  fCWorkbench, ShellControls, JAMControls, ShellLink;
 
 const
   CM_ACTIVATEFGRID = WM_USER + 500;
@@ -80,8 +80,10 @@ type
     FBookmarks: TListView;
     FBuilder: TacQueryBuilder;
     FBuilderSynMemo: TSynMemo;
+    FFiles: TJamShellList;
     FFilter: TComboBox_Ext;
     FFilterEnabled: TToolButton;
+    FFolders: TJamShellTree;
     FGrid: TMySQLDBGrid;
     FGridDataSource: TDataSource;
     FHexEditor: TMPHexEditorEx;
@@ -133,6 +135,21 @@ type
     mbBOpenInNewWindow: TMenuItem;
     MBookmarks: TPopupMenu;
     MetadataProvider: TacEventMetadataProvider;
+    MFiles: TPopupMenu;
+    mfOpen: TMenuItem;
+    mfOpenInNewWindow: TMenuItem;
+    mfOpenInNewTab: TMenuItem;
+    mfFilter: TMenuItem;
+    mfFilterClear: TMenuItem;
+    mfFilterSQL: TMenuItem;
+    mfFilterText: TMenuItem;
+    mfFilterHTML: TMenuItem;
+    mfFilterXML: TMenuItem;
+    mfFilterAccess: TMenuItem;
+    mfFilterExcel: TMenuItem;
+    mfDelete: TMenuItem;
+    mfRename: TMenuItem;
+    mfProperties: TMenuItem;
     MGrid: TPopupMenu;
     MGridHeader: TPopupMenu;
     MHexEditor: TPopupMenu;
@@ -312,6 +329,11 @@ type
     N27: TMenuItem;
     N28: TMenuItem;
     N29: TMenuItem;
+    N30: TMenuItem;
+    N31: TMenuItem;
+    N32: TMenuItem;
+    N33: TMenuItem;
+    N34: TMenuItem;
     OpenDialog: TOpenDialog_Ext;
     PBlob: TPanel_Ext;
     PBlobSpacer: TPanel_Ext;
@@ -321,6 +343,8 @@ type
     PContent: TPanel_Ext;
     PDataBrowser: TPanel_Ext;
     PDataBrowserSpacer: TPanel_Ext;
+    PFiles: TPanel_Ext;
+    PFolders: TPanel_Ext;
     PGrid: TPanel_Ext;
     PHeader: TPanel_Ext;
     PListView: TPanel_Ext;
@@ -340,7 +364,7 @@ type
     PSynMemo: TPanel_Ext;
     PSQLHistory: TPanel_Ext;
     PToolBar: TPanel_Ext;
-    PToolBarBlob: TPanel;
+    PToolBarBlob: TPanel_Ext;
     PWorkbench: TPanel_Ext;
     SaveDialog: TSaveDialog_Ext;
     SBlob: TSplitter_Ext;
@@ -351,6 +375,8 @@ type
     smECopyToFile: TMenuItem;
     smEEmpty: TMenuItem;
     smESelectAll: TMenuItem;
+    SExplorer: TSplitter_Ext;
+    ShellLink: TJamShellLink;
     SQLBuilder: TacSQLBuilderPlainText;
     SResult: TSplitter_Ext;
     SSideBar: TSplitter_Ext;
@@ -382,6 +408,10 @@ type
     TBFilterEnabled: TToolBar;
     TBLimitEnabled: TToolBar;
     TBQuickSearchEnabled: TToolBar;
+    PExplorer: TPanel_Ext;
+    tbExplorer: TToolButton;
+    miSExplorer: TMenuItem;
+    mfFilterSQLite: TMenuItem;
     procedure aBAddExecute(Sender: TObject);
     procedure aBDeleteExecute(Sender: TObject);
     procedure aBEditExecute(Sender: TObject);
@@ -645,6 +675,20 @@ type
       Shift: TShiftState; X, Y: Integer);
     procedure ToolBarResize(Sender: TObject);
     procedure PDataBrowserResize(Sender: TObject);
+    procedure FFoldersChange(Sender: TObject; Node: TTreeNode);
+    procedure mfOpenClick(Sender: TObject);
+    procedure mfFilterClearClick(Sender: TObject);
+    procedure mfFilterSQLClick(Sender: TObject);
+    procedure mfFilterTextClick(Sender: TObject);
+    procedure mfFilterHTMLClick(Sender: TObject);
+    procedure mfFilterXMLClick(Sender: TObject);
+    procedure mfFilterAccessClick(Sender: TObject);
+    procedure mfFilterExcelClick(Sender: TObject);
+    procedure mfFilterSQLiteClick(Sender: TObject);
+    procedure mfDeleteClick(Sender: TObject);
+    procedure mfRenameClick(Sender: TObject);
+    procedure mfPropertiesClick(Sender: TObject);
+    procedure MFilesPopup(Sender: TObject);
   type
     TNewLineFormat = (nlWindows, nlUnix, nlMacintosh);
     TTabState = set of (tsLoading, tsActive);
@@ -3926,7 +3970,10 @@ begin
   begin
     if (Assigned(FBookmarks.Selected)) then
       Window.Perform(CM_ADDTAB, 0, LPARAM(PChar(string(Client.Account.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption).URI))));
-  end;
+  end
+  else if (Window.ActiveControl = FFiles) then
+    if (LowerCase(ExtractFileExt(FFolders.SelectedFolder + PathDelim + FFiles.Selected.Caption)) = '.sql') then
+      OpenInNewTabExecute(SelectedDatabase, '', False, FFolders.SelectedFolder + PathDelim + FFiles.Selected.Caption);
 end;
 
 procedure TFClient.aPOpenInNewWindowExecute(Sender: TObject);
@@ -3939,7 +3986,10 @@ begin
   begin
     if (Assigned(FBookmarks.Selected)) then
       ShellExecute(Application.Handle, 'open', PChar(TFileName(Application.ExeName)), PChar(string(Client.Account.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption).URI)), '', SW_SHOW);
-  end;
+  end
+  else if (Window.ActiveControl = FFiles) then
+    if (LowerCase(ExtractFileExt(FFolders.SelectedFolder + PathDelim + FFiles.Selected.Caption)) = '.sql') then
+      OpenInNewTabExecute(SelectedDatabase, '', True, FFolders.SelectedFolder + PathDelim + FFiles.Selected.Caption);
 end;
 
 function TFClient.ApplicationHelp(Command: Word; Data: THelpEventData; var CallHelp: Boolean): Boolean;
@@ -4180,12 +4230,16 @@ begin
   MainAction('aVNavigator').Checked := (Sender = MainAction('aVNavigator')) and MainAction('aVNavigator').Checked;
   MainAction('aVBookmarks').Checked := (Sender = MainAction('aVBookmarks')) and MainAction('aVBookmarks').Checked;
   MainAction('aVSQLHistory').Checked := (Sender = MainAction('aVSQLHistory')) and MainAction('aVSQLHistory').Checked;
+  MainAction('aVExplorer').Checked := (Sender = MainAction('aVExplorer')) and MainAction('aVExplorer').Checked;
 
   PNavigator.Visible := MainAction('aVNavigator').Checked;
   PBookmarks.Visible := MainAction('aVBookmarks').Checked;
   PSQLHistory.Visible := MainAction('aVSQLHistory').Checked;
+  PExplorer.Visible := MainAction('aVExplorer').Checked;
 
-  SSideBar.Visible := PNavigator.Visible or PBookmarks.Visible or PSQLHistory.Visible;
+  FFolders.AutomaticRefresh := PExplorer.Visible; FFiles.AutomaticRefresh := PExplorer.Visible;
+
+  SSideBar.Visible := PNavigator.Visible or PBookmarks.Visible or PSQLHistory.Visible or PExplorer.Visible;
   if (SSideBar.Visible) then
   begin
     SSideBar.Left := PNavigator.Width;
@@ -4205,7 +4259,9 @@ begin
   begin
     FSQLHistoryRefresh(Sender);
     Window.ActiveControl := FSQLHistory;
-  end;
+  end
+  else if (MainAction('aVExplorer').Checked) then
+    Window.ActiveControl := FFolders;
 end;
 
 procedure TFClient.aVSortAscExecute(Sender: TObject);
@@ -4522,6 +4578,20 @@ begin
   tbEditor.Caption := ReplaceStr(Preferences.LoadStr(6), '&', '');
   tbDiagram.Caption := ReplaceStr(Preferences.LoadStr(800), '&', '');
 
+  mfOpen.Caption := Preferences.LoadStr(581);
+  mfOpenInNewWindow.Caption := Preferences.LoadStr(760);
+  mfFilter.Caption := Preferences.LoadStr(209);
+  mfFilterClear.Caption := FilterDescription('*') + ' (*.*)';
+  mfFilterSQL.Caption := FilterDescription('sql') + ' (*.sql)';
+  mfFilterText.Caption := FilterDescription('txt') + ' (*.txt,*.csv)';
+  mfFilterHTML.Caption := FilterDescription('html') + ' (*.html,*.hmt)';
+  mfFilterXML.Caption := FilterDescription('xml') + ' (*.xml)';
+  mfFilterAccess.Caption := FilterDescription('mdb') + ' (*.mdb)';
+  mfFilterExcel.Caption := FilterDescription('xls') + ' (*.xls)';
+  mfDelete.Caption := Preferences.LoadStr(28);
+  mfRename.Caption := Preferences.LoadStr(98);
+  mfProperties.Caption := Preferences.LoadStr(97) + '...';
+
   miNImport.Caption := Preferences.LoadStr(371);
   miNExport.Caption := Preferences.LoadStr(200);
   miNCreate.Caption := Preferences.LoadStr(26);
@@ -4660,6 +4730,8 @@ begin
     PContentRefresh(nil);
 
   PasteMode := False;
+
+  FFiles.Filter := Client.Account.Desktop.FilesFilter;
 end;
 
 procedure TFClient.CMCloseTabQuery(var Message: TMessage);
@@ -4737,6 +4809,7 @@ begin
     MainAction('aVNavigator').Checked := PNavigator.Visible;
     MainAction('aVBookmarks').Checked := PBookmarks.Visible;
     MainAction('aVSQLHistory').Checked := PSQLHistory.Visible;
+    MainAction('aVExplorer').Checked := PExplorer.Visible;
     MainAction('aVSQLLog').Checked := PLog.Visible;
 
     MainAction('aFOpen').OnExecute := aFOpenExecute;
@@ -4772,6 +4845,7 @@ begin
     MainAction('aVNavigator').OnExecute := aVSideBarExecute;
     MainAction('aVBookmarks').OnExecute := aVSideBarExecute;
     MainAction('aVSQLHistory').OnExecute := aVSideBarExecute;
+    MainAction('aVExplorer').OnExecute := aVSideBarExecute;
     MainAction('aVSQLLog').OnExecute := aVSQLLogExecute;
     MainAction('aVDetails').OnExecute := aVDetailsExecute;
     MainAction('aVRefresh').OnExecute := aVRefreshExecute;
@@ -4839,6 +4913,7 @@ begin
     MainAction('aVNavigator').Enabled := True;
     MainAction('aVBookmarks').Enabled := True;
     MainAction('aVSQLHistory').Enabled := True;
+    MainAction('aVExplorer').Enabled := True;
     MainAction('aVSQLLog').Enabled := True;
     MainAction('aVRefresh').Enabled := True;
     MainAction('aVRefreshAll').Enabled := True;
@@ -4881,6 +4956,7 @@ begin
   MainAction('aVNavigator').Enabled := False;
   MainAction('aVBookmarks').Enabled := False;
   MainAction('aVSQLHistory').Enabled := False;
+  MainAction('aVExplorer').Enabled := False;
   MainAction('aVSQLLog').Enabled := False;
   MainAction('aVRefresh').Enabled := False;
   MainAction('aVRefreshAll').Enabled := False;
@@ -4934,9 +5010,11 @@ begin
   PNavigator.Visible := Client.Account.Desktop.NavigatorVisible;
   PBookmarks.Visible := Client.Account.Desktop.BookmarksVisible;
   PSQLHistory.Visible := Client.Account.Desktop.SQLHistoryVisible; if (PSQLHistory.Visible) then FSQLHistoryRefresh(nil);
-  PSideBar.Visible := PNavigator.Visible or PBookmarks.Visible or PSQLHistory.Visible; SSideBar.Visible := PSideBar.Visible;
+  PExplorer.Visible := Client.Account.Desktop.ExplorerVisible;
+  PSideBar.Visible := PNavigator.Visible or PBookmarks.Visible or PSQLHistory.Visible or PExplorer.Visible; SSideBar.Visible := PSideBar.Visible;
 
   PSideBar.Width := Client.Account.Desktop.SelectorWitdth;
+  PFiles.Height := PSideBar.ClientHeight - Client.Account.Desktop.FoldersHeight - SExplorer.Height;
 
   FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options + [eoScrollPastEol];  // Speed up the performance
   FSQLEditorSynMemo.Text := Client.Account.Desktop.EditorContent;
@@ -4950,6 +5028,8 @@ begin
 
   PLog.Height := Client.Account.Desktop.LogHeight;
   PLog.Visible := Client.Account.Desktop.LogVisible; SLog.Visible := PLog.Visible;
+
+  FFolders.SelectedFolder := Preferences.Path;
 
   aVBlobText.Checked := True;
 
@@ -5004,6 +5084,9 @@ begin
     PNavigator.BevelInner := bvRaised; PNavigator.BevelOuter := bvLowered;
     PBookmarks.BevelInner := bvRaised; PBookmarks.BevelOuter := bvLowered;
     PSQLHistory.BevelInner := bvRaised; PSQLHistory.BevelOuter := bvLowered;
+    PExplorer.BevelInner := bvRaised; PExplorer.BevelOuter := bvLowered;
+    PFolders.BevelInner := bvRaised; PFolders.BevelOuter := bvLowered;
+    PFiles.BevelInner := bvRaised; PFiles.BevelOuter := bvLowered;
     PListView.BevelInner := bvRaised; PListView.BevelOuter := bvLowered;
     PBuilderQuery.BevelInner := bvRaised; PBuilderQuery.BevelOuter := bvLowered;
     PSynMemo.BevelInner := bvRaised; PSynMemo.BevelOuter := bvLowered;
@@ -5020,6 +5103,9 @@ begin
     PNavigator.BevelInner := bvNone; PNavigator.BevelOuter := bvNone;
     PBookmarks.BevelInner := bvNone; PBookmarks.BevelOuter := bvNone;
     PSQLHistory.BevelInner := bvNone; PSQLHistory.BevelOuter := bvNone;
+    PExplorer.BevelInner := bvNone; PExplorer.BevelOuter := bvNone;
+    PFolders.BevelInner := bvNone; PNavigator.BevelOuter := bvNone;
+    PFiles.BevelInner := bvNone; PFiles.BevelOuter := bvNone;
     PListView.BevelInner := bvNone; PListView.BevelOuter := bvNone;
     PBuilderQuery.BevelInner := bvNone; PBuilderQuery.BevelOuter := bvNone;
     PSynMemo.BevelInner := bvNone; PSynMemo.BevelOuter := bvNone;
@@ -5232,6 +5318,7 @@ begin
   tbNavigator.Action := MainAction('aVNavigator');
   tbBookmarks.Action := MainAction('aVBookmarks');
   tbSQLHistory.Action := MainAction('aVSQLHistory');
+  tbExplorer.Action := MainAction('aVExplorer');
 
   tbObjects.Action := MainAction('aVObjectBrowser'); tbObjects.Caption := ReplaceStr(tbObjects.Caption, '&', '');
   tbBrowser.Action := MainAction('aVDataBrowser'); tbBrowser.Caption := ReplaceStr(tbBrowser.Caption, '&', '');
@@ -5243,6 +5330,7 @@ begin
   miSNavigator.Action := MainAction('aVNavigator');
   miSBookmarks.Action := MainAction('aVBookmarks');
   miSSQLHistory.Action := MainAction('aVSQLHistory');
+  miSExplorer.Action := MainAction('aVExplorer');
 
   miNImportSQL.Action := MainAction('aFImportSQL');
   miNImportText.Action := MainAction('aFImportText');
@@ -5380,6 +5468,8 @@ begin
 
   FNavigator.RowSelect := CheckWin32Version(6, 1);
   FSQLHistory.RowSelect := CheckWin32Version(6, 1);
+  if (CheckWin32Version(6, 1)) then
+    SetWindowLong(FFolders.Handle, GWL_STYLE, GetWindowLong(FFolders.Handle, GWL_STYLE) or TVS_FULLROWSELECT);
 
   PListView.Align := alClient;
   PSynMemo.Align := alClient;
@@ -6057,9 +6147,12 @@ begin
     Client.Account.Desktop.EditorContent := ''
   else
     Client.Account.Desktop.EditorContent := FSQLEditorSynMemo.Text;
+  Client.Account.Desktop.FoldersHeight := PFolders.Height;
+  Client.Account.Desktop.FilesFilter := FFiles.Filter;
   Client.Account.Desktop.NavigatorVisible := PNavigator.Visible;
   Client.Account.Desktop.BookmarksVisible := PBookmarks.Visible;
   Client.Account.Desktop.SQLHistoryVisible := PSQLHistory.Visible;
+  Client.Account.Desktop.ExplorerVisible := PExplorer.Visible;
   Client.Account.Desktop.SelectorWitdth := PSideBar.Width;
   Client.Account.Desktop.LogVisible := PLog.Visible;
   Client.Account.Desktop.LogHeight := PLog.Height;
@@ -6068,6 +6161,7 @@ begin
   Client.Account.Desktop.Address := URI.Address;
   FreeAndNil(URI);
 
+  Preferences.Path := FFolders.SelectedFolder + PathDelim;
   if (PResult.Align <> alBottom) then
     Client.Account.Desktop.DataHeight := PResultHeight
   else
@@ -6534,6 +6628,14 @@ begin
     FFilter.SelLength := Length(FFilter.Text);
     Key := #0;
   end;
+end;
+
+procedure TFClient.FFoldersChange(Sender: TObject; Node: TTreeNode);
+begin
+  if (not (tsLoading in FrameState) and PExplorer.Visible and Visible) then
+    PlaySoundW(PWideChar(Preferences.SoundFileNavigating), Application.Handle, SND_FILENAME);
+
+  Preferences.Path := FFolders.SelectedFolder;
 end;
 
 procedure TFClient.FGridCellClick(Column: TColumn);
@@ -11346,6 +11448,98 @@ begin
   end;
 end;
 
+procedure TFClient.mfDeleteClick(Sender: TObject);
+begin
+  FFiles.InvokeCommandOnSelected('delete');
+end;
+
+procedure TFClient.mfFilterAccessClick(Sender: TObject);
+begin
+  FFiles.Filter := '*.mdb';
+end;
+
+procedure TFClient.mfFilterClearClick(Sender: TObject);
+begin
+  FFiles.Filter := '*';
+  mfFilter.Checked := False;
+  mfFilterText.Checked := False;
+end;
+
+procedure TFClient.mfFilterExcelClick(Sender: TObject);
+begin
+  FFiles.Filter := '*.xls';
+end;
+
+procedure TFClient.mfFilterHTMLClick(Sender: TObject);
+begin
+  FFiles.Filter := '*.html;*.htm';
+end;
+
+procedure TFClient.mfFilterSQLClick(Sender: TObject);
+begin
+  FFiles.Filter := '*.sql';
+end;
+
+procedure TFClient.mfFilterSQLiteClick(Sender: TObject);
+begin
+  FFiles.Filter := '*.sqlite';
+end;
+
+procedure TFClient.mfFilterTextClick(Sender: TObject);
+begin
+  FFiles.Filter := '*.txt;*.csv';
+end;
+
+procedure TFClient.mfFilterXMLClick(Sender: TObject);
+begin
+  FFiles.Filter := '*.xml';
+end;
+
+procedure TFClient.MFilesPopup(Sender: TObject);
+begin
+  mfFilterClear.Checked := FFiles.Filter = '*';
+  mfFilterSQL.Checked := FFiles.Filter = '*.sql';
+  mfFilterText.Checked := FFiles.Filter = '*.txt;*.csv';
+  mfFilterAccess.Checked := FFiles.Filter = '*.mdb';
+  mfFilterExcel.Checked := FFiles.Filter = '*.xls';
+  mfFilterSQLite.Checked := FFiles.Filter = '*.sqlite';
+  mfFilterHTML.Checked := FFiles.Filter = '*.html;*.htm';
+  mfFilterXML.Checked := FFiles.Filter = '*.xml';
+
+  mfOpen.Enabled := FFiles.SelCount = 1;
+  aPOpenInNewWindow.Enabled := (FFiles.SelCount = 1) and (LowerCase(ExtractFileExt(FFolders.SelectedFolder + PathDelim + FFiles.Selected.Caption)) = '.sql');
+  aPOpenInNewTab.Enabled := aPOpenInNewWindow.Enabled;
+  mfFilter.Enabled := FFiles.SelCount = 0;
+  mfDelete.Enabled := FFiles.SelCount = 1;
+  mfRename.Enabled := FFiles.SelCount = 1;
+  mfProperties.Enabled := FFiles.SelCount = 1;
+
+  ShowEnabledItems(MFiles.Items);
+end;
+
+procedure TFClient.mfOpenClick(Sender: TObject);
+begin
+  if (Assigned(FFiles.Selected) and (LowerCase(ExtractFileExt(FFolders.SelectedFolder + PathDelim + FFiles.Selected.Caption)) = '.sql')) then
+  begin
+    View := vEditor;
+
+    if (Boolean(Perform(CM_CLOSE_TAB_QUERY, 0, 0))) then
+      OpenSQLFile(FFolders.SelectedFolder + PathDelim + FFiles.Selected.Caption);
+  end
+  else
+    FFiles.InvokeCommandOnSelected('open');
+end;
+
+procedure TFClient.mfPropertiesClick(Sender: TObject);
+begin
+  FFiles.InvokeCommandOnSelected('properties');
+end;
+
+procedure TFClient.mfRenameClick(Sender: TObject);
+begin
+  FFiles.Selected.EditCaption();
+end;
+
 procedure TFClient.MGridHeaderMenuOrderClick(Sender: TObject);
 var
   MenuItem: TMenuItem;
@@ -12181,7 +12375,9 @@ begin
         else if (MainAction('aVBookmarks').Checked) then
           MainAction('aVBookmarks').Execute()
         else if (MainAction('aVSQLHistory').Checked) then
-          MainAction('aVSQLHistory').Execute();
+          MainAction('aVSQLHistory').Execute()
+        else if (MainAction('aVExplorer').Checked) then
+          MainAction('aVExplorer').Execute();
     PanelMouseDownPoint := Point(-1, -1);
   end;
 end;
@@ -13053,6 +13249,7 @@ procedure TFClient.PSideBarResize(Sender: TObject);
 begin
   SetWindowLong(FNavigator.Handle, GWL_STYLE, GetWindowLong(FNavigator.Handle, GWL_STYLE) or TVS_NOHSCROLL);
   SetWindowLong(FSQLHistory.Handle, GWL_STYLE, GetWindowLong(FSQLHistory.Handle, GWL_STYLE) or TVS_NOHSCROLL);
+  SetWindowLong(FFolders.Handle, GWL_STYLE, GetWindowLong(FFolders.Handle, GWL_STYLE) or TVS_NOHSCROLL);
 
   PSideBarHeader.Width := PSideBar.Width;
   PToolBar.Left := PContent.Left;
@@ -13758,7 +13955,6 @@ end;
 procedure TFClient.SplitterCanResize(Sender: TObject; var NewSize: Integer;
   var Accept: Boolean);
 var
-  Control: TWinControl;
   I: Integer;
   MaxHeight: Integer;
   MinHeight: Integer;
@@ -13766,31 +13962,21 @@ var
 begin
   if (Sender is TSplitter_Ext) then
   begin
-    Splitter := TSplitter_Ext(Sender); Control := nil;
+    Splitter := TSplitter_Ext(Sender);
 
-    MaxHeight := Splitter.Parent.ClientHeight; MinHeight := 0;
+    MaxHeight := Splitter.Parent.ClientHeight;
+    MinHeight := 0;
     for I := 0 to Splitter.Parent.ControlCount - 1 do
-      if (Splitter.Parent.Controls[I].Visible and (Splitter.Parent.Controls[I].Align in [alTop, alClient, alBottom])) then
-      begin
-        if (Splitter.Parent.Controls[I].Align = alClient) then
-          Dec(MaxHeight, Splitter.Parent.Controls[I].Constraints.MinHeight)
-        else if (Splitter.Parent.Controls[I].Top <> Splitter.Top + Splitter.Height) then
-          Dec(MaxHeight, Splitter.Parent.Controls[I].Height);
-
-        if (Splitter.Parent.Controls[I].Top > Splitter.Top) then
-          if (Splitter.Parent.Controls[I].Constraints.MinHeight > 0) then
-            Inc(MinHeight, Splitter.Parent.Controls[I].Constraints.MinHeight)
-          else
-            Inc(MinHeight, Splitter.Parent.Controls[I].Height);
-
-        if ((Splitter.Parent.Controls[I].Top = Splitter.Top + Splitter.Height) and (Splitter.Parent.Controls[I] is TWinControl)) then
-          Control := TWinControl(Splitter.Parent.Controls[I]);
-      end;
-
-    if (Control.Constraints.MaxHeight > 0) then
-      MaxHeight := Min(MaxHeight, Control.Constraints.MaxHeight);
+      if ((Splitter.Parent.Controls[I].Top < Splitter.Top) and (Splitter.Parent.Controls[I].Constraints.MinHeight > 0)) then
+        Inc(MinHeight, Splitter.Parent.Controls[I].Constraints.MinHeight)
+      else if ((Splitter.Parent.Controls[I].Top > Splitter.Top) and (Splitter.Parent.Controls[I].Constraints.MinHeight > 0)) then
+        Dec(MaxHeight, Splitter.Parent.Controls[I].Constraints.MinHeight)
+      else if (Splitter.Parent.Controls[I] = Splitter) then
+        Dec(MaxHeight, Splitter.Height + 3);
 
     Accept := (MinHeight <= NewSize) and (NewSize <= MaxHeight);
+    if (Accept) then
+      Write;
   end;
 end;
 

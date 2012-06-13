@@ -1985,6 +1985,8 @@ begin
 
   while ((Success = daSuccess) and not Database.AddTable(NewTable)) do
     DoError(DatabaseError(Database.Client), ToolsItem(Item));
+  while ((Success = daSuccess) and not Client.Update()) do
+    DoError(DatabaseError(Database.Client), ToolsItem(Item));
 
   NewTable.Free();
 
@@ -2895,6 +2897,8 @@ begin
 
     while ((Success = daSuccess) and not Database.AddTable(NewTable)) do
       DoError(DatabaseError(Database.Client), ToolsItem(Item));
+    while ((Success = daSuccess) and not Client.Update()) do
+      DoError(DatabaseError(Database.Client), ToolsItem(Item));
   end;
 
   NewTable.Free();
@@ -3190,6 +3194,8 @@ begin
 
     while ((Success = daSuccess) and not Database.AddTable(NewTable)) do
       DoError(DatabaseError(Client), ToolsItem(Item));
+    while ((Success = daSuccess) and not Client.Update()) do
+      DoError(DatabaseError(Database.Client), ToolsItem(Item));
 
     NewTable.Free();
   end;
@@ -7122,6 +7128,8 @@ begin
     if (not UpdateData) then
       NewTargetTable.AutoIncrement := 0;
     while ((Success = daSuccess) and not TargetDatabase.AddTable(NewTargetTable)) do
+      DoError(DatabaseError(TargetDatabase.Client), ToolsItem(Target));
+    while ((Success = daSuccess) and not TargetDatabase.Client.Update()) do
       DoError(DatabaseError(TargetDatabase.Client), ToolsItem(Target));
   end
   else if (UpdateStructure) then

@@ -23,6 +23,9 @@ http://mh-nexus.de/en/unisynedit.php
 Active Query Builder VCL Edition:
 http://www.activequerybuilder.com/
 
+ShellBrowser:
+http://www.jam-software.de/shellbrowser_delphi/
+
 Mirkes MPHexEditor:
 https://launchpad.net/dcr/
 

@@ -26,18 +26,20 @@ object WWindow: TWWindow
   TextHeight = 14
   object PWorkSpace: TPanel_Ext
     Left = 0
-    Top = 113
+    Top = 116
     Width = 691
-    Height = 326
+    Height = 323
     Align = alClient
     BevelOuter = bvNone
     Color = clAppWorkSpace
     ParentBackground = False
     TabOrder = 5
+    ExplicitTop = 113
+    ExplicitHeight = 326
   end
   object TabControl: TTabControl
     Left = 0
-    Top = 85
+    Top = 88
     Width = 691
     Height = 28
     Align = alTop
@@ -62,12 +64,13 @@ object WWindow: TWWindow
     OnMouseUp = TabControlMouseUp
     OnResize = TabControlResize
     OnStartDrag = TabControlStartDrag
+    ExplicitTop = 85
   end
   object PAddressBar: TPanel_Ext
     Left = 0
     Top = 56
     Width = 691
-    Height = 29
+    Height = 32
     Align = alTop
     AutoSize = True
     BevelOuter = bvNone
@@ -1372,6 +1375,15 @@ object WWindow: TWWindow
       Category = 'Bookmark'
       Caption = 'aBookmark'
     end
+    object aVExplorer: TAction
+      Category = 'View'
+      AutoCheck = True
+      Caption = 'aVExplorer'
+      Enabled = False
+      HelpContext = 1108
+      HelpType = htContext
+      ImageIndex = 96
+    end
   end
   object OpenDialog: TOpenDialog_Ext
     Options = [ofReadOnly, ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
@@ -1613,6 +1625,10 @@ object WWindow: TWWindow
         end
         object aVSQLHistory1: TMenuItem
           Action = aVSQLHistory
+          AutoCheck = True
+        end
+        object miVExplorer: TMenuItem
+          Action = aVExplorer
           AutoCheck = True
         end
       end

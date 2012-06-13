@@ -85,6 +85,9 @@ type
     ColumnWidths: array [lkServer .. lkVariables] of array [0..7] of Integer;
     DataHeight, BlobHeight: Integer;
     EditorContent: string;
+    ExplorerVisible: Boolean;
+    FilesFilter: string;
+    FoldersHeight: Integer;
     LogHeight: Integer;
     LogVisible: Boolean;
     NavigatorVisible: Boolean;
@@ -560,6 +563,9 @@ begin
       ColumnWidths[Kind, I] := Source.ColumnWidths[Kind, I];
   DataHeight := Source.DataHeight;
   EditorContent := Source.EditorContent;
+  ExplorerVisible := Source.ExplorerVisible;
+  FilesFilter := Source.FilesFilter;
+  FoldersHeight := Source.FoldersHeight;
   LogHeight := Source.LogHeight;
   LogVisible := Source.LogVisible;
   NavigatorVisible := Source.NavigatorVisible;
@@ -585,6 +591,9 @@ begin
       ColumnWidths[Kind][I] := ColumnTextWidth;
   DataHeight := 150;
   EditorContent := '';
+  ExplorerVisible := False;
+  FilesFilter := '*.sql';
+  FoldersHeight := 100;
   NavigatorVisible := True;
   LogHeight := 80;
   LogVisible := False;
@@ -666,12 +675,15 @@ begin
     if (Assigned(XMLNode(XML, 'objects/users/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/comment').Text, ColumnWidths[lkUsers][2]);
     if (Assigned(XMLNode(XML, 'objects/variables/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/variables/widths/name').Text, ColumnWidths[lkVariables][0]);
     if (Assigned(XMLNode(XML, 'objects/variables/widths/value'))) then TryStrToInt(XMLNode(XML, 'objects/variables/widths/value').Text, ColumnWidths[lkVariables][1]);
+    if (Assigned(XMLNode(XML, 'sidebar/explorer/folders/height'))) then TryStrToInt(XMLNode(XML, 'sidebar/explorer/folders/height').Text, FoldersHeight);
+    if (Assigned(XMLNode(XML, 'sidebar/explorer/files/filter'))) then FilesFilter := XMLNode(XML, 'sidebar/explorer/files/filter').Text;
     if (Assigned(XMLNode(XML, 'sidebar/width'))) then TryStrToInt(XMLNode(XML, 'sidebar/width').Text, SelectorWitdth);
     if (Assigned(XMLNode(XML, 'sidebar/visible'))) then
     begin
       NavigatorVisible := UpperCase(XMLNode(XML, 'sidebar/visible').Text) = 'NAVIGATOR';
       BookmarksVisible := not NavigatorVisible and (UpperCase(XMLNode(XML, 'sidebar/visible').Text) = 'BOOKMARKS');
       SQLHistoryVisible := not NavigatorVisible and not BookmarksVisible and (UpperCase(XMLNode(XML, 'sidebar/visible').Text) = 'SQL HISTORY');
+      ExplorerVisible := not ExplorerVisible and not BookmarksVisible and not SQLHistoryVisible and (UpperCase(XMLNode(XML, 'sidebar/visible').Text) = 'EXPLORER');
     end;
 
     Bookmarks.LoadFromXML();
@@ -686,7 +698,11 @@ begin
   XMLNode(XML, 'address/default').Text := FAddress;
   XMLNode(XML, 'datagrid/height').Text := IntToStr(DataHeight);
   XMLNode(XML, 'datagrid/blob/height').Text := IntToStr(BlobHeight);
-  XMLNode(XML, 'editor/content').Text := EditorContent;
+  try
+    XMLNode(XML, 'editor/content').Text := EditorContent;
+  except
+    XMLNode(XML, 'editor/content').Text := '';
+  end;
   XMLNode(XML, 'editor/filename/mru').ChildNodes.Clear();
   XMLNode(XML, 'log/height').Text := IntToStr(LogHeight);
   XMLNode(XML, 'log/visible').Text := BoolToStr(LogVisible, True);
@@ -724,6 +740,8 @@ begin
   XMLNode(XML, 'objects/users/widths/comment').Text := IntToStr(ColumnWidths[lkUsers][2]);
   XMLNode(XML, 'objects/variables/widths/name').Text := IntToStr(ColumnWidths[lkVariables][0]);
   XMLNode(XML, 'objects/variables/widths/value').Text := IntToStr(ColumnWidths[lkVariables][1]);
+  XMLNode(XML, 'sidebar/explorer/folders/height').Text := IntToStr(FoldersHeight);
+  XMLNode(XML, 'sidebar/explorer/files/filter').Text := FilesFilter;
   XMLNode(XML, 'sidebar/width').Text := IntToStr(SelectorWitdth);
   if (NavigatorVisible) then
     XMLNode(XML, 'sidebar/visible').Text := 'Navigator'
@@ -731,6 +749,8 @@ begin
     XMLNode(XML, 'sidebar/visible').Text := 'Bookmarks'
   else if (SQLHistoryVisible) then
     XMLNode(XML, 'sidebar/visible').Text := 'SQL History'
+  else if (ExplorerVisible) then
+    XMLNode(XML, 'sidebar/visible').Text := 'Explorer'
   else
     XMLNode(XML, 'sidebar/visible').Text := BoolToStr(False, True);
 

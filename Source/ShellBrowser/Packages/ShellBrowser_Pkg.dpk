@@ -1,0 +1,47 @@
+package ShellBrowser_Pkg;
+
+{$R 'ShellBrowser.dcr'}
+{$ALIGN 8}
+{$ASSERTIONS OFF}
+{$BOOLEVAL OFF}
+{$DEBUGINFO ON}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION ON}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO OFF}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES OFF}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST ON}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DESCRIPTION 'ShellBrowser Components by JAM Software'}
+
+requires
+  vcl,
+  vclx,
+  DesignIDE,
+  rtl,
+  vclimg;
+
+contains
+  Shell_Win32 in '..\Source\Shell_Win32.pas',
+  ShellControls in '..\Source\ShellControls.pas',
+  ShellLink in '..\Source\ShellLink.pas',
+  JamSelectionList in '..\Source\JamSelectionList.pas',
+  ShellBrowser in '..\Source\ShellBrowser.pas',
+  JAMControls in '..\Source\JAMControls.pas',
+  JAMDialogs in '..\Source\JAMDialogs.pas',
+  ThreadPool in '..\Source\ThreadPool.pas',
+  JamTools in '..\Source\JamTools.pas',
+  JamSystemShellView in '..\Source\JamSystemShellView.pas',
+  JamWorkItems in '..\Source\JamWorkItems.pas';
+
+end.
