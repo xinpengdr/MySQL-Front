@@ -5573,7 +5573,7 @@ begin
           + ' AND ' + Database.Client.EscapeIdentifier('TABLE_NAME') + ' IN (' + SQL + ');' + #13#10;
     end;
   end
-  else
+  else if (not Valid) then
   begin
     if (not Client.UseInformationSchema or (Client.ServerVersion < 50002)) then
       SQL := 'SHOW TABLE STATUS FROM ' + Database.Client.EscapeIdentifier(Database.Name) + ';' + #13#10

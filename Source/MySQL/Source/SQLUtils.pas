@@ -2499,12 +2499,5 @@ begin
   end;
 end;
 
-//var
-//  DDLStmt: TSQLDDLStmt;
-//  SQL: string;
-//begin
-//  SQL := 'DROP DATABASE `neuedatenbank`;'#$D#$A;
-//  if (SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), 50522)) then
-//    Write;
 end.
 

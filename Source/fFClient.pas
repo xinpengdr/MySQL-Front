@@ -848,6 +848,7 @@ type
     CloseButton: TPicture;
     CreateLine: Boolean;
     EditorField: TField;
+    FAddress: string;
     FHTML: TWebBrowser;
     FilterMRU: TMRUList;
     FNavigatorMenuNode: TTreeNode;
@@ -883,7 +884,7 @@ type
     StatiListView: TListView;
     SynMemoBeforeDrag: TSynMemoBeforeDrag;
     UsedView: TView;
-    UseNavigatorTimer: Boolean;
+    NavigatorElapse: Integer;
     UsersListView: TListView;
     VariablesListView: TListView;
     Wanted: TWanted;
@@ -924,6 +925,7 @@ type
     procedure ClientUpdate(const Event: TCClient.TEvent);
     function ColumnWidthKindFromImageIndex(const AImageIndex: Integer): TADesktop.TListViewKind;
     function CreateDesktop(const CObject: TCObject): TCObject.TDesktop;
+    procedure CreateListView(const Sender: TObject; const Data: TCustomData; out ListView: TListView);
     function CreateSynMemo(): TSynMemo;
     function CreateWorkbench(const ADatabase: TCDatabase): TWWorkbench;
     function DatabaseDesktop(const Database: TObject): TDatabaseDesktop; inline;
@@ -948,6 +950,7 @@ type
     procedure FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
     procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure FormAccountEvent(const ClassType: TClass);
+    procedure FreeListView(const ListView: TListView);
     procedure FRTFShow(Sender: TObject);
     procedure FSQLHistoryRefresh(Sender: TObject);
     procedure FTextShow(Sender: TObject);
@@ -969,7 +972,6 @@ type
     function GetActiveListView(): TListView;
     function GetActiveSynMemo(): TSynMemo;
     function GetActiveWorkbench(): TWWorkbench;
-    function GetAddress(): string;
     function GetFocusedCItem(): TCItem;
     function GetFocusedDatabaseName(): string;
     function GetFocusedTableName(): string;
@@ -1042,13 +1044,11 @@ type
     property FocusedDatabases: string read GetFocusedDatabaseName;
     property FocusedTables: string read GetFocusedTableName;
     property MenuDatabase: string read GetMenuDatabase;
+    property ResultSet: TCResultSet read GetResultSet;
     property SelectedImageIndex: Integer read GetSelectedImageIndex;
     property SelectedNavigator: string read GetSelectedNavigator;
   protected
-    procedure CreateListView(const Sender: TObject; const Data: TCustomData; out ListView: TListView);
     procedure CreateParams(var Params: TCreateParams); override;
-    procedure FreeListView(const ListView: TListView);
-    property ResultSet: TCResultSet read GetResultSet;
   public
     Client: TCClient;
     StatusBar: TStatusBar;
@@ -1061,11 +1061,10 @@ type
     procedure aEReplaceExecute(Sender: TObject);
     procedure aETransferExecute(Sender: TObject);
     procedure CrashRescue();
-    procedure MetadataProviderAfterConnect(Sender: TObject);
     procedure MoveToAddress(const ADiff: Integer);
     procedure StatusBarRefresh(const Immediately: Boolean = False);
     property View: TView read GetView write SetView;
-    property Address: string read GetAddress write SetAddress;
+    property Address: string read FAddress write SetAddress;
     property SelectedDatabase: string read GetSelectedDatabase write SetSelectedDatabase;
     property SelectedTable: string read GetSelectedTable write SetSelectedTable;
     property Window: TForm_Ext read GetWindow;
@@ -3213,6 +3212,7 @@ begin
   if (OpenDialog.Execute()) then
   begin
     Preferences.Path := ExtractFilePath(OpenDialog.FileName);
+    FFolders.SelectedFolder := Preferences.Path;
 
     FGrid.SelectedField.DataSet.Edit();
     if (FGrid.SelectedField.DataType = ftWideMemo) then
@@ -3334,6 +3334,7 @@ begin
     ActiveWorkbench.SaveToBMP(SaveDialog.FileName);
 
     Preferences.Path := ExtractFilePath(SaveDialog.FileName);
+    FFolders.SelectedFolder := Preferences.Path;
   end;
 end;
 
@@ -3614,6 +3615,7 @@ begin
       if (SaveDialog.Execute()) then
       begin
         Preferences.Path := ExtractFilePath(SaveDialog.FileName);
+        FFolders.SelectedFolder := Preferences.Path;
 
         if (SaveDialog.EncodingIndex < 0) then
           DExport.CodePage := CP_ACP
@@ -3748,6 +3750,7 @@ begin
   if (OpenDialog.Execute()) then
   begin
     Preferences.Path := ExtractFilePath(OpenDialog.FileName);
+    FFolders.SelectedFolder := Preferences.Path;
 
     DImport.Window := Window;
     DImport.ImportType := ImportType;
@@ -3972,8 +3975,8 @@ begin
       Window.Perform(CM_ADDTAB, 0, LPARAM(PChar(string(Client.Account.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption).URI))));
   end
   else if (Window.ActiveControl = FFiles) then
-    if (LowerCase(ExtractFileExt(FFolders.SelectedFolder + PathDelim + FFiles.Selected.Caption)) = '.sql') then
-      OpenInNewTabExecute(SelectedDatabase, '', False, FFolders.SelectedFolder + PathDelim + FFiles.Selected.Caption);
+    if (LowerCase(ExtractFileExt(Preferences.Path + PathDelim + FFiles.Selected.Caption)) = '.sql') then
+      OpenInNewTabExecute(SelectedDatabase, '', False, Preferences.Path + PathDelim + FFiles.Selected.Caption);
 end;
 
 procedure TFClient.aPOpenInNewWindowExecute(Sender: TObject);
@@ -3988,8 +3991,8 @@ begin
       ShellExecute(Application.Handle, 'open', PChar(TFileName(Application.ExeName)), PChar(string(Client.Account.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption).URI)), '', SW_SHOW);
   end
   else if (Window.ActiveControl = FFiles) then
-    if (LowerCase(ExtractFileExt(FFolders.SelectedFolder + PathDelim + FFiles.Selected.Caption)) = '.sql') then
-      OpenInNewTabExecute(SelectedDatabase, '', True, FFolders.SelectedFolder + PathDelim + FFiles.Selected.Caption);
+    if (LowerCase(ExtractFileExt(Preferences.Path + PathDelim + FFiles.Selected.Caption)) = '.sql') then
+      OpenInNewTabExecute(SelectedDatabase, '', True, Preferences.Path + PathDelim + FFiles.Selected.Caption);
 end;
 
 function TFClient.ApplicationHelp(Command: Word; Data: THelpEventData; var CallHelp: Boolean): Boolean;
@@ -5029,8 +5032,6 @@ begin
   PLog.Height := Client.Account.Desktop.LogHeight;
   PLog.Visible := Client.Account.Desktop.LogVisible; SLog.Visible := PLog.Visible;
 
-  FFolders.SelectedFolder := Preferences.Path;
-
   aVBlobText.Checked := True;
 
   FormResize(nil);
@@ -5486,7 +5487,7 @@ begin
   PNGImage := TPNGImage.Create();
   JPEGImage := TJPEGImage.Create();
 
-  UseNavigatorTimer := False;
+  NavigatorElapse := 0;
   MovingToAddress := False;
 
   LastDataSource.ResultSet := nil;
@@ -6162,6 +6163,7 @@ begin
   FreeAndNil(URI);
 
   Preferences.Path := FFolders.SelectedFolder + PathDelim;
+  FFolders.SelectedFolder := Preferences.Path;
   if (PResult.Align <> alBottom) then
     Client.Account.Desktop.DataHeight := PResultHeight
   else
@@ -6687,6 +6689,7 @@ begin
   if (SaveDialog.Execute()) then
   begin
     Preferences.Path := ExtractFilePath(SaveDialog.FileName);
+    FFolders.SelectedFolder := Preferences.Path;
 
     Handle := CreateFile(PChar(SaveDialog.FileName),
                          GENERIC_WRITE,
@@ -7388,12 +7391,12 @@ begin
     FNavigatorMenuNode := Node;
 
     KillTimer(Handle, tiNavigator);
-    if (not UseNavigatorTimer) then
+    if (NavigatorElapse = 0) then
       FNavigatorChange2(Sender, Node)
     else
     begin
-      SetTimer(Self.Handle, tiNavigator, 500, nil);
-      UseNavigatorTimer := False;
+      SetTimer(Self.Handle, tiNavigator, NavigatorElapse, nil);
+      NavigatorElapse := 0;
     end;
   end;
 end;
@@ -7685,7 +7688,7 @@ begin
     else if ((Key = Ord('V')) and (Shift = [ssCtrl]) or (Key = VK_INSERT) and (Shift = [ssShift])) then
       begin aEPasteExecute(Sender); Key := 0; end
     else if (not (Key in [VK_SHIFT, VK_CONTROL])) then
-      UseNavigatorTimer := True;
+      NavigatorElapse := 500;
 end;
 
 procedure TFClient.FNavigatorKeyPress(Sender: TObject; var Key: Char);
@@ -7938,6 +7941,7 @@ procedure TFClient.FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
           begin
             if (Node.Item[I] = FNavigatorNodeToExpand) then
               FNavigatorNodeToExpand := nil;
+            NavigatorElapse := 1; // We're inside a Monitor callback - but the related Address change has to be outside the callback
             Node.Item[I].Delete();
           end;
     end;
@@ -9419,11 +9423,6 @@ begin
     Result := nil
   else
     Result := TDatabaseDesktop(Client.DatabaseByName(SelectedDatabase).Desktop).Workbench;
-end;
-
-function TFClient.GetAddress(): string;
-begin
-  Result := NavigatorNodeToAddress(FNavigator.Selected);
 end;
 
 function TFClient.GetFocusedCItem(): TCItem;
@@ -11413,11 +11412,6 @@ begin
   ShowEnabledItems(MBookmarks.Items);
 end;
 
-procedure TFClient.MetadataProviderAfterConnect(Sender: TObject);
-begin
-
-end;
-
 procedure TFClient.MetadataProviderGetSQLFieldNames(Sender: TacBaseMetadataProvider;
   const ASQL: WideString; AFields: TacFieldsList);
 var
@@ -11428,23 +11422,32 @@ var
   Table: TCTable;
   TableName: string;
 begin
-  if (SQLCreateParse(Parse, PChar(@ASQL[System.Pos('FROM', UpperCase(ASQL))]), Length(ASQL) - System.Pos('FROM', UpperCase(ASQL)) + 1, Client.ServerVersion) and SQLParseKeyword(Parse, 'FROM')) then
+  if (SQLCreateParse(Parse, PChar(ASQL), Length(ASQL), Client.ServerVersion)
+    and SQLParseKeyword(Parse, 'SELECT')) then
   begin
-    TableName := SQLParseValue(Parse);
-    if (not SQLParseChar(Parse, '.')) then
-      DatabaseName := SelectedDatabase
-    else
+    repeat
+      SQLParseValue(Parse);
+    until (SQLParseEnd(Parse) or not SQLParseChar(Parse, ','));
+    if (SQLParseKeyword(Parse, 'FROM')) then
     begin
-      DatabaseName := TableName;
-      TableName := SQLParseValue(Parse);
+      DatabaseName := SelectedDatabase;
+      if (SQLParseObjectName(Parse, DatabaseName, TableName)) then
+      begin
+        Database := Client.DatabaseByName(DatabaseName);
+        if (Assigned(Database)) then
+        begin
+          Table := Database.TableByName(TableName);
+          if (Assigned(Table)) then
+          begin
+            Client.BeginSynchro();
+            Table.Update();
+            for I := 0 to Table.Fields.Count - 1 do
+              AFields.AddField(Table.Fields[I].Name, Client.LowerCaseTableNames = 0);
+            Client.EndSynchro();
+          end;
+        end;
+      end;
     end;
-
-    Database := Client.DatabaseByName(DatabaseName);
-    Table := Database.TableByName(TableName);
-
-    if (Assigned(Table)) then
-      for I := 0 to Table.Fields.Count - 1 do
-        AFields.AddField(Table.Fields[I].Name, Client.LowerCaseTableNames = 0);
   end;
 end;
 
@@ -11975,11 +11978,11 @@ begin
   mtDiagram.Checked := ttDiagram in Preferences.ToolbarTabs;
 
   mtObjects.Enabled := View <> vObjects;
-  mtBrowser.Checked := View <> vBrowser;
-  mtIDE.Checked := View <> vIDE;
-  mtBuilder.Checked := View <> vBuilder;
-  mtEditor.Checked := View <> vEditor;
-  mtDiagram.Checked := View <> vDiagram;
+  mtBrowser.Enabled := View <> vBrowser;
+  mtIDE.Enabled := View <> vIDE;
+  mtBuilder.Enabled := View <> vBuilder;
+  mtEditor.Enabled := View <> vEditor;
+  mtDiagram.Enabled := View <> vDiagram;
 
   Checked := 0;
   for I := 0 to MToolBar.Items.Count - 1 do
@@ -12246,6 +12249,7 @@ begin
   if ((OpenDialog.FileName <> '') or OpenDialog.Execute()) then
   begin
     Preferences.Path := ExtractFilePath(OpenDialog.FileName);
+    FFolders.SelectedFolder := Preferences.Path;
 
     Answer := ID_CANCEL;
 
@@ -12869,6 +12873,8 @@ begin
       vObjects:
         ActiveListView := GetActiveListView();
       vIDE:
+        ActiveSynMemo := GetActiveSynMemo();
+      vBuilder:
         ActiveSynMemo := GetActiveSynMemo();
       vEditor:
         ActiveSynMemo := GetActiveSynMemo();
@@ -13496,6 +13502,7 @@ begin
   if (((Sender = MainAction('aFSave')) and (SQLEditor.Filename <> '')) or (Text <> '') and SaveDialog.Execute()) then
   begin
     Preferences.Path := ExtractFilePath(SaveDialog.FileName);
+    FFolders.SelectedFolder := Preferences.Path;
 
     Handle := CreateFile(PChar(SaveDialog.FileName),
                          GENERIC_WRITE,
@@ -13687,6 +13694,8 @@ begin
   end;
   if (AllowChange) then
   begin
+    FAddress := AAddress;
+
     URI := TUURI.Create(NewAddress);
 
     Node := AddressToNavigatorNode(NewAddress);
