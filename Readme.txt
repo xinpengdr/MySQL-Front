@@ -11,7 +11,7 @@ Used packages:
 FastMM:
 http://sourceforge.net/projects/fastmm/
 
-TPerlRegEx (based on Perl Compatible Regular Expressions):
+TPerlRegEx:
 http://www.regular-expressions.info/delphi.html
 
 DISQLite3:
