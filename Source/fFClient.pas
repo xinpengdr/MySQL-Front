@@ -11,10 +11,11 @@ uses
   SynEdit, SynEditHighlighter, SynMemo, SynEditMiscClasses, SynEditSearch,
   SynCompletionProposal, SynEditPrint,
   acSQL92SynProvider, acQBBase, acAST, acQBEventMetaProvider, acMYSQLSynProvider, acSQLBuilderPlainText,
+  ShellControls, JAMControls, ShellLink,
   ComCtrls_Ext, StdCtrls_Ext, Dialogs_Ext, Forms_Ext, ExtCtrls_Ext,
   MySQLDB, MySQLDBGrid,
   fDExport, fDImport, fClient, fAccount, fBase, fPreferences, fTools,
-  fCWorkbench, ShellControls, JAMControls, ShellLink;
+  fCWorkbench;
 
 const
   CM_ACTIVATEFGRID = WM_USER + 500;
@@ -80,10 +81,8 @@ type
     FBookmarks: TListView;
     FBuilder: TacQueryBuilder;
     FBuilderSynMemo: TSynMemo;
-    FFiles: TJamShellList;
     FFilter: TComboBox_Ext;
     FFilterEnabled: TToolButton;
-    FFolders: TJamShellTree;
     FGrid: TMySQLDBGrid;
     FGridDataSource: TDataSource;
     FHexEditor: TMPHexEditorEx;
@@ -376,7 +375,6 @@ type
     smEEmpty: TMenuItem;
     smESelectAll: TMenuItem;
     SExplorer: TSplitter_Ext;
-    ShellLink: TJamShellLink;
     SQLBuilder: TacSQLBuilderPlainText;
     SResult: TSplitter_Ext;
     SSideBar: TSplitter_Ext;
@@ -849,6 +847,8 @@ type
     CreateLine: Boolean;
     EditorField: TField;
     FAddress: string;
+    FFiles: TJamShellList;
+    FFolders: TJamShellTree;
     FHTML: TWebBrowser;
     FilterMRU: TMRUList;
     FNavigatorMenuNode: TTreeNode;
@@ -880,6 +880,7 @@ type
     PNGImage: TPNGImage;
     PResultHeight: Integer;
     ProcessesListView: TListView;
+    ShellLink: TJamShellLink;
     SQLEditor: TSQLEditor;
     StatiListView: TListView;
     SynMemoBeforeDrag: TSynMemoBeforeDrag;
@@ -925,6 +926,7 @@ type
     procedure ClientUpdate(const Event: TCClient.TEvent);
     function ColumnWidthKindFromImageIndex(const AImageIndex: Integer): TADesktop.TListViewKind;
     function CreateDesktop(const CObject: TCObject): TCObject.TDesktop;
+    procedure CreateExplorer();
     procedure CreateListView(const Sender: TObject; const Data: TCustomData; out ListView: TListView);
     function CreateSynMemo(): TSynMemo;
     function CreateWorkbench(const ADatabase: TCDatabase): TWWorkbench;
@@ -2407,7 +2409,7 @@ begin
       Database := Client.DatabaseByName(URI.Database);
       if (not Assigned(Database)) then
         NotFound := True
-      else if (Database.Update((URI.Table = '') and (URI.Param['object'] = Null)) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
+      else if (Database.Update((URI.Table = '') and (URI.Param['object'] = Null) and (URI.Param['view'] = NULL)) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
         AllowChange := False
       else if ((URI.Table <> '') or (URI.Param['object'] <> Null)) then
       begin
@@ -3212,7 +3214,7 @@ begin
   if (OpenDialog.Execute()) then
   begin
     Preferences.Path := ExtractFilePath(OpenDialog.FileName);
-    FFolders.SelectedFolder := Preferences.Path;
+    if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
 
     FGrid.SelectedField.DataSet.Edit();
     if (FGrid.SelectedField.DataType = ftWideMemo) then
@@ -3334,7 +3336,7 @@ begin
     ActiveWorkbench.SaveToBMP(SaveDialog.FileName);
 
     Preferences.Path := ExtractFilePath(SaveDialog.FileName);
-    FFolders.SelectedFolder := Preferences.Path;
+    if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
   end;
 end;
 
@@ -3615,7 +3617,7 @@ begin
       if (SaveDialog.Execute()) then
       begin
         Preferences.Path := ExtractFilePath(SaveDialog.FileName);
-        FFolders.SelectedFolder := Preferences.Path;
+        if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
 
         if (SaveDialog.EncodingIndex < 0) then
           DExport.CodePage := CP_ACP
@@ -3750,7 +3752,7 @@ begin
   if (OpenDialog.Execute()) then
   begin
     Preferences.Path := ExtractFilePath(OpenDialog.FileName);
-    FFolders.SelectedFolder := Preferences.Path;
+    if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
 
     DImport.Window := Window;
     DImport.ImportType := ImportType;
@@ -3870,6 +3872,8 @@ var
   Msg: string;
   Second: Word;
 begin
+  SelectedDatabase := Client.DatabaseName;   // Maybe a USE Database; was used ...
+
   MainAction('aDCancel').Enabled := False;
 
   aDCommitRefresh(Client);     // Maybe we're still in a database transaction...
@@ -4240,7 +4244,8 @@ begin
   PSQLHistory.Visible := MainAction('aVSQLHistory').Checked;
   PExplorer.Visible := MainAction('aVExplorer').Checked;
 
-  FFolders.AutomaticRefresh := PExplorer.Visible; FFiles.AutomaticRefresh := PExplorer.Visible;
+  if (PExplorer.Visible and not Assigned(FFolders)) then
+    CreateExplorer();
 
   SSideBar.Visible := PNavigator.Visible or PBookmarks.Visible or PSQLHistory.Visible or PExplorer.Visible;
   if (SSideBar.Visible) then
@@ -4733,8 +4738,6 @@ begin
     PContentRefresh(nil);
 
   PasteMode := False;
-
-  FFiles.Filter := Client.Account.Desktop.FilesFilter;
 end;
 
 procedure TFClient.CMCloseTabQuery(var Message: TMessage);
@@ -5015,6 +5018,9 @@ begin
   PSQLHistory.Visible := Client.Account.Desktop.SQLHistoryVisible; if (PSQLHistory.Visible) then FSQLHistoryRefresh(nil);
   PExplorer.Visible := Client.Account.Desktop.ExplorerVisible;
   PSideBar.Visible := PNavigator.Visible or PBookmarks.Visible or PSQLHistory.Visible or PExplorer.Visible; SSideBar.Visible := PSideBar.Visible;
+
+  if (PExplorer.Visible) then
+    CreateExplorer();
 
   PSideBar.Width := Client.Account.Desktop.SelectorWitdth;
   PFiles.Height := PSideBar.ClientHeight - Client.Account.Desktop.FoldersHeight - SExplorer.Height;
@@ -5469,8 +5475,6 @@ begin
 
   FNavigator.RowSelect := CheckWin32Version(6, 1);
   FSQLHistory.RowSelect := CheckWin32Version(6, 1);
-  if (CheckWin32Version(6, 1)) then
-    SetWindowLong(FFolders.Handle, GWL_STYLE, GetWindowLong(FFolders.Handle, GWL_STYLE) or TVS_FULLROWSELECT);
 
   PListView.Align := alClient;
   PSynMemo.Align := alClient;
@@ -5551,6 +5555,64 @@ begin
     Result := TViewDesktop.Create(Self, TCView(CObject))
   else
     Result := nil;
+end;
+
+procedure TFClient.CreateExplorer();
+begin
+  if (not Assigned(ShellLink)) then
+    ShellLink := TJamShellLink.Create(Owner);
+
+  if (not Assigned(FFolders)) then
+  begin
+    FFolders := TJamShellTree.Create(Owner);
+    FFolders.Left := 0;
+    FFolders.Top := 0;
+    FFolders.Width := PFolders.Width;
+    FFolders.Height := PFolders.Height;
+    FFolders.Align := alClient;
+    FFolders.Parent := PFolders;
+    FFolders.Width := PFolders.ClientWidth;
+    FFolders.Height := PFolders.ClientHeight;
+    FFolders.HelpContext := 1108;
+    FFolders.HotTrack := True;
+    FFolders.ShellLink := ShellLink;
+    FFolders.BorderStyle := bsNone;
+    FFolders.ParentFont := True;
+    FFolders.ShowLines := False;
+    FFolders.ShowRecycleBin := False;
+    FFolders.OnChange := FFoldersChange;
+
+    if (CheckWin32Version(6, 1)) then
+      SetWindowLong(FFolders.Handle, GWL_STYLE, GetWindowLong(FFolders.Handle, GWL_STYLE) or TVS_FULLROWSELECT);
+  end;
+
+  if (not Assigned(FFiles)) then
+  begin
+    FFiles := TJamShellList.Create(Owner);
+    FFiles.Parent := PFiles;
+    FFiles.Left := 0;
+    FFiles.Top := 0;
+    FFiles.Width := PFiles.Width;
+    FFiles.Height := PFiles.Height;
+    FFiles.Align := alClient;
+    FFiles.BorderStyle := bsNone;
+    FFiles.DragMode := dmAutomatic;
+    FFiles.Filter := Client.Account.Desktop.FilesFilter;
+    FFiles.Font := Font;
+    FFiles.HelpContext := 1108;
+    FFiles.HideSelection := False;
+    FFiles.IconOptions.AutoArrange := True;
+    FFiles.PopupMenu := MFiles;
+    FFiles.BackgroundPopupMenu := MFiles;
+    FFiles.RowSelect := True;
+    FFiles.ShellContextMenu := False;
+    FFiles.ShowFolders := False;
+    FFiles.ShowRecycleBin := False;
+    FFiles.ShellLink := ShellLink;
+    FFiles.OnDblClick := ListViewDblClick;
+    FFiles.OnKeyDown := ListViewKeyDown;
+    FFiles.OnEnter := FFilesEnter;
+  end;
 end;
 
 procedure TFClient.CreateListView(const Sender: TObject; const Data: TCustomData; out ListView: TListView);
@@ -6149,7 +6211,8 @@ begin
   else
     Client.Account.Desktop.EditorContent := FSQLEditorSynMemo.Text;
   Client.Account.Desktop.FoldersHeight := PFolders.Height;
-  Client.Account.Desktop.FilesFilter := FFiles.Filter;
+  if (Assigned(FFiles)) then
+    Client.Account.Desktop.FilesFilter := FFiles.Filter;
   Client.Account.Desktop.NavigatorVisible := PNavigator.Visible;
   Client.Account.Desktop.BookmarksVisible := PBookmarks.Visible;
   Client.Account.Desktop.SQLHistoryVisible := PSQLHistory.Visible;
@@ -6162,8 +6225,6 @@ begin
   Client.Account.Desktop.Address := URI.Address;
   FreeAndNil(URI);
 
-  Preferences.Path := FFolders.SelectedFolder + PathDelim;
-  FFolders.SelectedFolder := Preferences.Path;
   if (PResult.Align <> alBottom) then
     Client.Account.Desktop.DataHeight := PResultHeight
   else
@@ -6189,6 +6250,11 @@ begin
   if (Assigned(StatiListView)) then FreeListView(StatiListView);
   if (Assigned(UsersListView)) then FreeListView(UsersListView);
   if (Assigned(VariablesListView)) then FreeListView(VariablesListView);
+
+  if (Assigned(ShellLink)) then ShellLink.Free();
+  if (Assigned(FFolders)) then FFolders.Free();
+  if (Assigned(FFiles)) then FFiles.Free();
+
 
   FreeAndNil(JPEGImage);
   FreeAndNil(PNGImage);
@@ -6635,7 +6701,10 @@ end;
 procedure TFClient.FFoldersChange(Sender: TObject; Node: TTreeNode);
 begin
   if (not (tsLoading in FrameState) and PExplorer.Visible and Visible) then
-    PlaySoundW(PWideChar(Preferences.SoundFileNavigating), Application.Handle, SND_FILENAME);
+    if ((Sender is TJamShellTree) and (TJamShellTree(Sender).Name = '')) then
+      TJamShellTree(Sender).Name := 'FFolders'
+    else
+      PlaySoundW(PWideChar(Preferences.SoundFileNavigating), Application.Handle, SND_FILENAME);
 
   Preferences.Path := FFolders.SelectedFolder;
 end;
@@ -6689,7 +6758,7 @@ begin
   if (SaveDialog.Execute()) then
   begin
     Preferences.Path := ExtractFilePath(SaveDialog.FileName);
-    FFolders.SelectedFolder := Preferences.Path;
+    if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
 
     Handle := CreateFile(PChar(SaveDialog.FileName),
                          GENERIC_WRITE,
@@ -12249,7 +12318,7 @@ begin
   if ((OpenDialog.FileName <> '') or OpenDialog.Execute()) then
   begin
     Preferences.Path := ExtractFilePath(OpenDialog.FileName);
-    FFolders.SelectedFolder := Preferences.Path;
+    if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
 
     Answer := ID_CANCEL;
 
@@ -13255,7 +13324,8 @@ procedure TFClient.PSideBarResize(Sender: TObject);
 begin
   SetWindowLong(FNavigator.Handle, GWL_STYLE, GetWindowLong(FNavigator.Handle, GWL_STYLE) or TVS_NOHSCROLL);
   SetWindowLong(FSQLHistory.Handle, GWL_STYLE, GetWindowLong(FSQLHistory.Handle, GWL_STYLE) or TVS_NOHSCROLL);
-  SetWindowLong(FFolders.Handle, GWL_STYLE, GetWindowLong(FFolders.Handle, GWL_STYLE) or TVS_NOHSCROLL);
+  if (Assigned(FFolders)) then
+    SetWindowLong(FFolders.Handle, GWL_STYLE, GetWindowLong(FFolders.Handle, GWL_STYLE) or TVS_NOHSCROLL);
 
   PSideBarHeader.Width := PSideBar.Width;
   PToolBar.Left := PContent.Left;
@@ -13403,8 +13473,6 @@ var
 begin
   if (ResultSet = Client.SQLEditorResult) then
   begin
-    SelectedDatabase := Client.DatabaseName;   // Maybe a USE Database; was used ...
-
     if (Client.ErrorCode > 0) then
     begin
       if ((Client.CommandText <> '') and Assigned(ActiveSynMemo) and (Length(ActiveSynMemo.Text) > Length(Client.CommandText) + 5)) then
@@ -13502,7 +13570,7 @@ begin
   if (((Sender = MainAction('aFSave')) and (SQLEditor.Filename <> '')) or (Text <> '') and SaveDialog.Execute()) then
   begin
     Preferences.Path := ExtractFilePath(SaveDialog.FileName);
-    FFolders.SelectedFolder := Preferences.Path;
+    if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
 
     Handle := CreateFile(PChar(SaveDialog.FileName),
                          GENERIC_WRITE,
@@ -13873,30 +13941,18 @@ end;
 
 procedure TFClient.SetSelectedDatabase(const ADatabaseName: string);
 var
-  DatabaseNode: TTreeNode;
-  Node: TTreeNode;
+  URI: TUURI;
 begin
-  if (Assigned(FNavigator.Items.getFirstNode())) then
-    if (ADatabaseName = '') then
-      FNavigator.Items.getFirstNode().Selected := True
-    else if (not Assigned(FNavigator.Selected) or not (FNavigator.Selected.ImageIndex in [iiDatabase, iiSystemDatabase]) or (FNavigator.Selected.Text <> ADatabaseName)) then
+  if (Address <> '') then
+  begin
+    URI := TUURI.Create(Address);
+    if (ADatabaseName <> URI.Database) then
     begin
-      Node := nil;
-      FNavigator.Items.getFirstNode().Expand(False);
-      DatabaseNode := FNavigator.Items.getFirstNode().getFirstChild();
-      while (Assigned(DatabaseNode)) do
-      begin
-        if ((Client.LowerCaseTableNames <> 1) and (DatabaseNode.Text = ADatabaseName) or (Client.LowerCaseTableNames = 1) and (lstrcmpi(PChar(DatabaseNode.Text), PChar(ADatabaseName)) = 0)) then
-          Node := DatabaseNode;
-        DatabaseNode := FNavigator.Items.getFirstNode().getNextChild(DatabaseNode);
-      end;
-      if (Assigned(Node)) then
-        FNavigator.Selected := Node;
-      if (Assigned(FNavigator.Selected) and FNavigator.AutoExpand) then
-        FNavigator.Selected.Expand(False);
+      URI.Database := ADatabaseName;
+      Address := URI.Address;
     end;
-
-  FNavigatorMenuNode := FNavigator.Selected;
+    URI.Free();
+  end;
 end;
 
 procedure TFClient.SetSelectedTable(const ATableName: string);

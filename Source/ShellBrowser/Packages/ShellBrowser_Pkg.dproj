@@ -27,10 +27,11 @@
 			<DCC_SYMBOL_PLATFORM>false</DCC_SYMBOL_PLATFORM>
 			<DCC_StringChecks>off</DCC_StringChecks>
 			<DCC_AssertionsAtRuntime>false</DCC_AssertionsAtRuntime>
+			<DCC_Optimize>false</DCC_Optimize>
 			<DCC_ImageBase>00400000</DCC_ImageBase>
 			<DCC_Description>ShellBrowser Components by JAM Software</DCC_Description>
 			<DCC_WriteableConstants>true</DCC_WriteableConstants>
-			<DCC_UnitSearchPath>..\Source;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+			<DCC_UnitSearchPath>..\Source;..\Resource;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
 			<DCC_BplOutput>$(BDS)\Projects\Bpl</DCC_BplOutput>
 			<DCC_DcpOutput>..\Bin</DCC_DcpOutput>
 			<DCC_DcuOutput>..\Bin</DCC_DcuOutput>

@@ -89,37 +89,6 @@ object FClient: TFClient
         Constraints.MinHeight = 50
         ParentBackground = False
         TabOrder = 0
-        object FFiles: TJamShellList
-          Left = 0
-          Top = 0
-          Width = 116
-          Height = 121
-          HelpContext = 1108
-          AutomaticRefresh = False
-          Filter = '*'
-          SpecialFolder = SF_DESKTOP
-          ShellContextMenu = False
-          ShowFolders = False
-          ShowRecycleBin = False
-          NoFillOnStartup = True
-          ShellLink = ShellLink
-          Align = alClient
-          BorderStyle = bsNone
-          DragMode = dmAutomatic
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -13
-          Font.Name = 'Tahoma'
-          Font.Style = []
-          HideSelection = False
-          IconOptions.AutoArrange = True
-          PopupMenu = MFiles
-          RowSelect = True
-          TabOrder = 0
-          OnDblClick = ListViewDblClick
-          OnKeyDown = ListViewKeyDown
-          OnEnter = FFilesEnter
-        end
       end
       object PFolders: TPanel_Ext
         Left = 2
@@ -133,32 +102,6 @@ object FClient: TFClient
         ParentBackground = False
         TabOrder = 1
         OnResize = PSideBarResize
-        object FFolders: TJamShellTree
-          Left = 0
-          Top = 0
-          Width = 116
-          Height = 100
-          HelpContext = 1108
-          ShellLink = ShellLink
-          SpecialFolder = SF_DESKTOP
-          ShowRecycleBin = False
-          Filter = '*'
-          AutomaticRefresh = False
-          BorderStyle = bsNone
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -13
-          Font.Name = 'Tahoma'
-          Font.Style = []
-          ShowLines = False
-          Indent = 20
-          OnChange = FFoldersChange
-          Align = alClient
-          TabOrder = 0
-          HotTrack = True
-          DoubleBuffered = True
-          ParentDoubleBuffered = False
-        end
       end
     end
     object PSQLHistory: TPanel_Ext
@@ -2156,10 +2099,6 @@ object FClient: TFClient
     ToPage = 2
     Left = 369
     Top = 208
-  end
-  object ShellLink: TJamShellLink
-    Left = 64
-    Top = 215
   end
   object MFiles: TPopupMenu
     OnPopup = MFilesPopup
