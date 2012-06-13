@@ -2973,7 +2973,7 @@ function TMySQLConnection.CharsetToCodePage(const Charset: string): Cardinal;
 var
   I: Integer;
 begin
-  Result := 0;
+  Result := CP_ACP;
 
   if (ServerVersion < 40101) then
   begin
@@ -2987,9 +2987,6 @@ begin
       if (lstrcmpiA(PAnsiChar(AnsiString(Charset)), MySQL_Collations[I].CharsetName) = 0) then
         Result := MySQL_Collations[I].CodePage;
   end;
-
-  if (Result = 0) then
-    raise ERangeError.CreateFmt(SInvalidCodePage + ' ("%s")', [Charset]);
 end;
 
 function TMySQLConnection.CharsetToCodePage(const Charset: Byte): Cardinal;

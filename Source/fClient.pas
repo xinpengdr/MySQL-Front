@@ -5590,7 +5590,7 @@ var
   I: Integer;
   SQL: string;
 begin
-  if (Tables.Count = 0) then
+  if ((Tables.Count = 0) or (Client.ServerVersion < 50001)) then
     SQL := ''
   else if (Tables.Count < Count) then
   begin
@@ -12199,7 +12199,8 @@ begin
       SQL := SQL + 'SHOW GRANTS FOR CURRENT_USER();' + #13#10;
 
 
-  List.Assign(InvalidObjects, laOr);
+  if (Assigned(InvalidObjects)) then
+    List.Assign(InvalidObjects, laOr);
 
   Tables := TList.Create();
 
