@@ -10,7 +10,6 @@
 			<Config Condition="'$(Config)'==''">Base</Config>
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<SkipResGeneration>true</SkipResGeneration>
-			<Base>True</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
 			<Base>true</Base>
@@ -20,93 +19,40 @@
 			<GenPackage>true</GenPackage>
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<Manifest_File>None</Manifest_File>
+			<DCC_Platform>x86</DCC_Platform>
 			<DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;Bde;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
 			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
+			<DCC_SYMBOL_PLATFORM>false</DCC_SYMBOL_PLATFORM>
 			<DCC_AssertionsAtRuntime>false</DCC_AssertionsAtRuntime>
 			<DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
 			<DCC_DebugInformation>false</DCC_DebugInformation>
 			<DCC_SYMBOL_DEPRECATED>false</DCC_SYMBOL_DEPRECATED>
-			<DCC_UnitSearchPath>..\..\Win32\Bin;..\..\VCL\Bin;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
 			<DCC_IOChecking>false</DCC_IOChecking>
 			<DCC_UNIT_DEPRECATED>false</DCC_UNIT_DEPRECATED>
 			<DCC_ImageBase>00400000</DCC_ImageBase>
-			<DCC_SYMBOL_PLATFORM>false</DCC_SYMBOL_PLATFORM>
-			<DCC_BplOutput>$(BDS)\Projects\Bpl</DCC_BplOutput>
 			<DCC_Description>MySQL</DCC_Description>
-			<DCC_Platform>x86</DCC_Platform>
 			<DCC_WriteableConstants>true</DCC_WriteableConstants>
 			<DCC_N>true</DCC_N>
 			<DCC_K>false</DCC_K>
 			<DCC_F>false</DCC_F>
-			<DCC_DcpOutput>..\Bin</DCC_DcpOutput>
 			<DCC_S>false</DCC_S>
 			<DCC_E>false</DCC_E>
+			<DCC_UnitSearchPath>..\..\VCL\Bin;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+			<DCC_BplOutput>$(BDS)\Projects\Bpl</DCC_BplOutput>
+			<DCC_DcpOutput>..\Bin</DCC_DcpOutput>
 			<DCC_DcuOutput>..\Bin</DCC_DcuOutput>
 		</PropertyGroup>
-		<ItemGroup>
-			<DelphiCompile Include="$(MainSource)">
-				<MainSource>MainSource</MainSource>
-			</DelphiCompile>
-			<DCCReference Include="dcldb.dcp"/>
-			<DCCReference Include="bdertl.dcp"/>
-			<DCCReference Include="VCL_Extensions.dcp"/>
-			<DCCReference Include="..\Source\MySQLConsts.pas"/>
-			<DCCReference Include="..\Source\MySQLClient.pas"/>
-			<DCCReference Include="..\Source\SQLUtils.pas"/>
-			<DCCReference Include="..\Source\HTTPTunnel.pas"/>
-			<DCCReference Include="..\Source\MySQLDB.pas"/>
-			<DCCReference Include="..\Source\MySQLDBGrid.pas"/>
-			<DCCReference Include="..\Source\MySQLReg.pas"/>
-			<DCCReference Include="..\Source\UInt64Lib.pas"/>
-			<DCCReference Include="..\Source\CSVUtils.pas"/>
-			<BuildConfiguration Include="Base">
-				<Key>Base</Key>
-			</BuildConfiguration>
-		</ItemGroup>
 		<ProjectExtensions>
 			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
 			<Borland.ProjectType>Package</Borland.ProjectType>
 			<BorlandProject>
-				<Delphi.Personality>
-					<VersionInfo>
-						<VersionInfo Name="IncludeVerInfo">False</VersionInfo>
-						<VersionInfo Name="AutoIncBuild">False</VersionInfo>
-						<VersionInfo Name="MajorVer">1</VersionInfo>
-						<VersionInfo Name="MinorVer">0</VersionInfo>
-						<VersionInfo Name="Release">0</VersionInfo>
-						<VersionInfo Name="Build">0</VersionInfo>
-						<VersionInfo Name="Debug">False</VersionInfo>
-						<VersionInfo Name="PreRelease">False</VersionInfo>
-						<VersionInfo Name="Special">False</VersionInfo>
-						<VersionInfo Name="Private">False</VersionInfo>
-						<VersionInfo Name="DLL">False</VersionInfo>
-						<VersionInfo Name="Locale">1031</VersionInfo>
-						<VersionInfo Name="CodePage">1252</VersionInfo>
-					</VersionInfo>
-					<VersionInfoKeys>
-						<VersionInfoKeys Name="CompanyName"/>
-						<VersionInfoKeys Name="FileDescription"/>
-						<VersionInfoKeys Name="FileVersion">1.0.0.0</VersionInfoKeys>
-						<VersionInfoKeys Name="InternalName"/>
-						<VersionInfoKeys Name="LegalCopyright"/>
-						<VersionInfoKeys Name="LegalTrademarks"/>
-						<VersionInfoKeys Name="OriginalFilename"/>
-						<VersionInfoKeys Name="ProductName"/>
-						<VersionInfoKeys Name="ProductVersion">1.0.0.0</VersionInfoKeys>
-						<VersionInfoKeys Name="Comments"/>
-					</VersionInfoKeys>
-					<Source>
-						<Source Name="MainSource">MySQL.dpk</Source>
-					</Source>
-				</Delphi.Personality>
+				<Delphi.Personality/>
 				<Platforms>
+					<Platform value="Win32">True</Platform>
 					<Platform value="Win64">False</Platform>
 					<Platform value="OSX32">False</Platform>
-					<Platform value="Win32">True</Platform>
 				</Platforms>
 			</BorlandProject>
 			<ProjectFileVersion>12</ProjectFileVersion>
 		</ProjectExtensions>
-		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')" Project="$(BDS)\Bin\CodeGear.Delphi.Targets"/>
-		<Import Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')" Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj"/>
 	</Project>
