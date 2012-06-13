@@ -6070,8 +6070,12 @@ begin
       until (FieldName = '');
     end
     else
+    begin
+      FCanModify := Self is TMySQLTable;
+
       for I := 0 to FieldCount - 1 do
         Fields[I].ProviderFlags := Fields[I].ProviderFlags + [pfInWhere];
+    end;
   end;
 end;
 

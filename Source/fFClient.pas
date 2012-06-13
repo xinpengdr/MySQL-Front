@@ -4970,7 +4970,7 @@ begin
     URI.Param['system'] := Null;
     URI.Param['filter'] := Null;
     URI.Param['offset'] := Null;
-    URI.Param['file'] := PathToURI(SQLEditor.Filename);
+    URI.Param['file'] := PathToURI(Param);
     Address := URI.Address;
     URI.Free();
   end
@@ -12093,23 +12093,18 @@ begin
       begin
         FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options + [eoScrollPastEol];  // Speed up the performance
         if (Insert) then
-          ActiveSynMemo.SelText := Text
+          FSQLEditorSynMemo.SelText := Text
         else
         begin
-          ActiveSynMemo.Text := Text;
-          if (ActiveSynMemo = FSQLEditorSynMemo) then
-          begin
-            SQLEditor.Filename := Import.Filename;
-            SQLEditor.CodePage := Import.CodePage;
-            AddressChanged(nil);
-          end;
+          FSQLEditorSynMemo.Text := Text;
+          SQLEditor.Filename := Import.Filename;
+          SQLEditor.CodePage := Import.CodePage;
+          AddressChanged(nil);
         end;
         if (Length(FSQLEditorSynMemo.Lines.Text) < LargeSQLScriptSize) then
-          FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options - [eoScrollPastEol]  // Slow down the performance on large content
-        else
-          FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options + [eoScrollPastEol];  // Speed up the performance
-        ActiveSynMemo.ClearUndo();
-        ActiveSynMemo.Modified := Import.SetCharacterSetApplied;
+          FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options - [eoScrollPastEol];  // Slow down the performance on large content
+        FSQLEditorSynMemo.ClearUndo();
+        FSQLEditorSynMemo.Modified := Import.SetCharacterSetApplied;
       end;
 
       Import.Free();

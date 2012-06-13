@@ -122,6 +122,7 @@ type
     PODBCSelect: TPanel_Ext;
     PQuote: TPanel_Ext;
     PSeparator: TPanel_Ext;
+    PSQLWait: TPanel;
     PTableTag: TPanel_Ext;
     ScrollBox: TScrollBox;
     TSCSVOptions: TTabSheet;
@@ -185,12 +186,10 @@ type
     procedure CheckActivePageChange(const ActivePageIndex: Integer);
     procedure ClearTSFields(Sender: TObject);
     procedure FormClientEvent(const Event: TCClient.TEvent);
-    procedure InitializeDBObjects();
     procedure InitTSFields(Sender: TObject);
     procedure OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMExecutionDone(var Message: TMessage); message CM_EXECUTIONDONE;
-    procedure CMPostShow(var Message: TMessage); message CM_POSTSHOW;
     procedure CMSysFontChanged(var Message: TMessage); message CM_SYSFONTCHANGED;
     procedure CMUpdateProgressInfo(var Message: TMessage); message CM_UPDATEPROGRESSINFO;
   public
@@ -320,7 +319,7 @@ begin
   FBCancel.Caption := Preferences.LoadStr(30);
   FBCancel.Default := False;
 
-  if (not Assigned(ActiveControl) and FBForward.Enabled) then
+  if ((ActiveControl = FBCancel) and FBForward.Enabled) then
     ActiveControl := FBForward;
 end;
 
@@ -339,6 +338,8 @@ end;
 procedure TDExport.CMChangePreferences(var Message: TMessage);
 begin
   GODBCSelect.Caption := Preferences.LoadStr(265) + ':';
+
+  PSQLWait.Caption := Preferences.LoadStr(882);
 
   GSQLWhat.Caption := Preferences.LoadStr(227);
   FLSQLWhat.Caption := Preferences.LoadStr(218) + ':';
@@ -445,16 +446,7 @@ begin
   else
     FBCancel.ModalResult := mrCancel;
 
-  ActiveControl := nil;
-end;
-
-procedure TDExport.CMPostShow(var Message: TMessage);
-var
-  I: Integer;
-begin
-  for I := 0 to PageControl.PageCount - 1 do
-    if ((PageControl.ActivePageIndex < 0) and PageControl.Pages[I].Enabled) then
-      PageControl.ActivePageIndex := I;
+  ActiveControl := FBCancel;
 end;
 
 procedure TDExport.CMSysFontChanged(var Message: TMessage);
@@ -723,8 +715,12 @@ end;
 
 procedure TDExport.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if (Event.EventType in [ceAfterExecuteSQL]) then
-    InitializeDBObjects();
+  if (Event.EventType = ceAfterExecuteSQL) then
+  begin
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
+    CheckActivePageChange(PageControl.ActivePageIndex);
+  end;
 end;
 
 procedure TDExport.FormCreate(Sender: TObject);
@@ -829,7 +825,11 @@ begin
 end;
 
 procedure TDExport.FormShow(Sender: TObject);
+var
+  I: Integer;
 begin
+  Client.RegisterEventProc(FormClientEvent);
+
   ModalResult := mrNone;
   if (ExportType = etPrint) then
     Caption := Preferences.LoadStr(577)
@@ -867,21 +867,27 @@ begin
   if (TSFields.Enabled) then
     InitTSFields(Sender);
 
-  FBBack.Visible := TSODBCSelect.Enabled or TSSQLOptions.Enabled or TSCSVOptions.Enabled or TSXMLOptions.Enabled or TSHTMLOptions.Enabled or TSFields.Enabled;
-  FBForward.Visible := FBBack.Visible;
-  FBForward.Enabled := FBForward.Visible and (not TSODBCSelect.Enabled or Assigned(FODBCSelect.Selected));
+  for I := 0 to PageControl.PageCount - 1 do
+    if ((PageControl.ActivePageIndex < 0) and PageControl.Pages[I].Enabled) then
+      PageControl.ActivePageIndex := I;
 
   FBCancel.ModalResult := mrCancel;
 
   if (Assigned(DBGrid)) then
     DBGrid.DataSource.DataSet.DisableControls();
 
-  Client.RegisterEventProc(FormClientEvent);
-
   DBObjects.Sort(DBObjectsSortItem);
-  InitializeDBObjects();
+  PSQLWait.Visible := Client.Update(DBObjects);
+  PageControl.Visible := not PSQLWait.Visible;
 
-  PostMessage(Handle, CM_POSTSHOW, 0, 0);
+  FBBack.Visible := TSODBCSelect.Enabled or TSSQLOptions.Enabled or TSCSVOptions.Enabled or TSXMLOptions.Enabled or TSHTMLOptions.Enabled or TSFields.Enabled;
+  FBForward.Visible := FBBack.Visible;
+  FBForward.Enabled := PageControl.Visible and FBForward.Visible and (not TSODBCSelect.Enabled or Assigned(FODBCSelect.Selected));
+
+  if (not FBForward.Enabled) then
+    ActiveControl := FBCancel;
+
+  CheckActivePageChange(PageControl.ActivePageIndex);
 end;
 
 procedure TDExport.FQuoteCharExit(Sender: TObject);
@@ -950,39 +956,6 @@ procedure TDExport.FTableTagKeyPress(Sender: TObject;
   var Key: Char);
 begin
   FTableTagClick(Sender);
-end;
-
-procedure TDExport.InitializeDBObjects();
-var
-  Database: TCDatabase;
-  Index: Integer;
-  Objects: TList;
-begin
-  SQLWait := False;
-
-  if (DBObjects.Count > 0) then
-  begin
-    Objects := TList.Create();
-
-    Index := 0;
-    Database := TCDBObject(DBObjects[0]).Database;
-    repeat
-      if ((Index = DBObjects.Count) or (TCDBObject(DBObjects[Index]).Database <> Database)) then
-      begin
-        SQLWait := Client.Update(Objects);
-        Objects.Clear();
-      end
-      else
-        Objects.Add(DBObjects[Index]);
-
-      Inc(Index);
-    until (SQLWait or (Index > DBObjects.Count));
-
-    Objects.Free();
-  end;
-
-  if (not SQLWait) then
-    CheckActivePageChange(PageControl.ActivePageIndex);
 end;
 
 procedure TDExport.InitTSFields(Sender: TObject);
@@ -1147,6 +1120,8 @@ var
   I: Integer;
   ProgressInfos: TTools.TProgressInfos;
 begin
+  Client.UnRegisterEventProc(FormClientEvent);
+
   CheckActivePageChange(TSExecute.PageIndex);
   FBBack.Enabled := False;
 

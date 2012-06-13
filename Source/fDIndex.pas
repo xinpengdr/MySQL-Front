@@ -382,7 +382,7 @@ end;
 
 procedure TDIndex.FormHide(Sender: TObject);
 begin
-  Database.Client.UnRegisterEventProc(FormClientEvent);
+  Table.Client.UnRegisterEventProc(FormClientEvent);
 
   Preferences.Index.Width := Width;
   Preferences.Index.Height := Height;
@@ -412,7 +412,7 @@ var
   I: Integer;
   J: Integer;
 begin
-  Database.Client.RegisterEventProc(FormClientEvent);
+  Table.Client.RegisterEventProc(FormClientEvent);
 
   if (not Assigned(Index)) then
   begin

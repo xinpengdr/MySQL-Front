@@ -5147,8 +5147,8 @@ var
   I: Integer;
   J: Integer;
   SQL: string;
-  SQL_C_TYPE: SQLSMALLINT;
-  SQL_TYPE: SQLSMALLINT;
+  ValueType: SQLSMALLINT;
+  ParameterType: SQLSMALLINT;
 begin
   if (not (Self is TTExportExcel)) then
   begin
@@ -5197,10 +5197,10 @@ begin
             SQL := SQL + 'CURRENCY';
           mfDate:
             SQL := SQL + 'DATE';
+          mfDateTime, mfTimeStamp:
+            SQL := SQL + 'TIMESTAMP';
           mfTime:
             SQL := SQL + 'TIME';
-          mfDateTime, mfTimeStamp:
-            SQL := SQL + 'DATETIME';
           mfChar:
             SQL := SQL + 'CHAR(' + IntToStr(Table.Fields[I].Size) + ')';
           mfEnum, mfSet:
@@ -5276,8 +5276,8 @@ begin
   begin
     if (BitField(Fields[I])) then
       begin
-        SQL_C_TYPE := SQL_C_BIT;
-        SQL_TYPE := SQL_BIT;
+        ValueType := SQL_C_BIT;
+        ParameterType := SQL_BIT;
         ColumnSize := Fields[I].Size;
         Parameter[I].BufferSize := Fields[I].Size;
         GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
@@ -5286,8 +5286,8 @@ begin
       case (Fields[I].DataType) of
         ftString:
           begin
-            SQL_C_TYPE := SQL_C_BINARY;
-            SQL_TYPE := SQL_BINARY;
+            ValueType := SQL_C_BINARY;
+            ParameterType := SQL_BINARY;
             ColumnSize := Fields[I].Size;
             Parameter[I].BufferSize := ColumnSize;
             GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
@@ -5304,54 +5304,64 @@ begin
         ftExtended,
         ftTimestamp:
           begin
-            SQL_C_TYPE := SQL_C_CHAR;
-            SQL_TYPE := SQL_CHAR;
+            ValueType := SQL_C_CHAR;
+            ParameterType := SQL_CHAR;
             ColumnSize := 100;
             Parameter[I].BufferSize := ColumnSize;
             GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
           end;
-        ftDate,
-        ftDateTime,
+        ftDate:
+          begin
+            ValueType := SQL_C_CHAR;
+            ParameterType := SQL_TYPE_DATE;
+            ColumnSize := 10; // 'yyyy-mm-dd'
+            Parameter[I].BufferSize := ColumnSize;
+            GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
+          end;
+        ftDateTime:
+          begin
+            ValueType := SQL_C_CHAR;
+            ParameterType := SQL_TYPE_TIMESTAMP;
+            ColumnSize := 19; // 'yyyy-mm-dd hh:hh:ss'
+            Parameter[I].BufferSize := ColumnSize;
+            GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
+          end;
         ftTime:
           begin
-            SQL_C_TYPE := SQL_C_CHAR;
-            case (Fields[I].DataType) of
-              ftDate: SQL_TYPE := SQL_DATE;
-              ftDateTime: SQL_TYPE := SQL_TIMESTAMP;
-              else {ftTime} SQL_TYPE := SQL_TIME;
-            end;
-            ColumnSize := 100;
+            ValueType := SQL_C_CHAR;
+            ParameterType := -154; // SQL_SS_TIME2
+            ColumnSize := 8; // 'hh:mm:ss'
             Parameter[I].BufferSize := ColumnSize;
             GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
           end;
         ftWideString:
           begin
-            SQL_C_TYPE := SQL_C_WCHAR;
-            SQL_TYPE := SQL_WCHAR;
+            ValueType := SQL_C_WCHAR;
+            ParameterType := SQL_WCHAR;
             ColumnSize := Fields[I].Size;
             Parameter[I].BufferSize := ColumnSize * SizeOf(Char);
             GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
           end;
         ftWideMemo:
           begin
-            SQL_C_TYPE := SQL_C_WCHAR;
-            SQL_TYPE := SQL_WLONGVARCHAR;
+            ValueType := SQL_C_WCHAR;
+            ParameterType := SQL_WLONGVARCHAR;
             ColumnSize := Fields[I].Size;
             Parameter[I].BufferSize := ODBCDataSize;
             Parameter[I].Buffer := SQLPOINTER(I);
           end;
         ftBytes:
           begin
-            SQL_C_TYPE := SQL_C_BINARY;
-            SQL_TYPE := SQL_BINARY;
+            ValueType := SQL_C_BINARY;
+            ParameterType := SQL_BINARY;
             ColumnSize := Fields[I].Size;
             Parameter[I].BufferSize := ColumnSize;
             GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
           end;
         ftBlob:
           begin
-            SQL_C_TYPE := SQL_C_BINARY;
-            SQL_TYPE := SQL_LONGVARBINARY;
+            ValueType := SQL_C_BINARY;
+            ParameterType := SQL_LONGVARBINARY;
             ColumnSize := Fields[I].Size;
             Parameter[I].BufferSize := ODBCDataSize;
             Parameter[I].Buffer := SQLPOINTER(I);
@@ -5360,7 +5370,7 @@ begin
           raise EDatabaseError.CreateFMT(SUnknownFieldType + ' (%d)', [Fields[I].DisplayName, Ord(Fields[I].DataType)]);
       end;
 
-    while ((Success = daSuccess) and not SQL_SUCCEEDED(SQLBindParameter(Stmt, 1 + I, SQL_PARAM_INPUT, SQL_C_TYPE, SQL_TYPE,
+    while ((Success = daSuccess) and not SQL_SUCCEEDED(SQLBindParameter(Stmt, 1 + I, SQL_PARAM_INPUT, ValueType, ParameterType,
       ColumnSize, 0, Parameter[I].Buffer, Parameter[I].BufferSize, @Parameter[I].Size))) do
     begin
       Error := ODBCError(SQL_HANDLE_STMT, Stmt);
@@ -5387,22 +5397,14 @@ end;
 
 procedure TTExportODBC.ExecuteTableRecord(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery);
 var
-  DateTimeStruct: SQL_TIMESTAMP_STRUCT;
   DateTime: TDateTime;
-  Day: Word;
   Error: TTools.TError;
   Field: SQLPOINTER;
-  Hour: Word;
   I: Integer;
   Index: Integer;
-  Minute: Word;
-  Month: Word;
-  MSec: Word;
   ReturnCode: SQLRETURN;
   S: string;
-  Sec: Word;
   Size: Integer;
-  Year: Word;
 begin
   for I := 0 to Length(Fields) - 1 do
     if (Fields[I].IsNull) then
@@ -5429,13 +5431,23 @@ begin
         ftSingle,
         ftFloat,
         ftExtended,
-        ftDate,
-        ftTime,
-        ftDateTime,
         ftTimestamp:
           begin
             Parameter[I].Size := Min(Parameter[I].BufferSize, DataSet.LibLengths^[I]);
             MoveMemory(Parameter[I].Buffer, DataSet.LibRow^[I], Parameter[I].Size);
+          end;
+        ftDate,
+        ftTime,
+        ftDateTime:
+          begin
+            SetString(S, DataSet.LibRow^[I], DataSet.LibLengths^[I]);
+            if (not TryStrToDateTime(S, DateTime)) then // Dedect MySQL invalid dates like '0000-00-00' or '2012-02-30'
+              Parameter[I].Size := SQL_NULL_DATA        // Handle them as NULL values
+            else
+            begin
+              Parameter[I].Size := Min(Parameter[I].BufferSize, DataSet.LibLengths^[I]);
+              MoveMemory(Parameter[I].Buffer, DataSet.LibRow^[I], Parameter[I].Size);
+            end;
           end;
         ftWideString:
           begin

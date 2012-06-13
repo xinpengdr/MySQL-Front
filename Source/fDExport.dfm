@@ -17,8 +17,23 @@ object DExport: TDExport
   OnDestroy = FormDestroy
   OnHide = FormHide
   OnShow = FormShow
+  DesignSize = (
+    341
+    331)
   PixelsPerInch = 106
   TextHeight = 13
+  object PSQLWait: TPanel
+    Left = 8
+    Top = 8
+    Width = 341
+    Height = 281
+    Cursor = crSQLWait
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    Caption = 'PSQLWait'
+    TabOrder = 0
+    Visible = False
+  end
   object PageControl: TPageControl
     Left = 0
     Top = 0
@@ -27,7 +42,7 @@ object DExport: TDExport
     ActivePage = TSExecute
     HotTrack = True
     Style = tsFlatButtons
-    TabOrder = 0
+    TabOrder = 1
     TabStop = False
     object TSODBCSelect: TTabSheet
       Caption = 'TSODBCSelect'
@@ -764,10 +779,6 @@ object DExport: TDExport
       Caption = 'TSFields'
       TabVisible = False
       OnShow = TSFieldsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GFields: TGroupBox_Ext
         Left = 4
         Top = 0
@@ -845,10 +856,6 @@ object DExport: TDExport
       Caption = 'TSExecute'
       TabVisible = False
       OnShow = TSExecuteShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GProgress: TGroupBox_Ext
         Left = 4
         Top = 0
@@ -1014,7 +1021,7 @@ object DExport: TDExport
     Height = 25
     Caption = 'FBForward'
     Default = True
-    TabOrder = 3
+    TabOrder = 4
     OnClick = FBForwardClick
   end
   object FBCancel: TButton
@@ -1025,7 +1032,7 @@ object DExport: TDExport
     Cancel = True
     Caption = 'FBCancel'
     ModalResult = 2
-    TabOrder = 4
+    TabOrder = 5
     OnClick = FBCancelClick
   end
   object FBBack: TButton
@@ -1034,7 +1041,7 @@ object DExport: TDExport
     Width = 75
     Height = 25
     Caption = 'FBBack'
-    TabOrder = 2
+    TabOrder = 3
     OnClick = FBBackClick
   end
   object FBHelp: TButton
@@ -1043,7 +1050,7 @@ object DExport: TDExport
     Width = 75
     Height = 25
     Caption = 'FBHelp'
-    TabOrder = 1
+    TabOrder = 2
     OnClick = FBHelpClick
   end
 end

@@ -295,7 +295,7 @@ end;
 
 procedure TDForeignKey.FormHide(Sender: TObject);
 begin
-  Database.Client.UnRegisterEventProc(FormClientEvent);
+  Table.Client.UnRegisterEventProc(FormClientEvent);
 
   Preferences.ForeignKey.Width := Width;
   Preferences.ForeignKey.Height := Height;
@@ -321,6 +321,8 @@ var
   I: Integer;
   J: Integer;
 begin
+  Table.Client.RegisterEventProc(FormClientEvent);
+
   if (not Assigned(ForeignKey)) then
   begin
     Caption := Preferences.LoadStr(249);
@@ -424,8 +426,6 @@ begin
   ActiveControl := FBCancel;
   if (FBOk.Visible) then
     ActiveControl := FName;
-
-  Database.Client.RegisterEventProc(FormClientEvent);
 end;
 
 procedure TDForeignKey.FParentDatabaseChange(Sender: TObject);
