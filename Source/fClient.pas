@@ -4916,7 +4916,7 @@ begin
             begin
               NewPartition := TCPartition.Create(Partitions, Self);
 
-              while (not SQLParseEnd(Parse) and not SQLParseChar(Parse, ',') and not SQLParseChar(Parse, ')')) do
+              while (not SQLParseEnd(Parse) and not SQLParseChar(Parse, ',', False) and not SQLParseChar(Parse, ')', False)) do
               begin
                 if (SQLParseKeyword(Parse, 'PARTITION')) then
                 begin
@@ -5573,7 +5573,7 @@ begin
           + ' AND ' + Database.Client.EscapeIdentifier('TABLE_NAME') + ' IN (' + SQL + ');' + #13#10;
     end;
   end
-  else if (not Valid) then
+  else if (not ValidStatus) then
   begin
     if (not Client.UseInformationSchema or (Client.ServerVersion < 50002)) then
       SQL := 'SHOW TABLE STATUS FROM ' + Database.Client.EscapeIdentifier(Database.Name) + ';' + #13#10
@@ -12181,6 +12181,7 @@ var
   I: Integer;
   SQL: string;
   Tables: TList;
+  ViewInTables: Boolean;
 begin
   SQL := '';
 
@@ -12201,6 +12202,7 @@ begin
     List.Assign(InvalidObjects, laOr);
 
   Tables := TList.Create();
+  ViewInTables := False;
 
   Database := nil;
   for I := 0 to List.Count - 1 do
@@ -12226,8 +12228,10 @@ begin
         if (Tables.Count > 0) then
         begin
           SQL := SQL + Database.Tables.SQLGetStatus(Tables);
-          SQL := SQL + Database.Tables.SQLGetViewFields(Tables);
+          if (ViewInTables) then
+            SQL := SQL + Database.Tables.SQLGetViewFields(Tables);
           Tables.Clear();
+          ViewInTables := False;
         end;
       end;
       Database := TCDBObject(List[I]).Database;
@@ -12238,11 +12242,13 @@ begin
         Tables.Add(List[I])
       else if ((TCObject(List[I]) is TCView) and not TCView(List[I]).ValidFields and TCBaseTable(List[I]).InServerCache) then
         Tables.Add(List[I]);
+      ViewInTables := ViewInTables or (TCObject(List[I]) is TCView);
     end;
   if (Tables.Count > 0) then
   begin
     SQL := SQL + Database.Tables.SQLGetStatus(Tables);
-    SQL := SQL + Database.Tables.SQLGetViewFields(Tables);
+    if (ViewInTables) then
+      SQL := SQL + Database.Tables.SQLGetViewFields(Tables);
     Tables.Clear();
   end;
 

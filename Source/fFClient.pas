@@ -2477,14 +2477,17 @@ begin
     else if (URI.Param['view'] = 'browser') then View := ReplaceStr(Preferences.LoadStr(5), '&', '')
     else if (URI.Param['view'] = 'builder') then View := ReplaceStr(Preferences.LoadStr(852), '&', '')
     else if (URI.Param['view'] = 'ide') then View := ReplaceStr(Preferences.LoadStr(865), '&', '')
-    else if (URI.Param['view'] = 'editor') then View := ReplaceStr(Preferences.LoadStr(6), '&', '')
+    else if (URI.Param['view'] = 'editor') then
+    begin
+      View := ReplaceStr(Preferences.LoadStr(6), '&', '');
+      if (SQLEditor.Filename <> '') then
+        View := View + ': ' + SQLEditor.Filename;
+    end
     else if (URI.Param['view'] = 'diagram') then View := ReplaceStr(Preferences.LoadStr(800), '&', '');
 
     if (Result = '') then
       Result := View
-    else if ((URI.Param['view'] = 'editor') and (SQLEditor.Filename <> '')) then
-      Result := Result + '  (' + View + ': ' + SQLEditor.Filename + ')'
-    else if (View <> '') then
+    else
       Result := Result + '  (' + View + ')';
 
     URI.Free();
@@ -4394,8 +4397,9 @@ begin
     if (Event.EventType in [ceItemsValid, ceItemValid, ceItemCreated, ceItemAltered, ceItemDroped]) then
     begin
       if (Event.Sender is TCClient) then
-        ListViewUpdate(Event, lkServer, FServerListView)
-      else if (Event.Sender is TCDatabase) then
+        ListViewUpdate(Event, lkServer, FServerListView);
+
+      if (Event.Sender is TCDatabase) then
       begin
         ListViewUpdate(Event, lkServer, FServerListView);
         if (not (Event.CItems is TCTriggers)) then
@@ -4410,30 +4414,15 @@ begin
         ListViewUpdate(Event, lkTable, TableDesktop(Event.Sender).ListView);
       end
       else if (Event.CItems is TCHosts) then
-      begin
-        ListViewUpdate(Event, lkServer, FServerListView);
-        ListViewUpdate(Event, lkHosts, HostsListView);
-      end
+        ListViewUpdate(Event, lkHosts, HostsListView)
       else if (Event.CItems is TCProcesses) then
-      begin
-        ListViewUpdate(Event, lkServer, FServerListView);
-        ListViewUpdate(Event, lkProcesses, ProcessesListView);
-      end
+        ListViewUpdate(Event, lkProcesses, ProcessesListView)
       else if (Event.CItems is TCStati) then
-      begin
-        ListViewUpdate(Event, lkServer, FServerListView);
-        ListViewUpdate(Event, lkStati, StatiListView);
-      end
+        ListViewUpdate(Event, lkStati, StatiListView)
       else if (Event.CItems is TCUsers) then
-      begin
-        ListViewUpdate(Event, lkServer, FServerListView);
-        ListViewUpdate(Event, lkUsers, UsersListView);
-      end
+        ListViewUpdate(Event, lkUsers, UsersListView)
       else if (Event.CItems is TCVariables) then
-      begin
-        ListViewUpdate(Event, lkServer, FServerListView);
         ListViewUpdate(Event, lkVariables, VariablesListView);
-      end;
     end;
 
     if (Event.EventType = ceItemValid) then
@@ -12315,6 +12304,8 @@ begin
           FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options - [eoScrollPastEol];  // Slow down the performance on large content
         FSQLEditorSynMemo.ClearUndo();
         FSQLEditorSynMemo.Modified := Import.SetCharacterSetApplied;
+
+        Window.Perform(CM_UPDATETOOLBAR, 0, LPARAM(Self));
       end;
 
       Import.Free();

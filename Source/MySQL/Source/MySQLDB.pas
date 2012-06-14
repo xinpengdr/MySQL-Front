@@ -2597,6 +2597,8 @@ begin
         end;
     end;
   end;
+  if (SynchroThread.SQLStmt > OldStmt) then
+    SynchroThread.SQLStmtsInPackets.Add(Pointer(SynchroThread.SQLStmt > OldStmt));
 
   if (SynchroThread.SQLStmtLengths.Count = 0) then
   begin

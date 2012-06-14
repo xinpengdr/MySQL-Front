@@ -305,6 +305,7 @@ asm
         MOV EBX,EAX
         MOV EAX,0
         LODSW                            // Get version digit
+        DEC ECX                          // One character handled
         SUB AX,'0'                       // Convert digit numerical
         ADD EBX,EAX                      // Add digit to version
         POP EDX
