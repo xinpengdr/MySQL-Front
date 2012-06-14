@@ -586,6 +586,15 @@ object WWindow: TWWindow
       ImageIndex = 73
       ShortCut = 32890
     end
+    object aVExplorer: TAction
+      Category = 'View'
+      AutoCheck = True
+      Caption = 'aVExplorer'
+      Enabled = False
+      HelpContext = 1108
+      HelpType = htContext
+      ImageIndex = 96
+    end
     object aVSQLHistory: TAction
       Category = 'View'
       AutoCheck = True
@@ -1374,15 +1383,6 @@ object WWindow: TWWindow
       Category = 'Bookmark'
       Caption = 'aBookmark'
     end
-    object aVExplorer: TAction
-      Category = 'View'
-      AutoCheck = True
-      Caption = 'aVExplorer'
-      Enabled = False
-      HelpContext = 1108
-      HelpType = htContext
-      ImageIndex = 96
-    end
   end
   object OpenDialog: TOpenDialog_Ext
     Options = [ofReadOnly, ofHideReadOnly, ofPathMustExist, ofFileMustExist, ofEnableSizing]
@@ -1622,12 +1622,12 @@ object WWindow: TWWindow
           Action = aVBookmarks
           AutoCheck = True
         end
-        object aVSQLHistory1: TMenuItem
-          Action = aVSQLHistory
-          AutoCheck = True
-        end
         object miVExplorer: TMenuItem
           Action = aVExplorer
+          AutoCheck = True
+        end
+        object aVSQLHistory1: TMenuItem
+          Action = aVSQLHistory
           AutoCheck = True
         end
       end

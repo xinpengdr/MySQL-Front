@@ -45,17 +45,13 @@ object DAccount: TDAccount
     Top = 8
     Width = 313
     Height = 277
-    ActivePage = TSBasics
+    ActivePage = TSDebug
     HotTrack = True
     MultiLine = True
     TabOrder = 0
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
       OnShow = TSBasicsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GBasics: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -117,10 +113,6 @@ object DAccount: TDAccount
     object TSConnection: TTabSheet
       Caption = 'TSConnection'
       ImageIndex = 1
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GServer: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -250,10 +242,6 @@ object DAccount: TDAccount
     object TSLogin: TTabSheet
       Caption = 'TSLogin'
       ImageIndex = 2
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GLogin: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -327,10 +315,6 @@ object DAccount: TDAccount
     end
     object TSStartup: TTabSheet
       Caption = 'TSStartup'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         305
         231)
@@ -364,10 +348,6 @@ object DAccount: TDAccount
     object TSDataBrowser: TTabSheet
       Caption = 'TSDataBrowser'
       ImageIndex = 4
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GBrowser: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -426,15 +406,11 @@ object DAccount: TDAccount
     end
     object TSDebug: TTabSheet
       Caption = 'TSDebug'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GDebug: TGroupBox_Ext
         Left = 4
         Top = 4
         Width = 297
-        Height = 135
+        Height = 129
         Caption = 'GDebug'
         TabOrder = 0
         object FLCacheSize: TLabel
@@ -452,17 +428,9 @@ object DAccount: TDAccount
           Height = 13
           Caption = 'MB'
         end
-        object FLCompression: TLabel
-          Left = 8
-          Top = 49
-          Width = 72
-          Height = 13
-          Caption = 'FLCompression'
-          FocusControl = FCompression
-        end
         object FLMultiStatements: TLabel
           Left = 8
-          Top = 69
+          Top = 50
           Width = 87
           Height = 13
           Caption = 'FLMultiStatements'
@@ -470,7 +438,7 @@ object DAccount: TDAccount
         end
         object FLAsynchron: TLabel
           Left = 8
-          Top = 89
+          Top = 76
           Width = 62
           Height = 13
           Caption = 'FLAsynchron'
@@ -478,7 +446,7 @@ object DAccount: TDAccount
         end
         object FLUseInformationSchema: TLabel
           Left = 8
-          Top = 109
+          Top = 99
           Width = 122
           Height = 13
           Caption = 'FLUseInformationSchema'
@@ -500,39 +468,31 @@ object DAccount: TDAccount
           Associate = FCacheSize
           Max = 10240
           Increment = 10
-          TabOrder = 2
-        end
-        object FCompression: TCheckBox
-          Left = 128
-          Top = 48
-          Width = 161
-          Height = 17
-          Caption = 'FCompression'
           TabOrder = 1
         end
         object FMultiStatements: TCheckBox
           Left = 128
-          Top = 68
+          Top = 49
           Width = 161
           Height = 17
           Caption = 'FMultiStatements'
-          TabOrder = 3
+          TabOrder = 2
         end
         object FAsynchron: TCheckBox
           Left = 128
-          Top = 88
+          Top = 75
           Width = 161
           Height = 17
           Caption = 'FAsynchron'
-          TabOrder = 4
+          TabOrder = 3
         end
         object FUseInformationSchema: TCheckBox
           Left = 128
-          Top = 108
+          Top = 99
           Width = 161
           Height = 17
           Caption = 'FUseInformationSchema'
-          TabOrder = 5
+          TabOrder = 4
         end
       end
     end

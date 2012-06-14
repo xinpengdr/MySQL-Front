@@ -112,7 +112,6 @@ type
   public
     Asynchron: Boolean;
     Charset: string;
-    Compression: Boolean;
     Database: string;
     Host: string;
     HTTPTunnelURI: string;
@@ -773,7 +772,6 @@ procedure TAConnection.Assign(const Source: TAConnection);
 begin
   Asynchron := Source.Asynchron;
   Charset := Source.Charset;
-  Compression := Source.Compression;
   Database := Source.Database;
   Host := Source.Host;
   HTTPTunnelURI := Source.HTTPTunnelURI;
@@ -797,7 +795,6 @@ begin
 
   Asynchron := True;
   Charset := '';
-  Compression := True;
   Database := '';
   Host := '';
   HTTPTunnelURI := '';
@@ -826,7 +823,6 @@ begin
   begin
     if (Assigned(XMLNode(XML, 'asynchron'))) then TryStrToBool(XMLNode(XML, 'asynchron').Text, Asynchron);
     if (Assigned(XMLNode(XML, 'character_set'))) then Charset := XMLNode(XML, 'character_set').Text;
-    if (Assigned(XMLNode(XML, 'compression'))) then TryStrToBool(XMLNode(XML, 'compression').Text, Compression);
     if (Assigned(XMLNode(XML, 'database'))) then Database := XMLNode(XML, 'database').Text;
     if (Assigned(XMLNode(XML, 'host'))) then Host := XMLNode(XML, 'host').Text;
     if (Assigned(XMLNode(XML, 'library/type'))) then
@@ -855,7 +851,6 @@ begin
   else
     XMLNode(XML, 'asynchron').Text := BoolToStr(Asynchron, True);
   XMLNode(XML, 'character_set').Text := Charset;
-  XMLNode(XML, 'compression').Text := BoolToStr(Compression, True);
   XMLNode(XML, 'database').Text := Database;
   XMLNode(XML, 'host').Text := Host;
   case (LibraryType) of

@@ -139,13 +139,14 @@ type
     mfOpenInNewWindow: TMenuItem;
     mfOpenInNewTab: TMenuItem;
     mfFilter: TMenuItem;
-    mfFilterClear: TMenuItem;
-    mfFilterSQL: TMenuItem;
-    mfFilterText: TMenuItem;
-    mfFilterHTML: TMenuItem;
-    mfFilterXML: TMenuItem;
     mfFilterAccess: TMenuItem;
+    mfFilterClear: TMenuItem;
     mfFilterExcel: TMenuItem;
+    mfFilterHTML: TMenuItem;
+    mfFilterSQL: TMenuItem;
+    mfFilterSQLite: TMenuItem;
+    mfFilterText: TMenuItem;
+    mfFilterXML: TMenuItem;
     mfDelete: TMenuItem;
     mfRename: TMenuItem;
     mfProperties: TMenuItem;
@@ -201,6 +202,7 @@ type
     miNProperties: TMenuItem;
     miNRename: TMenuItem;
     miSBookmarks: TMenuItem;
+    miSExplorer: TMenuItem;
     miSNavigator: TMenuItem;
     miSSQLHistory: TMenuItem;
     mlDCreate: TMenuItem;
@@ -342,6 +344,7 @@ type
     PContent: TPanel_Ext;
     PDataBrowser: TPanel_Ext;
     PDataBrowserSpacer: TPanel_Ext;
+    PExplorer: TPanel_Ext;
     PFiles: TPanel_Ext;
     PFolders: TPanel_Ext;
     PGrid: TPanel_Ext;
@@ -388,6 +391,7 @@ type
     tbBookmarks: TToolButton;
     tbBrowser: TToolButton;
     tbDiagram: TToolButton;
+    tbExplorer: TToolButton;
     tbNavigator: TToolButton;
     tbObjects: TToolButton;
     tbIDE: TToolButton;
@@ -406,10 +410,6 @@ type
     TBFilterEnabled: TToolBar;
     TBLimitEnabled: TToolBar;
     TBQuickSearchEnabled: TToolBar;
-    PExplorer: TPanel_Ext;
-    tbExplorer: TToolButton;
-    miSExplorer: TMenuItem;
-    mfFilterSQLite: TMenuItem;
     procedure aBAddExecute(Sender: TObject);
     procedure aBDeleteExecute(Sender: TObject);
     procedure aBEditExecute(Sender: TObject);
@@ -977,12 +977,11 @@ type
     function GetFocusedCItem(): TCItem;
     function GetFocusedDatabaseName(): string;
     function GetFocusedTableName(): string;
+    function GetPath(): TFileName; inline;
     function GetMenuDatabase(): string;
     function GetResultSet(): TCResultSet;
     function GetSelectedDatabase(): string;
     function GetSelectedImageIndex(): Integer;
-    function GetSelectedNavigator(): string;
-    function GetSelectedTable(): string;
     function GetView(): TView;
     function GetWindow(): TForm_Ext;
     procedure gmFilterClearClick(Sender: TObject);
@@ -1013,8 +1012,7 @@ type
     procedure SetView(const AView: TView);
     procedure SetAddress(const AAddress: string);
     procedure SetDataSource(const ResultSet: TCResultSet = nil; const DataSet: TDataSet = nil);
-    procedure SetSelectedDatabase(const ADatabaseName: string);
-    procedure SetSelectedTable(const ATableName: string);
+    procedure SetPath(const APath: TFileName);
     procedure SQLError(DataSet: TDataSet; E: EDatabaseError; var Action: TDataAction);
     procedure SQLHelp();
     procedure SynMemoApllyPreferences(const SynMemo: TSynMemo);
@@ -1048,7 +1046,6 @@ type
     property MenuDatabase: string read GetMenuDatabase;
     property ResultSet: TCResultSet read GetResultSet;
     property SelectedImageIndex: Integer read GetSelectedImageIndex;
-    property SelectedNavigator: string read GetSelectedNavigator;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
   public
@@ -1065,10 +1062,10 @@ type
     procedure CrashRescue();
     procedure MoveToAddress(const ADiff: Integer);
     procedure StatusBarRefresh(const Immediately: Boolean = False);
-    property View: TView read GetView write SetView;
     property Address: string read FAddress write SetAddress;
-    property SelectedDatabase: string read GetSelectedDatabase write SetSelectedDatabase;
-    property SelectedTable: string read GetSelectedTable write SetSelectedTable;
+    property Path: TFileName read GetPath write SetPath;
+    property SelectedDatabase: string read GetSelectedDatabase;
+    property View: TView read GetView write SetView;
     property Window: TForm_Ext read GetWindow;
   end;
 
@@ -2063,17 +2060,17 @@ begin
       for I := 0 to CItems.Count - 1 do
         if ((TCItem(CItems[I]) is TCIndex) and (TCIndex(CItems[I]).Table = Table)) then
         begin
-          NewTable.Indices.DeleteIndex(NewTable.IndexByCaption(TCIndex(CItems[I]).Name));
+          NewTable.Indices.DeleteIndex(TCIndex(CItems[I]));
           CItems[I] := nil;
         end
         else if ((TCItem(CItems[I]) is TCBaseTableField) and (TCBaseTableField(CItems[I]).Table = Table)) then
         begin
-          NewTable.Fields.DeleteField(NewTable.FieldByName(TCBaseTableField(CItems[I]).Name));
+          NewTable.Fields.DeleteField(TCBaseTableField(CItems[I]));
           CItems[I] := nil;
         end
         else if ((TCItem(CItems[I]) is TCForeignKey) and (TCForeignKey(CItems[I]).Table = Table)) then
         begin
-          NewTable.ForeignKeys.DeleteForeignKey(NewTable.ForeignKeyByName(TCForeignKey(CItems[I]).Name));
+          NewTable.ForeignKeys.DeleteForeignKey(TCForeignKey(CItems[I]));
           CItems[I] := nil;
         end;
 
@@ -2162,7 +2159,6 @@ end;
 procedure TFClient.AddressChanged(Sender: TObject);
 var
   Control: TWinControl;
-  Database: TCDatabase;
   DDLStmt: TSQLDDLStmt;
   Empty: Boolean;
   I: Integer;
@@ -2204,6 +2200,20 @@ begin
       Window.ActiveControl := NewActiveControl;
 
 
+    LastFNavigatorSelected := NavigatorNodeToAddress(FNavigator.Selected);
+    if (SelectedDatabase <> '') then
+      LastSelectedDatabase := SelectedDatabase;
+    if (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) then
+    begin
+      LastSelectedTable := FNavigator.Selected.Text;
+      LastTableView := View;
+    end
+    else if (SelectedImageIndex = iiTrigger) then
+      LastSelectedTable := FNavigator.Selected.Parent.Text;
+    if (View = vIDE) then
+      LastObjectIDEAddress := Address;
+
+
     Empty := not Assigned(ActiveSynMemo) or (ActiveSynMemo.Lines.Count <= 1) and (ActiveSynMemo.Text = ''); // Takes a lot of time
     if (not Empty and (View = vIDE)) then SQL := ActiveSynMemo.Text else SQL := '';
 
@@ -2213,9 +2223,9 @@ begin
     MainAction('aVObjectBrowser').Enabled := True;
     MainAction('aVDataBrowser').Enabled := (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView, iiTrigger]) or ((LastSelectedDatabase <> '') and (LastSelectedDatabase = SelectedDatabase) and (LastSelectedTable <> ''));
     MainAction('aVObjectIDE').Enabled := (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent, iiTrigger]) or (LastObjectIDEAddress <> '');
-    MainAction('aVQueryBuilder').Enabled := (SelectedDatabase <> '');
+    MainAction('aVQueryBuilder').Enabled := (LastSelectedDatabase <> '');
     MainAction('aVSQLEditor').Enabled := True;
-    MainAction('aVDiagram').Enabled := (SelectedDatabase <> '') or (LastSelectedDatabase <> '');
+    MainAction('aVDiagram').Enabled := (LastSelectedDatabase <> '');
     MainAction('aDRun').Enabled :=
       ((View = vEditor)
       or ((View  = vBuilder) and FBuilder.Visible)
@@ -2283,10 +2293,9 @@ begin
       if ((tsActive in FrameState) and (ToolBarData.CurrentAddress > 0) and Wanted.Nothing) then
         PlaySound(PChar(Preferences.SoundFileNavigating), Handle, SND_FILENAME or SND_ASYNC);
 
-      if ((UsedView = vBrowser) and (SelectedTable <> '')) then
+      if ((UsedView = vBrowser) and (FNavigator.Selected.ImageIndex in [iiBaseTable, iiSystemView, iiView])) then
       begin
-        Database := Client.DatabaseByName(SelectedDatabase);
-        Table := Database.TableByName(SelectedTable);
+        Table := TCTable(FNavigator.Selected.Data);
 
         if (not (Table.DataSet is TMySQLTable) or not Assigned(Table.DataSet) or not Table.DataSet.Active or (TMySQLTable(Table.DataSet).Limit < 1)) then
         begin
@@ -2318,16 +2327,6 @@ begin
 
       TreeViewExpanded(FNavigator, FNavigator.Selected);
     end;
-
-    LastFNavigatorSelected := NavigatorNodeToAddress(FNavigator.Selected);
-    if (SelectedDatabase <> '') then
-      LastSelectedDatabase := SelectedDatabase;
-    if (SelectedTable <> '') then
-      LastSelectedTable := SelectedTable;
-    if (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) then
-      LastTableView := View;
-    if (View = vIDE) then
-      LastObjectIDEAddress := Address;
 
 
     if (tsLoading in FrameState) then
@@ -2388,9 +2387,7 @@ begin
       AllowChange := False;
   end;
 
-  if (not AllowChange) then
-    MessageBeep(MB_ICONERROR)
-  else
+  if (AllowChange) then
   begin
     if (Client.Update() and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
       AllowChange := False
@@ -2657,23 +2654,20 @@ type
   TExecute = function(): Boolean of Object;
 var
   CItem: TCItem;
-  Database: TCDatabase;
   Execute: TExecute;
   I: Integer;
   Process: TCProcess;
 begin
   Wanted.Clear();
 
-  if ((Window.ActiveControl = ActiveListView) and (ActiveListView.SelCount > 1)) then
+  if ((Window.ActiveControl = ActiveListView) and (SelectedImageIndex in [iiDatabase, iiSystemDatabase]) and (ActiveListView.SelCount > 1)) then
   begin
-    Database := Client.DatabaseByName(SelectedDatabase);
-
     DTable.Tables := TList.Create();
     for I := 0 to ActiveListView.Items.Count - 1 do
       if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex = iiBaseTable)) then
         DTable.Tables.Add(ActiveListView.Items[I].Data);
 
-    DTable.Database := Database;
+    DTable.Database := TCDatabase(FNavigator.Selected.Data);
     DTable.Table := nil;
     if (DTable.Execute()) then
       Client.Update();
@@ -2831,19 +2825,19 @@ begin
     if (Assigned(FObjectIDEGrid.DataSource.DataSet)) then
       FObjectIDEGrid.DataSource.DataSet.CheckBrowseMode();
     if (not ActiveSynMemo.Modified or PostObject(Sender)) then
-      SQL := Client.DatabaseByName(SelectedDatabase).ProcedureByName(SelectedNavigator).SQLRun();
+      SQL := TCProcedure(FNavigator.Selected.Data).SQLRun();
   end
   else if ((View = vIDE) and (SelectedImageIndex = iiFunction)) then
   begin
     if (Assigned(FObjectIDEGrid.DataSource.DataSet)) then
       FObjectIDEGrid.DataSource.DataSet.CheckBrowseMode();
     if (not ActiveSynMemo.Modified or PostObject(Sender)) then
-      SQL := Client.DatabaseByName(SelectedDatabase).FunctionByName(SelectedNavigator).SQLRun();
+      SQL := TCFunction(FNavigator.Selected.Data).SQLRun();
   end
   else if ((View = vIDE) and (SelectedImageIndex = iiEvent)) then
   begin
     if (not ActiveSynMemo.Modified or PostObject(Sender)) then
-      SQL := Client.DatabaseByName(SelectedDatabase).EventByName(SelectedNavigator).SQLRun();
+      SQL := TCEvent(FNavigator.Selected.Data).SQLRun();
   end;
 
   if (SQL <> '') then
@@ -2964,12 +2958,12 @@ begin
           iiProcedure:  Data := Data + 'Procedure='  + ActiveListView.Items[I].Caption + #13#10;
           iiFunction:   Data := Data + 'Function='   + ActiveListView.Items[I].Caption + #13#10;
           iiEvent:      Data := Data + 'Event='      + ActiveListView.Items[I].Caption + #13#10;
-          iiIndex:      Data := Data + 'Index='      + Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).IndexByCaption(ActiveListView.Items[I].Caption).Name + #13#10;
+          iiIndex:      Data := Data + 'Index='      + TCIndex(ActiveListView.Items[I].Data).Name + #13#10;
           iiField,
           iiViewField:  Data := Data + 'Field='      + ActiveListView.Items[I].Caption + #13#10;
           iiForeignKey: Data := Data + 'ForeignKey=' + ActiveListView.Items[I].Caption + #13#10;
           iiTrigger:    Data := Data + 'Trigger='    + ActiveListView.Items[I].Caption + #13#10;
-          iiHost:       Data := Data + 'Host='       + Client.HostByCaption(ActiveListView.Items[I].Caption).Name + #13#10;
+          iiHost:       Data := Data + 'Host='       + TCHost(ActiveListView.Items[I].Data).Name + #13#10;
           iiUser:       Data := Data + 'User='       + ActiveListView.Items[I].Caption + #13#10;
         end;
     if (Data <> '') then
@@ -3069,10 +3063,10 @@ begin
   Wanted.Clear();
 
   DSearch.Client := Client;
-  if ((SelectedTable <> '') and (Window.ActiveControl = ActiveListView)) then
+  if ((SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) and (Window.ActiveControl = ActiveListView)) then
   begin
-    DSearch.DatabaseName := SelectedDatabase;
-    DSearch.TableName := SelectedTable;
+    DSearch.DatabaseName := FNavigator.Selected.Parent.Text;
+    DSearch.TableName := FNavigator.Selected.Text;
     DSearch.FieldName := '';
     for I := 0 to ActiveListView.Items.Count - 1 do
       if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex in [iiField, iiSystemViewField, iiViewField])) then
@@ -3194,7 +3188,7 @@ begin
   Wanted.Clear();
 
   OpenDialog.Title := ReplaceStr(Preferences.LoadStr(581), '&', '');
-  OpenDialog.InitialDir := Preferences.Path;
+  OpenDialog.InitialDir := Path;
   OpenDialog.FileName := '';
   if (FGrid.SelectedField.DataType = ftWideMemo) then
   begin
@@ -3213,8 +3207,7 @@ begin
 
   if (OpenDialog.Execute()) then
   begin
-    Preferences.Path := ExtractFilePath(OpenDialog.FileName);
-    if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
+    Path := ExtractFilePath(OpenDialog.FileName);
 
     FGrid.SelectedField.DataSet.Edit();
     if (FGrid.SelectedField.DataType = ftWideMemo) then
@@ -3263,10 +3256,10 @@ begin
   Wanted.Clear();
 
   DSearch.Client := Client;
-  if ((SelectedTable <> '') and (Window.ActiveControl = ActiveListView)) then
+  if ((SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) and (Window.ActiveControl = ActiveListView)) then
   begin
-    DSearch.DatabaseName := SelectedDatabase;
-    DSearch.TableName := SelectedTable;
+    DSearch.DatabaseName := FNavigator.Selected.Parent.Text;
+    DSearch.TableName := FNavigator.Selected.Text;
     DSearch.FieldName := '';
     for I := 0 to ActiveListView.Items.Count - 1 do
       if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex in [iiField, iiSystemViewField, iiViewField])) then
@@ -3325,7 +3318,7 @@ begin
   Wanted.Clear();
 
   SaveDialog.Title := ReplaceStr(Preferences.LoadStr(582), '&', '');
-  SaveDialog.InitialDir := Preferences.Path;
+  SaveDialog.InitialDir := Path;
   SaveDialog.FileName := SelectedDatabase + '.bmp';
   SaveDialog.DefaultExt := 'bmp';
   SaveDialog.Filter := FilterDescription('bmp') + ' (*.bmp)|*.bmp';
@@ -3335,8 +3328,7 @@ begin
   begin
     ActiveWorkbench.SaveToBMP(SaveDialog.FileName);
 
-    Preferences.Path := ExtractFilePath(SaveDialog.FileName);
-    if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
+    Path := ExtractFilePath(SaveDialog.FileName);
   end;
 end;
 
@@ -3369,7 +3361,7 @@ begin
     DExport.DBGrid := FGrid
   else if (Window.ActiveControl = ActiveWorkbench) then
   begin
-    Database := Client.DatabaseByName(SelectedDatabase);
+    Database := TCDatabase(FNavigator.Selected.Data);
     if (Database.Tables.Update()) then
       Wanted.Action := TAction(Sender)
     else
@@ -3402,7 +3394,7 @@ begin
 
       iiDatabase:
         begin
-          Database := Client.DatabaseByName(SelectedDatabase);
+          Database := TCDatabase(FNavigator.Selected.Data);
           if (Database.Update()) then
             Wanted.Action := TAction(Sender)
           else if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
@@ -3436,7 +3428,7 @@ begin
         end;
       iiBaseTable:
         begin
-          Database := Client.DatabaseByName(SelectedDatabase);
+          Database := TCDatabase(FNavigator.Selected.Parent.Data);
           if (Database.Triggers.Update()) then
             Wanted.Action := TAction(Sender)
           else if ((Client.TableNameCmp(Database.Name, 'mysql') <> 0) and not (Database is TCSystemDatabase)) then
@@ -3537,7 +3529,7 @@ begin
     end
     else if ((ExportType in [etTextFile]) and (DExport.DBObjects.Count > 1)) then
     begin
-      FolderName := Preferences.Path;
+      FolderName := Path;
       if (SelectDirectory(Preferences.LoadStr(351) + ':', '', FolderName, [sdNewFolder, sdShowEdit, sdShowShares, sdNewUI, sdValidateDir], Self)) then
       begin
         DExport.Filename := FolderName + PathDelim;
@@ -3552,7 +3544,7 @@ begin
     else
     begin
       SaveDialog.Title := ReplaceStr(Preferences.LoadStr(582), '&', '');
-      SaveDialog.InitialDir := Preferences.Path;
+      SaveDialog.InitialDir := Path;
       SaveDialog.Filter := '';
       case (ExportType) of
         etSQLFile:
@@ -3616,8 +3608,7 @@ begin
 
       if (SaveDialog.Execute()) then
       begin
-        Preferences.Path := ExtractFilePath(SaveDialog.FileName);
-        if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
+        Path := ExtractFilePath(SaveDialog.FileName);
 
         if (SaveDialog.EncodingIndex < 0) then
           DExport.CodePage := CP_ACP
@@ -3704,7 +3695,7 @@ begin
   end;
 
   OpenDialog.Title := ReplaceStr(Preferences.LoadStr(581), '&', '');
-  OpenDialog.InitialDir := Preferences.Path;
+  OpenDialog.InitialDir := Path;
   OpenDialog.Filter := '';
   case (ImportType) of
     itSQLFile:
@@ -3751,8 +3742,7 @@ begin
 
   if (OpenDialog.Execute()) then
   begin
-    Preferences.Path := ExtractFilePath(OpenDialog.FileName);
-    if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
+    Path := ExtractFilePath(OpenDialog.FileName);
 
     DImport.Window := Window;
     DImport.ImportType := ImportType;
@@ -3872,8 +3862,6 @@ var
   Msg: string;
   Second: Word;
 begin
-  SelectedDatabase := Client.DatabaseName;   // Maybe a USE Database; was used ...
-
   MainAction('aDCancel').Enabled := False;
 
   aDCommitRefresh(Client);     // Maybe we're still in a database transaction...
@@ -3959,12 +3947,17 @@ begin
 end;
 
 procedure TFClient.aPObjectBrowserTableExecute(Sender: TObject);
+var
+  URI: TUURI;
 begin
   Wanted.Clear();
 
-  if (View <> vObjects) then
-    View := vObjects;
-  SelectedTable := LastSelectedTable; // Navigator auf Table stellen
+  URI := TUURI.Create(Address);
+  URI.Param['view'] := Null;
+  if (URI.Database <> '') then
+    URI.Table := LastSelectedTable;
+  Address := URI.Address;
+  URI.Free();
 end;
 
 procedure TFClient.aPOpenInNewTabExecute(Sender: TObject);
@@ -3979,8 +3972,8 @@ begin
       Window.Perform(CM_ADDTAB, 0, LPARAM(PChar(string(Client.Account.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption).URI))));
   end
   else if (Window.ActiveControl = FFiles) then
-    if (LowerCase(ExtractFileExt(Preferences.Path + PathDelim + FFiles.Selected.Caption)) = '.sql') then
-      OpenInNewTabExecute(SelectedDatabase, '', False, Preferences.Path + PathDelim + FFiles.Selected.Caption);
+    if (LowerCase(ExtractFileExt(Path + PathDelim + FFiles.Selected.Caption)) = '.sql') then
+      OpenInNewTabExecute(SelectedDatabase, '', False, Path + PathDelim + FFiles.Selected.Caption);
 end;
 
 procedure TFClient.aPOpenInNewWindowExecute(Sender: TObject);
@@ -3995,8 +3988,8 @@ begin
       ShellExecute(Application.Handle, 'open', PChar(TFileName(Application.ExeName)), PChar(string(Client.Account.Desktop.Bookmarks.ByCaption(FBookmarks.Selected.Caption).URI)), '', SW_SHOW);
   end
   else if (Window.ActiveControl = FFiles) then
-    if (LowerCase(ExtractFileExt(Preferences.Path + PathDelim + FFiles.Selected.Caption)) = '.sql') then
-      OpenInNewTabExecute(SelectedDatabase, '', True, Preferences.Path + PathDelim + FFiles.Selected.Caption);
+    if (LowerCase(ExtractFileExt(Path + PathDelim + FFiles.Selected.Caption)) = '.sql') then
+      OpenInNewTabExecute(SelectedDatabase, '', True, Path + PathDelim + FFiles.Selected.Caption);
 end;
 
 function TFClient.ApplicationHelp(Command: Word; Data: THelpEventData; var CallHelp: Boolean): Boolean;
@@ -4006,11 +3999,14 @@ begin
     CallHelp := False;
 
     SQLHelp();
+
+    Result := True;
   end
   else
+  begin
     CallHelp := True;
-
-  Result := True;
+    Result := False;
+  end;
 end;
 
 procedure TFClient.aPResultExecute(Sender: TObject);
@@ -4185,19 +4181,19 @@ begin
           case (SelectedImageIndex) of
             iiServer: Client.Invalidate();
             iiDatabase,
-            iiSystemDatabase: Client.DatabaseByName(SelectedDatabase).Invalidate();
+            iiSystemDatabase: TCDatabase(FNavigator.Selected.Data).Invalidate();
             iiBaseTable,
             iiSystemView:
               begin
-                Client.DatabaseByName(SelectedDatabase).TableByName(SelectedTable).Invalidate();
-                if (Assigned(Client.DatabaseByName(SelectedDatabase).Triggers)) then
-                  Client.DatabaseByName(SelectedDatabase).Triggers.Invalidate();
+                TCTable(FNavigator.Selected.Data).Invalidate();
+                if (Assigned(TCDatabase(FNavigator.Selected.Parent.Data).Triggers)) then
+                  TCDatabase(FNavigator.Selected.Parent.Data).Triggers.Invalidate();
               end;
-            iiView: Client.DatabaseByName(SelectedDatabase).TableByName(SelectedTable).Invalidate();
-            iiProcedure: Client.DatabaseByName(SelectedDatabase).ProcedureByName(SelectedNavigator).Invalidate();
-            iiFunction: Client.DatabaseByName(SelectedDatabase).FunctionByName(SelectedNavigator).Invalidate();
-            iiEvent: Client.DatabaseByName(SelectedDatabase).EventByName(SelectedNavigator).Invalidate();
-            iiTrigger: Client.DatabaseByName(SelectedDatabase).TriggerByName(SelectedNavigator).Invalidate();
+            iiView: TCView(FNavigator.Selected.Data).Invalidate();
+            iiProcedure: TCProcedure(FNavigator.Selected.Data).Invalidate();
+            iiFunction: TCFunction(FNavigator.Selected.Data).Invalidate();
+            iiEvent: TCEvent(FNavigator.Selected.Data).Invalidate();
+            iiTrigger: TCTrigger(FNavigator.Selected.Data).Invalidate();
             iiHosts: Client.Hosts.Invalidate();
             iiProcesses: Client.Processes.Invalidate();
             iiStati: Client.Stati.Invalidate();
@@ -4236,18 +4232,18 @@ begin
 
   MainAction('aVNavigator').Checked := (Sender = MainAction('aVNavigator')) and MainAction('aVNavigator').Checked;
   MainAction('aVBookmarks').Checked := (Sender = MainAction('aVBookmarks')) and MainAction('aVBookmarks').Checked;
-  MainAction('aVSQLHistory').Checked := (Sender = MainAction('aVSQLHistory')) and MainAction('aVSQLHistory').Checked;
   MainAction('aVExplorer').Checked := (Sender = MainAction('aVExplorer')) and MainAction('aVExplorer').Checked;
+  MainAction('aVSQLHistory').Checked := (Sender = MainAction('aVSQLHistory')) and MainAction('aVSQLHistory').Checked;
 
   PNavigator.Visible := MainAction('aVNavigator').Checked;
   PBookmarks.Visible := MainAction('aVBookmarks').Checked;
-  PSQLHistory.Visible := MainAction('aVSQLHistory').Checked;
   PExplorer.Visible := MainAction('aVExplorer').Checked;
+  PSQLHistory.Visible := MainAction('aVSQLHistory').Checked;
 
   if (PExplorer.Visible and not Assigned(FFolders)) then
     CreateExplorer();
 
-  SSideBar.Visible := PNavigator.Visible or PBookmarks.Visible or PSQLHistory.Visible or PExplorer.Visible;
+  SSideBar.Visible := PNavigator.Visible or PBookmarks.Visible or PExplorer.Visible or PSQLHistory.Visible;
   if (SSideBar.Visible) then
   begin
     SSideBar.Left := PNavigator.Width;
@@ -4263,13 +4259,13 @@ begin
     Window.ActiveControl := FNavigator
   else if (MainAction('aVBookmarks').Checked) then
     Window.ActiveControl := FBookmarks
+  else if (MainAction('aVExplorer').Checked and FFolders.Visible) then
+    Window.ActiveControl := FFolders
   else if (MainAction('aVSQLHistory').Checked) then
   begin
     FSQLHistoryRefresh(Sender);
     Window.ActiveControl := FSQLHistory;
-  end
-  else if (MainAction('aVExplorer').Checked) then
-    Window.ActiveControl := FFolders;
+  end;
 end;
 
 procedure TFClient.aVSortAscExecute(Sender: TObject);
@@ -4350,7 +4346,9 @@ var
 begin
   Wanted.Clear();
 
-  Trigger := Client.DatabaseByName(SelectedDatabase).TriggerByName(SelectedNavigator);
+  Trigger := nil;
+  if (TObject(FNavigator.Selected.Data) is TCTrigger) then
+    Trigger := TCTrigger(FNavigator.Selected.Data);
 
   if (Assigned(Trigger) and (not ActiveSynMemo.Modified or PostObject(Sender))) then
   begin
@@ -4507,7 +4505,7 @@ var
 begin
   DataSet := TDataSet(Message.wParam);
 
-  if ((View = vBrowser) and (DataSet is TCTableDataSet) and (TCTableDataSet(DataSet).DatabaseName = SelectedDatabase) and (TCTableDataSet(DataSet).CommandText = SelectedTable)) then
+  if ((View = vBrowser) and (DataSet is TCTableDataSet) and (TCTableDataSet(DataSet).DatabaseName = SelectedDatabase) and (TCTableDataSet(DataSet).CommandText = FNavigator.Selected.Text)) then
   begin
     FUDOffset.Position := TCTableDataSet(DataSet).Offset;
     FLimitEnabled.Down := TCTableDataSet(DataSet).Limit > 0;
@@ -4814,8 +4812,8 @@ begin
   begin
     MainAction('aVNavigator').Checked := PNavigator.Visible;
     MainAction('aVBookmarks').Checked := PBookmarks.Visible;
-    MainAction('aVSQLHistory').Checked := PSQLHistory.Visible;
     MainAction('aVExplorer').Checked := PExplorer.Visible;
+    MainAction('aVSQLHistory').Checked := PSQLHistory.Visible;
     MainAction('aVSQLLog').Checked := PLog.Visible;
 
     MainAction('aFOpen').OnExecute := aFOpenExecute;
@@ -4850,8 +4848,8 @@ begin
     MainAction('aVDiagram').OnExecute := aViewExecute;
     MainAction('aVNavigator').OnExecute := aVSideBarExecute;
     MainAction('aVBookmarks').OnExecute := aVSideBarExecute;
-    MainAction('aVSQLHistory').OnExecute := aVSideBarExecute;
     MainAction('aVExplorer').OnExecute := aVSideBarExecute;
+    MainAction('aVSQLHistory').OnExecute := aVSideBarExecute;
     MainAction('aVSQLLog').OnExecute := aVSQLLogExecute;
     MainAction('aVDetails').OnExecute := aVDetailsExecute;
     MainAction('aVRefresh').OnExecute := aVRefreshExecute;
@@ -4913,13 +4911,13 @@ begin
     MainAction('aVObjectBrowser').Enabled := True;
     MainAction('aVDataBrowser').Enabled := (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView, iiTrigger]) or ((LastSelectedDatabase <> '') and (LastSelectedDatabase = SelectedDatabase) and (LastSelectedTable <> ''));
     MainAction('aVObjectIDE').Enabled := (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent, iiTrigger]) or (LastObjectIDEAddress <> '');
-    MainAction('aVQueryBuilder').Enabled := (SelectedDatabase <> '');
+    MainAction('aVQueryBuilder').Enabled := (LastSelectedDatabase <> '');
     MainAction('aVSQLEditor').Enabled := True;
-    MainAction('aVDiagram').Enabled := (SelectedDatabase <> '') or (LastSelectedDatabase <> '');
+    MainAction('aVDiagram').Enabled := (LastSelectedDatabase <> '');
     MainAction('aVNavigator').Enabled := True;
     MainAction('aVBookmarks').Enabled := True;
-    MainAction('aVSQLHistory').Enabled := True;
     MainAction('aVExplorer').Enabled := True;
+    MainAction('aVSQLHistory').Enabled := True;
     MainAction('aVSQLLog').Enabled := True;
     MainAction('aVRefresh').Enabled := True;
     MainAction('aVRefreshAll').Enabled := True;
@@ -4937,6 +4935,9 @@ begin
     else if (Window.ActiveControl = FLog) then FLogEnter(nil)
     else if (Window.ActiveControl is TSynMemo) then SynMemoEnter(nil)
     else if (Window.ActiveControl = FGrid) then DBGridEnter(FGrid);
+
+    if (Assigned(FFolders) and (Path <> FFolders.SelectedFolder)) then
+      FFolders.SelectedFolder := Path;
   end;
 
   if (Assigned(StatusBar)) then
@@ -4961,8 +4962,8 @@ begin
   MainAction('aVDiagram').Enabled := False;
   MainAction('aVNavigator').Enabled := False;
   MainAction('aVBookmarks').Enabled := False;
-  MainAction('aVSQLHistory').Enabled := False;
   MainAction('aVExplorer').Enabled := False;
+  MainAction('aVSQLHistory').Enabled := False;
   MainAction('aVSQLLog').Enabled := False;
   MainAction('aVRefresh').Enabled := False;
   MainAction('aVRefreshAll').Enabled := False;
@@ -5015,9 +5016,9 @@ var
 begin
   PNavigator.Visible := Client.Account.Desktop.NavigatorVisible;
   PBookmarks.Visible := Client.Account.Desktop.BookmarksVisible;
-  PSQLHistory.Visible := Client.Account.Desktop.SQLHistoryVisible; if (PSQLHistory.Visible) then FSQLHistoryRefresh(nil);
   PExplorer.Visible := Client.Account.Desktop.ExplorerVisible;
-  PSideBar.Visible := PNavigator.Visible or PBookmarks.Visible or PSQLHistory.Visible or PExplorer.Visible; SSideBar.Visible := PSideBar.Visible;
+  PSQLHistory.Visible := Client.Account.Desktop.SQLHistoryVisible; if (PSQLHistory.Visible) then FSQLHistoryRefresh(nil);
+  PSideBar.Visible := PNavigator.Visible or PBookmarks.Visible or PExplorer.Visible or PSQLHistory.Visible; SSideBar.Visible := PSideBar.Visible;
 
   if (PExplorer.Visible) then
     CreateExplorer();
@@ -5090,8 +5091,8 @@ begin
   begin
     PNavigator.BevelInner := bvRaised; PNavigator.BevelOuter := bvLowered;
     PBookmarks.BevelInner := bvRaised; PBookmarks.BevelOuter := bvLowered;
-    PSQLHistory.BevelInner := bvRaised; PSQLHistory.BevelOuter := bvLowered;
     PExplorer.BevelInner := bvRaised; PExplorer.BevelOuter := bvLowered;
+    PSQLHistory.BevelInner := bvRaised; PSQLHistory.BevelOuter := bvLowered;
     PFolders.BevelInner := bvRaised; PFolders.BevelOuter := bvLowered;
     PFiles.BevelInner := bvRaised; PFiles.BevelOuter := bvLowered;
     PListView.BevelInner := bvRaised; PListView.BevelOuter := bvLowered;
@@ -5109,10 +5110,10 @@ begin
   begin
     PNavigator.BevelInner := bvNone; PNavigator.BevelOuter := bvNone;
     PBookmarks.BevelInner := bvNone; PBookmarks.BevelOuter := bvNone;
-    PSQLHistory.BevelInner := bvNone; PSQLHistory.BevelOuter := bvNone;
     PExplorer.BevelInner := bvNone; PExplorer.BevelOuter := bvNone;
     PFolders.BevelInner := bvNone; PNavigator.BevelOuter := bvNone;
     PFiles.BevelInner := bvNone; PFiles.BevelOuter := bvNone;
+    PSQLHistory.BevelInner := bvNone; PSQLHistory.BevelOuter := bvNone;
     PListView.BevelInner := bvNone; PListView.BevelOuter := bvNone;
     PBuilderQuery.BevelInner := bvNone; PBuilderQuery.BevelOuter := bvNone;
     PSynMemo.BevelInner := bvNone; PSynMemo.BevelOuter := bvNone;
@@ -5324,8 +5325,8 @@ begin
 
   tbNavigator.Action := MainAction('aVNavigator');
   tbBookmarks.Action := MainAction('aVBookmarks');
-  tbSQLHistory.Action := MainAction('aVSQLHistory');
   tbExplorer.Action := MainAction('aVExplorer');
+  tbSQLHistory.Action := MainAction('aVSQLHistory');
 
   tbObjects.Action := MainAction('aVObjectBrowser'); tbObjects.Caption := ReplaceStr(tbObjects.Caption, '&', '');
   tbBrowser.Action := MainAction('aVDataBrowser'); tbBrowser.Caption := ReplaceStr(tbBrowser.Caption, '&', '');
@@ -5336,8 +5337,8 @@ begin
 
   miSNavigator.Action := MainAction('aVNavigator');
   miSBookmarks.Action := MainAction('aVBookmarks');
-  miSSQLHistory.Action := MainAction('aVSQLHistory');
   miSExplorer.Action := MainAction('aVExplorer');
+  miSSQLHistory.Action := MainAction('aVSQLHistory');
 
   miNImportSQL.Action := MainAction('aFImportSQL');
   miNImportText.Action := MainAction('aFImportText');
@@ -5565,14 +5566,13 @@ begin
   if (not Assigned(FFolders)) then
   begin
     FFolders := TJamShellTree.Create(Owner);
+    FFolders.Parent := PFolders;
+    FFolders.Visible := False;
     FFolders.Left := 0;
     FFolders.Top := 0;
-    FFolders.Width := PFolders.Width;
-    FFolders.Height := PFolders.Height;
-    FFolders.Align := alClient;
-    FFolders.Parent := PFolders;
     FFolders.Width := PFolders.ClientWidth;
     FFolders.Height := PFolders.ClientHeight;
+    FFolders.Align := alClient;
     FFolders.HelpContext := 1108;
     FFolders.HotTrack := True;
     FFolders.ShellLink := ShellLink;
@@ -5596,7 +5596,6 @@ begin
     FFiles.Height := PFiles.Height;
     FFiles.Align := alClient;
     FFiles.BorderStyle := bsNone;
-    FFiles.DragMode := dmAutomatic;
     FFiles.Filter := Client.Account.Desktop.FilesFilter;
     FFiles.Font := Font;
     FFiles.HelpContext := 1108;
@@ -5815,7 +5814,7 @@ begin
   end;
 
   if ((DataSet.FieldCount > 0)
-    and ((View = vBrowser) and (DataSet is TCTableDataSet) and (TCTableDataSet(DataSet).DatabaseName = SelectedDatabase) and (TCTableDataSet(DataSet).CommandText = SelectedTable)
+    and ((View = vBrowser) and (DataSet is TCTableDataSet) and (TCTableDataSet(DataSet).DatabaseName = SelectedDatabase) and (TCTableDataSet(DataSet).CommandText = FNavigator.Selected.Text)
       or (View = vIDE) and Assigned(ResultSet) and (ResultSet <> Client.QueryBuilderResult) and (ResultSet <> Client.SQLEditorResult)
       or (View = vBuilder) and (ResultSet = Client.QueryBuilderResult)
       or (View = vEditor) and (ResultSet = Client.SQLEditorResult))) then
@@ -5957,7 +5956,7 @@ begin
 
   if ((Sender = FObjectIDEGrid) and (SelectedImageIndex = iiTrigger) and (TMySQLDBGrid(Sender).DataSource.DataSet is TMySQLDataSet)) then
   begin
-    Trigger := Client.DatabaseByName(SelectedDatabase).TriggerByName(SelectedNavigator);
+    Trigger := TCTrigger(FNavigator.Selected.Data);
 
     FObjectIDEGrid.DataSource.DataSet.CheckBrowseMode();
 
@@ -6123,13 +6122,12 @@ begin
     MainAction('aDEditRecord').ShortCut := VK_F2;
 
     MainAction('aSGoto').Enabled := False;
-    if (SelectedDatabase <> '') then
+    if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView])) then
     begin
-      Table := Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable);
-      if (Assigned(Table)) then
-        for I := 0 to Table.Indices.Count - 1 do
-          if (Table.Indices[I].Unique) then
-            MainAction('aSGoto').Enabled := True;
+      Table := TCBaseTable(FNavigator.Selected.Data);
+      for I := 0 to Table.Indices.Count - 1 do
+        if (Table.Indices[I].Unique) then
+          MainAction('aSGoto').Enabled := True;
     end;
 
     DataSetAfterScroll(DBGrid.DataSource.DataSet);
@@ -6215,8 +6213,8 @@ begin
     Client.Account.Desktop.FilesFilter := FFiles.Filter;
   Client.Account.Desktop.NavigatorVisible := PNavigator.Visible;
   Client.Account.Desktop.BookmarksVisible := PBookmarks.Visible;
-  Client.Account.Desktop.SQLHistoryVisible := PSQLHistory.Visible;
   Client.Account.Desktop.ExplorerVisible := PExplorer.Visible;
+  Client.Account.Desktop.SQLHistoryVisible := PSQLHistory.Visible;
   Client.Account.Desktop.SelectorWitdth := PSideBar.Width;
   Client.Account.Desktop.LogVisible := PLog.Visible;
   Client.Account.Desktop.LogHeight := PLog.Height;
@@ -6701,12 +6699,15 @@ end;
 procedure TFClient.FFoldersChange(Sender: TObject; Node: TTreeNode);
 begin
   if (not (tsLoading in FrameState) and PExplorer.Visible and Visible) then
-    if ((Sender is TJamShellTree) and (TJamShellTree(Sender).Name = '')) then
-      TJamShellTree(Sender).Name := 'FFolders'
+    if ((Sender is TJamShellTree) and not TJamShellTree(Sender).Visible) then
+    begin
+      TJamShellTree(Sender).Visible := True;
+      Window.ActiveControl := TJamShellTree(Sender);
+    end
     else
-      PlaySoundW(PWideChar(Preferences.SoundFileNavigating), Application.Handle, SND_FILENAME);
+      PlaySound(PChar(Preferences.SoundFileNavigating), Handle, SND_FILENAME or SND_ASYNC);
 
-  Preferences.Path := FFolders.SelectedFolder;
+  Path := FFolders.SelectedFolder;
 end;
 
 procedure TFClient.FGridCellClick(Column: TColumn);
@@ -6735,7 +6736,7 @@ var
   Success: Boolean;
 begin
   SaveDialog.Title := ReplaceStr(Preferences.LoadStr(582), '&', '');
-  SaveDialog.InitialDir := Preferences.Path;
+  SaveDialog.InitialDir := Path;
   if (FGrid.SelectedField.DataType = ftWideMemo) then
   begin
     SaveDialog.FileName := FGrid.SelectedField.DisplayName + '.txt';
@@ -6757,8 +6758,7 @@ begin
 
   if (SaveDialog.Execute()) then
   begin
-    Preferences.Path := ExtractFilePath(SaveDialog.FileName);
-    if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
+    Path := ExtractFilePath(SaveDialog.FileName);
 
     Handle := CreateFile(PChar(SaveDialog.FileName),
                          GENERIC_WRITE,
@@ -6940,7 +6940,6 @@ end;
 
 procedure TFClient.FGridGotoExecute(Sender: TObject);
 var
-  Database: TCDatabase;
   I: Integer;
   Index: TCIndex;
   Line: Integer;
@@ -6948,8 +6947,7 @@ var
 begin
   Wanted.Clear();
 
-  Database := Client.DatabaseByName(SelectedDatabase);
-  Table := Database.BaseTableByName(SelectedTable);
+  Table := TCBaseTable(FNavigator.Selected.Data);
   Index := nil;
   if (Assigned(Table) and (FGrid.DataSource.DataSet = Table.DataSet) and (Table.Indices.Count >= 0)) then
     Index := Table.Indices[0];
@@ -7020,7 +7018,6 @@ end;
 
 procedure TFClient.FGridRefresh(Sender: TObject);
 var
-  Database: TCDatabase;
   DataSet: TMySQLDataSet;
   Field: TCTableField;
   FieldInfo: TFieldInfo;
@@ -7063,8 +7060,7 @@ begin
 
       if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView])) then
       begin
-        Database := Client.DatabaseByName(SelectedDatabase);
-        Table := Database.BaseTableByName(SelectedTable);
+        Table := TCBaseTable(FNavigator.Selected.Data);
 
         if (TCBaseTable(Table).Indices.Count > 0) then
         begin
@@ -7095,14 +7091,10 @@ begin
 
       for I := 0 to FGrid.Columns.Count - 1 do
       begin
-        if (View <> vBrowser) then
-          Database := nil
+        if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView])) then
+          Table := TCTable(FNavigator.Selected.Data) // Must be first for Views where FieldInfo.TableName the name of the BaseTable
         else
-          Database := Client.DatabaseByName(SelectedDatabase);
-        if (not Assigned(Database)) then
-          Table := nil
-        else
-          Table := Database.TableByName(SelectedTable); // Must be first für Views where FieldInfo.TableName the name of the BaseTable
+          Table := nil;
         if (not Assigned(Table) or not Assigned(FGrid.Fields[I])) then
           Field := nil
         else if ((DataSet is TMySQLQuery) and GetFieldInfo(FGrid.Fields[I].Origin, FieldInfo) and (FieldInfo.OriginalFieldName <> '')) then
@@ -7549,12 +7541,12 @@ begin
           iiProcedure:  Objects := Objects + 'Procedure='  + TListView(Source).Items[I].Caption + #13#10;
           iiFunction:   Objects := Objects + 'Function='   + TListView(Source).Items[I].Caption + #13#10;
           iiEvent:      Objects := Objects + 'Event='      + TListView(Source).Items[I].Caption + #13#10;
-          iiIndex:      Objects := Objects + 'Index='      + Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).IndexByCaption(TListView(Source).Items[I].Caption).Name + #13#10;
+          iiIndex:      Objects := Objects + 'Index='      + TCIndex(TListView(Source).Items[I].Data).Name + #13#10;
           iiField,
           iiViewField:  Objects := Objects + 'Field='      + TListView(Source).Items[I].Caption + #13#10;
           iiForeignKey: Objects := Objects + 'ForeignKey=' + TListView(Source).Items[I].Caption + #13#10;
           iiTrigger:    Objects := Objects + 'Trigger='    + TListView(Source).Items[I].Caption + #13#10;
-          iiHost:       Objects := Objects + 'Host='       + Client.HostByCaption(TListView(Source).Items[I].Caption).Name + #13#10;
+          iiHost:       Objects := Objects + 'Host='       + TCHost(TListView(Source).Items[I].Data).Name + #13#10;
           iiUser:       Objects := Objects + 'User='       + TListView(Source).Items[I].Caption + #13#10;
         end;
     if (Objects <> '') then
@@ -8265,7 +8257,6 @@ end;
 
 procedure TFClient.FormClientEvent(const Event: TCClient.TEvent);
 var
-  Database: TCDatabase;
   Table: TCTable;
 begin
   if (not (csDestroying in ComponentState)) then
@@ -8283,21 +8274,18 @@ begin
       ceAfterExecuteSQL:
         AfterExecuteSQL(Event);
       else
+        if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView])) then
         begin
-          Database := Client.DatabaseByName(SelectedDatabase);
-          if (Assigned(Database) and (SelectedTable <> '')) then
-          begin
-            Table := Database.TableByName(SelectedTable);
-            case (Event.EventType) of
-              ceBeforeCancel: DataSetBeforeCancel(Table.DataSet);
-              ceBeforeReceivingRecords: DataSetBeforeReceivingRecords(Table.DataSet);
-              ceBeforePost: DataSetBeforePost(Table.DataSet);
-              ceAfterCancel: DataSetAfterCancel(Table.DataSet);
-              ceAfterClose: DataSetAfterClose(Table.DataSet);
-              ceAfterOpen: DataSetAfterOpen(Table.DataSet);
-              ceAfterPost: DataSetAfterPost(Table.DataSet);
-              ceAfterScroll: DataSetAfterScroll(Table.DataSet);
-            end;
+          Table := TCTable(FNavigator.Selected.Data);
+          case (Event.EventType) of
+            ceBeforeCancel: DataSetBeforeCancel(Table.DataSet);
+            ceBeforeReceivingRecords: DataSetBeforeReceivingRecords(Table.DataSet);
+            ceBeforePost: DataSetBeforePost(Table.DataSet);
+            ceAfterCancel: DataSetAfterCancel(Table.DataSet);
+            ceAfterClose: DataSetAfterClose(Table.DataSet);
+            ceAfterOpen: DataSetAfterOpen(Table.DataSet);
+            ceAfterPost: DataSetAfterPost(Table.DataSet);
+            ceAfterScroll: DataSetAfterScroll(Table.DataSet);
           end;
         end;
     end;
@@ -9609,6 +9597,7 @@ end;
 function TFClient.GetFocusedTableName(): string;
 var
   I: Integer;
+  URI: TUURI;
 begin
   if ((Window.ActiveControl = ActiveListView) and (SelectedImageIndex in [iiDatabase, iiSystemDatabase])) then
   begin
@@ -9623,7 +9612,16 @@ begin
   else if ((Window.ActiveControl is TWWorkbench) and Assigned(ActiveWorkbench.Selected) and (ActiveWorkbench.Selected is TWTable)) then
     Result := TWTable(ActiveWorkbench.Selected).Caption
   else
-    Result := SelectedTable;
+  begin
+    URI := TUURI.Create(Address);
+    Result := URI.Table;
+    URI.Free();
+  end;
+end;
+
+function TFClient.GetPath(): TFileName;
+begin
+  Result := ExcludeTrailingPathDelimiter(Preferences.Path);
 end;
 
 function TFClient.GetMenuDatabase(): string;
@@ -9644,10 +9642,8 @@ end;
 
 function TFClient.GetResultSet(): TCResultSet;
 begin
-  if ((View = vIDE) and (SelectedImageIndex = iiProcedure)) then
-    Result := Client.DatabaseByName(SelectedDatabase).ProcedureByName(SelectedNavigator).IDEResult
-  else if ((View = vIDE) and (SelectedImageIndex = iiFunction)) then
-    Result := Client.DatabaseByName(SelectedDatabase).FunctionByName(SelectedNavigator).IDEResult
+  if ((View = vIDE) and (SelectedImageIndex in [iiProcedure, iiFunction])) then
+    Result := TCRoutine(FNavigator.Selected.Data).IDEResult
   else if (View = vBuilder) then
     Result := Client.QueryBuilderResult
   else if (View = vEditor) then
@@ -9657,30 +9653,12 @@ begin
 end;
 
 function TFClient.GetSelectedDatabase(): string;
+var
+  URI: TUURI;
 begin
-  if (not Assigned(FNavigator.Selected)) then
-    Result := ''
-  else
-    case (FNavigator.Selected.ImageIndex) of
-      iiDatabase,
-      iiSystemDatabase:
-        Result := FNavigator.Selected.Text;
-      iiBaseTable,
-      iiSystemView,
-      iiView,
-      iiProcedure,
-      iiFunction,
-      iiEvent:
-        Result := FNavigator.Selected.Parent.Text;
-      iiIndex,
-      iiField,
-      iiSystemViewField,
-      iiForeignKey,
-      iiTrigger:
-        Result := FNavigator.Selected.Parent.Parent.Text;
-      else
-        Result := '';
-    end;
+  URI := TUURI.Create(Address);
+  Result := URI.Database;
+  URI.Free();
 end;
 
 function TFClient.GetSelectedImageIndex(): Integer;
@@ -9689,37 +9667,6 @@ begin
     Result := -1
   else
     Result := FNavigator.Selected.ImageIndex;
-end;
-
-function TFClient.GetSelectedNavigator(): string;
-begin
-  if (not Assigned(FNavigator.Selected)) then
-    Result := ''
-  else
-    Result := FNavigator.Selected.Text;
-end;
-
-function TFClient.GetSelectedTable(): string;
-begin
-  Result := '';
-
-  if (not Assigned(FNavigator.Selected)) then
-    Result := ''
-  else
-    case (FNavigator.Selected.ImageIndex) of
-      iiBaseTable,
-      iiSystemView,
-      iiView:
-        Result := FNavigator.Selected.Text;
-      iiIndex,
-      iiField,
-      iiSystemViewField,
-      iiForeignKey,
-      iiTrigger:
-        Result := FNavigator.Selected.Parent.Text;
-      else
-        Result := '';
-    end;
 end;
 
 function TFClient.GetView(): TView;
@@ -10383,7 +10330,7 @@ begin
               SetLength(Names, Length(Names) + 1);
               Names[Length(Names) - 1] := ActiveListView.Items[I].Caption;
             end;
-          Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).EmptyFields(Names);
+          TCBaseTable(FNavigator.Selected.Data).EmptyFields(Names);
         end;
     end;
     SetLength(Names, 0);
@@ -11335,8 +11282,7 @@ begin
           end;
         iiBaseTable:
           begin
-            Database := Client.DatabaseByName(SelectedDatabase);
-            BaseTable := Database.BaseTableByName(SelectedTable);
+            BaseTable := TCBaseTable(FNavigator.Selected.Data);
 
             MainAction('aFImportText').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aFImportExcel').Enabled := (ActiveListView.SelCount = 0);
@@ -11358,7 +11304,7 @@ begin
             MainAction('aDCreateIndex').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aDCreateField').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aDCreateForeignKey').Enabled := (ActiveListView.SelCount = 0) and Assigned(BaseTable.Engine) and BaseTable.Engine.ForeignKeyAllowed;
-            MainAction('aDCreateTrigger').Enabled := (ActiveListView.SelCount = 0) and Assigned(Database.Triggers);
+            MainAction('aDCreateTrigger').Enabled := (ActiveListView.SelCount = 0) and Assigned(BaseTable.Database.Triggers);
             MainAction('aDDeleteIndex').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiIndex) and True;
             MainAction('aDDeleteField').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField) and (BaseTable.Fields.Count > ActiveListView.SelCount) and True;
             MainAction('aDDeleteForeignKey').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013) and True;
@@ -11626,8 +11572,8 @@ begin
     SortDef := TIndexDef.Create(nil, '', '', []);
     if (MenuItem.Checked) then
       MenuItem.Checked := False
-    else
-      Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).Indices[MenuItem.Tag].GetSortDef(SortDef);
+    else if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView])) then
+      TCBaseTable(FNavigator.Selected.Data).Indices[MenuItem.Tag].GetSortDef(SortDef);
 
     TMySQLDataSet(FGrid.DataSource.DataSet).Sort(SortDef);
     FGrid.UpdateHeader();
@@ -11639,7 +11585,6 @@ end;
 
 procedure TFClient.MGridHeaderPopup(Sender: TObject);
 var
-  Database: TCDatabase;
   I: Integer;
   Index: TCIndex;
   J: Integer;
@@ -11662,8 +11607,7 @@ begin
 
   if (SelectedImageIndex in [iiBaseTable, iiSystemView]) then
   begin
-    Database := Client.DatabaseByName(SelectedDatabase);
-    Table := Database.BaseTableByName(SelectedTable);
+    Table := TCBaseTable(FNavigator.Selected.Data);
 
     SortMenuItem := nil;
     for I := 0 to MGridHeader.Items.Count - 1 do
@@ -12306,7 +12250,7 @@ begin
 
   OpenDialog.Title := ReplaceStr(Preferences.LoadStr(581), '&', '');
   if (AFilename = '') then
-    OpenDialog.InitialDir := Preferences.Path
+    OpenDialog.InitialDir := Path
   else
     OpenDialog.InitialDir := ExtractFilePath(AFilename);
   OpenDialog.FileName := AFilename;
@@ -12317,8 +12261,7 @@ begin
 
   if ((OpenDialog.FileName <> '') or OpenDialog.Execute()) then
   begin
-    Preferences.Path := ExtractFilePath(OpenDialog.FileName);
-    if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
+    Path := ExtractFilePath(OpenDialog.FileName);
 
     Answer := ID_CANCEL;
 
@@ -12447,10 +12390,10 @@ begin
           MainAction('aVNavigator').Execute()
         else if (MainAction('aVBookmarks').Checked) then
           MainAction('aVBookmarks').Execute()
-        else if (MainAction('aVSQLHistory').Checked) then
-          MainAction('aVSQLHistory').Execute()
         else if (MainAction('aVExplorer').Checked) then
-          MainAction('aVExplorer').Execute();
+          MainAction('aVExplorer').Execute()
+        else if (MainAction('aVSQLHistory').Checked) then
+          MainAction('aVSQLHistory').Execute();
     PanelMouseDownPoint := Point(-1, -1);
   end;
 end;
@@ -12847,7 +12790,6 @@ procedure TFClient.PContentChange(Sender: TObject);
   end;
 
 var
-  Database: TCDatabase;
   I: Integer;
   NewTop: Integer;
   OldActiveControl: TWinControl;
@@ -12856,19 +12798,16 @@ var
   Table: TCTable;
   Trigger: TCTrigger;
 begin
-  Database := Client.DatabaseByName(SelectedDatabase);
-  if (not Assigned(Database) or (SelectedTable = '')) then
-    Table := nil
+  if (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) then
+    Table := TCTable(FNavigator.Selected.Data)
   else
-    Table := Database.TableByName(SelectedTable);
-  if (SelectedImageIndex = iiProcedure) then
-    Routine := Database.ProcedureByName(SelectedNavigator)
-  else if (SelectedImageIndex = iiFunction) then
-    Routine := Database.FunctionByName(SelectedNavigator)
+    Table := nil;
+  if (SelectedImageIndex in [iiProcedure, iiFunction]) then
+    Routine := TCRoutine(FNavigator.Selected.Data)
   else
     Routine := nil;
   if (SelectedImageIndex = iiTrigger) then
-    Trigger := Database.TriggerByName(SelectedNavigator)
+    Trigger := TCTrigger(FNavigator.Selected.Data)
   else
     Trigger := nil;
 
@@ -13146,21 +13085,17 @@ end;
 
 procedure TFClient.PObjectIDERefresh(Sender: TObject);
 var
-  Database: TCDatabase;
   I: Integer;
   J: Integer;
   Routine: TCRoutine;
   Trigger: TCTrigger;
 begin
-  Database := Client.DatabaseByName(SelectedDatabase);
-  if (SelectedImageIndex = iiProcedure) then
-    Routine := Database.ProcedureByName(SelectedNavigator)
-  else if (SelectedImageIndex = iiFunction) then
-    Routine := Database.FunctionByName(SelectedNavigator)
+  if (SelectedImageIndex in [iiProcedure, iiFunction]) then
+    Routine := TCRoutine(FNavigator.Selected.Data)
   else
     Routine := nil;
   if (SelectedImageIndex = iiTrigger) then
-    Trigger := Database.TriggerByName(SelectedNavigator)
+    Trigger := TCTrigger(FNavigator.Selected.Data)
   else
     Trigger := nil;
 
@@ -13233,7 +13168,7 @@ begin
   case (SelectedImageIndex) of
     iiView:
       begin
-        View := Database.ViewByName(SelectedNavigator);
+        View := TCView(FNavigator.Selected.Data);
 
         NewView := TCView.Create(Database.Tables);
         NewView.Assign(View);
@@ -13250,12 +13185,12 @@ begin
       begin
         if (SelectedImageIndex = iiProcedure) then
         begin
-          Routine := Database.ProcedureByName(SelectedNavigator);
+          Routine := TCProcedure(FNavigator.Selected.Data);
           NewRoutine := TCProcedure.Create(Database.Routines);
         end
         else
         begin
-          Routine := Database.FunctionByName(SelectedNavigator);
+          Routine := TCFunction(FNavigator.Selected.Data);
           NewRoutine := TCFunction.Create(Database.Routines);
         end;
         NewRoutine.Assign(Routine);
@@ -13268,14 +13203,14 @@ begin
         RoutineName := Routine.Name;
         Result := Database.UpdateRoutine(Routine, NewRoutine);
 
-        if (NewRoutine.Name <> SelectedNavigator) then
+        if (NewRoutine.Name <> FNavigator.Selected.Text) then
           FNavigator.Selected.Text := NewRoutine.Name;
 
         NewRoutine.Free();
       end;
     iiEvent:
       begin
-        Event := Database.EventByName(SelectedNavigator);
+        Event := TCEvent(FNavigator.Selected.Data);
 
         NewEvent := TCEvent.Create(Database.Events);
         NewEvent.Assign(Event);
@@ -13288,7 +13223,7 @@ begin
       end;
     iiTrigger:
       begin
-        Trigger := Database.TriggerByName(SelectedNavigator);
+        Trigger := TCTrigger(FNavigator.Selected.Data);
 
         NewTrigger := TCTrigger.Create(Database.Triggers);
         NewTrigger.Assign(Trigger);
@@ -13469,10 +13404,19 @@ var
   EndingCommentLength: Integer;
   Len: Integer;
   StartingCommentLength: Integer;
+  URI: TUURI;
   XML: IXMLNode;
 begin
   if (ResultSet = Client.SQLEditorResult) then
   begin
+    if (Client.DatabaseName <> SelectedDatabase) then  // Maybe a USE Database; was used ...
+    begin
+      URI := TUURI.Create(Address);
+      URI.Database := Client.DatabaseName;
+      Address := URI.Address;
+      URI.Free();
+    end;
+
     if (Client.ErrorCode > 0) then
     begin
       if ((Client.CommandText <> '') and Assigned(ActiveSynMemo) and (Length(ActiveSynMemo.Text) > Length(Client.CommandText) + 5)) then
@@ -13529,7 +13473,7 @@ var
   Text: string;
 begin
   SaveDialog.Title := ReplaceStr(Preferences.LoadStr(582), '&', '');
-  SaveDialog.InitialDir := Preferences.Path;
+  SaveDialog.InitialDir := Path;
   SaveDialog.Encodings.Text := EncodingCaptions();
   SaveDialog.EncodingIndex := SaveDialog.Encodings.IndexOf(CodePageToEncoding(Client.CodePage));
   if ((Sender = MainAction('aFSave')) or (Sender = MainAction('aFSaveAs'))) then
@@ -13569,8 +13513,7 @@ begin
   SaveDialog.Filter := FilterDescription('sql') + ' (*.sql)|*.sql' + '|' + FilterDescription('*') + ' (*.*)|*.*';
   if (((Sender = MainAction('aFSave')) and (SQLEditor.Filename <> '')) or (Text <> '') and SaveDialog.Execute()) then
   begin
-    Preferences.Path := ExtractFilePath(SaveDialog.FileName);
-    if (Assigned(FFolders)) then FFolders.SelectedFolder := Preferences.Path;
+    Path := ExtractFilePath(SaveDialog.FileName);
 
     Handle := CreateFile(PChar(SaveDialog.FileName),
                          GENERIC_WRITE,
@@ -13706,7 +13649,7 @@ begin
     else if ((AView = vBrowser) and not (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView])) then
     begin
       if (SelectedImageIndex = iiTrigger) then
-        URI.Table := SelectedTable
+        URI.Table := TCTrigger(FNavigator.Selected.Data).TableName
       else
         URI.Table := LastSelectedTable;
     end
@@ -13759,10 +13702,11 @@ begin
   begin
     NewAddress := Client.Account.FullAddress('/');
     AllowChange := True;
+    AddressChanging(nil, NewAddress, AllowChange);
   end;
   if (AllowChange) then
   begin
-    FAddress := AAddress;
+    FAddress := NewAddress;
 
     URI := TUURI.Create(NewAddress);
 
@@ -13939,62 +13883,14 @@ begin
   LastDataSource.DataSet := DataSet;
 end;
 
-procedure TFClient.SetSelectedDatabase(const ADatabaseName: string);
-var
-  URI: TUURI;
+procedure TFClient.SetPath(const APath: TFileName);
 begin
-  if (Address <> '') then
+  if (APath <> Preferences.Path) then
   begin
-    URI := TUURI.Create(Address);
-    if (ADatabaseName <> URI.Database) then
-    begin
-      URI.Database := ADatabaseName;
-      Address := URI.Address;
-    end;
-    URI.Free();
+    Preferences.Path := APath;
+    if (Assigned(FFolders) and (APath <> FFolders.SelectedFolder)) then
+      FFolders.SelectedFolder := APath;
   end;
-end;
-
-procedure TFClient.SetSelectedTable(const ATableName: string);
-var
-  DatabaseNode: TTreeNode;
-  Node: TTreeNode;
-  TableNode: TTreeNode;
-begin
-  if (Assigned(FNavigator.Selected)) then
-  begin
-    if (ATableName = '') then
-      SelectedDatabase := SelectedDatabase // Database im Navigator selektieren
-    else
-    begin
-      Node := nil;
-      if (SelectedImageIndex in [iiServer, iiDatabase, iiSystemDatabase]) then
-        FNavigator.Selected.Expand(False);
-      DatabaseNode := FNavigator.Items.getFirstNode().getFirstChild();
-      while (Assigned(DatabaseNode)) do
-      begin
-        if (DatabaseNode.Text = SelectedDatabase) then
-        begin
-          TableNode := DatabaseNode.getFirstChild();
-          while (Assigned(TableNode)) do
-          begin
-            if (TableNode.Text = ATableName) then
-              Node := TableNode;
-            TableNode := DatabaseNode.GetNextChild(TableNode);
-          end;
-          if (not Assigned(Node)) then
-            FNavigator.Selected := DatabaseNode
-          else
-            FNavigator.Selected := Node;
-        end;
-        DatabaseNode := FNavigator.Items.getFirstNode().getNextChild(DatabaseNode);
-      end;
-      if (FNavigator.AutoExpand) then
-        FNavigator.Selected.Expand(False);
-    end;
-  end;
-
-  FNavigatorMenuNode := FNavigator.Selected;
 end;
 
 procedure TFClient.SLogCanResize(Sender: TObject; var NewSize: Integer;
@@ -14165,7 +14061,6 @@ end;
 procedure TFClient.StatusBarRefresh(const Immediately: Boolean = False);
 var
   Count: Integer;
-  Database: TCDatabase;
   QueryBuilderWorkArea: TacQueryBuilderWorkArea;
   SelCount: Integer;
   Table: TCBaseTable;
@@ -14206,24 +14101,18 @@ begin
     else if ((Window.ActiveControl = FGrid) and (FGrid.SelectedRows.Count > 0)) then
       SelCount := FGrid.SelectedRows.Count;
 
-    if (View <> vBrowser) then
-      Table := nil
+    if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView])) then
+      Table := TCBaseTable(FNavigator.Selected.Data)
     else
-    begin
-      Database := Client.DatabaseByName(SelectedDatabase);
-      if (not Assigned(Database)) then
-        Table := nil
-      else
-        Table := Database.BaseTableByName(SelectedTable);
-    end;
+      Table := nil;
 
     if (SelCount > 0) then
       Text := Preferences.LoadStr(688, IntToStr(SelCount))
-    else if ((View = vBrowser) and (FGrid.DataSource.DataSet is TMySQLTable) and not Client.InUse() and Assigned(Table) and TMySQLTable(FGrid.DataSource.DataSet).LimitedDataReceived and (Table.Rows >= 0)) then
-      if (Assigned(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).Engine) and (UpperCase(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).Engine.Name) <> 'INNODB')) then
-        Text := Preferences.LoadStr(691, IntToStr(Count), IntToStr(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).Rows))
+    else if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView]) and (FGrid.DataSource.DataSet is TMySQLTable) and not Client.InUse() and Assigned(Table) and TMySQLTable(FGrid.DataSource.DataSet).LimitedDataReceived and (Table.Rows >= 0)) then
+      if (Assigned(TCBaseTable(FNavigator.Selected.Data).Engine) and (UpperCase(TCBaseTable(FNavigator.Selected.Data).Engine.Name) <> 'INNODB')) then
+        Text := Preferences.LoadStr(691, IntToStr(Count), IntToStr(TCBaseTable(FNavigator.Selected.Data).Rows))
       else
-        Text := Preferences.LoadStr(691, IntToStr(Count), '~' + IntToStr(Client.DatabaseByName(SelectedDatabase).BaseTableByName(SelectedTable).Rows))
+        Text := Preferences.LoadStr(691, IntToStr(Count), '~' + IntToStr(TCBaseTable(FNavigator.Selected.Data).Rows))
     else if (Assigned(ActiveSynMemo) and (Window.ActiveControl = ActiveSynMemo) and (Count >= 0)) then
       Text := IntToStr(Count) + ' ' + ReplaceStr(Preferences.LoadStr(600), '&', '')
     else if ((View = vBuilder) and (Count >= 0)) then
@@ -14236,21 +14125,6 @@ begin
     else
       Text := '';
     StatusBar.Panels.Items[sbSummarize].Text := Text;
-
-    if (not Client.InUse()) then
-      if ((Window.ActiveControl = FGrid) and Assigned(FGrid.SelectedField)) then
-      begin
-        if (not FGrid.SelectedField.IsNull) then
-        begin
-          StatusBar.Panels.Items[sbMessage].Text := FGrid.SelectedField.AsString;
-          SetTimer(Handle, tiStatusBar, 5000, nil);
-        end
-        else if (Preferences.GridNullText and not FGrid.SelectedField.Required) then
-        begin
-          StatusBar.Panels.Items[sbMessage].Text := '<NULL>';
-          SetTimer(Handle, tiStatusBar, 5000, nil);
-        end;
-      end;
 
 
     if (not Client.Connected) then
@@ -14265,7 +14139,7 @@ begin
         Text := IntToStr(ActiveSynMemo.CaretXY.Line) + ':' + IntToStr(ActiveSynMemo.CaretXY.Char)
       else if ((Window.ActiveControl = ActiveListView) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiIndex)) then
         Text := Preferences.LoadStr(377) + ': ' + IntToStr(TCIndex(ActiveListView.ItemFocused.Data).Key)
-      else if ((Window.ActiveControl = ActiveListView) and (SelectedTable <> '') and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiField)) then
+      else if ((Window.ActiveControl = ActiveListView) and (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiField)) then
         Text := ReplaceStr(Preferences.LoadStr(164), '&', '') + ': ' + IntToStr(TCTableField(ActiveListView.ItemFocused.Data).Index)
       else if ((Window.ActiveControl = FGrid) and Assigned(FGrid.SelectedField) and (FGrid.DataSource.DataSet.RecNo >= 0)) then
         Text := IntToStr(FGrid.DataSource.DataSet.RecNo + 1) + ':' + IntToStr(FGrid.SelectedField.FieldNo)
@@ -14328,9 +14202,8 @@ begin
     S := XMLNode(IXMLNode(MouseDownNode.Data), 'sql').Text;
 
     DatabaseName := XMLNode(IXMLNode(MouseDownNode.Data), 'database').Text;
-    SelectedDatabase := DatabaseName;
-    if (SelectedDatabase <> DatabaseName) then
-      S := Client.SQLUse(SelectedDatabase) + S;
+    if (DatabaseName <> SelectedDatabase) then
+      S := Client.SQLUse(DatabaseName) + S;
     S := ReplaceStr(ReplaceStr(S, #13#10, #10), #10, #13#10);
 
     SelStart := TSynMemo(Sender).SelStart;
@@ -14523,7 +14396,6 @@ end;
 
 procedure TFClient.TableOpen(Sender: TObject);
 var
-  Database: TCDatabase;
   FilterSQL: string;
   Limit: Integer;
   Offset: Integer;
@@ -14535,8 +14407,7 @@ begin
   TCResult.Tabs.Clear();
   TCResult.TabIndex := -1;
 
-  Database := Client.DatabaseByName(SelectedDatabase);
-  Table := Database.TableByName(SelectedTable);
+  Table := TCTable(FNavigator.Selected.Data);
 
   if (Assigned(Table) and Assigned(Table.Fields) and (Table.Fields.Count > 0)) then  // Terminate in Table.Fields.GetCount erkennen und Struktur vor SELECT ermitteln, damit bei UPDATE Charset bekannt ist
   begin
@@ -14755,23 +14626,26 @@ begin
           begin
             Database := Client.DatabaseByName(SelectedDatabase);
 
-            List := TList.Create();
+            if (Database.Count < 50) then
+            begin
+              List := TList.Create();
 
-            for I := 0 to Database.Tables.Count - 1 do
-              List.Add(Database.Tables[I]);
-            if (Assigned(Database.Routines)) then
-              for I := 0 to Database.Routines.Count - 1 do
-                List.Add(Database.Routines[I]);
-            if (Assigned(Database.Events)) then
-              for I := 0 to Database.Routines.Count - 1 do
-                List.Add(Database.Routines[I]);
-            if (Assigned(Database.Triggers)) then
-              for I := 0 to Database.Triggers.Count - 1 do
-                List.Add(Database.Triggers[I]);
+              for I := 0 to Database.Tables.Count - 1 do
+                List.Add(Database.Tables[I]);
+              if (Assigned(Database.Routines)) then
+                for I := 0 to Database.Routines.Count - 1 do
+                  List.Add(Database.Routines[I]);
+              if (Assigned(Database.Events)) then
+                for I := 0 to Database.Routines.Count - 1 do
+                  List.Add(Database.Routines[I]);
+              if (Assigned(Database.Triggers)) then
+                for I := 0 to Database.Triggers.Count - 1 do
+                  List.Add(Database.Triggers[I]);
 
-            Result := Client.Update(List);
+              Result := Client.Update(List);
 
-            List.Free();
+              List.Free();
+            end;
           end;
       end;
     vBrowser:

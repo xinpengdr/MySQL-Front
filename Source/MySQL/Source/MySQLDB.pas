@@ -213,7 +213,6 @@ type
     FBeforeExecuteSQL: TNotifyEvent;
     FCharset: string;
     FCodePage: Cardinal;
-    FCompression: Boolean;
     FConnected: Boolean;
     FErrorCode: Integer;
     FErrorMessage: string;
@@ -255,7 +254,6 @@ type
     function GetErrorMessage(): string;
     function GetHandle(): MySQLConsts.MYSQL;
     function GetInfo(): string;
-    procedure SetCompression(const ACompression: Boolean);
     procedure SetDatabaseName(const ADatabaseName: string);
     procedure SetHost(const AHost: string);
     procedure SetIdentifierQuoter(const AIdentifierQuoter: Char);
@@ -373,7 +371,6 @@ type
     property AfterExecuteSQL: TNotifyEvent read FAfterExecuteSQL write FAfterExecuteSQL;
     property BeforeExecuteSQL: TNotifyEvent read FBeforeExecuteSQL write FBeforeExecuteSQL;
     property Charset: string read FCharset write SetCharset;
-    property Compression: Boolean read GetCompression write SetCompression default True;
     property DatabaseName: string read FDatabaseName write SetDatabaseName;
     property Host: string read FHost write SetHost;
     property InsertId: my_ulonglong read GetInsertId;
@@ -1707,6 +1704,8 @@ end;
 
 constructor TMySQLConnection.TSynchroThread.Create(const AConnection: TMySQLConnection);
 begin
+  Assert(Assigned(AConnection));
+
   inherited Create(False);
 
   FConnection := AConnection;
@@ -1724,10 +1723,6 @@ end;
 destructor TMySQLConnection.TSynchroThread.Destroy();
 begin
   Assert(not Assigned(DataSet));
-
-  Connection.TerminateCS.Enter();
-  Connection.TerminatedThreads.Delete(Self);
-  Connection.TerminateCS.Leave();
 
   ExecuteE.Free();
   SynchronizeE.Free();
@@ -1980,7 +1975,7 @@ end;
 
 function TMySQLConnection.GetCompression(): Boolean;
 begin
-  Result := ((LibraryType = ltHTTP) or (lstrcmpi(PChar(Host), LOCAL_HOST) <> 0)) and FCompression;
+  Result := ((LibraryType = ltHTTP) or (lstrcmpi(PChar(Host), LOCAL_HOST) <> 0));
 end;
 
 function TMySQLConnection.GetDateTime(): TDateTime;
@@ -2022,14 +2017,6 @@ begin
     Result := ''
   else
     Result := LibDecode(Lib.mysql_info(Handle));
-end;
-
-procedure TMySQLConnection.SetCompression(const ACompression: Boolean);
-begin
-  Assert(not Connected);
-
-
-  FCompression := ACompression;
 end;
 
 procedure TMySQLConnection.SetDatabaseName(const ADatabaseName: string);
@@ -2344,7 +2331,7 @@ begin
   Lib.mysql_options(SynchroThread.LibHandle, MYSQL_OPT_READ_TIMEOUT, my_char(RawByteString(IntToStr(NET_WAIT_TIMEOUT))));
   Lib.mysql_options(SynchroThread.LibHandle, MYSQL_OPT_WRITE_TIMEOUT, my_char(RawByteString(IntToStr(NET_WAIT_TIMEOUT))));
   Lib.mysql_options(SynchroThread.LibHandle, MYSQL_SET_CHARSET_NAME, my_char(RawByteString(FCharset)));
-  if (Compression) then
+  if (GetCompression()) then
     Lib.mysql_options(SynchroThread.LibHandle, MYSQL_OPT_COMPRESS, nil);
   if (LibraryType = ltHTTP) then
   begin
@@ -2361,7 +2348,7 @@ begin
     ClientFlag := ClientFlag or CLIENT_CONNECT_WITH_DB;
   if (Assigned(Lib.mysql_more_results) and Assigned(Lib.mysql_next_result)) then
     ClientFlag := ClientFlag or CLIENT_MULTI_STATEMENTS or CLIENT_MULTI_RESULTS;
-  if (Compression) then
+  if (GetCompression()) then
     ClientFlag := ClientFlag or CLIENT_COMPRESS;
 
   if (LibraryType <> ltNamedPipe) then
@@ -2611,7 +2598,12 @@ begin
     end;
   end;
 
-  if (SetNames) then
+  if (SynchroThread.SQLStmtLengths.Count = 0) then
+  begin
+    DoError(ER_EMPTY_QUERY, ER_EMPTY_QUERY_MSG);
+    Result := False;
+  end
+  else if (SetNames) then
   begin
     DoError(CR_SET_NAMES, CR_SET_NAMES_MSG);
     Result := False;
@@ -3066,7 +3058,6 @@ begin
   FBeforeExecuteSQL := nil;
   FCharset := 'utf8';
   FCodePage := CP_UTF8;
-  FCompression := True;
   FConnected := False;
   FDatabaseName := '';
   FExecutionTime := 0;

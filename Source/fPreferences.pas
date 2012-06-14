@@ -1336,8 +1336,8 @@ begin
     FLanguageId := LANG_NEUTRAL
   else
   begin
-    FLanguageId := ReadInteger('Language', 'LanguageId', LANG_NEUTRAL);
-    FActiveQueryBuilderLanguageName := ReadString('Language', 'ActiveQueryBuilderLanguage', 'English');
+    FLanguageId := ReadInteger('Global', 'LanguageId', LANG_NEUTRAL);
+    FActiveQueryBuilderLanguageName := ReadString('Global', 'ActiveQueryBuilderLanguage', 'English');
 
     Strings := TStringList.Create();
 

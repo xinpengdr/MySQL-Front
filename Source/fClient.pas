@@ -1524,7 +1524,7 @@ type
     function CollationByName(const CollationName: string): TCCollation; virtual;
     procedure CommitTransaction(); override;
     procedure FirstConnect(); overload; virtual;
-    procedure FirstConnect(const AConnectionType: Integer; const ALibraryName: string; const AHost, AUser, APassword, ADatabase: string; const APort: Integer; const ACompression, AAsynchron: Boolean); overload; virtual;
+    procedure FirstConnect(const AConnectionType: Integer; const ALibraryName: string; const AHost, AUser, APassword, ADatabase: string; const APort: Integer; const AAsynchron: Boolean); overload; virtual;
     constructor CreateConnection(); overload; virtual;
     constructor CreateConnection(const AAccount: TAAccount); overload; virtual;
     function DatabaseByName(const DatabaseName: string): TCDatabase; virtual;
@@ -11310,7 +11310,6 @@ begin
   Asynchron := Account.Connection.ASynchron;
   if (Account.Connection.Charset <> '') then
     Charset := Account.Connection.Charset;
-  Compression := Account.Connection.Compression;
   FDatabaseName := Account.GetDefaultDatabase();
   case (Account.Connection.LibraryType) of
     ltBuiltIn: LibraryName := '';
@@ -11337,11 +11336,10 @@ begin
   end;
 end;
 
-procedure TCClient.FirstConnect(const AConnectionType: Integer; const ALibraryName: string; const AHost, AUser, APassword, ADatabase: string; const APort: Integer; const ACompression, AAsynchron: Boolean);
+procedure TCClient.FirstConnect(const AConnectionType: Integer; const ALibraryName: string; const AHost, AUser, APassword, ADatabase: string; const APort: Integer; const AAsynchron: Boolean);
 begin
   Close();
 
-  Compression := ACompression;
   FDatabaseName := ADatabase;
   Host := AHost;
   HTTPAgent := Preferences.InternetAgent;

@@ -20,7 +20,6 @@ type
     FBOk: TButton;
     FCacheSize: TEdit;
     FCharset: TComboBox_Ext;
-    FCompression: TCheckBox;
     FConnectionType: TComboBox_Ext;
     FDatabase: TEdit;
     FDefaultSorting: TCheckBox;
@@ -30,7 +29,6 @@ type
     FL2CacheSize: TLabel;
     FLCacheSize: TLabel;
     FLCharset: TLabel;
-    FLCompression: TLabel;
     FLConnectionType: TLabel;
     FLDatabase: TLabel;
     FLDefaultSorting: TLabel;
@@ -226,8 +224,6 @@ begin
   GDebug.Caption := '';
   FLCacheSize.Caption := 'Cache' + ':';
   FL2CacheSize.Caption := 'MB';
-  FLCompression.Caption := Preferences.LoadStr(644) + ':';
-  FCompression.Caption := Preferences.LoadStr(645);
   FLMultiStatements.Caption := 'Multi Statements' + ':';
   FMultiStatements.Caption := 'enabled';
   FLAsynchron.Caption := 'Asynchron' + ':';
@@ -265,7 +261,7 @@ begin
       end;
 
       Client.BeginSilent();
-      Client.FirstConnect(FConnectionType.ItemIndex, LibraryName, FHost.Text, FUser.Text, FPassword.Text, '', FUDPort.Position, FCompression.Checked, True);
+      Client.FirstConnect(FConnectionType.ItemIndex, LibraryName, FHost.Text, FUser.Text, FPassword.Text, '', FUDPort.Position, True);
       if (Client.ErrorCode <> 0) then
         Accounts.OnSQLError(Client, Client.ErrorCode, Client.ErrorMessage)
       else if (Client.Connected) then
@@ -339,7 +335,7 @@ begin
       end;
 
       Client.BeginSilent();
-      Client.FirstConnect(FConnectionType.ItemIndex, LibraryName, FHost.Text, FUser.Text, FPassword.Text, '', FUDPort.Position, FCompression.Checked, False);
+      Client.FirstConnect(FConnectionType.ItemIndex, LibraryName, FHost.Text, FUser.Text, FPassword.Text, '', FUDPort.Position, False);
       if (Client.ErrorCode <> 0) then
         Accounts.OnSQLError(Client, Client.ErrorCode, Client.ErrorMessage)
       else if (Client.Connected) then
@@ -470,7 +466,6 @@ begin
 
       NewAccount.CacheSize := FUDCacheSize.Position;
       NewAccount.Connection.ASynchron := FAsynchron.Checked;
-      NewAccount.Connection.Compression := FCompression.Checked;
       NewAccount.Connection.MultiStatements := FMultiStatements.Checked;
       NewAccount.Connection.UseInformationSchema := FUseInformationSchema.Checked;
 
@@ -548,7 +543,6 @@ begin
     FDefaultSorting.Checked := True;
 
     FUDCacheSize.Position := 50;
-    FCompression.Checked := True;
     FMultiStatements.Checked := True;
     FAsynchron.Checked := True;
     FUseInformationSchema.Checked := True;
@@ -594,7 +588,6 @@ begin
     FDefaultSorting.Checked := Account.DefaultSorting;
 
     FUDCacheSize.Position := Account.CacheSize;
-    FCompression.Checked := Account.Connection.Compression;
     FMultiStatements.Checked := Account.Connection.MultiStatements;
     FAsynchron.Checked := Account.Connection.ASynchron;
     FUseInformationSchema.Checked := Account.Connection.UseInformationSchema;

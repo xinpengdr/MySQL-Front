@@ -1180,6 +1180,7 @@ const
   CR_UNSUPPORTED_PARAM_TYPE                  = 2036;
 
 const
+  ER_EMPTY_QUERY_MSG = 'Query was empty';
   ER_NET_PACKET_TOO_LARGE_MSG = 'Got a packet bigger than ''max_allowed_packet'' bytes';
   ER_WARN_TOO_FEW_RECORDS_MSG = 'Row %d doesn''t contain data for all columns';
   ER_WARN_TOO_MANY_RECORDS_MSG = 'Row %d was truncated; it contained more data than there were input columns';

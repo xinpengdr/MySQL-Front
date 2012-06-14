@@ -6,6 +6,7 @@ REM ****************************************************************************
 
 SET BuildGit=%ProgramFiles(x86)%\Git\bin\git.exe
 SET BuildFTP=ftp.exe
+SET BuildMOVEit=%ProgramFiles(x86)%\MOVEit\FTPS.exe
 
 SET BuildRootPath=%CD%\..
 SET BuildPublishPath=%BuildRootPath%\Publish
@@ -22,6 +23,8 @@ if Errorlevel 1 goto Error
 if Errorlevel 1 goto Error
 
 CD "%BuildPublishPath%"
+
+if exist "%BuildMOVEit%" SET BuildFTP=%BuildMOVEit%
 
 if exist "%BuildPublishPath%\Publish.ftp" "%BuildFTP%" -v -n -s:"%BuildPublishPath%\Publish.ftp"
 if Errorlevel 1 goto Error

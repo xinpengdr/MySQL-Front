@@ -1045,8 +1045,8 @@ begin
   miVSidebar.Caption := Preferences.LoadStr(736);
   aVNavigator.Caption := Preferences.LoadStr(10);
   aVBookmarks.Caption := Preferences.LoadStr(727);
-  aVSQLHistory.Caption := Preferences.LoadStr(807);
   aVExplorer.Caption := Preferences.LoadStr(435);
+  aVSQLHistory.Caption := Preferences.LoadStr(807);
   aVSQLLog.Caption := Preferences.LoadStr(11);
   aVDetails.Caption := Preferences.LoadStr(684) + '...';
   aVRefresh.Caption := Preferences.LoadStr(41);
@@ -1266,8 +1266,8 @@ begin
     aVSQLEditor.Checked := False;
     aVNavigator.Checked := False;
     aVBookmarks.Checked := False;
-    aVSQLHistory.Checked := False;
     aVExplorer.Checked := False;
+    aVSQLHistory.Checked := False;
     aVSQLLog.Checked := False;
     tbVRefresh.Enabled := False;
 
@@ -1285,8 +1285,8 @@ begin
     aVDiagram.Enabled := False;
     aVNavigator.Enabled := False;
     aVBookmarks.Enabled := False;
-    aVSQLHistory.Enabled := False;
     aVExplorer.Enabled := False;
+    aVSQLHistory.Enabled := False;
     aVSQLLog.Enabled := False;
     aBAdd.Enabled := False;
     aDCancel.Enabled := False;

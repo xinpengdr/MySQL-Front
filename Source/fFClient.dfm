@@ -1279,17 +1279,17 @@ object FClient: TFClient
           Grouped = True
           Style = tbsCheck
         end
-        object tbSQLHistory: TToolButton
+        object tbExplorer: TToolButton
           Left = 46
           Top = 0
-          Caption = 'tbSQLHistory'
+          Caption = 'tbExplorer'
           Grouped = True
           Style = tbsCheck
         end
-        object tbExplorer: TToolButton
+        object tbSQLHistory: TToolButton
           Left = 69
           Top = 0
-          Caption = 'tbExplorer'
+          Caption = 'tbSQLHistory'
           Grouped = True
           Style = tbsCheck
         end

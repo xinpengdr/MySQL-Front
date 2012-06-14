@@ -182,6 +182,10 @@ begin
       AwkFile.Add('  gsub("{BuildSkinsPath}", "' + StringReplace(GetEnvironmentVariable('BuildSkinsPath'), '\', '\\', [rfReplaceAll]) + '", $0)');
       AwkFile.Add('  gsub("{BuildSourcePath}", "' + StringReplace(GetEnvironmentVariable('BuildSourcePath'), '\', '\\', [rfReplaceAll]) + '", $0)');
       AwkFile.Add('  gsub("{BuildTempPath}", "' + StringReplace(GetEnvironmentVariable('BuildTempPath'), '\', '\\', [rfReplaceAll]) + '", $0)');
+      if (not FBeta.Checked) then
+        AwkFile.Add('  gsub("{BuildFTPPath}", "' + Ini.ReadString('FTP', 'Path', '') + '", $0)')
+      else
+        AwkFile.Add('  gsub("{BuildFTPPath}", "' + Ini.ReadString('FTP', 'PathBeta', '') + '", $0)');
       AwkFile.Add('  printf("%s\n", $0)');
       AwkFile.Add('}');
 
