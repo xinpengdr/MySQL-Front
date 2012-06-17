@@ -674,7 +674,7 @@ begin
           begin
             Client := GetClient(Node.Index);
             if (Assigned(Client)) then
-              if (Client.Update() and Client.Asynchron) then
+              if (not Client.Update() and Client.Asynchron) then
                 WantedNodeExpand := Node
               else
               begin
@@ -692,7 +692,7 @@ begin
           begin
             Client := GetClient(Node.Parent.Index);
             Database := Client.DatabaseByName(Node.Text);
-            if (Database.Tables.Update() and Client.Asynchron) then
+            if (not Database.Tables.Update() and Client.Asynchron) then
               WantedNodeExpand := Node
             else
             begin
@@ -751,32 +751,32 @@ var
     case (Node.ImageIndex) of
       iiServer:
         begin
-          Result := Client.Update() and Client.Asynchron;
+          Result := not Client.Update() and Client.Asynchron;
           if (not Result) then
             for I := 0 to Client.Databases.Count - 1 do
               if (not Result and not (Client.Databases[I] is TCSystemDatabase)) then
               begin
                 Database := Client.Databases[I];
-                Result := Database.Tables.Update() and Client.Asynchron;
+                Result := not Database.Tables.Update() and Client.Asynchron;
                 if (not Result) then
                 begin
                   for J := 0 to Database.Tables.Count - 1 do
                     if (Database.Tables[J] is TCBaseTable) then
                       Objects.Add(Database.Tables[J]);
-                  Result := Client.Update(Objects);
+                  Result := not Client.Update(Objects);
                 end;
               end;
         end;
       iiDatabase:
         begin
           Database := Client.DatabaseByName(Node.Text);
-          Result := Database.Tables.Update() and Client.Asynchron;
+          Result := not Database.Tables.Update() and Client.Asynchron;
           if (not Result) then
           begin
             for J := 0 to Database.Tables.Count - 1 do
               if (Database.Tables[J] is TCBaseTable) then
                 Objects.Add(Database.Tables[J]);
-            Result := Client.Update(Objects);
+            Result := not Client.Update(Objects);
           end;
         end;
       iiBaseTable:
@@ -785,7 +785,7 @@ var
           for J := 0 to Database.Tables.Count - 1 do
             if (Node.Parent.Item[J].Selected) then
               Objects.Add(Database.Tables[J]);
-          Result := Client.Update(Objects);
+          Result := not Client.Update(Objects);
         end;
       else
         Result := False;

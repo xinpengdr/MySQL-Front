@@ -1993,7 +1993,8 @@ begin
   if (Success = daSuccess) then
   begin
     NewTable := Database.BaseTableByName(Item.TableName);
-    NewTable.Update();
+    while ((Success = daSuccess) and not NewTable.Update()) do
+      DoError(DatabaseError(Database.Client), ToolsItem(Item));
 
     SetLength(Fields, NewTable.Fields.Count);
     for I := 0 to NewTable.Fields.Count - 1 do

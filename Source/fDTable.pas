@@ -908,10 +908,7 @@ procedure TDTable.FBOkCheckEnabled(Sender: TObject);
 begin
   FBOk.Enabled := PageControl.Visible
     and (FName.Text <> '')
-    and (not Assigned(Database.TableByName(FName.Text)) or (Assigned(Table) and (((Database.Client.LowerCaseTableNames = 0) and (FName.Text = Table.Name)) or ((Database.Client.LowerCaseTableNames > 0) and ((lstrcmpi(PChar(FName.Text), PChar(Table.Name)) = 0))))))
-    and True;
-
-  TSSource.TabVisible := Assigned(Table) and not Active;
+    and (not Assigned(Database.TableByName(FName.Text)) or (Assigned(Table) and (((Database.Client.LowerCaseTableNames = 0) and (FName.Text = Table.Name)) or ((Database.Client.LowerCaseTableNames > 0) and ((lstrcmpi(PChar(FName.Text), PChar(Table.Name)) = 0))))));
 end;
 
 procedure TDTable.FBOptimizeClick(Sender: TObject);
@@ -1427,7 +1424,7 @@ begin
     end
     else
     begin
-      PageControl.Visible := not Table.Update();
+      PageControl.Visible := Table.Update();
       PSQLWait.Visible := not PageControl.Visible;
 
       if (PageControl.Visible) then
@@ -1439,7 +1436,7 @@ begin
     TSTable.TabVisible := (not Assigned(Tables));
     TSTables.TabVisible := not TSTable.TabVisible;
     PageControl.ActivePage := TSTables;
-    PageControl.Visible := not Database.Client.Update(Tables);
+    PageControl.Visible := Database.Client.Update(Tables);
     PSQLWait.Visible := not PageControl.Visible;
 
     if (PageControl.Visible) then

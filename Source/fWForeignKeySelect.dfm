@@ -52,7 +52,6 @@ object WForeignKeySelect: TWForeignKeySelect
   object ParentDataSet: TMySQLDataSet
     AfterOpen = ParentDataSetAfterOpen
     AfterReceivingRecords = ParentDataSetAfterReceivingRecords
-    BeforeReceivingRecords = ParentDataSetBeforeReceivingRecords
     FilterOptions = [foNoPartialCompare]
     Left = 112
     Top = 64

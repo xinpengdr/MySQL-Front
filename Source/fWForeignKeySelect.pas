@@ -22,7 +22,6 @@ type
       Shift: TShiftState);
     procedure ParentDataSetAfterOpen(DataSet: TDataSet);
     procedure ParentDataSetAfterReceivingRecords(DataSet: TDataSet);
-    procedure ParentDataSetBeforeReceivingRecords(DataSet: TDataSet);
   private
     Client: TCClient;
     DataSets: array of TMySQLQuery;
@@ -30,7 +29,6 @@ type
     function SendSQLEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
     procedure SetForeignKey(const AForeignKey: TCForeignKey);
     procedure CMAfterReceivingDataSet(var Message: TMessage); message CM_AFTER_RECEIVING_DATASET;
-    procedure CMBeforeReceivingDataSet(var Message: TMessage); message CM_BEFORE_RECEIVING_DATASET;
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMPostShow(var Message: TMessage); message CM_POSTSHOW;
   protected
@@ -108,11 +106,6 @@ begin
 
     ParentDataSet.Locate(KeyFields, KeyValues, []);
   end;
-end;
-
-procedure TWForeignKeySelect.CMBeforeReceivingDataSet(var Message: TMessage);
-begin
-  TMySQLDataSet(Message.WParam).Open();
 end;
 
 procedure TWForeignKeySelect.CMChangePreferences(var Message: TMessage);
@@ -208,10 +201,8 @@ end;
 
 procedure TWForeignKeySelect.FormShow(Sender: TObject);
 var
-  HeaderRect: TRect;
   I: Integer;
   L: Integer;
-  T: Integer;
 begin
   if (Assigned(ChildGrid)) then
   begin
@@ -222,13 +213,6 @@ begin
       else
         Inc(L, ChildGrid.Columns[I].Width);
     Left := ChildGrid.ClientToScreen(Point(0, 0)).X - GetSystemMetrics(SM_CXEDGE) + L - 1;
-
-    GetWindowRect(ChildGrid.Header, HeaderRect);
-    if (dgRowLines in ChildGrid.Options) then
-      T := (ChildGrid.Row - ChildGrid.TopRow + 1) * (ChildGrid.DefaultRowHeight + 1)
-    else
-      T := (ChildGrid.Row - ChildGrid.TopRow + 1) * ChildGrid.DefaultRowHeight;
-    Top := ChildGrid.ClientToScreen(Point(0, 0)).Y - GetSystemMetrics(SM_CYEDGE) + HeaderRect.Bottom - HeaderRect.Top + T;
 
     FParentGrid.DefaultDrawing := not Assigned(ChildGrid.OnDrawColumnCell);
     if (not FParentGrid.DefaultDrawing) then
@@ -352,12 +336,6 @@ procedure TWForeignKeySelect.ParentDataSetAfterReceivingRecords(
   DataSet: TDataSet);
 begin
   PostMessage(Handle, CM_AFTER_RECEIVING_DATASET, WParam(DataSet), 0);
-end;
-
-procedure TWForeignKeySelect.ParentDataSetBeforeReceivingRecords(
-  DataSet: TDataSet);
-begin
-  PostMessage(Handle, CM_BEFORE_RECEIVING_DATASET, WParam(DataSet), 0);
 end;
 
 function TWForeignKeySelect.SendSQLEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;

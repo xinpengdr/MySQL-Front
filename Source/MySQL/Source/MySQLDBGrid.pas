@@ -101,6 +101,7 @@ type
     function UpdateAction(Action: TBasicAction): Boolean; override;
     procedure UpdateHeader(); virtual;
     property DefaultRowHeight;
+    property GridLineWidth;
     property InplaceEditor;
     property LeftCol;
     property Row;
@@ -313,9 +314,8 @@ begin
     begin
       S := SelText;
 
-      Len := Length(S);
-      ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, (Len + 1) * SizeOf(S[1]));
-      Move(PChar(S)^, GlobalLock(ClipboardData)^, (Len + 1) * SizeOf(S[1]));
+      ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, (Length(S) + 1) * SizeOf(Char));
+      Move(PChar(S)^, GlobalLock(ClipboardData)^, (Length(S) + 1) * SizeOf(Char));
       SetClipboardData(CF_UNICODETEXT, ClipboardData);
       GlobalUnlock(ClipboardData);
 
@@ -343,10 +343,10 @@ begin
         S := S + #13#10;
       end;
 
-      Len := Length(S);
-      ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, Len + 1);
-      WideCharToMultiByte(GetACP(), 0, PChar(S), Len, PAnsiChar(ClipboardData), Len, nil, nil);
-      PAnsiChar(ClipboardData)[Len] := #0;
+      Len := WideCharToMultiByte(GetACP(), 0, PChar(S), Length(S), nil, 0, nil, nil);
+      ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, (Len + 1));
+      WideCharToMultiByte(GetACP(), 0, PChar(S), Length(S), GlobalLock(ClipboardData), Len, nil, nil);
+      PAnsiChar(GlobalLock(ClipboardData))[Len] := #0;
       SetClipboardData(49581, ClipboardData);
       GlobalUnlock(ClipboardData);
 
@@ -367,13 +367,12 @@ begin
         S := S + #13#10;
       end;
 
-      Len := Length(S);
-      ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, Len + 1);
-      WideCharToMultiByte(GetACP(), 0, PChar(S), Len, PAnsiChar(ClipboardData), Len, nil, nil);
-      PAnsiChar(ClipboardData)[Len] := #0;
+      Len := WideCharToMultiByte(GetACP(), 0, PChar(S), Length(S), nil, 0, nil, nil);
+      ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, (Len + 1));
+      WideCharToMultiByte(GetACP(), 0, PChar(S), Length(S), GlobalLock(ClipboardData), Len, nil, nil);
+      PAnsiChar(GlobalLock(ClipboardData))[Len] := #0;
       SetClipboardData(CF_DSPTEXT, ClipboardData);
       GlobalUnlock(ClipboardData);
-
 
       DataLink.DataSet.RecNo := OldRecNo;
       DataLink.DataSet.EnableControls();
@@ -435,6 +434,7 @@ end;
 procedure TMySQLDBGrid.CreateWnd();
 var
   LVColumn: TLVColumn;
+  Style: DWORD;
 begin
   inherited;
 
@@ -448,9 +448,13 @@ begin
   SendMessage(FHeader, LVM_SETUNICODEFORMAT, WPARAM(TRUE), 0);
 
   if (FHeader > 0) then CloseHandle(FHeader);
-  FHeader := CreateWindow(WC_HEADER, nil, WS_CHILD or HDS_BUTTONS or HDS_FULLDRAG or HDS_DRAGDROP, 0, 0, ClientWidth, RowHeights[0], Handle, 0, hInstance, nil);
+  Style := WS_CHILD or HDS_BUTTONS or HDS_FULLDRAG or HDS_DRAGDROP;
+  if (not (dgColumnResize in Options) and CheckWin32Version(6)) then
+    Style := Style or HDS_NOSIZING;
+  FHeader := CreateWindow(WC_HEADER, nil, Style, 0, 0, ClientWidth, RowHeights[0], Handle, 0, hInstance, nil);
   SendMessage(FHeader, WM_SETFONT, WPARAM(Font.Handle), LPARAM(TRUE));
   SendMessage(FHeader, HDM_SETUNICODEFORMAT, WPARAM(TRUE), 0);
+  SetColumnAttributes();
   Resize();
 end;
 
@@ -508,7 +512,7 @@ end;
 
 procedure TMySQLDBGrid.DrawCell(ACol, ARow: Longint; ARect: TRect; AState: TGridDrawState);
 begin
-  if (ARow > 0) then // The header row has been replaced with the FHeader
+  if ((ARow > 0) or (FHeader = 0)) then // The header row has been replaced with the FHeader
     inherited;
 end;
 
@@ -1171,7 +1175,7 @@ begin
       else if (Action is TEditDelete) then
         TEditDelete(Action).Enabled := (SelectedRows.Count = 0) and Assigned(SelectedField) and not SelectedField.IsNull and not SelectedField.Required and SelectedField.CanModify and (not EditorMode or Assigned(InplaceEditor) and (InplaceEditor.SelText <> ''))
       else if (Action is TEditSelectAll) then
-        TEditSelectAll(Action).Enabled := (0 < DataLink.DataSet.RecordCount) and (DataLink.DataSet.RecordCount < 500)
+        TEditSelectAll(Action).Enabled := (DataLink.DataSet.RecordCount > 0)
       else
         Result := False;
   end

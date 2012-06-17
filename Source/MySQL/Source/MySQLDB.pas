@@ -8,6 +8,8 @@ uses
   MySQLConsts;
 
 const
+  CR_INTERNAL_ERROR = -1;
+  CR_ASYNCHRON = -2;
   CR_SET_NAMES  = 2300;
   CR_SERVER_OLD = 2301;
 
@@ -559,6 +561,7 @@ type
     function InternalRefreshEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean; virtual;
     procedure InternalSetToRecord(Buffer: TRecordBuffer); override;
     function IsCursorOpen(): Boolean; override;
+    procedure SetActive(Value: Boolean); override;
     procedure SetBookmarkData(Buffer: TRecordBuffer; Data: Pointer); override;
     procedure SetBookmarkFlag(Buffer: TRecordBuffer; Value: TBookmarkFlag); override;
     procedure SetFieldData(Field: TField; Buffer: Pointer); override;
@@ -590,19 +593,19 @@ type
     property LocateNext: Boolean read FLocateNext write FLocateNext;
     property SortDef: TIndexDef read FSortDef;
   published
+    property AfterReceivingRecords: TDataSetNotifyEvent read FAfterReceivingRecords write FAfterReceivingRecords;
+    property BeforeReceivingRecords: TDataSetNotifyEvent read FBeforeReceivingRecords write FBeforeReceivingRecords;
+    property CachedUpdates: Boolean read FCachedUpdates write FCachedUpdates default False;
     property AfterCancel;
     property AfterDelete;
     property AfterEdit;
     property AfterInsert;
     property AfterPost;
-    property AfterReceivingRecords: TDataSetNotifyEvent read FAfterReceivingRecords write FAfterReceivingRecords;
     property BeforeCancel;
     property BeforeDelete;
     property BeforeEdit;
     property BeforeInsert;
     property BeforePost;
-    property BeforeReceivingRecords: TDataSetNotifyEvent read FBeforeReceivingRecords write FBeforeReceivingRecords;
-    property CachedUpdates: Boolean read FCachedUpdates write FCachedUpdates default False;
     property Filter;
     property Filtered;
     property FilterOptions;
@@ -1986,8 +1989,8 @@ end;
 function TMySQLConnection.GetErrorCode: Integer;
 begin
   if (not Assigned(Lib) or not Assigned(Handle)) then
-    Result := -1
-  else if (FErrorCode >= 0) then
+    Result := CR_INTERNAL_ERROR
+  else if ((FErrorCode = CR_ASYNCHRON) and InUse()) then
     Result := FErrorCode
   else
     Result := Lib.mysql_errno(Handle);
@@ -2512,7 +2515,7 @@ var
   SQLPacketIndex: Integer;
   StmtLength: Integer;
 begin
-  FErrorCode := -1; FErrorMessage := '';
+  FErrorCode := CR_ASYNCHRON; FErrorMessage := '';
   FExecutedSQLLength := 0; FExecutedStmts := 0; FResultCount := 0;
   FRowsAffected := -1; FWarningCount := -1; FExecutionTime := 0;
 
@@ -2597,7 +2600,7 @@ begin
         end;
     end;
   end;
-  if (SynchroThread.SQLStmt > OldStmt) then
+  if (PacketComplete in [pcNo, pcExclusiveCurrentStmt]) then
     SynchroThread.SQLStmtsInPackets.Add(Pointer(SynchroThread.SQLStmt > OldStmt));
 
   if (SynchroThread.SQLStmtLengths.Count = 0) then
@@ -2669,16 +2672,22 @@ begin
         Dec(TrimmedPacketLength);
 
     LibLength := WideCharToMultiByte(CodePage, 0, PChar(@SynchroThread.SQL[SynchroThread.SQLStmtIndex]), TrimmedPacketLength, nil, 0, nil, nil);
+    if (LibLength < 0) then
+      DatabaseError(SysErrorMessage(GetLastError()));
+
     SetLength(LibSQL, LibLength);
     WideCharToMultiByte(CodePage, 0, PChar(@SynchroThread.SQL[SynchroThread.SQLStmtIndex]), TrimmedPacketLength, PAnsiChar(LibSQL), LibLength, nil, nil);
-
-    SynchroThread.Success := LibLength > 0;
 
     if (not SynchroThread.Terminated and SynchroThread.Success) then
     begin
       StartTime := Now();
       SynchroThread.Success := Lib.mysql_real_query(SynchroThread.LibHandle, my_char(LibSQL), LibLength) = 0;
       SynchroThread.Time := SynchroThread.Time + Now() - StartTime;
+
+      if (not SynchroThread.Success) then
+        FErrorCode := Lib.mysql_errno(SynchroThread.LibHandle)
+      else
+        FErrorCode := 0;
     end;
 
     if (SynchroThread.Success and not SynchroThread.Terminated) then
@@ -2967,7 +2976,7 @@ function TMySQLConnection.CharsetToCodePage(const Charset: string): Cardinal;
 var
   I: Integer;
 begin
-  Result := CP_ACP;
+  Result := GetACP();
 
   if (ServerVersion < 40101) then
   begin
@@ -3934,7 +3943,7 @@ var
   DT: TDateTime;
   S: string;
 begin
-  Result := Assigned(Data) and Assigned(Data^.LibRow^[Field.FieldNo - 1]);
+  Result := Assigned(Data) and (Field.FieldNo > 0) and Assigned(Data^.LibRow^[Field.FieldNo - 1]);
   if (Result and Assigned(Buffer)) then
     try
       if (BitField(Field)) then
@@ -4433,13 +4442,13 @@ begin
       end
       else
       begin
-        if (not (Self is TMySQLTable)) then
+        if (Self is TMySQLTable) then
+          TMySQLTable(Self).Asynchron := False
+        else if (not (Self is TMySQLDataSet) or not TMySQLDataSet(Self).CachedUpdates) then
         begin
           FDatabaseName := Connection.DatabaseName;
           FCommandText := Connection.CommandText;
-        end
-        else
-          TMySQLTable(Self).Asynchron := False;
+        end;
 
         inherited;
       end;
@@ -5293,10 +5302,15 @@ end;
 
 function TMySQLDataSet.GetCanModify(): Boolean;
 begin
-  if (not IndexDefs.Updated) then
-    UpdateIndexDefs();
+  if (CachedUpdates) then
+    Result := True
+  else
+  begin
+    if (not IndexDefs.Updated) then
+      UpdateIndexDefs();
 
-  Result := FCanModify or CachedUpdates;
+    Result := FCanModify;
+  end;
 end;
 
 function TMySQLDataSet.GetIsIndexField(Field: TField): Boolean;
@@ -5634,7 +5648,9 @@ var
 begin
   Update := PExternRecordBuffer(ActiveBuffer())^.BookmarkFlag = bfCurrent;
 
-  if (not CachedUpdates) then
+  if (CachedUpdates) then
+    Success := True
+  else
   begin
     if (Update) then
       SQL := SQLUpdate()
@@ -5653,26 +5669,26 @@ begin
     finally
       Connection.EndSilent();
     end;
+  end;
 
-    if (Success) then
-    begin
-      case (PExternRecordBuffer(ActiveBuffer())^.BookmarkFlag) of
-        bfInserted:
-          InternRecordBuffers.Insert(InternRecordBuffers.Index, PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer);
-        bfBOF,
-        bfEOF:
-          InternRecordBuffers.Index := InternRecordBuffers.Add(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer);
-      end;
-
-      if (Connection.Connected) then
-        for I := 0 to Fields.Count - 1 do
-          if ((Fields[I].AutoGenerateValue = arAutoInc) and (Fields[I].IsNull or (Fields[I].AsInteger = 0))) then
-            Fields[I].AsInteger := Connection.Lib.mysql_insert_id(Connection.Handle);
-
-      if (PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData <> PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData) then
-        FreeMem(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData);
-      PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData := PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData;
+  if (Success) then
+  begin
+    case (PExternRecordBuffer(ActiveBuffer())^.BookmarkFlag) of
+      bfInserted:
+        InternRecordBuffers.Insert(InternRecordBuffers.Index, PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer);
+      bfBOF,
+      bfEOF:
+        InternRecordBuffers.Index := InternRecordBuffers.Add(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer);
     end;
+
+    if (Connection.Connected) then
+      for I := 0 to Fields.Count - 1 do
+        if ((Fields[I].AutoGenerateValue = arAutoInc) and (Fields[I].IsNull or (Fields[I].AsInteger = 0))) then
+          Fields[I].AsInteger := Connection.Lib.mysql_insert_id(Connection.Handle);
+
+    if (PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData <> PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData) then
+      FreeMem(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData);
+    PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData := PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData;
   end;
 end;
 
@@ -5729,6 +5745,17 @@ end;
 function TMySQLDataSet.IsCursorOpen(): Boolean;
 begin
   Result := FCursorOpen;
+end;
+
+procedure TMySQLDataSet.SetActive(Value: Boolean);
+begin
+  if (CachedUpdates and not Active and Value) then
+  begin
+    InternalInitFieldDefs();
+    BindFields(True);
+  end;
+
+  inherited;
 end;
 
 procedure TMySQLDataSet.SetBookmarkData(Buffer: TRecordBuffer; Data: Pointer);

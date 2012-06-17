@@ -80,63 +80,6 @@ type
 
   TCSecurity = (seDefiner, seInvoker);
 
-  TCResultSet = class
-  type
-    TColumnSettings = record
-      Visible: array of Boolean;
-      Width: array of Integer;
-      Index: array of Integer;
-    end;
-    TMySQLDataSets = array of TMySQLDataSet;
-  private
-    FClient: TCClient;
-    FDataSets: TMySQLDataSets;
-    FSelected: TMySQLDataSet;
-    FBeforeOpen: TDataSetNotifyEvent;
-    FAfterOpen: TDataSetNotifyEvent;
-    FBeforeClose: TDataSetNotifyEvent;
-    FAfterClose: TDataSetNotifyEvent;
-    FBeforePost: TDataSetNotifyEvent;
-    FAfterPost: TDataSetNotifyEvent;
-    FBeforeCancel: TDataSetNotifyEvent;
-    FAfterCancel: TDataSetNotifyEvent;
-    FBeforeScroll: TDataSetNotifyEvent;
-    FAfterScroll: TDataSetNotifyEvent;
-    FBeforeReceivingRecords: TDataSetNotifyEvent;
-    FAfterReceivingRecords: TDataSetNotifyEvent;
-    FOnResult: TMySQLConnection.TResultEvent;
-    function GetActive(): Boolean;
-    function GetCount(): Integer;
-    function GetDataSet(AIndex: Integer): TMySQLDataSet;
-    function ResultAvailable(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
-  public
-    Columns: array of TColumnSettings;
-    procedure Cleanup(); virtual;
-    procedure Clear(); virtual;
-    constructor Create(const AClient: TCClient); virtual;
-    destructor Destroy(); override;
-    function IndexOf(const DataSet: TDataSet): Integer; virtual;
-    procedure SendSQL(const SQL: string; const OnResult: TMySQLConnection.TResultEvent = nil); virtual;
-    property Active: Boolean read GetActive;
-    property Client: TCClient read FClient;
-    property Count: Integer read GetCount;
-    property DataSets[Index: Integer]: TMySQLDataSet read GetDataSet;
-    property RawDataSets: TMySQLDataSets read FDataSets;
-    property Selected: TMySQLDataSet read FSelected write FSelected;
-    property BeforeOpen: TDataSetNotifyEvent read FBeforeOpen write FBeforeOpen;
-    property AfterOpen: TDataSetNotifyEvent read FAfterOpen write FAfterOpen;
-    property BeforeClose: TDataSetNotifyEvent read FBeforeClose write FBeforeClose;
-    property AfterClose: TDataSetNotifyEvent read FAfterClose write FAfterClose;
-    property BeforePost: TDataSetNotifyEvent read FBeforePost write FBeforePost;
-    property AfterPost: TDataSetNotifyEvent read FAfterPost write FAfterPost;
-    property BeforeCancel: TDataSetNotifyEvent read FBeforeCancel write FBeforeCancel;
-    property AfterCancel: TDataSetNotifyEvent read FAfterCancel write FAfterCancel;
-    property BeforeScroll: TDataSetNotifyEvent read FBeforeScroll write FBeforeScroll;
-    property AfterScroll: TDataSetNotifyEvent read FAfterScroll write FAfterScroll;
-    property BeforeReceivingRecords: TDataSetNotifyEvent read FBeforeReceivingRecords write FBeforeReceivingRecords;
-    property AfterReceivingRecords: TDataSetNotifyEvent read FAfterReceivingRecords write FAfterReceivingRecords;
-  end;
-
   TCItem = class(TObject)
   private
     FName: string;
@@ -497,7 +440,7 @@ type
   private
     FTable: TCBaseTable;
     function GetClient(): TCClient; inline;
-    function GetForeignKey(Index: Integer): TCForeignKey;
+    function GetForeignKey(Index: Integer): TCForeignKey; inline;
   protected
     FValid: Boolean;
     function InsertIndex(const Name: string; out Index: Integer): Boolean; override;
@@ -530,18 +473,8 @@ type
   TCTable = class(TCDBObject)
   private
     FFields: TCTableFields;
-    procedure AfterCancel(DataSet: TDataSet);
-    procedure AfterClose(DataSet: TDataSet);
-    procedure AfterOpen(DataSet: TDataSet);
-    procedure AfterScroll(DataSet: TDataSet);
-    procedure AfterPost(DataSet: TDataSet);
+    FOnResult: TMySQLConnection.TResultEvent;
     procedure AfterReceivingRecords(DataSet: TDataSet);
-    procedure BeforeCancel(DataSet: TDataSet);
-    procedure BeforeClose(DataSet: TDataSet);
-    procedure BeforeOpen(DataSet: TDataSet);
-    procedure BeforePost(DataSet: TDataSet);
-    procedure BeforeReceivingRecords(DataSet: TDataSet);
-    procedure BeforeScroll(DataSet: TDataSet);
     function GetDataSet(): TCTableDataSet;
     function GetTables(): TCTables; inline;
     function GetValidDataSet(): Boolean;
@@ -565,7 +498,7 @@ type
     function FieldByName(const FieldName: string): TCTableField; virtual;
     function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; override;
     procedure Invalidate(); override;
-    function Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean; virtual;
+    function Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer; const AOnResult: TMySQLConnection.TResultEvent): Boolean; virtual;
     procedure PushBuildEvent(); override;
     property DataSet: TCTableDataSet read GetDataSet;
     property Fields: TCTableFields read GetFields;
@@ -685,7 +618,6 @@ type
     function IndexByDataSet(const DataSet: TCTableDataSet): TCIndex; virtual;
     procedure Invalidate(); override;
     procedure InvalidateStatus(); virtual;
-    function Open(const Filter, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean; override;
     function Optimize(): Boolean; virtual;
     function PartitionByName(const PartitionName: string): TCPartition; virtual;
     procedure PushBuildEvent(); override;
@@ -796,14 +728,13 @@ type
     FCreated: TDateTime;
     FDefiner: string;
     FFunctionResult: TCField;
-    FIDEResult: TCResultSet;
     FInputDataSet: TMySQLDataSet;
     FModified: TDateTime;
     FParameters: array of TCRoutineParameter;
     FRoutineType: TRoutineType;
     FSecurity: TCSecurity;
+    FSourceParsed: Boolean;
     OldSource: string;
-    function GetIDEResult(): TCResultSet;
     function GetInputDataSet(): TMySQLDataSet;
     function GetParameter(Index: Integer): TCRoutineParameter;
     function GetParameterCount(): Integer;
@@ -813,18 +744,19 @@ type
     function SQLGetSource(): string; override;
     procedure SetSource(const ADataSet: TMySQLQuery); overload; override;
     procedure SetSource(const ASource: string); override;
+    property SourceParsed: Boolean read FSourceParsed;
   public
     procedure Assign(const Source: TCRoutine); reintroduce; virtual;
     procedure Clear(); override;
     constructor Create(const ACDBObjects: TCDBObjects; const AName: string = ''); override;
     destructor Destroy(); override;
     function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; override;
+    procedure Invalidate(); override;
     function SQLRun(): string; virtual;
     property Comment: string read FComment write FComment;
     property Created: TDateTime read FCreated;
     property Definer: string read FDefiner;
     property FunctionResult: TCField read FFunctionResult;
-    property IDEResult: TCResultSet read GetIDEResult;
     property InputDataSet: TMySQLDataSet read GetInputDataSet;
     property Modified: TDateTime read FModified;
     property Security: TCSecurity read FSecurity write FSecurity;
@@ -1035,7 +967,7 @@ type
     function TableByName(const TableName: string): TCTable; overload; virtual;
     function TriggerByName(const TriggerName: string): TCTrigger; virtual;
     function Unlock(): Boolean; virtual;
-    function Update(const Status: Boolean = True): Boolean; reintroduce; virtual;
+    function Update(const Status: Boolean = False): Boolean; reintroduce; virtual;
     function UpdateEvent(const Event, NewEvent: TCEvent): Boolean; virtual;
     function UpdateRoutine(const Routine, NewRoutine: TCRoutine): Boolean; virtual;
     function UpdateTable(const Table, NewTable: TCBaseTable): Boolean; virtual;
@@ -1434,7 +1366,7 @@ type
 
   TCClient = class(TMySQLConnection)
   type
-    TEventType = (ceItemsValid, ceItemValid, ceItemCreated, ceItemDroped, ceItemAltered, ceBeforeExecuteSQL, ceBeforeCancel, ceBeforeClose, ceBeforeOpen, ceAfterOpen, ceAfterReceivingRecords, ceBeforeReceivingRecords, ceBeforeScroll, ceAfterExecuteSQL, ceAfterScroll, ceAfterCancel, ceAfterClose, ceAfterPost, ceBeforePost, ceMonitor, ceError);
+    TEventType = (ceItemsValid, ceItemValid, ceItemCreated, ceItemDroped, ceItemAltered, ceBeforeExecuteSQL, ceAfterReceivingRecords, ceAfterExecuteSQL, ceMonitor, ceError);
     TUpdate = function (): Boolean of object;
     TEvent = class
     public
@@ -1465,9 +1397,7 @@ type
     FPerformanceSchema: TCDatabase;
     FPlugins: TCPlugins;
     FProcesses: TCProcesses;
-    FQueryBuilderResult: TCResultSet;
     FStati: TCStati;
-    FSQLEditorResult: TCResultSet;
     FSQLMonitor: TMySQLMonitor;
     FStartTime: TDateTime;
     FUser: TCUser;
@@ -1480,9 +1410,7 @@ type
     function GetCollation(): string;
     function GetDefaultCharset(): string;
     function GetLogActive(): Boolean;
-    function GetQueryBuilderResult(): TCResultSet;
     function GetSlowLogActive(): Boolean;
-    function GetSQLEditorResult(): TCResultSet;
     function GetUseInformationSchema(): Boolean;
     function GetUserRights(): TCUserRight;
     function GetValid(): Boolean;
@@ -1590,12 +1518,10 @@ type
     property PerformanceSchema: TCDatabase read FPerformanceSchema;
     property Plugins: TCPlugins read FPlugins;
     property Processes: TCProcesses read FProcesses;
-    property QueryBuilderResult: TCResultSet read GetQueryBuilderResult;
     property SlowLog: string read GetSlowLog;
     property SlowLogActive: Boolean read GetSlowLogActive;
     property StartTime: TDateTime read FStartTime;
     property Stati: TCStati read FStati;
-    property SQLEditorResult: TCResultSet read GetSQLEditorResult;
     property SQLMonitor: TMySQLMonitor read FSQLMonitor;
     property User: TCUser read FUser;
     property UserRights: TCUserRight read GetUserRights;
@@ -1769,155 +1695,13 @@ end;
 
 { TCResultSet *****************************************************************}
 
-procedure TCResultSet.Cleanup();
-var
-  I: Integer;
-  J: Integer;
-begin
-  for I := Length(FDataSets) - 1 downto 0 do
-    if (FDataSets[I].FieldCount = 0) then
-    begin
-      if (FSelected = FDataSets[I]) then
-        FSelected := nil;
-      FDataSets[I].Free();
-      for J := I to Length(FDataSets) - 2 do
-        FDataSets[J] := FDataSets[J + 1];
-      SetLength(FDataSets, Length(FDataSets) - 1);
-    end;
-end;
-
-procedure TCResultSet.Clear();
-var
-  I: Integer;
-begin
-  for I := 0 to Length(FDataSets) - 1 do
-    FDataSets[I].Free();
-  SetLength(FDataSets, 0);
-
-  SetLength(Columns, 0);
-end;
-
-constructor TCResultSet.Create(const AClient: TCClient);
-begin
-  FClient := AClient;
-
-  FBeforeOpen := nil;
-  FAfterOpen := nil;
-  FBeforeClose := nil;
-  FAfterClose := nil;
-  FBeforePost := nil;
-  FAfterPost := nil;
-  FBeforeCancel := nil;
-  FAfterCancel := nil;
-  FBeforeScroll := nil;
-  FAfterScroll := nil;
-
-  Clear();
-end;
-
-destructor TCResultSet.Destroy();
-begin
-  Clear();
-
-  inherited;
-end;
-
-function TCResultSet.GetActive(): Boolean;
-begin
-  Result := (Count > 0);
-end;
-
-function TCResultSet.GetCount(): Integer;
-var
-  I: Integer;
-begin
-  Result := 0;
-  for I := 0 to Length(FDataSets) - 1 do
-    if (FDataSets[I].FieldCount > 0) then
-      Inc(Result);
-end;
-
-function TCResultSet.GetDataSet(AIndex: Integer): TMySQLDataSet;
-var
-  I: Integer;
-  Index: Integer;
-begin
-  Result := nil;
-
-  Index := 0;
-  for I := 0 to Length(FDataSets) - 1 do
-    if (FDataSets[I].FieldCount > 0) then
-    begin
-      if (Index = AIndex) then
-        Result := FDataSets[I];
-      Inc(Index);
-    end;
-end;
-
-function TCResultSet.IndexOf(const DataSet: TDataSet): Integer;
-var
-  I: Integer;
-  Index: Integer;
-begin
-  Result := -1;
-
-  Index := 0;
-  for I := 0 to Length(FDataSets) - 1 do
-    if (FDataSets[I].FieldCount > 0) then
-    begin
-      if (FDataSets[I] = DataSet) then
-        Result := Index;
-      Inc(Index);
-    end;
-end;
-
-function TCResultSet.ResultAvailable(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
-var
-  Index: Integer;
-begin
-  if (Assigned(FOnResult)) then
-    Result := FOnResult(Connection, Data)
-  else
-    Result := False;
-
-  if (Data) then
-  begin
-    Index := Length(FDataSets);
-    SetLength(FDataSets, Index + 1);
-    FDataSets[Index] := TMySQLDataSet.Create(nil);
-    FDataSets[Index].Connection := Client;
-    FDataSets[Index].BeforeOpen := BeforeOpen;
-    FDataSets[Index].AfterOpen := AfterOpen;
-    FDataSets[Index].BeforeClose := BeforeClose;
-    FDataSets[Index].AfterClose := AfterClose;
-    FDataSets[Index].AfterScroll := AfterScroll;
-    FDataSets[Index].BeforePost := BeforePost;
-    FDataSets[Index].AfterPost := AfterPost;
-    FDataSets[Index].BeforeCancel := BeforeCancel;
-    FDataSets[Index].AfterCancel := AfterCancel;
-    FDataSets[Index].BeforeReceivingRecords := BeforeReceivingRecords;
-    FDataSets[Index].AfterReceivingRecords := AfterReceivingRecords;
-    FDataSets[Index].Tag := Integer(Self);
-
-    FDataSets[Index].Open();
-  end;
-end;
-
-procedure TCResultSet.SendSQL(const SQL: string; const OnResult: TMySQLConnection.TResultEvent = nil);
-begin
-  Clear();
-
-  FOnResult := OnResult;
-  Client.SendSQL(SQL, ResultAvailable);
-end;
-
 { TCItem **********************************************************************}
 
 procedure TCItem.Assign(const Source: TCItem);
 begin
   Assert(Assigned(Source) and (Source.ClassType = ClassType));
 
-  
+
   FName := Source.Name;
 end;
 
@@ -3531,37 +3315,9 @@ end;
 
 { TCTable *********************************************************************}
 
-procedure TCTable.AfterCancel(DataSet: TDataSet);
-begin
-  Client.ExecuteEvent(ceAfterCancel, Self);
-end;
-
-procedure TCTable.AfterClose(DataSet: TDataSet);
-begin
-  Client.ExecuteEvent(ceAfterClose, Self);
-end;
-
-procedure TCTable.AfterOpen(DataSet: TDataSet);
-begin
-  if ((DataSet is TCTableDataSet) and (DataSet.FieldCount > 0)) then
-    TCTableDataSet(DataSet).FFilterSQL := FFilterSQL;
-
-  Client.ExecuteEvent(ceAfterOpen, Self);
-end;
-
-procedure TCTable.AfterPost(DataSet: TDataSet);
-begin
-  Client.ExecuteEvent(ceAfterPost, Self);
-end;
-
 procedure TCTable.AfterReceivingRecords(DataSet: TDataSet);
 begin
   Client.ExecuteEvent(ceAfterReceivingRecords, Self);
-end;
-
-procedure TCTable.AfterScroll(DataSet: TDataSet);
-begin
-  Client.ExecuteEvent(ceAfterScroll, Self);
 end;
 
 procedure TCTable.Assign(const Source: TCTable);
@@ -3585,36 +3341,6 @@ begin
   FFields.Clear();
   for I := 0 to Source.Fields.Count - 1 do
     FFields.AddField(Source.Fields[I]);
-end;
-
-procedure TCTable.BeforeCancel(DataSet: TDataSet);
-begin
-  Client.ExecuteEvent(ceBeforeCancel, Self);
-end;
-
-procedure TCTable.BeforeClose(DataSet: TDataSet);
-begin
-  Client.ExecuteEvent(ceBeforeClose, Self);
-end;
-
-procedure TCTable.BeforeOpen(DataSet: TDataSet);
-begin
-  Client.ExecuteEvent(ceBeforeOpen, Self);
-end;
-
-procedure TCTable.BeforePost(DataSet: TDataSet);
-begin
-  Client.ExecuteEvent(ceBeforePost, Self);
-end;
-
-procedure TCTable.BeforeReceivingRecords(DataSet: TDataSet);
-begin
-  Client.ExecuteEvent(ceBeforeReceivingRecords, Self);
-end;
-
-procedure TCTable.BeforeScroll(DataSet: TDataSet);
-begin
-  Client.ExecuteEvent(ceBeforeScroll, Self);
 end;
 
 procedure TCTable.Clear();
@@ -3720,18 +3446,7 @@ begin
     FDataSet.FDatabaseName := Database.Name;
     FDataSet.TableName := Name;
 
-    FDataSet.BeforeCancel := BeforeCancel;
-    FDataSet.BeforeClose := BeforeClose;
-    FDataSet.BeforeOpen := BeforeOpen;
-    FDataSet.BeforePost := BeforePost;
-    FDataSet.BeforeReceivingRecords := BeforeReceivingRecords;
-    FDataSet.BeforeScroll := BeforeScroll;
-    FDataSet.AfterCancel := AfterCancel;
-    FDataSet.AfterClose := AfterClose;
-    FDataSet.AfterOpen := AfterOpen;
-    FDataSet.AfterPost := AfterPost;
     FDataSet.AfterReceivingRecords := AfterReceivingRecords;
-    FDataSet.AfterScroll := AfterScroll;
   end;
 
   Result := FDataSet;
@@ -3769,7 +3484,7 @@ begin
   raise EAbstractError.Create(SAbstractError);
 end;
 
-function TCTable.Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean;
+function TCTable.Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer; const AOnResult: TMySQLConnection.TResultEvent): Boolean;
 var
   CacheSize: Int64;
   I: Integer;
@@ -3798,6 +3513,7 @@ begin
   end;
 
   FFilterSQL := FilterSQL;
+  FOnResult := AOnResult;
 
   Result := False;
 
@@ -3816,7 +3532,7 @@ end;
 
 function TCTable.OpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
 begin
-  DataSet.Open();
+  FOnResult(Connection, Data);
 
   SetLength(Database.Client.CachedTables, Length(Database.Client.CachedTables) + 1);
   Database.Client.CachedTables[Length(Database.Client.CachedTables) - 1] := Self;
@@ -4516,13 +4232,6 @@ begin
   Result := Database.Client.ExecuteSQL('OPTIMIZE TABLE ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(Name) + ';');
 end;
 
-function TCBaseTable.Open(const Filter, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer): Boolean;
-begin
-  Fields.Count; // Fetch fields BEFORE open the table
-
-  Result := inherited Open(Filter, QuickSearch, ASortDef, Offset, Limit);
-end;
-
 function TCBaseTable.PartitionByName(const PartitionName: string): TCPartition;
 var
   Index: Integer;
@@ -4556,8 +4265,6 @@ var
 begin
   if (SQLCreateParse(Parse, PChar(SQL), Length(SQL), Client.ServerVersion)) then
   begin
-    FSourceParsed := True;
-
     if (not SQLParseKeyword(Parse, 'CREATE')) then
       raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 6, SQL]);
 
@@ -4583,7 +4290,7 @@ begin
     end;
 
     Index := 0;
-    while (Database.Client.IdentifierQuoted and SQLParseChar(Parse, Char(Database.Client.IdentifierQuoter), False))
+    while (Database.Client.IdentifierQuoted and SQLParseChar(Parse, Database.Client.IdentifierQuoter, False))
       or (not SQLParseChar(Parse, ')', False)
       and not SQLParseKeyword(Parse, 'PRIMARY', False)
       and not SQLParseKeyword(Parse, 'SPATIAL', False)
@@ -4991,6 +4698,8 @@ begin
     if ((FIndices.Count >= 1) and (FIndices[0].Primary)) then
       for J := 0 to FIndices.Index[0].Columns.Count - 1 do
         FIndices.Index[0].Columns.Column[J].Field.FInPrimaryIndex := True;
+
+    FSourceParsed := True;
   end;
 end;
 
@@ -5125,8 +4834,6 @@ begin
     Result := ''
   else
   begin
-    FSourceParsed := True;
-
     Result := SQL;
 
     if (not SQLParseKeyword(Parse, 'CREATE')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 22, SQL]);
@@ -5202,6 +4909,8 @@ begin
       FCheckOption := voNone;
 
     FStmt := Copy(SQL, SQLParseGetIndex(Parse), Len) + ';';
+
+    FSourceParsed := True;
   end;
 end;
 
@@ -5659,6 +5368,7 @@ begin
   FRoutineType := Source.RoutineType;
   FSecurity := Source.Security;
   OldSource := Source.OldSource;
+  FSourceParsed := Source.SourceParsed;
   FValidSource := Source.ValidSource;
 end;
 
@@ -5690,7 +5400,6 @@ begin
   inherited Create(ACDBObjects, AName);
 
   FFunctionResult := nil;
-  FIDEResult := nil;
   SetLength(FParameters, 0);
 end;
 
@@ -5707,20 +5416,10 @@ begin
     FInputDataSet.Cancel();
     FreeAndNil(FInputDataSet);
   end;
-  if (Assigned(FIDEResult)) then
-    FIDEResult.Free();
   if (Assigned(FFunctionResult)) then
     FFunctionResult.Free();
 
   inherited;
-end;
-
-function TCRoutine.GetIDEResult(): TCResultSet;
-begin
-  if (not Assigned(FIDEResult)) then
-    FIDEResult := TCResultSet.Create(Database.Client);
-
-  Result := FIDEResult;
 end;
 
 function TCRoutine.GetInputDataSet(): TMySQLDataSet;
@@ -5821,6 +5520,7 @@ begin
           else raise EDatabaseError.CreateFMT(SUnknownFieldType + '(%s)', [Parameter[I].Name, Database.Client.FieldTypeByMySQLFieldType(Parameter[I].FieldType).Caption]);
         end;
       Field.FieldName := Parameter[I].Name;
+      Field.Name := ReplaceStr(ReplaceStr(Field.FieldName, ' ', '_'), '.', '_');
       Field.DataSet := FInputDataSet;
     end;
 
@@ -5841,14 +5541,16 @@ end;
 
 function TCRoutine.GetParameter(Index: Integer): TCRoutineParameter;
 begin
-  Source; // ParseCreateRoutine
+  if (not SourceParsed and (Source <> '')) then
+    ParseCreateRoutine(Source);
 
   Result := FParameters[Index];
 end;
 
 function TCRoutine.GetParameterCount(): Integer;
 begin
-  Source; // ParseCreateRoutine
+  if (not SourceParsed and (Source <> '')) then
+    ParseCreateRoutine(Source);
 
   Result := Length(FParameters);
 end;
@@ -5902,6 +5604,13 @@ begin
 
     Result := SQL;
   end;
+end;
+
+procedure TCRoutine.Invalidate();
+begin
+  inherited;
+
+  FSourceParsed := False;
 end;
 
 procedure TCRoutine.ParseCreateRoutine(const SQL: string);
@@ -5974,6 +5683,8 @@ begin
       if (SQLParseKeyword(Parse, 'CHARSET')) then
         FFunctionResult.Charset := SQLParseValue(Parse);
     end;
+
+    FSourceParsed := True;
   end;
 end;
 
@@ -7998,7 +7709,7 @@ begin
   Result := Client.ExecuteSQL(SQL);
 end;
 
-function TCDatabase.Update(const Status: Boolean = True): Boolean;
+function TCDatabase.Update(const Status: Boolean = False): Boolean;
 var
   List: TList;
 begin
@@ -8127,7 +7838,7 @@ begin
       if (Client.DatabaseName <> Name) then
         SQL := SQLUse() + SQL;
 
-      Result := Client.SendSQL(SQL);
+      Result := Client.ExecuteSQL(SQL);
     end;
   end;
 
@@ -9942,8 +9653,13 @@ begin
 end;
 
 function TCUser.Update(): Boolean;
+var
+  List: TList;
 begin
-  Result := Client.Update();
+  List := TList.Create();
+  List.Add(Self);
+  Result := Client.Update(List);
+  List.Free();
 end;
 
 function TCUser.UpdateRight(const UserRight,  NewUserRight: TCUserRight): Boolean;
@@ -10221,8 +9937,13 @@ begin
 end;
 
 function TCHost.Update(): Boolean;
+var
+  List: TList;
 begin
-  Result := Client.Update();
+  List := TList.Create();
+  List.Add(Self);
+  Result := Client.Update(List);
+  List.Free();
 end;
 
 { TCHosts *********************************************************************}
@@ -11104,9 +10825,6 @@ begin
 
   if (Assigned(EventProcs)) then EventProcs.Free();
 
-  if (Assigned(FSQLEditorResult)) then FSQLEditorResult.Free();
-  if (Assigned(FQueryBuilderResult)) then FQueryBuilderResult.Free();
-
   if (Assigned(FUser)) then FUser.Free();
   if (Assigned(FCharsets)) then FCharsets.Free();
   if (Assigned(FCollations)) then FCollations.Free();
@@ -11478,22 +11196,6 @@ begin
     Result := inherited GetMaxAllowedPacket()
   else
     Result := FMaxAllowedPacket;
-end;
-
-function TCClient.GetQueryBuilderResult(): TCResultSet;
-begin
-  if (not Assigned(FQueryBuilderResult)) then
-    FQueryBuilderResult := TCResultSet.Create(Self);
-
-  Result := FQueryBuilderResult;
-end;
-
-function TCClient.GetSQLEditorResult(): TCResultSet;
-begin
-  if (not Assigned(FSQLEditorResult)) then
-    FSQLEditorResult := TCResultSet.Create(Self);
-
-  Result := FSQLEditorResult;
 end;
 
 function TCClient.GetSQLLog(const User: TCUser = nil): string;
@@ -12278,13 +11980,7 @@ begin
 
   Tables.Free();
 
-  if (SQL = '') then
-    Result := False
-  else
-  begin
-    SendSQL(SQL, ClientResult);
-    Result := Asynchron;
-  end;
+  Result := (SQL = '') or SendSQL(SQL, ClientResult);
 end;
 
 function TCClient.UpdateDatabase(const Database, NewDatabase: TCDatabase): Boolean;
@@ -12394,9 +12090,6 @@ begin
 
     Result := SendSQL(SQL);
   end;
-
-  if (Result) then
-    Hosts.Clear();
 end;
 
 procedure TCClient.UpdateIndexDefs(const DataSet: TMySQLQuery; const IndexDefs: TIndexDefs);

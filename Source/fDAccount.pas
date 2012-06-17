@@ -340,7 +340,7 @@ begin
         Accounts.OnSQLError(Client, Client.ErrorCode, Client.ErrorMessage)
       else if (Client.Connected) then
       begin
-        if (not Client.Charsets.Update()) then
+        if (Client.Charsets.Update()) then
           for I := 0 to Client.Charsets.Count - 1 do
             FCharset.Items.Add(Client.Charsets.Charset[I].Name);
         FCharset.ItemIndex := FCharset.Items.IndexOf(Client.Charset);

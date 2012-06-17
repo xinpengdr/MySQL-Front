@@ -715,11 +715,6 @@ begin
         Perform(CM_ACTIVATETAB, 0, LPARAM(Tabs[NewTabIndex]));
       end;
     end;
-  end
-  else if ((Msg.Message = WM_MOUSEMOVE) and Assigned(ActiveTab) and (Msg.hwnd = ActiveTab.FGrid.Header) and (Msg.wParam = 0)) then
-  begin
-    ActiveTab.FGrid.Perform(Msg.message, Msg.wParam, Msg.lParam);
-    Handled := True;
   end;
 end;
 

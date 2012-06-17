@@ -182,7 +182,7 @@ begin
     FTableChange(Event.Sender)
   else if ((Event.EventType = ceItemsValid) and (Event.Sender = Table.Client.Databases)) then
     FParentDatabaseChange(Event.Sender)
-  else if ((Event.EventType = ceItemsValid) and (Event.Sender = SelectedParentDatabase.Tables)) then
+  else if ((Event.EventType = ceItemValid) and (Event.CItem = SelectedParentTable)) then
     FParentTableChange(Event.Sender)
   else if ((Event.EventType = ceItemAltered) and (Event.CItem = Table)) then
     ModalResult := mrOk
@@ -201,7 +201,7 @@ var
   NewForeignKey: TCForeignKey;
   NewTable: TCBaseTable;
 begin
-  if (ModalResult = mrOk) then
+  if ((ModalResult = mrOk) and GBasics.Visible) then
   begin
     NewForeignKey := TCForeignKey.Create(Table.ForeignKeys);
     if (Assigned(ForeignKey)) then
@@ -436,7 +436,7 @@ begin
 
   if (not Assigned(SelectedParentDatabase)) then
     FParentTable.Cursor := crDefault
-  else if (SelectedParentDatabase.Update()) then
+  else if (not SelectedParentDatabase.Update()) then
     FParentTable.Cursor := crSQLWait
   else
   begin
@@ -459,7 +459,7 @@ begin
 
   if (not Assigned(SelectedParentTable)) then
     FParentFields.Cursor := crDefault
-  else if (SelectedParentTable.Update()) then
+  else if (not SelectedParentTable.Update()) then
     FParentFields.Cursor := crSQLWait
   else
   begin
@@ -481,7 +481,7 @@ begin
 
   if (not Assigned(Table)) then
     FFields.Cursor := crDefault
-  else if (Table.Update()) then
+  else if (not Table.Update()) then
     FFields.Cursor := crSQLWait
   else
   begin

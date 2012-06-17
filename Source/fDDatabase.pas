@@ -353,7 +353,7 @@ begin
   end
   else
   begin
-    PageControl.Visible := not Database.Update();
+    PageControl.Visible := Database.Update();
     PSQLWait.Visible := not PageControl.Visible;
 
     if (PageControl.Visible) then

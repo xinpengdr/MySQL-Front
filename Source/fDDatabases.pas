@@ -220,7 +220,7 @@ begin
       Width := Preferences.Databases.Width;
     end;
 
-    GroupBox.Visible := not Client.Databases.Update();
+    GroupBox.Visible := Client.Databases.Update();
     PSQLWait.Visible := not GroupBox.Visible;
 
     if (GroupBox.Visible) then

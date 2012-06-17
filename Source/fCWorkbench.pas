@@ -142,6 +142,7 @@ type
 
   TWTable = class(TWArea)
   private
+    FData: TCustomData;
     FFocused: Boolean;
     FForeignKeyPoints: array of TWForeignKeyPoint;
     FTable: TCBaseTable;
@@ -171,6 +172,7 @@ type
   public
     constructor Create(const ATables: TWTables); reintroduce; virtual;
     destructor Destroy(); override;
+    property Data: TCustomData read FData write FData;
     property Focused: Boolean read FFocused write SetFocused;
     property Index: Integer read GetIndex;
   published
@@ -224,6 +226,7 @@ type
   TWForeignKey = class(TWForeignKeyPoint)
   private
     FCaption: string;
+    FData: TCustomData;
     function GetForeignKeySelected(): Boolean;
     function GetIsLine(): Boolean;
     function GetPoint(Index: Integer): TWForeignKeyPoint;
@@ -241,6 +244,7 @@ type
     destructor Destroy(); override;
     property Caption: string read FCaption write SetCaption;
     property ChildTable: TWTable index 0 read GetTable write SetTable;
+    property Data: TCustomData read FData write FData;
     property ForeignKeySelected: Boolean read GetForeignKeySelected write SetForeignKeySelected;
     property IsLine: Boolean read GetIsLine;
     property ParentTable: TWTable index 1 read GetTable write SetTable;

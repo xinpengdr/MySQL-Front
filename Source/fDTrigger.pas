@@ -342,7 +342,7 @@ begin
   end
   else
   begin
-    PageControl.Visible := not Trigger.Update();
+    PageControl.Visible := Trigger.Update();
     PSQLWait.Visible := not PageControl.Visible;
 
     if (PageControl.Visible) then

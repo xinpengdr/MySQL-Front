@@ -21,10 +21,10 @@ type
 
 procedure Register();
 begin
-  RegisterComponents('MySQL-DataSet', [TMySQLConnection, TMySQLQuery, TMySQLDataSet, TMySQLTable, TMySQLMonitor, TMySQLDBGrid]);
+  RegisterComponents('MySQL', [TMySQLConnection, TMySQLQuery, TMySQLDataSet, TMySQLTable, TMySQLMonitor, TMySQLDBGrid]);
 end;
 
-{ TLibraryNameProperty *******************************************************}
+{ TLibraryNameProperty ****************************Ü***************************}
 
 procedure TLibraryNameProperty.GetValueList(List: TStrings);
 begin

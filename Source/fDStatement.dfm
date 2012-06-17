@@ -46,94 +46,6 @@ object DStatement: TDStatement
       DesignSize = (
         313
         227)
-      object GBasics: TGroupBox_Ext
-        Left = 8
-        Top = 8
-        Width = 297
-        Height = 73
-        Anchors = [akLeft, akTop, akRight]
-        Caption = 'GBasics'
-        TabOrder = 0
-        object FLExecutionTime: TLabel
-          Left = 8
-          Top = 24
-          Width = 82
-          Height = 13
-          Caption = 'FLExecutionTime'
-        end
-        object FExecutionTime: TLabel
-          Left = 128
-          Top = 24
-          Width = 76
-          Height = 13
-          Caption = 'FExecutionTime'
-        end
-        object FLDatabase: TLabel
-          Left = 8
-          Top = 48
-          Width = 58
-          Height = 13
-          Caption = 'FLDatabase'
-        end
-        object FDatabase: TLabel
-          Left = 128
-          Top = 48
-          Width = 52
-          Height = 13
-          Caption = 'FDatabase'
-        end
-      end
-      object GQuery: TGroupBox_Ext
-        Left = 8
-        Top = 88
-        Width = 297
-        Height = 97
-        Anchors = [akLeft, akTop, akRight]
-        Caption = 'GQuery'
-        TabOrder = 1
-        object FLFieldCount: TLabel
-          Left = 8
-          Top = 48
-          Width = 62
-          Height = 13
-          Caption = 'FLFieldCount'
-        end
-        object FFieldCount: TLabel
-          Left = 128
-          Top = 48
-          Width = 56
-          Height = 13
-          Caption = 'FFieldCount'
-        end
-        object FLRecordCount: TLabel
-          Left = 8
-          Top = 72
-          Width = 75
-          Height = 13
-          Caption = 'FLRecordCount'
-        end
-        object FRecordCount: TLabel
-          Left = 128
-          Top = 72
-          Width = 69
-          Height = 13
-          Caption = 'FRecordCount'
-        end
-        object FLQueryTime: TLabel
-          Left = 8
-          Top = 24
-          Width = 63
-          Height = 13
-          Caption = 'FLQueryTime'
-        end
-        object FQueryTime: TLabel
-          Left = 128
-          Top = 24
-          Width = 57
-          Height = 13
-          Caption = 'FQueryTime'
-        end
-      end
       object GStatement: TGroupBox_Ext
         Left = 8
         Top = 88
@@ -248,6 +160,66 @@ object DStatement: TDStatement
           Width = 15
           Height = 13
           Caption = 'FId'
+        end
+      end
+      object GBasics: TGroupBox_Ext
+        Left = 8
+        Top = 8
+        Width = 297
+        Height = 73
+        Anchors = [akLeft, akTop, akRight]
+        Caption = 'GBasics'
+        TabOrder = 0
+        object FLExecutionTime: TLabel
+          Left = 8
+          Top = 24
+          Width = 82
+          Height = 13
+          Caption = 'FLExecutionTime'
+        end
+        object FExecutionTime: TLabel
+          Left = 128
+          Top = 24
+          Width = 76
+          Height = 13
+          Caption = 'FExecutionTime'
+        end
+        object FLDatabase: TLabel
+          Left = 8
+          Top = 48
+          Width = 58
+          Height = 13
+          Caption = 'FLDatabase'
+        end
+        object FDatabase: TLabel
+          Left = 128
+          Top = 48
+          Width = 52
+          Height = 13
+          Caption = 'FDatabase'
+        end
+      end
+      object GQuery: TGroupBox_Ext
+        Left = 8
+        Top = 88
+        Width = 297
+        Height = 53
+        Anchors = [akLeft, akTop, akRight]
+        Caption = 'GQuery'
+        TabOrder = 1
+        object FLQueryTime: TLabel
+          Left = 8
+          Top = 24
+          Width = 63
+          Height = 13
+          Caption = 'FLQueryTime'
+        end
+        object FQueryTime: TLabel
+          Left = 128
+          Top = 24
+          Width = 57
+          Height = 13
+          Caption = 'FQueryTime'
         end
       end
     end

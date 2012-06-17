@@ -1053,6 +1053,9 @@ begin
 end;
 
 function TAAccount.GetDesktopXML(): IXMLNode;
+var
+  I: Integer;
+  Node: IXMLNode;
 begin
   if (not Assigned(FDesktopXMLDocument)) then
   begin
@@ -1067,7 +1070,17 @@ begin
     begin
       FDesktopXMLDocument := NewXMLDocument();
       FDesktopXMLDocument.Encoding := 'utf-8';
-      FDesktopXMLDocument.Node.AddChild('desktop').Attributes['version'] := '1.1';
+      FDesktopXMLDocument.Node.AddChild('desktop').Attributes['version'] := '1.2';
+    end;
+
+    if (FDesktopXMLDocument.DocumentElement.Attributes['version'] = '1.1') then
+    begin
+      Node := FDesktopXMLDocument.DocumentElement;
+      if (Assigned(Node)) then
+        for I := Node.ChildNodes.Count - 1 downto 0 do
+          if (Node.ChildNodes[I].NodeName = 'browser') then
+            Node.ChildNodes.Delete(I);
+      FDesktopXMLDocument.DocumentElement.Attributes['version'] := '1.2';
     end;
 
     FDesktopXMLDocument.Options := FDesktopXMLDocument.Options - [doAttrNull, doNodeAutoCreate];

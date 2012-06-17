@@ -490,7 +490,7 @@ begin
   end
   else
   begin
-    PageControl.Visible := not Event.Update();
+    PageControl.Visible := Event.Update();
     PSQLWait.Visible := not PageControl.Visible;
 
     if (PageControl.Visible) then

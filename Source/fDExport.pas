@@ -877,8 +877,8 @@ begin
     DBGrid.DataSource.DataSet.DisableControls();
 
   DBObjects.Sort(DBObjectsSortItem);
-  PSQLWait.Visible := Client.Update(DBObjects);
-  PageControl.Visible := not PSQLWait.Visible;
+  PageControl.Visible := Client.Update(DBObjects);
+  PSQLWait.Visible := not PageControl.Visible;
 
   FBBack.Visible := TSODBCSelect.Enabled or TSSQLOptions.Enabled or TSCSVOptions.Enabled or TSXMLOptions.Enabled or TSHTMLOptions.Enabled or TSFields.Enabled;
   FBForward.Visible := FBBack.Visible;

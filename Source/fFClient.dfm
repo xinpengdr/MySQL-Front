@@ -473,85 +473,18 @@ object FClient: TFClient
         OnMouseUp = PanelMouseUp
         OnPaint = PanelPaint
       end
-      object PResult_2: TPanel_Ext
+      object PDBGrid: TPanel_Ext
         Left = 17
         Top = 0
         Width = 450
         Height = 130
         Align = alClient
-        BevelOuter = bvNone
+        BevelInner = bvRaised
+        BevelOuter = bvLowered
+        Constraints.MinHeight = 50
         ParentBackground = False
         TabOrder = 1
-        object PGrid: TPanel_Ext
-          Left = 0
-          Top = 26
-          Width = 450
-          Height = 104
-          Align = alClient
-          BevelInner = bvRaised
-          BevelOuter = bvLowered
-          Color = clWindow
-          Constraints.MinHeight = 50
-          ParentBackground = False
-          TabOrder = 0
-          OnResize = PGridResize
-          object FGrid: TMySQLDBGrid
-            Left = 2
-            Top = 2
-            Width = 446
-            Height = 100
-            HelpContext = 1036
-            Align = alClient
-            BorderStyle = bsNone
-            Constraints.MinHeight = 30
-            DataSource = FGridDataSource
-            DefaultDrawing = False
-            Font.Charset = DEFAULT_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -11
-            Font.Name = 'Tahoma'
-            Font.Style = []
-            Options = [dgTitles, dgColumnResize, dgColLines, dgRowLines, dgTabs, dgAlwaysShowSelection, dgConfirmDelete, dgMultiSelect, dgTitleClick, dgTitleHotTrack]
-            ParentFont = False
-            PopupMenu = MGrid
-            TabOrder = 0
-            TitleFont.Charset = DEFAULT_CHARSET
-            TitleFont.Color = clWindowText
-            TitleFont.Height = -11
-            TitleFont.Name = 'Tahoma'
-            TitleFont.Style = []
-            OnCellClick = FGridCellClick
-            OnColEnter = DBGridColEnter
-            OnColExit = DBGridColExit
-            OnColumnMoved = FGridColumnMoved
-            OnDrawColumnCell = DBGridDrawColumnCell
-            OnDblClick = FGridDblClick
-            OnEditButtonClick = FGridEditButtonClick
-            OnEnter = DBGridEnter
-            OnExit = DBGridExit
-            OnKeyDown = FGridKeyDown
-            OnMouseMove = DBGridMouseMove
-            OnTitleClick = FGridTitleClick
-          end
-        end
-        object TCResult: TTabControl
-          Left = 0
-          Top = 0
-          Width = 450
-          Height = 26
-          Align = alTop
-          ParentShowHint = False
-          ShowHint = True
-          TabHeight = 23
-          TabOrder = 1
-          Tabs.Strings = (
-            'Query 1'
-            'Query 2')
-          TabIndex = 0
-          Visible = False
-          OnChange = TCResultChange
-          OnChanging = TCResultChanging
-        end
+        OnResize = PGridResize
       end
     end
     object PBuilder: TPanel_Ext
@@ -620,7 +553,7 @@ object FClient: TFClient
           Gutter.LeftOffset = 2
           Gutter.ShowLineNumbers = True
           MaxScrollWidth = 65535
-          Options = [eoAutoIndent, eoDragDropEditing, eoGroupUndo, eoHideShowScrollbars, eoScrollHintFollows, eoScrollPastEol, eoShowScrollHint, eoSmartTabDelete, eoTabIndent, eoTabsToSpaces]
+          Options = [eoAutoIndent, eoDragDropEditing, eoGroupUndo, eoHideShowScrollbars, eoScrollPastEol, eoShowScrollHint, eoSmartTabDelete, eoTabIndent, eoTabsToSpaces]
           ScrollHintFormat = shfTopToBottom
           SearchEngine = FSQLEditorSearch
           WantTabs = True
@@ -689,11 +622,7 @@ object FClient: TFClient
         FieldsListOptions.TypeColumnOptions.FontColor = clGrayText
         FieldsListOptions.DescriptionColumnOptions.FontColor = clGrayText
         Align = alClient
-        Color = clBtnFace
         Constraints.MinHeight = 96
-        Ctl3D = True
-        ParentColor = False
-        ParentCtl3D = False
         TabOrder = 1
         OnDragDrop = FBuilderDragDrop
         OnDragOver = FBuilderDragOver
@@ -887,11 +816,12 @@ object FClient: TFClient
         HelpContext = 1122
         Align = alClient
         BorderStyle = bsNone
-        Ctl3D = True
+        Color = clBtnFace
         DataSource = PObjectIDEGridDataSource
         DefaultDrawing = False
-        Options = [dgTitles, dgColLines, dgRowLines, dgTabs, dgAlwaysShowSelection, dgConfirmDelete]
-        ParentCtl3D = False
+        Options = [dgEditing, dgTitles, dgColumnResize, dgColLines, dgRowLines, dgTabs, dgConfirmDelete]
+        ParentShowHint = False
+        ShowHint = False
         TabOrder = 1
         TitleFont.Charset = DEFAULT_CHARSET
         TitleFont.Color = clWindowText
@@ -914,9 +844,10 @@ object FClient: TFClient
         BevelOuter = bvNone
         ParentBackground = False
         TabOrder = 2
+        Visible = False
         object BINSERT: TButton
-          Left = 142
-          Top = 88
+          Left = 8
+          Top = 8
           Width = 89
           Height = 25
           Caption = 'INSERT'
@@ -1562,13 +1493,11 @@ object FClient: TFClient
       Category = 'Database'
       Caption = 'aDInsertRecord'
       ImageIndex = 4
-      DataSource = FGridDataSource
     end
     object aDDeleteRecord: TDataSetDelete
       Category = 'Database'
       Caption = 'aDDeleteRecord'
       ImageIndex = 5
-      DataSource = FGridDataSource
     end
     object aDNext: TAction
       Category = 'Database'
@@ -1838,7 +1767,7 @@ object FClient: TFClient
     end
   end
   object FGridDataSource: TDataSource
-    OnDataChange = FGridDataSourceDataChange
+    OnDataChange = DBGridDataSourceDataChange
     Left = 136
     Top = 472
   end
@@ -1881,7 +1810,7 @@ object FClient: TFClient
     end
     object gmECopyToFile: TMenuItem
       Caption = 'aCopyToFile'
-      OnClick = FGridCopyToExecute
+      OnClick = DBGridCopyToExecute
     end
     object gmEPasteFromFile: TMenuItem
       Caption = 'aPasteFromFile'
@@ -2236,7 +2165,7 @@ object FClient: TFClient
     Top = 120
   end
   object SQLBuilder: TacSQLBuilderPlainText
-    OnSQLUpdated = SQLBuilderSQLUpdated
+    OnSQLUpdated = FBuilderSQLUpdated
     QueryBuilder = FBuilder
     KeywordFormat = akfUpperCase
     QuoteAllIdentifiers = True
