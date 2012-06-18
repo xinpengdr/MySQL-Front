@@ -223,8 +223,7 @@ begin
     Username := Username + '@' + Trim(FHost.Text);
 
   FBOk.Enabled := (not Assigned(Client.UserByName(Username)) or (lstrcmpi(PChar(Username), PChar(NewUser.Name)) = 0))
-    and (FRights.Items.Count > 0)
-    and True;
+    and (FRights.Items.Count > 0);
 
   TSSource.TabVisible := False;
 end;

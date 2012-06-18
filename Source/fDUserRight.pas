@@ -208,8 +208,7 @@ begin
     or (FTable.Checked and (Trim(FTables.Text) <> ''))
     or (FField.Checked and (Trim(FFields.Text) <> ''))
     or (FProcedure.Checked and (Trim(FProcedures.Text) <> ''))
-    or (FFunction.Checked and (Trim(FFunctions.Text) <> '')))
-    and True;
+    or (FFunction.Checked and (Trim(FFunctions.Text) <> '')));
 
   for I := 0 to User.RightCount - 1 do
     if (not Assigned(UserRight)

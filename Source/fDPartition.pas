@@ -88,8 +88,7 @@ end;
 procedure TDPartition.FBOkCheckEnabled(Sender: TObject);
 begin
   FBOk.Enabled := (FExpression.Text <> '')
-    and (FName.Text <> '') and (not Assigned(Table.PartitionByName(FName.Text)) or Assigned(Partition) and (lstrcmpi(PChar(FName.Text), PChar(Partition.Name)) = 0))
-    and True;
+    and (FName.Text <> '') and (not Assigned(Table.PartitionByName(FName.Text)) or Assigned(Partition) and (lstrcmpi(PChar(FName.Text), PChar(Partition.Name)) = 0));
 end;
 
 procedure TDPartition.FormCloseQuery(Sender: TObject;

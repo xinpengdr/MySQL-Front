@@ -145,8 +145,7 @@ procedure TDForeignKey.FBOkCheckEnabled(Sender: TObject);
 var
   I: Integer;
 begin
-  FBOk.Enabled := (FFields.SelCount > 0) and (FParentTable.Text <> '') and (FParentFields.SelCount > 0)
-    and True;
+  FBOk.Enabled := (FFields.SelCount > 0) and (FParentTable.Text <> '') and (FParentFields.SelCount > 0);
   for I := 0 to Table.ForeignKeys.Count - 1 do
     if (lstrcmpi(PChar(FName.Text), PChar(Table.ForeignKeys[I].Name)) = 0) and (FName.Text <> '') and (not Assigned(ForeignKey) or (lstrcmpi(PChar(FName.Text), PChar(ForeignKey.Name)) = 0)) then
       FBOk.Enabled := False;

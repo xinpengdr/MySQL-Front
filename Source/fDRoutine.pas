@@ -248,25 +248,29 @@ var
 begin
   if ((ModalResult = mrOk) and PageControl.Visible) then
   begin
-    NewRoutine := TCRoutine.Create(Database.Routines);
-    if (Assigned(Routine)) then
-      NewRoutine.Assign(Routine);
+    if (Assigned(Routine) and (Trim(FSource.Text) = Trim(Routine.Source) + #13#10)) then
+    begin
+      NewRoutine := TCRoutine.Create(Database.Routines);
+      if (Assigned(Routine)) then
+        NewRoutine.Assign(Routine);
 
-    NewRoutine.Name := Trim(FName.Text);
-    if (FSecurityDefiner.Checked) then
-      NewRoutine.Security := seDefiner
-    else if (FSecurityInvoker.Checked) then
-      NewRoutine.Security := seInvoker;
-    if (not Assigned(Routine) or (Trim(FComment.Text) <> SQLUnwrapStmt(Routine.Comment))) then
-      NewRoutine.Comment := Trim(FComment.Text);
-    NewRoutine.Source := Trim(FSource.Text);
+      NewRoutine.Name := Trim(FName.Text);
+      if (FSecurityDefiner.Checked) then
+        NewRoutine.Security := seDefiner
+      else if (FSecurityInvoker.Checked) then
+        NewRoutine.Security := seInvoker;
+      if (not Assigned(Routine) or (Trim(FComment.Text) <> SQLUnwrapStmt(Routine.Comment))) then
+        NewRoutine.Comment := Trim(FComment.Text);
 
-    if (not Assigned(Routine)) then
-      CanClose := Database.AddRoutine(NewRoutine)
-    else
       CanClose := Database.UpdateRoutine(Routine, NewRoutine);
 
-    NewRoutine.Free();
+      NewRoutine.Free();
+    end
+    else if (not Assigned(Routine)) then
+      CanClose := Database.AddRoutine(Trim(FSource.Text))
+    else
+      CanClose := Database.UpdateRoutine(Routine, Trim(FSource.Text));
+
 
     PageControl.Visible := CanClose or not Database.Client.Asynchron;
     PSQLWait.Visible := not PageControl.Visible;

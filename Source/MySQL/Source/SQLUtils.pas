@@ -1399,6 +1399,8 @@ begin
       JE RenameL                       // Yes!
       CALL CompareKeyword              // 'RENAME'?
       JNE RenameC                      // No!
+      CALL Trim                        // Empty characters in SQL?
+      JECXZ Finish                     // End of SQL!
       MOV BYTE PTR [EBX + 0],dtAlterRename
       PUSH ECX
       MOV ECX,ESI
@@ -1802,9 +1804,11 @@ function SQLSingleStmt(const SQL: string): Boolean;
 var
   CompleteStmt: Boolean;
   Len: Integer;
+  LocalSQL: string;
 begin
-  Len := SQLStmtLength(SQL, 1, @CompleteStmt);
-  Result := (0 < Len) and (not CompleteStmt or (SQLStmtLength(SQL, Len + 1) = 0));
+  LocalSQL := SysUtils.Trim(SQL);
+  Len := SQLStmtLength(LocalSQL, 1, @CompleteStmt);
+  Result := (0 < Len) and (not CompleteStmt or (Len >= Length(LocalSQL)));
 end;
 
 procedure SQLSplitValues(const Text: string; out Values: TSQLStrings);
@@ -2003,7 +2007,7 @@ begin
       CMP CompleteStmt,0               // Assigned(CompleteStmt)?
       JE StringL                       // No!
       MOV EAX,[CompleteStmt]
-      MOV BYTE PTR [EAX],False                  // Uncomplete Statement!
+      MOV BYTE PTR [EAX],False         // Uncomplete Statement!
 
 
     // -------------------

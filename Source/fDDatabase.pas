@@ -104,7 +104,8 @@ begin
   PageControl.Visible := True;
   PSQLWait.Visible := not PageControl.Visible;
 
-  ActiveControl := FName;
+  if (FDefaultCharset.Visible) then
+    ActiveControl := FDefaultCharset;
 end;
 
 procedure TDDatabase.CMChangePreferences(var Message: TMessage);
@@ -165,8 +166,7 @@ end;
 procedure TDDatabase.FBOkCheckEnabled(Sender: TObject);
 begin
   FBOk.Enabled := (FName.Text <> '')
-    and (not Assigned(Client.DatabaseByName(FName.Text)) or (Assigned(Database) and (((Client.LowerCaseTableNames = 0) and (FName.Text = Database.Name)) or ((Client.LowerCaseTableNames > 0) and ((lstrcmpi(PChar(FName.Text), PChar(Database.Name)) = 0))))))
-    and True;
+    and (not Assigned(Client.DatabaseByName(FName.Text)) or (Assigned(Database) and (((Client.LowerCaseTableNames = 0) and (FName.Text = Database.Name)) or ((Client.LowerCaseTableNames > 0) and ((lstrcmpi(PChar(FName.Text), PChar(Database.Name)) = 0))))));
 end;
 
 procedure TDDatabase.FCollationChange(Sender: TObject);

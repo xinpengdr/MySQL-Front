@@ -118,11 +118,6 @@ type
     gmFExportText: TMenuItem;
     gmFExportXML: TMenuItem;
     gmFilter: TMenuItem;
-    hmECopy: TMenuItem;
-    hmECut: TMenuItem;
-    hmEDelete: TMenuItem;
-    hmEPaste: TMenuItem;
-    hmESelectAll: TMenuItem;
     mbBAdd: TMenuItem;
     mbBDelete: TMenuItem;
     mbBEdit: TMenuItem;
@@ -149,7 +144,6 @@ type
     mfProperties: TMenuItem;
     MGrid: TPopupMenu;
     MGridHeader: TPopupMenu;
-    MHexEditor: TPopupMenu;
     miHCollapse: TMenuItem;
     miHCopy: TMenuItem;
     miHExpand: TMenuItem;
@@ -470,7 +464,6 @@ type
     procedure DataSetAfterScroll(DataSet: TDataSet);
     procedure DataSetBeforeCancel(DataSet: TDataSet);
     procedure DataSetBeforePost(DataSet: TDataSet);
-    procedure DBGridCellClick(Column: TColumn);
     procedure DBGridColEnter(Sender: TObject);
     procedure DBGridColExit(Sender: TObject);
     procedure DBGridColumnMoved(Sender: TObject; FromIndex: Integer;
@@ -482,7 +475,6 @@ type
       DataCol: Integer; Column: TColumn; State: TGridDrawState);
     procedure DBGridEditButtonClick(Sender: TObject);
     procedure DBGridEditExecute(Sender: TObject);
-    procedure DBGridEmptyClick(Sender: TObject);
     procedure DBGridEmptyExecute(Sender: TObject);
     procedure DBGridEnter(Sender: TObject);
     procedure DBGridExit(Sender: TObject);
@@ -2658,7 +2650,7 @@ begin
       ((View = vEditor)
       or ((View  = vBuilder) and FBuilder.Visible)
       or ((View = vIDE) and SQLSingleStmt(SQL) and (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent]))) and not Empty;
-    MainAction('aDRunSelection').Enabled := (((ActiveSynMemo = FSQLEditorSynMemo) and not Empty) or Assigned(ActiveSynMemo) and (ActiveSynMemo.SelText <> '')) and True;
+    MainAction('aDRunSelection').Enabled := (((ActiveSynMemo = FSQLEditorSynMemo) and not Empty) or Assigned(ActiveSynMemo) and (ActiveSynMemo.SelText <> ''));
     MainAction('aDPostObject').Enabled := (View = vIDE) and Assigned(ActiveSynMemo) and ActiveSynMemo.Modified and SQLSingleStmt(SQL)
       and ((SelectedImageIndex in [iiView]) and SQLCreateParse(Parse, PChar(SQL), Length(SQL),Client.ServerVersion) and (SQLParseKeyword(Parse, 'SELECT'))
         or (SelectedImageIndex in [iiProcedure, iiFunction]) and SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), Client.ServerVersion) and (DDLStmt.DefinitionType = dtCreate) and (DDLStmt.ObjectType in [otProcedure, otFunction])
@@ -4574,9 +4566,10 @@ end;
 procedure TFClient.ClientUpdate(const Event: TCClient.TEvent);
 var
   Control: TWinControl;
+  I: Integer;
   TempActiveControl: TWinControl;
   WTable: TWTable;
-  I: Integer;
+  Nils: Integer;
 begin
   LeftMousePressed := False;
 
@@ -4618,7 +4611,7 @@ begin
         ListViewUpdate(Event, VariablesListView);
     end;
 
-    if (Event.EventType = ceItemValid) then
+    if (Event.EventType in [ceItemValid]) then
       if ((Event.CItem is TCView) and Assigned(Desktop(TCView(Event.CItem)).SynMemo)) then
         Desktop(TCView(Event.CItem)).SynMemo.Text := Trim(SQLWrapStmt(TCView(Event.CItem).Stmt, ['from', 'where', 'group by', 'having', 'order by', 'limit', 'procedure'], 0)) + #13#10
       else if ((Event.CItem is TCRoutine) and Assigned(Desktop(TCRoutine(Event.CItem)).SynMemo)) then
@@ -4626,6 +4619,12 @@ begin
         Desktop(TCRoutine(Event.CItem)).SynMemo.Text := TCRoutine(Event.CItem).Source + #13#10;
         PContentChange(nil);
       end;
+
+    if ((Event.EventType = ceItemAltered) and (Event.CItem is TCTable)
+      and Assigned(Desktop(TCTable(Event.CItem)).DBGrid)
+      and Wanted.Nothing) then
+      Nils := 1;
+
 
     if (Assigned(ActiveWorkbench)) then
       ActiveWorkbench.Refresh();
@@ -4893,7 +4892,6 @@ end;
 procedure TFClient.CMCloseTabQuery(var Message: TMessage);
 var
   CanClose: Boolean;
-  Database: TCDatabase;
   I: Integer;
   Msg: string;
   ServerNode: TTreeNode;
@@ -4922,10 +4920,7 @@ begin
   if (Assigned(ServerNode)) then
     for I := 0 to ServerNode.Count - 1 do
       if (CanClose and (ServerNode.Item[I].ImageIndex = iiDatabase)) then
-      begin
-        Database := Client.DatabaseByName(ServerNode.Item[I].Text);
-        Desktop(Database).CloseQuery(nil, CanClose);
-      end;
+        Desktop(TCDatabase(ServerNode.Item[I].Data)).CloseQuery(nil, CanClose);
 
   if (not CanClose) then
     Message.Result := 0
@@ -5599,12 +5594,6 @@ begin
   tmEDelete.Action := MainAction('aEDelete');
   tmESelectAll.Action := MainAction('aESelectAll');
 
-  hmECut.Action := MainAction('aECut');
-  hmECopy.Action := MainAction('aECopy');
-  hmEPaste.Action := MainAction('aEPaste');
-  hmEDelete.Action := MainAction('aEDelete');
-  hmESelectAll.Action := MainAction('aESelectAll');
-
   smECopy.Action := MainAction('aECopy');
   smECopyToFile.Action := MainAction('aECopyToFile');
   smESelectAll.Action := MainAction('aESelectAll');
@@ -5792,7 +5781,6 @@ begin
   Result.TabOrder := 0;
   Result.TitleFont.Handle := Result.Font.Handle;
   Result.OnCanEditShow := Client.GridCanEditShow;
-  Result.OnCellClick := DBGridCellClick;
   Result.OnColEnter := DBGridColEnter;
   Result.OnColExit := DBGridColExit;
   Result.OnColumnMoved := DBGridColumnMoved;
@@ -6090,16 +6078,22 @@ begin
 end;
 
 procedure TFClient.DataSetAfterScroll(DataSet: TDataSet);
+var
+  InputDataSet: Boolean;
 begin
   if (not DataSet.ControlsDisabled) then
   begin
-    if (((Window.ActiveControl = ActiveDBGrid) or (Window.ActiveControl = FText) or (Window.ActiveControl = FRTF) or (Window.ActiveControl = FHexEditor)) and (TMySQLQuery(DataSet).FieldCount > 0)) then
-      DBGridColEnter(ActiveDBGrid);
+    InputDataSet := (DataSet is TMySQLDataSet) and (TMySQLDataSet(DataSet).CachedUpdates);
 
-    aDPrev.Enabled := not DataSet.Bof;
-    aDNext.Enabled := not DataSet.Eof;
-    MainAction('aDInsertRecord').Enabled := aDInsertRecord.Enabled and (DataSet.State in [dsBrowse, dsEdit]) and (DataSet.FieldCount > 0) and Assigned(ActiveDBGrid) and (ActiveDBGrid.SelectedRows.Count < 1);
-    MainAction('aDDeleteRecord').Enabled := aDDeleteRecord.Enabled and (DataSet.State in [dsBrowse, dsEdit]) and not DataSet.IsEmpty();
+    if (((Window.ActiveControl = ActiveDBGrid) or (Window.ActiveControl = FText) or (Window.ActiveControl = FRTF) or (Window.ActiveControl = FHexEditor)) and (TMySQLQuery(DataSet).FieldCount > 0)) then
+      DBGridColEnter(ActiveDBGrid)
+    else if (FObjectIDEGrid.DataSource.DataSet = DataSet) then
+      DBGridColEnter(FObjectIDEGrid);
+
+    aDPrev.Enabled := not DataSet.Bof and not InputDataSet;
+    aDNext.Enabled := not DataSet.Eof and not InputDataSet;
+    MainAction('aDInsertRecord').Enabled := aDInsertRecord.Enabled and (DataSet.State in [dsBrowse, dsEdit]) and (DataSet.FieldCount > 0) and Assigned(ActiveDBGrid) and (ActiveDBGrid.SelectedRows.Count < 1) and not InputDataSet;
+    MainAction('aDDeleteRecord').Enabled := aDDeleteRecord.Enabled and (DataSet.State in [dsBrowse, dsEdit]) and not DataSet.IsEmpty() and not InputDataSet;
 
     StatusBarRefresh();
 //    PostMessage(Handle, CM_POSTSCROLL, 0, 0);
@@ -6120,11 +6114,6 @@ procedure TFClient.DataSetBeforePost(DataSet: TDataSet);
 begin
   if (PBlob.Visible and aVBlobText.Checked) then
     FTextExit(DataSetPost);
-end;
-
-procedure TFClient.DBGridCellClick(Column: TColumn);
-begin
-  StatusBarRefresh();
 end;
 
 procedure TFClient.DBGridColEnter(Sender: TObject);
@@ -6193,8 +6182,8 @@ begin
     MainAction('aECopyToFile').Enabled := (DBGrid.SelectedField.DataType in [ftWideMemo, ftBlob]) and (not DBGrid.SelectedField.IsNull) and (DBGrid.SelectedRows.Count <= 1);
     MainAction('aEPasteFromFile').Enabled := (DBGrid.SelectedField.DataType in [ftWideMemo, ftBlob]) and not DBGrid.SelectedField.ReadOnly and (DBGrid.SelectedRows.Count <= 1);
     MainAction('aDCreateField').Enabled := Assigned(DBGrid.SelectedField) and (View = vBrowser);
-    MainAction('aDEditRecord').Enabled := Assigned(DBGrid.SelectedField);
-    MainAction('aDEmpty').Enabled := Assigned(DBGrid.DataSource.DataSet) and DBGrid.DataSource.DataSet.CanModify and Assigned(DBGrid.SelectedField) and not DBGrid.SelectedField.IsNull and not DBGrid.SelectedField.Required and (DBGrid.SelectedRows.Count <= 1) and True;
+    MainAction('aDEditRecord').Enabled := Assigned(DBGrid.SelectedField) and (View <> vIDE);
+    MainAction('aDEmpty').Enabled := Assigned(DBGrid.DataSource.DataSet) and DBGrid.DataSource.DataSet.CanModify and Assigned(DBGrid.SelectedField) and not DBGrid.SelectedField.IsNull and not DBGrid.SelectedField.Required and (DBGrid.SelectedRows.Count <= 1);
   end;
 
   StatusBarRefresh();
@@ -6535,16 +6524,6 @@ begin
   DBGridDblClick(Sender);
 end;
 
-procedure TFClient.DBGridEmptyClick(Sender: TObject);
-begin
-  Wanted.Clear();
-
-  ActiveDBGrid.DataSource.DataSet.Edit();
-  ActiveDBGrid.SelectedField.Clear();
-
-  DBGridColEnter(ActiveDBGrid);
-end;
-
 procedure TFClient.DBGridEmptyExecute(Sender: TObject);
 begin
   Wanted.Clear();
@@ -6736,20 +6715,22 @@ procedure TFClient.DBGridMouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
 var
   GridCoord: TGridCoord;
+  DBGrid: TMySQLDBGrid;
 begin
   inherited;
 
-  if (Assigned(ActiveDBGrid)) then
+  if (Sender is TMySQLDBGrid) then
   begin
-    if (not (ssLeft in Shift) and ActiveDBGrid.Dragging()) then
-      ActiveDBGrid.EndDrag(False);
+    DBGrid := TMySQLDBGrid(Sender);
 
-    GridCoord := ActiveDBGrid.MouseCoord(X, Y);
+    if (not (ssLeft in Shift) and DBGrid.Dragging()) then
+      DBGrid.EndDrag(False);
 
+    GridCoord := DBGrid.MouseCoord(X, Y);
     if ((GridCoord.X >= 0) and (GridCoord.Y = 0)) then
-      ActiveDBGrid.PopupMenu := MGridHeader
+      DBGrid.PopupMenu := MGridHeader
     else
-      ActiveDBGrid.PopupMenu := MGrid;
+      DBGrid.PopupMenu := MGrid;
   end;
 end;
 
@@ -8402,8 +8383,8 @@ begin
   MainAction('aFExportHTML').Enabled := Assigned(Node) and (Node.ImageIndex in [iiServer, iiDatabase, iiBaseTable, iiView]);
   MainAction('aFPrint').Enabled := Assigned(Node) and ((View = vDiagram) or (Node.ImageIndex in [iiServer, iiDatabase, iiBaseTable, iiView]));
   MainAction('aECopy').Enabled := Assigned(Node) and (Node.ImageIndex in [iiDatabase, iiSystemDatabase, iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction, iiEvent, iiTrigger, iiField, iiSystemViewField, iiViewField, iiHost, iiUser]);
-  MainAction('aEPaste').Enabled := Assigned(Node) and ((Node.ImageIndex = iiServer) and Clipboard.HasFormat(CF_MYSQLSERVER) or (Node.ImageIndex = iiDatabase) and Clipboard.HasFormat(CF_MYSQLDATABASE) or (Node.ImageIndex = iiBaseTable) and Clipboard.HasFormat(CF_MYSQLTABLE) or (Node.ImageIndex = iiHosts) and Clipboard.HasFormat(CF_MYSQLHOSTS) or (Node.ImageIndex = iiUsers) and Clipboard.HasFormat(CF_MYSQLUSERS)) and True;
-  MainAction('aERename').Enabled := Assigned(Node) and ((Node.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013) or (Node.ImageIndex in [iiBaseTable, iiView, iiEvent, iiTrigger, iiField])) and True;
+  MainAction('aEPaste').Enabled := Assigned(Node) and ((Node.ImageIndex = iiServer) and Clipboard.HasFormat(CF_MYSQLSERVER) or (Node.ImageIndex = iiDatabase) and Clipboard.HasFormat(CF_MYSQLDATABASE) or (Node.ImageIndex = iiBaseTable) and Clipboard.HasFormat(CF_MYSQLTABLE) or (Node.ImageIndex = iiHosts) and Clipboard.HasFormat(CF_MYSQLHOSTS) or (Node.ImageIndex = iiUsers) and Clipboard.HasFormat(CF_MYSQLUSERS));
+  MainAction('aERename').Enabled := Assigned(Node) and ((Node.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013) or (Node.ImageIndex in [iiBaseTable, iiView, iiEvent, iiTrigger, iiField]));
   MainAction('aDCreateDatabase').Enabled := Assigned(Node) and (Node.ImageIndex in [iiServer]) and (not Assigned(Client.UserRights) or Client.UserRights.RCreate);
   MainAction('aDCreateTable').Enabled := Assigned(Node) and (Node.ImageIndex = iiDatabase);
   MainAction('aDCreateView').Enabled := Assigned(Node) and (Node.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50001);
@@ -8416,15 +8397,15 @@ begin
   MainAction('aDCreateForeignKey').Enabled := Assigned(Node) and (Node.ImageIndex in [iiBaseTable]) and Assigned(Client.DatabaseByName(Node.Parent.Text).BaseTableByName(Node.Text)) and Assigned(Client.DatabaseByName(Node.Parent.Text).BaseTableByName(Node.Text).Engine) and Client.DatabaseByName(Node.Parent.Text).BaseTableByName(Node.Text).Engine.ForeignKeyAllowed;
   MainAction('aDCreateHost').Enabled := Assigned(Node) and (Node.ImageIndex = iiHosts);
   MainAction('aDCreateUser').Enabled := Assigned(Node) and (Node.ImageIndex = iiUsers);
-  MainAction('aDDeleteDatabase').Enabled := Assigned(Node) and (Node.ImageIndex = iiDatabase) and True;
-  MainAction('aDDeleteTable').Enabled := Assigned(Node) and (Node.ImageIndex = iiBaseTable) and True;
-  MainAction('aDDeleteView').Enabled := Assigned(Node) and (Node.ImageIndex = iiView) and True;
-  MainAction('aDDeleteRoutine').Enabled := Assigned(Node) and (Node.ImageIndex in [iiProcedure, iiFunction]) and True;
-  MainAction('aDDeleteEvent').Enabled := Assigned(Node) and (Node.ImageIndex = iiEvent) and True;
-  MainAction('aDDeleteIndex').Enabled := Assigned(Node) and (Node.ImageIndex = iiIndex) and True;
-  MainAction('aDDeleteField').Enabled := Assigned(Node) and (Node.ImageIndex = iiField) and (Client.DatabaseByName(Node.Parent.Parent.Text).TableByName(Node.Parent.Text).Fields.Count > 1) and True;
-  MainAction('aDDeleteForeignKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013) and True;
-  MainAction('aDDeleteTrigger').Enabled := Assigned(Node) and (Node.ImageIndex = iiTrigger) and True;
+  MainAction('aDDeleteDatabase').Enabled := Assigned(Node) and (Node.ImageIndex = iiDatabase);
+  MainAction('aDDeleteTable').Enabled := Assigned(Node) and (Node.ImageIndex = iiBaseTable);
+  MainAction('aDDeleteView').Enabled := Assigned(Node) and (Node.ImageIndex = iiView);
+  MainAction('aDDeleteRoutine').Enabled := Assigned(Node) and (Node.ImageIndex in [iiProcedure, iiFunction]);
+  MainAction('aDDeleteEvent').Enabled := Assigned(Node) and (Node.ImageIndex = iiEvent);
+  MainAction('aDDeleteIndex').Enabled := Assigned(Node) and (Node.ImageIndex = iiIndex);
+  MainAction('aDDeleteField').Enabled := Assigned(Node) and (Node.ImageIndex = iiField) and (Client.DatabaseByName(Node.Parent.Parent.Text).TableByName(Node.Parent.Text).Fields.Count > 1);
+  MainAction('aDDeleteForeignKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013);
+  MainAction('aDDeleteTrigger').Enabled := Assigned(Node) and (Node.ImageIndex = iiTrigger);
   MainAction('aDDeleteHost').Enabled := False;
   MainAction('aDDeleteUser').Enabled := False;
   MainAction('aDDeleteProcess').Enabled := False;
@@ -8438,7 +8419,7 @@ begin
   MainAction('aDEditField').Enabled := Assigned(Node) and (Node.ImageIndex = iiField);
   MainAction('aDEditForeignKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiForeignKey);
   MainAction('aDEditTrigger').Enabled := Assigned(Node) and (Node.ImageIndex = iiTrigger);
-  MainAction('aDEmpty').Enabled := Assigned(Node) and (((Node.ImageIndex = iiDatabase) or (Node.ImageIndex = iiBaseTable) or ((Node.ImageIndex = iiField) and Client.DatabaseByName(Node.Parent.Parent.Text).BaseTableByName(Node.Parent.Text).FieldByName(Node.Text).NullAllowed))) and True;
+  MainAction('aDEmpty').Enabled := Assigned(Node) and (((Node.ImageIndex = iiDatabase) or (Node.ImageIndex = iiBaseTable) or ((Node.ImageIndex = iiField) and Client.DatabaseByName(Node.Parent.Parent.Text).BaseTableByName(Node.Parent.Text).FieldByName(Node.Text).NullAllowed)));
 
   miNExpand.Default := aPExpand.Enabled;
   miNCollapse.Default := aPCollapse.Enabled;
@@ -11537,7 +11518,7 @@ begin
             MainAction('aFExportHTML').Enabled := (ActiveListView.SelCount = 0) or Assigned(Item) and (Item.ImageIndex = iiDatabase);
             MainAction('aFPrint').Enabled := (ActiveListView.SelCount = 0) or Assigned(Item) and (Item.ImageIndex = iiDatabase);
             MainAction('aECopy').Enabled := ActiveListView.SelCount >= 1;
-            MainAction('aEPaste').Enabled := (not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLSERVER) or Assigned(Item) and (Item.ImageIndex = iiDatabase) and Clipboard.HasFormat(CF_MYSQLDATABASE)) and True;
+            MainAction('aEPaste').Enabled := (not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLSERVER) or Assigned(Item) and (Item.ImageIndex = iiDatabase) and Clipboard.HasFormat(CF_MYSQLDATABASE));
             MainAction('aDCreateDatabase').Enabled := (ActiveListView.SelCount = 0) and (not Assigned(Client.UserRights) or Client.UserRights.RCreate);
             MainAction('aDCreateTable').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
             MainAction('aDCreateView').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50001);
@@ -11546,10 +11527,10 @@ begin
             MainAction('aDCreateEvent').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50106);
             MainAction('aDCreateHost').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiHosts);
             MainAction('aDCreateUser').Enabled := (ActiveListView.SelCount = 1) and Assigned(Item) and (Item.ImageIndex = iiUsers);
-            MainAction('aDDeleteDatabase').Enabled := (ActiveListView.SelCount >= 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and True;
+            MainAction('aDDeleteDatabase').Enabled := (ActiveListView.SelCount >= 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
             MainAction('aDEditServer').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aDEditDatabase').Enabled := (ActiveListView.SelCount >= 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
-            MainAction('aDEmpty').Enabled := (ActiveListView.SelCount >= 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase) and True;
+            MainAction('aDEmpty').Enabled := (ActiveListView.SelCount >= 1) and Assigned(Item) and (Item.ImageIndex = iiDatabase);
             aDDelete.Enabled := MainAction('aDDeleteDatabase').Enabled;
 
             for I := 0 to ActiveListView.Items.Count - 1 do
@@ -11601,8 +11582,8 @@ begin
             MainAction('aFExportHTML').Enabled := SelectedImageIndex = iiDatabase;
             MainAction('aFPrint').Enabled := SelectedImageIndex = iiDatabase;
             MainAction('aECopy').Enabled := ActiveListView.SelCount >= 1;
-            MainAction('aEPaste').Enabled := (not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLDATABASE) or Assigned(Item) and ((Item.ImageIndex = iiBaseTable) and Clipboard.HasFormat(CF_MYSQLTABLE) or (Item.ImageIndex = iiView) and Clipboard.HasFormat(CF_MYSQLVIEW))) and True;
-            MainAction('aERename').Enabled := Assigned(Item) and (ActiveListView.SelCount = 1) and (Item.ImageIndex in [iiBaseTable, iiView, iiEvent]) and True;
+            MainAction('aEPaste').Enabled := (not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLDATABASE) or Assigned(Item) and ((Item.ImageIndex = iiBaseTable) and Clipboard.HasFormat(CF_MYSQLTABLE) or (Item.ImageIndex = iiView) and Clipboard.HasFormat(CF_MYSQLVIEW)));
+            MainAction('aERename').Enabled := Assigned(Item) and (ActiveListView.SelCount = 1) and (Item.ImageIndex in [iiBaseTable, iiView, iiEvent]);
             MainAction('aDCreateTable').Enabled := (ActiveListView.SelCount = 0) and (SelectedImageIndex = iiDatabase);
             MainAction('aDCreateView').Enabled := (ActiveListView.SelCount = 0) and (Client.ServerVersion >= 50001) and (SelectedImageIndex = iiDatabase);
             MainAction('aDCreateProcedure').Enabled := (ActiveListView.SelCount = 0) and (Client.ServerVersion >= 50004) and (SelectedImageIndex = iiDatabase);
@@ -11612,10 +11593,10 @@ begin
             MainAction('aDCreateField').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
             MainAction('aDCreateForeignKey').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and Assigned(Database.BaseTableByName(Item.Caption)) and Assigned(Client.DatabaseByName(SelectedDatabase).BaseTableByName(Item.Caption).Engine) and Client.DatabaseByName(SelectedDatabase).BaseTableByName(Item.Caption).Engine.ForeignKeyAllowed;
             MainAction('aDCreateTrigger').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and Assigned(Database.Triggers);
-            MainAction('aDDeleteTable').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and True;
-            MainAction('aDDeleteView').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiView) and True;
-            MainAction('aDDeleteRoutine').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex in [iiProcedure, iiFunction]) and True;
-            MainAction('aDDeleteEvent').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiEvent) and True;
+            MainAction('aDDeleteTable').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
+            MainAction('aDDeleteView').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiView);
+            MainAction('aDDeleteRoutine').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex in [iiProcedure, iiFunction]);
+            MainAction('aDDeleteEvent').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiEvent);
             MainAction('aDEditDatabase').Enabled := (ActiveListView.SelCount = 0) and (SelectedImageIndex = iiDatabase);
             MainAction('aDEditTable').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
             MainAction('aDEditView').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiView);
@@ -11684,16 +11665,16 @@ begin
             MainAction('aFExportXML').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aFExportHTML').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aECopy').Enabled := (ActiveListView.SelCount >= 1);
-            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLTABLE) and True;
-            MainAction('aERename').Enabled := Assigned(Item) and (ActiveListView.SelCount = 1) and ((Item.ImageIndex in [iiField, iiTrigger]) or (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013)) and True;
+            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLTABLE);
+            MainAction('aERename').Enabled := Assigned(Item) and (ActiveListView.SelCount = 1) and ((Item.ImageIndex in [iiField, iiTrigger]) or (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013));
             MainAction('aDCreateIndex').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aDCreateField').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aDCreateForeignKey').Enabled := (ActiveListView.SelCount = 0) and Assigned(BaseTable.Engine) and BaseTable.Engine.ForeignKeyAllowed;
             MainAction('aDCreateTrigger').Enabled := (ActiveListView.SelCount = 0) and Assigned(BaseTable.Database.Triggers);
-            MainAction('aDDeleteIndex').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiIndex) and True;
-            MainAction('aDDeleteField').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField) and (BaseTable.Fields.Count > ActiveListView.SelCount) and True;
-            MainAction('aDDeleteForeignKey').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013) and True;
-            MainAction('aDDeleteTrigger').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiTrigger) and True;
+            MainAction('aDDeleteIndex').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiIndex);
+            MainAction('aDDeleteField').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField) and (BaseTable.Fields.Count > ActiveListView.SelCount);
+            MainAction('aDDeleteForeignKey').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013);
+            MainAction('aDDeleteTrigger').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiTrigger);
             MainAction('aDEditTable').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aDEditIndex').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiIndex);
             MainAction('aDEditField').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField);
@@ -11741,7 +11722,7 @@ begin
             MainAction('aFExportHTML').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aFExportSQLite').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aECopy').Enabled := (ActiveListView.SelCount >= 1);
-            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLVIEW) and True;
+            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLVIEW);
             MainAction('aDEditView').Enabled := (ActiveListView.SelCount = 0);
 
             mlEProperties.Action := MainAction('aDEditView');
@@ -11749,30 +11730,30 @@ begin
         iiHosts:
           begin
             MainAction('aECopy').Enabled := (ActiveListView.SelCount >= 1);
-            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLHOSTS) and True;
+            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLHOSTS);
             MainAction('aDCreateHost').Enabled := (ActiveListView.SelCount = 0);
-            MainAction('aDDeleteHost').Enabled := (ActiveListView.SelCount >= 1) and True;
+            MainAction('aDDeleteHost').Enabled := (ActiveListView.SelCount >= 1);
             MainAction('aDEditHost').Enabled := (ActiveListView.SelCount = 1);
-            aDDelete.Enabled := (ActiveListView.SelCount >= 1) and True;
+            aDDelete.Enabled := (ActiveListView.SelCount >= 1);
 
             mlEProperties.Action := MainAction('aDEditHost');
           end;
         iiProcesses:
           begin
-            MainAction('aDDeleteProcess').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Trunc(SysUtils.StrToInt(Item.Caption)) <> Client.ThreadId) and True;
+            MainAction('aDDeleteProcess').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Trunc(SysUtils.StrToInt(Item.Caption)) <> Client.ThreadId);
             MainAction('aDEditProcess').Enabled := (ActiveListView.SelCount = 1);
-            aDDelete.Enabled := (ActiveListView.SelCount >= 1) and True;
+            aDDelete.Enabled := (ActiveListView.SelCount >= 1);
 
             mlEProperties.Action := MainAction('aDEditProcess');
           end;
         iiUsers:
           begin
             MainAction('aECopy').Enabled := (ActiveListView.SelCount >= 1);
-            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLUSERS) and True;
+            MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLUSERS);
             MainAction('aDCreateUser').Enabled := (ActiveListView.SelCount = 0);
-            MainAction('aDDeleteUser').Enabled := (ActiveListView.SelCount >= 1) and True;
+            MainAction('aDDeleteUser').Enabled := (ActiveListView.SelCount >= 1);
             MainAction('aDEditUser').Enabled := (ActiveListView.SelCount = 1);
-            aDDelete.Enabled := (ActiveListView.SelCount >= 1) and True;
+            aDDelete.Enabled := (ActiveListView.SelCount >= 1);
 
             mlEProperties.Action := MainAction('aDEditUser');
           end;
@@ -12122,7 +12103,8 @@ begin
   for I := 0 to ActiveDBGrid.Columns.Count - 1 do
     if (ActiveDBGrid.Columns[I].Field.FieldNo - 1 = MGridHeader.Items.IndexOf(TMenuItem(Sender))) then
       Index := I;
-  ActiveDBGrid.Columns[Index].Visible := not ActiveDBGrid.Columns[Index].Visible;
+  if (Index >= 0) then
+    ActiveDBGrid.Columns[Index].Visible := not ActiveDBGrid.Columns[Index].Visible;
 end;
 
 procedure TFClient.miHOpenClick(Sender: TObject);
@@ -13444,11 +13426,9 @@ var
   Database: TCDatabase;
   Event: TCEvent;
   NewEvent: TCEvent;
-  NewRoutine: TCRoutine;
   NewTrigger: TCTrigger;
   NewView: TCView;
   Routine: TCRoutine;
-  RoutineName: string;
   Trigger: TCTrigger;
   View: TCView;
 begin
@@ -13472,30 +13452,9 @@ begin
     iiProcedure,
     iiFunction:
       begin
-        if (SelectedImageIndex = iiProcedure) then
-        begin
-          Routine := TCProcedure(FNavigator.Selected.Data);
-          NewRoutine := TCProcedure.Create(Database.Routines);
-        end
-        else
-        begin
-          Routine := TCFunction(FNavigator.Selected.Data);
-          NewRoutine := TCFunction.Create(Database.Routines);
-        end;
-        NewRoutine.Assign(Routine);
+        Routine := TCRoutine(FNavigator.Selected.Data);
 
-        try // This will initate a ParseCreateRoutine - parsing errors are uninteressted here
-          NewRoutine.Source := Trim(ActiveSynMemo.Text);
-        except
-        end;
-
-        RoutineName := Routine.Name;
-        Result := Database.UpdateRoutine(Routine, NewRoutine);
-
-        if (NewRoutine.Name <> FNavigator.Selected.Text) then
-          FNavigator.Selected.Text := NewRoutine.Name;
-
-        NewRoutine.Free();
+        Result := Database.UpdateRoutine(Routine, Trim(ActiveSynMemo.Text));
       end;
     iiEvent:
       begin
@@ -13684,7 +13643,7 @@ begin
   else
     Result := False;
 
-  if (Assigned(ActiveDBGrid.DataSource.DataSet) and Result) then
+  if (Assigned(ActiveDBGrid) and Assigned(ActiveDBGrid.DataSource.DataSet) and Result) then
     ActiveDBGrid.DataSource.DataSet.Close();
 end;
 
@@ -14469,7 +14428,7 @@ begin
         ((View = vEditor)
         or ((View  = vBuilder) and FBuilder.Visible)
         or ((View = vIDE) and SQLSingleStmt(SQL) and (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent]))) and not Empty;
-      MainAction('aDRunSelection').Enabled := (((ActiveSynMemo = FSQLEditorSynMemo) and not Empty) or Assigned(ActiveSynMemo) and (ActiveSynMemo.SelText <> '')) and True;
+      MainAction('aDRunSelection').Enabled := (((ActiveSynMemo = FSQLEditorSynMemo) and not Empty) or Assigned(ActiveSynMemo) and (ActiveSynMemo.SelText <> ''));
       MainAction('aDPostObject').Enabled := (View = vIDE) and ActiveSynMemo.Modified and SQLSingleStmt(SQL)
         and ((SelectedImageIndex in [iiView]) and SQLCreateParse(Parse, PChar(SQL), Length(SQL),Client.ServerVersion) and (SQLParseKeyword(Parse, 'SELECT'))
           or (SelectedImageIndex in [iiProcedure, iiFunction]) and SQLParseDDLStmt(DDLStmt, PChar(SQL), Length(SQL), Client.ServerVersion) and (DDLStmt.DefinitionType = dtCreate) and (DDLStmt.ObjectType in [otProcedure, otFunction])

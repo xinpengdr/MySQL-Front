@@ -725,8 +725,8 @@ procedure TDServer.TSExtrasShow(Sender: TObject);
 begin
   FUptime.Caption := SysUtils.DateTimeToStr(Client.StartTime, LocaleFormatSettings);
 
-  FBShutdown.Enabled := Client.CanShutdown and (not Assigned(Client.UserRights) or Client.UserRights.RShutdown) and True;
-  FBFlushHosts.Enabled := (not Assigned(Client.UserRights) or Client.UserRights.RReload) and True;
+  FBShutdown.Enabled := Client.CanShutdown and (not Assigned(Client.UserRights) or Client.UserRights.RShutdown);
+  FBFlushHosts.Enabled := (not Assigned(Client.UserRights) or Client.UserRights.RReload);
 end;
 
 procedure TDServer.TSHostsShow(Sender: TObject);
@@ -805,7 +805,9 @@ begin
   begin
     FProcesses.DisableAlign(); FProcesses.Items.BeginUpdate();
 
-    Client.Processes.Clear();
+    Client.BeginSynchro();
+    Client.Processes.Update();
+    Client.EndSynchro();
     for I := 0 to Client.Processes.Count - 1 do
     begin
       Item := FProcesses.Items.Add();

@@ -169,8 +169,7 @@ var
   I: Integer;
 begin
   FBOk.Enabled := (FIndexedFields.Items.Count > 0)
-    and (not FLength.Enabled or (FLengthUD.Position > 0))
-    and True;
+    and (not FLength.Enabled or (FLengthUD.Position > 0));
 
   if (not Assigned(Index) and Visible) then
     if (FPrimary.Checked or (FName.Text = 'PRIMARY')) then

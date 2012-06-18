@@ -176,7 +176,7 @@ end;
 
 procedure TDHost.FBOkCheckEnabled(Sender: TObject);
 begin
-  FBOk.Enabled := (FAll.Checked or FHost.Checked and (FHosts.Text <> '')) and True;
+  FBOk.Enabled := (FAll.Checked or FHost.Checked and (FHosts.Text <> ''));
 
   if (FAll.Checked) then
     FBOk.Enabled := FBOk.Enabled and not Assigned(Client.HostByName('')) or (Client.HostByName('') = Host)

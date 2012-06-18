@@ -940,7 +940,7 @@ type
     property ValidSources: Boolean read GetValidSources;
   public
     function AddEvent(const NewEvent: TCEvent): Boolean; virtual;
-    function AddRoutine(const NewRoutine: TCRoutine): Boolean; virtual;
+    function AddRoutine(const SQLCreateRoutine: string): Boolean; virtual;
     function AddTable(const NewTable: TCBaseTable): Boolean; virtual;
     function AddTrigger(const NewTrigger: TCTrigger): Boolean; virtual;
     function AddView(const NewView: TCView): Boolean; virtual;
@@ -969,7 +969,8 @@ type
     function Unlock(): Boolean; virtual;
     function Update(const Status: Boolean = False): Boolean; reintroduce; virtual;
     function UpdateEvent(const Event, NewEvent: TCEvent): Boolean; virtual;
-    function UpdateRoutine(const Routine, NewRoutine: TCRoutine): Boolean; virtual;
+    function UpdateRoutine(const Routine: TCRoutine; const NewRoutine: TCRoutine): Boolean; overload; virtual;
+    function UpdateRoutine(const Routine: TCRoutine; const SQLCreateRoutine: string): Boolean; overload; virtual;
     function UpdateTable(const Table, NewTable: TCBaseTable): Boolean; virtual;
     function UpdateTables(const TableNames: TStringList; const ACharset, ACollation, AEngine: string; const ARowType: TMySQLRowType): Boolean; virtual;
     function UpdateTrigger(const Trigger, NewTrigger: TCTrigger): Boolean; virtual;
@@ -6600,9 +6601,9 @@ begin
   Result := UpdateEvent(nil, NewEvent);
 end;
 
-function TCDatabase.AddRoutine(const NewRoutine: TCRoutine): Boolean;
+function TCDatabase.AddRoutine(const SQLCreateRoutine: string): Boolean;
 begin
-  Result := UpdateRoutine(nil, NewRoutine);
+  Result := UpdateRoutine(nil, SQLCreateRoutine);
 end;
 
 function TCDatabase.AddTable(const NewTable: TCBaseTable): Boolean;
@@ -7779,85 +7780,65 @@ begin
   end;
 end;
 
-function TCDatabase.UpdateRoutine(const Routine, NewRoutine: TCRoutine): Boolean;
+function TCDatabase.UpdateRoutine(const Routine: TCRoutine; const NewRoutine: TCRoutine): Boolean;
 var
   SQL: string;
 begin
-  if (not Assigned(Routine)) then
-  begin
-    if (NewRoutine.FSource = '') then
-      Result := False
-    else
-    begin
-      SQL := NewRoutine.FSource;
-
-      if (Client.DatabaseName <> Name) then
-        SQL := SQLUse() + SQL;
-
-      Result := Client.ExecuteSQL(SQL);
-
-      if (not Result and Client.MultiStatements and Assigned(Client.Lib.mysql_set_server_option)) then
-        // Warum verliert die MySQL Datenbank den Multi Stmt Status ??? (Fixed in 5.0.67 - auch schon vorher?)
-        Client.Lib.mysql_set_server_option(Client.Handle, MYSQL_OPTION_MULTI_STATEMENTS_ON);
+  SQL := '';
+  if (NewRoutine.Security <> Routine.Security) then
+    case (NewRoutine.Security) of
+      seDefiner: SQL := SQL + ' SQL SECURITY DEFINER';
+      seInvoker: SQL := SQL + ' SQL SECURITY INVOKER';
     end;
-  end
+  if (Routine.Comment <> NewRoutine.Comment) then
+    SQL := SQL + ' COMMENT ' + SQLEscape(NewRoutine.Comment);
+
+  if (SQL <> '') then
+    if (Routine.RoutineType = rtProcedure) then
+      SQL := 'ALTER PROCEDURE ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(NewRoutine.Name) + SQL +  ';' + #13#10
+    else
+      SQL := 'ALTER FUNCTION ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(NewRoutine.Name) + SQL +  ';' + #13#10;
+
+  if (SQL = '') then
+    Result := True
   else
   begin
-    if (NewRoutine.Source <> Routine.Source) then
-    begin
-      case (Routine.RoutineType) of
-        rtProcedure: SQL := 'DROP PROCEDURE IF EXISTS ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(Routine.Name) + ';' + #13#10;
-        rtFunction: SQL := 'DROP FUNCTION IF EXISTS ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(Routine.Name) + ';' + #13#10;
-        else raise Exception.CreateFMT(SUnknownRoutineType, [Routine.Name]);
-      end;
-      SQL := SQL + NewRoutine.Source + #13#10;
-    end
-    else
-    begin
-      SQL := '';
+    if (Client.DatabaseName <> Name) then
+      SQL := SQLUse() + SQL;
 
-      if (NewRoutine.Security <> Routine.Security) then
-        case (NewRoutine.Security) of
-          seDefiner: SQL := SQL + ' SQL SECURITY DEFINER';
-          seInvoker: SQL := SQL + ' SQL SECURITY INVOKER';
-        end;
-      if (Routine.Comment <> NewRoutine.Comment) then
-        SQL := SQL + ' COMMENT ' + SQLEscape(NewRoutine.Comment);
+    Result := Client.ExecuteSQL(SQL);
 
-      if (SQL <> '') then
-        case (Routine.RoutineType) of
-          rtProcedure: SQL := 'ALTER PROCEDURE ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(NewRoutine.Name) + SQL +  ';' + #13#10;
-          rtFunction: SQL := 'ALTER FUNCTION ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(NewRoutine.Name) + SQL +  ';' + #13#10;
-        end;
-    end;
-
-    if (SQL = '') then
-      Result := True
-    else
-    begin
-      if (Client.DatabaseName <> Name) then
-        SQL := SQLUse() + SQL;
-
-      Result := Client.ExecuteSQL(SQL);
-    end;
-  end;
-
-  if (Result and Assigned(Routine)) then
-  begin
-    Routine.FName := NewRoutine.Name;
-    Routine.FSource := '';
-    Routine.FValidSource := False;
-    Routine.OldSource := Routine.Source; // Refetch Source
-  end
-  else if (not Result) then
-  begin
-    // Warum verliert die MySQL Datenbank den Multi Stmt Status ???
-    if (Client.MultiStatements and Assigned(Client.Lib.mysql_set_server_option)) then
+    // Warum verliert die MySQL Datenbank den Multi Stmt Status ??? (Fixed in 5.0.67 - auch schon vorher?)
+    if (not Result and Client.MultiStatements and Assigned(Client.Lib.mysql_set_server_option)) then
       Client.Lib.mysql_set_server_option(Client.Handle, MYSQL_OPTION_MULTI_STATEMENTS_ON);
-
-    if (Assigned(Routine)) then
-      Client.ExecuteSQL(Routine.Source);
   end;
+end;
+
+function TCDatabase.UpdateRoutine(const Routine: TCRoutine; const SQLCreateRoutine: string): Boolean;
+var
+  SQL: string;
+begin
+  SQL := '';
+
+  if (Assigned(Routine)) then
+    if (Routine.RoutineType = rtProcedure) then
+      SQL := 'DROP PROCEDURE IF EXISTS ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(Routine.Name) + ';' + #13#10
+    else
+      SQL := 'DROP FUNCTION IF EXISTS ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(Routine.Name) + ';' + #13#10;
+
+  SQL := SQL + SQLCreateRoutine + #13#10;
+
+  if (Client.DatabaseName <> Name) then
+    SQL := SQLUse() + SQL;
+
+  Result := Client.ExecuteSQL(SQL);
+
+  // Warum verliert die MySQL Datenbank den Multi Stmt Status ??? (Fixed in 5.0.67 - auch schon vorher?)
+  if (not Result and Client.MultiStatements and Assigned(Client.Lib.mysql_set_server_option)) then
+    Client.Lib.mysql_set_server_option(Client.Handle, MYSQL_OPTION_MULTI_STATEMENTS_ON);
+
+  if (not Result and Assigned(Routine)) then
+    Client.ExecuteSQL(Routine.Source);
 end;
 
 function TCDatabase.UpdateTable(const Table, NewTable: TCBaseTable): Boolean;
@@ -7946,12 +7927,11 @@ begin
 
   SQL := SQL + NewTrigger.GetSourceEx();
 
-  Result := (SQL = '') or Client.SendSQL(SQL);
+  Result := Client.ExecuteSQL(SQL);
 
-// Is this workaround still needed? Or was it a bug in previous versions? In which versions?
-//  if (Client.Connected and Client.MultiStatements and Assigned(Client.Lib.mysql_set_server_option)) then
-//    // Why does the MySQL database loose the Multi Stmt state ???
-//    Client.Lib.mysql_set_server_option(Client.Handle, MYSQL_OPTION_MULTI_STATEMENTS_ON);
+  // Warum verliert die MySQL Datenbank den Multi Stmt Status ??? (Fixed in 5.0.67 - auch schon vorher?)
+  if (Client.Connected and Client.MultiStatements and Assigned(Client.Lib.mysql_set_server_option)) then
+    Client.Lib.mysql_set_server_option(Client.Handle, MYSQL_OPTION_MULTI_STATEMENTS_ON);
 
   if (not Result and Assigned(Trigger)) then
     Client.ExecuteSQL(Trigger.Source)
@@ -11346,6 +11326,8 @@ var
   DatabaseName: string;
   DDLStmt: TSQLDDLStmt;
   DMLStmt: TSQLDMLStmt;
+  NextDDLStmt: TSQLDDLStmt;
+  NextSQL: string;
   ObjectName: string;
   OldObjectName: string;
   Parse: TSQLParse;
@@ -11478,9 +11460,15 @@ begin
               case (DDLStmt.DefinitionType) of
                 dtCreate:
                   if (DDLStmt.ObjectType = otProcedure) then
-                    Database.Routines.Add(TCProcedure.Create(Database.Routines, DDLStmt.ObjectName), True)
+                    if (not Assigned(Database.ProcedureByName(DDLStmt.ObjectName))) then
+                      ExecuteEvent(ceItemAltered, Database, Database.Routines, Database.ProcedureByName(DDLStmt.ObjectName))
+                    else
+                      Database.ProcedureByName(DDLStmt.ObjectName).Source := Trim(Text)
                   else
-                    Database.Routines.Add(TCFunction.Create(Database.Routines, DDLStmt.ObjectName), True);
+                    if (not Assigned(Database.FunctionByName(DDLStmt.ObjectName))) then
+                      Database.Routines.Add(TCFunction.Create(Database.Routines, DDLStmt.ObjectName), True)
+                    else
+                      Database.FunctionByName(DDLStmt.ObjectName).Source := Trim(Text);
                 dtAlter,
                 dtAlterRename:
                   begin
@@ -11495,10 +11483,18 @@ begin
                     end;
                   end;
                 dtDrop:
-                  if (DDLStmt.ObjectType = otProcedure) then
-                    Database.Routines.Delete(Database.ProcedureByName(DDLStmt.ObjectName))
-                  else
-                    Database.Routines.Delete(Database.FunctionByName(DDLStmt.ObjectName));
+                  begin
+                    NextSQL := NextCommandText();
+                    if (SQLParseDDLStmt(NextDDLStmt, PChar(NextSQL), Length(NextSQL), ServerVersion)
+                      and (NextDDLStmt.ObjectType = DDLStmt.ObjectType)
+                      and ((NextDDLStmt.DatabaseName = DDLStmt.DatabaseName) or (NextDDLStmt.DatabaseName = ''))
+                      and (NextDDLStmt.ObjectName = DDLStmt.ObjectName)) then
+                      // will be handled as ceItemAltered within the next Stmt
+                    else if (DDLStmt.ObjectType = otProcedure) then
+                      Database.Routines.Delete(Database.ProcedureByName(DDLStmt.ObjectName))
+                    else
+                      Database.Routines.Delete(Database.FunctionByName(DDLStmt.ObjectName));
+                  end;
               end;
             otTrigger:
               case (DDLStmt.DefinitionType) of
