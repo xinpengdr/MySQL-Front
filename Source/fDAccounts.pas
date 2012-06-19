@@ -46,15 +46,16 @@ type
     procedure FAccountsSelectItem(Sender: TObject; Item: TListItem;
       Selected: Boolean);
     procedure PopupMenuPopup(Sender: TObject);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
   private
-    FSelected: TAAccount;
     procedure ListViewShowSortDirection(const ListView: TListView);
     procedure SetFAccounts(const ASelected: TAAccount);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
+    Account: TAAccount;
+    Client: TCClient;
     Open: Boolean;
     function Execute(): Boolean;
-    property Selected: TAAccount read FSelected;
   end;
 
 function DAccounts(): TDAccounts;
@@ -66,7 +67,7 @@ implementation {***************************************************************}
 uses
   CommCtrl, Math, StrUtils,
   CommCtrl_Ext,
-  fDAccount, fPreferences;
+  fDAccount, fPreferences, fDConnecting;
 
 var
   FAccounts: TDAccounts;
@@ -168,6 +169,17 @@ begin
     aNew.Execute();
 end;
 
+procedure TDAccounts.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  if ((ModalResult = mrOk) and not Assigned(Client)) then
+  begin
+    Client := TCClient.Create(Accounts.AccountByName(FAccounts.Selected.Caption));
+    Client.OnSQLError := Accounts.OnSQLError;
+    DConnecting.Client := Client;
+    CanClose := DConnecting.Execute();
+  end;
+end;
+
 procedure TDAccounts.FormCreate(Sender: TObject);
 begin
   FAccounts.SmallImages := Preferences.SmallImages;
@@ -189,11 +201,7 @@ end;
 procedure TDAccounts.FormHide(Sender: TObject);
 begin
   if (ModalResult <> mrCancel) then
-  begin
-    FSelected := Accounts.AccountByName(FAccounts.Selected.Caption);
-
-    Accounts.Default := Selected;
-  end;
+    Accounts.Default := Accounts.AccountByName(FAccounts.Selected.Caption);
 
   Preferences.Accounts.Height := Height;
   Preferences.Accounts.SelectOrder := FAccounts.Tag;
@@ -214,6 +222,8 @@ begin
     FAccounts.Column[FAccounts.Tag].Tag := 1;
 
   SetFAccounts(Accounts.Default);
+
+  Client := nil;
 
   FBOk.Visible := Open;
   if (not Open) then
@@ -387,9 +397,9 @@ begin
         Item.ImageIndex := Accounts[I].ImageIndex;
     end;
 
-  FAccountsColumnClick(nil, FAccounts.Column[FAccounts.Tag]);
+  FAccountsColumnClick(Account, FAccounts.Column[FAccounts.Tag]);
 
-  if (ASelected = nil) and (FAccounts.Items.Count > 0) then
+  if (not Assigned(ASelected)) and (FAccounts.Items.Count > 0) then
     FAccounts.Selected := FAccounts.Items.Item[0]
   else
     for I := 0 to FAccounts.Items.Count - 1 do

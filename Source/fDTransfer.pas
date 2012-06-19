@@ -107,7 +107,8 @@ implementation {***************************************************************}
 uses
   StrUtils, CommCtrl, RichEdit,
   SQLUtils,
-  fPreferences;
+  fPreferences,
+  FDConnecting;
 
 var
   FTransfer: TDTransfer;
@@ -402,11 +403,17 @@ begin
 end;
 
 function TDTransfer.GetClient(const Index: Integer): TCClient;
-var
-  B: Boolean;
 begin
   if (not Assigned(Clients[Index])) then
-    Clients[Index] := fClient.Clients.CreateClient(Accounts[Index], B);
+  begin
+    Clients[Index] := TCClient.Create(Accounts[Index]);
+    Clients[Index].OnSQLError := Accounts.OnSQLError;
+    DConnecting.Client := Clients[Index];
+    if (not DConnecting.Execute()) then
+      FreeAndNil(Clients[Index])
+    else
+      fClient.Clients.BindClient(Clients[Index]);
+  end;
 
   Result := Clients[Index];
 

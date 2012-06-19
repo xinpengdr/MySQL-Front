@@ -459,6 +459,7 @@ type
     EurekaLog: TEurekaLog;
     {$ENDIF}
     FAddressDroppedDown: Boolean;
+    FirstOpen: Boolean;
     MouseDownPoint: TPoint;
     Param: string; // erforderlich für PostMessage
     PreviousForm: TForm;
@@ -483,9 +484,8 @@ type
     procedure MNextItemClick(Sender: TObject);
     procedure MPrevItemClick(Sender: TObject);
     procedure mtTabsClick(Sender: TObject);
-    procedure MySQLConnectionOnSynchronize(const Data: Pointer); inline;
-    procedure OpenConnection(const Client: TCClient; out UserAbort: Boolean);
-    procedure SetActiveTab(const ATab: TFClient);
+    procedure MySQLConnectionSynchronize(const Data: Pointer); inline;
+    procedure SetActiveTab(const FClient: TFClient);
     procedure SQLError(const Connection: TMySQLConnection; const ErrorCode: Integer; const ErrorMessage: string);
     function TabCaption(const ACaption: string): string;
     procedure CMActivateTab(var Message: TCMActivateTab); message CM_ACTIVATETAB;
@@ -643,6 +643,7 @@ end;
 
 procedure TWWindow.aOAccountsExecute(Sender: TObject);
 begin
+  DAccounts.Account := nil;
   DAccounts.Open := False;
   DAccounts.Execute();
 end;
@@ -826,7 +827,7 @@ begin
   if (MPrev.Items.Count > 0) then MPrev.Items[0].Click();
 end;
 
-procedure TWWindow.MySQLConnectionOnSynchronize(const Data: Pointer);
+procedure TWWindow.MySQLConnectionSynchronize(const Data: Pointer);
 begin
   PostMessage(Handle, CM_MYSQLCONNECTION_SYNCHRONIZE, 0, LPARAM(Data));
 end;
@@ -863,89 +864,63 @@ end;
 
 procedure TWWindow.CMAddTab(var Message: TCMAddTab);
 var
-  Client: TCClient;
-  Account: TAAccount;
-  Tab: TFClient;
-  UserAbort: Boolean;
+  FClient: TFClient;
 begin
-  Tab := nil;
-
-  if (not Assigned(Message.Param) or (Copy(Message.Param, 1, 8) <> 'mysql://')) then
-    Account := nil
+  if (not FirstOpen or Assigned(Message.Param) and (Copy(Message.Param, 1, 8) = 'mysql://')) then
+    DAccounts.Account := nil
   else
-    Account := Accounts.AccountByURI(Message.Param);
+    DAccounts.Account := Accounts.AccountByURI(Message.Param);
+  DAccounts.Open := True;
+  if (not DAccounts.Execute()) then
+    FClient := nil
+  else
+  begin
+    Perform(CM_DEACTIVATETAB, 0, 0);
 
-  repeat
-    if (not Assigned(Account)) then
+    if (Tabs.Count = 0) then
     begin
-      DAccounts.Open := True;
-      UserAbort := not DAccounts.Execute();
-      if (not UserAbort) then
-        Account := DAccounts.Selected;
-    end;
-
-    Client := nil;
-    if (Assigned(Account)) then
-    begin
-      Client := Clients.CreateClient(Account, UserAbort);
-
-      if (not Assigned(Client)) then
-        Account := nil
+      // TabControl sicher unter PToolbar / PAddressBar stellen
+      TabControl.Align := alNone;
+      if (not PAddressBar.Visible) then
+        TabControl.Top := PToolBar.Top + PToolBar.Height
       else
+        TabControl.Top := PAddressBar.Top + PAddressBar.Height;
+      TabControl.Align := alTop;
+
+      TabControl.Tabs.Add(TabCaption(DAccounts.Client.Account.Name));
+      TabControl.Visible := Preferences.TabsVisible;
+      if (TabControl.Visible) then
+        TabControlResize(nil);
+    end
+    else
+    begin
+      TabControl.Tabs.Add(TabCaption(DAccounts.Client.Account.Name));
+      TabControl.TabIndex := TabControl.Tabs.Count - 1;
+      if (not TabControl.Visible) then
       begin
-        Perform(CM_DEACTIVATETAB, 0, 0);
-
-        if (Tabs.Count = 0) then
-        begin
-          // TabControl sicher unter PToolbar / PAddressBar stellen
-          TabControl.Align := alNone;
-          if (not PAddressBar.Visible) then
-            TabControl.Top := PToolBar.Top + PToolBar.Height
-          else
-            TabControl.Top := PAddressBar.Top + PAddressBar.Height;
-          TabControl.Align := alTop;
-
-          if (Tabs.Count = 0) then
-          begin
-            TabControl.Tabs.Add(TabCaption(Account.Name));
-            TabControl.Visible := Preferences.TabsVisible;
-            TabControlResize(nil);
-          end;
-        end;
-
-        Tab := TFClient.Create(Self, PWorkSpace, Client, Message.Param, Account.ImageIndex);
-
-        if (not Assigned(Tab) and (Tabs.Count = 0)) then
-        begin
-          TabControl.Visible := Preferences.TabsVisible;
-          TabControlResize(nil);
-        end
-        else if (Assigned(Tab)) then
-        begin
-          Inc(UniqueTabNameCounter);
-          Tab.Name := Tab.ClassName + '_' + IntToStr(UniqueTabNameCounter);
-
-          Tab.StatusBar := StatusBar;
-
-          Tabs.Add(Tab);
-          if (Tabs.Count > 1) then
-          begin
-            TabControl.Tabs.Add(TabCaption(Account.Name));
-            TabControl.Visible := True;
-            TabControlResize(nil);
-          end;
-
-          aFCloseAll.Enabled := True;
-
-          Perform(CM_ACTIVATETAB, 0, LPARAM(Tab));
-
-          TBTabControl.Visible := TabControl.Visible;
-        end;
+        TabControl.Visible := True;
+        TabControlResize(nil);
       end;
     end;
-  until (Assigned(Client) or UserAbort);
 
-  Message.Result := Integer(Assigned(Tab));
+    FClient := TFClient.Create(Self, PWorkSpace, DAccounts.Client, Message.Param);
+
+    Inc(UniqueTabNameCounter);
+    FClient.Name := FClient.ClassName + '_' + IntToStr(UniqueTabNameCounter);
+
+    FClient.StatusBar := StatusBar;
+
+    aFCloseAll.Enabled := True;
+
+    Tabs.Add(FClient);
+    Perform(CM_ACTIVATETAB, 0, LPARAM(FClient));
+
+    TBTabControl.Visible := TabControl.Visible;
+  end;
+
+  Message.Result := Integer(Assigned(FClient));
+
+  FirstOpen := False;
 end;
 
 procedure TWWindow.CMBookmarkChanged(var Message: TMessage);
@@ -1587,16 +1562,15 @@ var
   Wnd: HWND;
 begin
   DiableApplicationActivate := False;
+  FirstOpen := True;
   QuitAfterShow := False;
   UniqueTabNameCounter := 0;
   MouseDownPoint := Point(-1, -1);
   UpdateAvailable := False;
 
-  HelpFile := ExtractFilePath(Application.ExeName) + Copy(ExtractFileName(Application.ExeName), 1, Length(ExtractFileName(Application.ExeName)) - 4) + '.chm';
+  MySQLDB.MySQLConnectionOnSynchronize := MySQLConnectionSynchronize;
 
-  MySQLDB.MySQLConnectionOnSynchronize := MySQLConnectionOnSynchronize;
-
-  Application.OnHelp := OnHelp;
+  Application.HelpFile := ExtractFilePath(Application.ExeName) + Copy(ExtractFileName(Application.ExeName), 1, Length(ExtractFileName(Application.ExeName)) - 4) + '.chm';
   Application.OnException := ApplicationException;
   Application.OnMessage := ApplicationMessage;
   Application.OnModalBegin := ApplicationModalBegin;
@@ -1609,7 +1583,6 @@ begin
   {$ENDIF}
 
   Accounts := TAAccounts.Create(DBLogin, SQLError);
-  Clients.OnOpenConnection := OpenConnection;
 
   MainActionList := ActionList;
   MainHighlighter := Highlighter;
@@ -1870,20 +1843,11 @@ begin
   end;
 end;
 
-procedure TWWindow.OpenConnection(const Client: TCClient; out UserAbort: Boolean);
+procedure TWWindow.SetActiveTab(const FClient: TFClient);
 begin
-  if (Assigned(Client)) then
-  begin
-    DConnecting.Client := Client;
-    UserAbort := not DConnecting.Execute();
-  end;
-end;
+  TabControl.TabIndex := Tabs.IndexOf(FClient);
 
-procedure TWWindow.SetActiveTab(const ATab: TFClient);
-begin
-  TabControl.TabIndex := Tabs.IndexOf(ATab);
-
-  TFClient(Tabs[Tabs.IndexOf(ATab)]).BringToFront();
+  TFClient(Tabs[Tabs.IndexOf(FClient)]).BringToFront();
 end;
 
 procedure TWWindow.SQLError(const Connection: TMySQLConnection; const ErrorCode: Integer; const ErrorMessage: string);

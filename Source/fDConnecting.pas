@@ -6,20 +6,18 @@ uses
   Messages, Classes,
   Forms, Controls,StdCtrls,
   Forms_Ext,
-  fClient, fBase, ComCtrls, ToolWin, ImgList;
+  fClient, fBase;
 
 type
   TDConnecting = class (TForm_Ext)
     FBCancel: TButton;
     FInfo: TLabel;
-    procedure FBCancelClick(Sender: TObject);
-    procedure FormHide(Sender: TObject);
-    procedure FormShow(Sender: TObject);
-  private
     procedure AfterConnect(Sender: TObject);
-  protected
+    procedure FBCancelClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMPostShow(var Message: TMessage); message CM_POSTSHOW;
+    procedure FormHide(Sender: TObject);
   public
     Client: TCClient;
     function Execute(): Boolean;
@@ -33,7 +31,7 @@ implementation {***************************************************************}
 
 uses
   Windows, SysUtils, 
-  MySQLDB,
+  MySQLDB, MySQLConsts,
   fPreferences, fAccount, fDAccount;
 
 var
@@ -56,6 +54,8 @@ procedure TDConnecting.AfterConnect(Sender: TObject);
 begin
   if (Client.Connected) then
     ModalResult := mrOk
+  else if ((Client.ErrorCode = ER_ACCESS_DENIED_ERROR) or (Client.ErrorCode = ER_DBACCESS_DENIED_ERROR) and Accounts.DBLogin(Client.Account)) then
+    PostMessage(Handle, CM_POSTSHOW, 0, 0)
   else
     ModalResult := mrCancel;
 end;
@@ -75,30 +75,31 @@ begin
     Client.FirstConnect();
 end;
 
-function TDConnecting.Execute(): Boolean;
-begin
-  ShowModal();
-  Result := ModalResult = mrOk;
-end;
-
 procedure TDConnecting.FBCancelClick(Sender: TObject);
 begin
   Client.Terminate();
   ModalResult := mrCancel;
 end;
 
+function TDConnecting.Execute(): Boolean;
+begin
+  ShowModal();
+  Result := ModalResult = mrOk;
+end;
+
 procedure TDConnecting.FormHide(Sender: TObject);
 begin
   Client.AfterConnect := nil;
+  Client := nil;
 end;
 
 procedure TDConnecting.FormShow(Sender: TObject);
 begin
   Caption := Client.Account.Name;
 
-  FBCancel.Enabled := Client.Account.Connection.Asynchron;
-
   Client.AfterConnect := AfterConnect;
+
+  FBCancel.Enabled := Client.Account.Connection.Asynchron;
 
   PostMessage(Handle, CM_POSTSHOW, 0, 0);
 end;

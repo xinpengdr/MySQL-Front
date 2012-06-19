@@ -16,6 +16,7 @@ object DAccounts: TDAccounts
   OldCreateOrder = False
   Position = poMainFormCenter
   OnActivate = FormActivate
+  OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnHide = FormHide
   OnShow = FormShow

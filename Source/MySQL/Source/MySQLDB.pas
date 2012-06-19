@@ -240,7 +240,6 @@ type
     FSilentCount: Integer;
     FSynchroCount: Integer;
     FSQLMonitors: array of TMySQLMonitor;
-    FStartup: string;
     FSynchroThread: TSynchroThread;
     FTerminateCS: TCriticalSection;
     FTerminatedThreads: TTerminatedThreads;
@@ -384,7 +383,6 @@ type
     property Password: string read FPassword write SetPassword;
     property Port: Word read FPort write SetPort default MYSQL_PORT;
     property ServerTimeout: Word read FServerTimeout write FServerTimeout default 0;
-    property Startup: string read FStartup write FStartup;
     property Username: string read FUsername write SetUsername;
     // TCustomConnection Properties
     property Connected;
@@ -2089,17 +2087,9 @@ begin
   FExecutionTime := 0;
   FErrorCode := CR_ASYNCHRON; FErrorMessage := '';
 
-  if (not Assigned(Lib)) then
-  begin
-    FLib := LoadMySQLLibrary(FLibraryType, LibraryName);
-
-    if (not Assigned(Lib)) then
-      DoError(ER_CANT_OPEN_LIBRARY, Format(SLibraryNotAvailable, [LibraryName]));
-  end;
-
   if (Assigned(SynchroThread) and (SynchroThread.State <> ssClose)) then
     Terminate();
-  if (not Assigned(SynchroThread)) then
+  if (not Assigned(FSynchroThread)) then
     FSynchroThread := TSynchroThread.Create(Self);
 
   SynchroThread.RunAction(ssConnecting);
@@ -2298,10 +2288,17 @@ begin
     if Value = GetConnected then Exit;
     if Value then
     begin
-      if Assigned(BeforeConnect) then BeforeConnect(Self);
-      DoConnect;
-      // Maybe we're using Asynchron. So the Events should be called after
-      // thread execution in SyncConnected.
+      if (not Assigned(FLib)) then
+        FLib := LoadMySQLLibrary(FLibraryType, LibraryName);
+      if (not Assigned(FLib)) then
+        DoError(ER_CANT_OPEN_LIBRARY, Format(SLibraryNotAvailable, [LibraryName]))
+      else
+      begin
+        if Assigned(BeforeConnect) then BeforeConnect(Self);
+        DoConnect;
+        // Maybe we're using Asynchron. So the Events should be called after
+        // thread execution in SyncConnected.
+      end
     end else
     begin
       if Assigned(BeforeDisconnect) then BeforeDisconnect(Self);
@@ -2446,9 +2443,6 @@ begin
           S := '# ' + SysUtils.DateTimeToStr(FLatestConnect + TimeDiff, FormatSettings) + ': Connected (Id: ' + IntToStr(FThreadId) + ')';
         end;
         WriteMonitor(PChar(S), Length(S), ttInfo);
-
-        if (Startup <> '') then
-          SQL := SQL + Startup;
 
         if ((SQL <> '') and Assigned(SynchroThread.LibHandle)) then
           SendSQL(SQL);
@@ -3114,7 +3108,6 @@ begin
   FPassword := '';
   FPort := MYSQL_PORT;
   FSilentCount := 0;
-  FStartup := '';
   FTerminateCS := TCriticalSection.Create();
   FTerminatedThreads := TTerminatedThreads.Create();
   FThreadDeep := 0;
@@ -5523,8 +5516,8 @@ end;
 
 procedure TMySQLDataSet.InternalDelete();
 var
-  DeleteBuffersIndex: Integer;
   I: Integer;
+  Index: Integer;
   J: Integer;
   SQL: string;
   Success: Boolean;
@@ -5553,14 +5546,14 @@ begin
     begin
       for I := 0 to Max(1, Length(DeleteBookmarks)) - 1 do
       begin
-        DeleteBuffersIndex := BookmarkToInternBufferIndex(DeleteBookmarks[I]);
-        if (InternRecordBuffers.Index > DeleteBuffersIndex) then
+        Index := BookmarkToInternBufferIndex(DeleteBookmarks[I]);
+        if (Index < InternRecordBuffers.Index) then
           Dec(InternRecordBuffers.Index);
         for J := 0 to BufferCount - 1 do
-          if (PExternRecordBuffer(Buffers[I])^.InternRecordBuffer = InternRecordBuffers[DeleteBuffersIndex]) then
+          if (Assigned(PExternRecordBuffer(Buffers[I])) and (PExternRecordBuffer(Buffers[I])^.InternRecordBuffer = InternRecordBuffers[Index])) then
             PExternRecordBuffer(Buffers[I])^.InternRecordBuffer := nil;
-        FreeInternRecordBuffer(InternRecordBuffers[DeleteBuffersIndex]);
-        InternRecordBuffers.Delete(DeleteBuffersIndex);
+        FreeInternRecordBuffer(InternRecordBuffers[Index]);
+        InternRecordBuffers.Delete(Index);
         for J := ActiveRecord + 1 to BufferCount - 1 do
           Dec(PExternRecordBuffer(Buffers[J])^.RecNo);
         if (Filtered) then

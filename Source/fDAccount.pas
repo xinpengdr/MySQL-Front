@@ -22,7 +22,6 @@ type
     FCharset: TComboBox_Ext;
     FConnectionType: TComboBox_Ext;
     FDatabase: TEdit;
-    FDefaultSorting: TCheckBox;
     FHost: TEdit;
     FHTTPTunnelURI: TEdit;
     FIcon: TImage;
@@ -31,16 +30,11 @@ type
     FLCharset: TLabel;
     FLConnectionType: TLabel;
     FLDatabase: TLabel;
-    FLDefaultSorting: TLabel;
     FLHost: TLabel;
     FLHTTPTunnelURI: TLabel;
     FLibraryFilename: TEdit;
     FLIcon: TLabel;
-    FLimitOff: TRadioButton;
-    FLimitOn: TRadioButton;
-    FLimitRemember: TRadioButton;
     FLLibraryFilename: TLabel;
-    FLLimit: TLabel;
     FLMultiStatements: TLabel;
     FLAsynchron: TLabel;
     FLName: TLabel;
@@ -53,13 +47,11 @@ type
     FName: TEdit;
     FPassword: TEdit;
     FPort: TEdit;
-    FStartup: TSynMemo;
     FUDCacheSize: TUpDown;
     FUDPort: TUpDown;
     FUseInformationSchema: TCheckBox;
     FUser: TEdit;
     GBasics: TGroupBox_Ext;
-    GBrowser: TGroupBox_Ext;
     GDebug: TGroupBox_Ext;
     GLogin: TGroupBox_Ext;
     GServer: TGroupBox_Ext;
@@ -76,10 +68,8 @@ type
     PIcon: TPanel_Ext;
     TSBasics: TTabSheet;
     TSConnection: TTabSheet;
-    TSDataBrowser: TTabSheet;
     TSDebug: TTabSheet;
     TSLogin: TTabSheet;
-    TSStartup: TTabSheet;
     procedure FBDatabaseClick(Sender: TObject);
     procedure FBHelpClick(Sender: TObject);
     procedure FBIconClick(Sender: TObject);
@@ -176,50 +166,6 @@ begin
   FLPassword.Caption := Preferences.LoadStr(40) + ':';
   FLDatabase.Caption := Preferences.LoadStr(38) + ':';
 
-  TSStartup.Caption := Preferences.LoadStr(805);
-  FStartup.Font.Name := Preferences.SQLFontName;
-  FStartup.Font.Style := Preferences.SQLFontStyle;
-  FStartup.Font.Color := Preferences.SQLFontColor;
-  FStartup.Font.Size := Preferences.SQLFontSize;
-  FStartup.Font.Charset := Preferences.SQLFontCharset;
-  FStartup.Gutter.Font.Name := FStartup.Font.Name;
-  FStartup.Gutter.Font.Style := FStartup.Font.Style;
-  FStartup.Gutter.Font.Size := FStartup.Font.Size;
-  if (Preferences.Editor.LineNumbersForeground = clNone) then
-    FStartup.Gutter.Font.Color := clWindowText
-  else
-    FStartup.Gutter.Font.Color := Preferences.Editor.LineNumbersForeground;
-  if (Preferences.Editor.LineNumbersBackground = clNone) then
-    FStartup.Gutter.Color := clBtnFace
-  else
-    FStartup.Gutter.Color := Preferences.Editor.LineNumbersBackground;
-  FStartup.Gutter.Font.Style := Preferences.Editor.LineNumbersStyle;
-  FStartup.Gutter.Visible := Preferences.Editor.LineNumbers;
-  if (Preferences.Editor.AutoIndent) then
-    FStartup.Options := FStartup.Options + [eoAutoIndent, eoSmartTabs]
-  else
-    FStartup.Options := FStartup.Options - [eoAutoIndent, eoSmartTabs];
-  if (Preferences.Editor.TabToSpaces) then
-    FStartup.Options := FStartup.Options + [eoTabsToSpaces]
-  else
-    FStartup.Options := FStartup.Options - [eoTabsToSpaces];
-  FStartup.TabWidth := Preferences.Editor.TabWidth;
-  FStartup.RightEdge := Preferences.Editor.RightEdge;
-  FStartup.WantTabs := Preferences.Editor.TabAccepted;
-  if (not Preferences.Editor.CurrRowBGColorEnabled) then
-    FStartup.ActiveLineColor := clNone
-  else
-    FStartup.ActiveLineColor := Preferences.Editor.CurrRowBGColor;
-
-  TSDataBrowser.Caption := Preferences.LoadStr(17);
-  GBrowser.Caption := Preferences.LoadStr(17);
-  FLLimit.Caption := ReplaceStr(Preferences.LoadStr(197), '&', '') + ':';
-  FLimitOff.Caption := Preferences.LoadStr(697);
-  FLimitRemember.Caption := Preferences.LoadStr(698);
-  FLimitOn.Caption := Preferences.LoadStr(699);
-  FLDefaultSorting.Caption := ReplaceStr(Preferences.LoadStr(9), '&', '') + ':';
-  FDefaultSorting.Caption := Preferences.LoadStr(611);
-
   TSDebug.Caption := 'Debug';
   GDebug.Caption := '';
   FLCacheSize.Caption := 'Cache' + ':';
@@ -251,7 +197,7 @@ var
 begin
   if (CheckConnectInfos()) then
   begin
-    Client := TCClient.CreateConnection();
+    Client := TCClient.Create();
     if (Assigned(Client)) then
     begin
       case (FConnectionType.ItemIndex) of
@@ -286,7 +232,6 @@ begin
     Application.HelpContext(HelpContext)
   else
   begin
-    TSDataBrowser.TabVisible := not TSDataBrowser.TabVisible;
     TSDebug.TabVisible := not TSDebug.TabVisible;
     if (TSDebug.TabVisible) then
     begin
@@ -325,7 +270,7 @@ var
 begin
   if ((FCharset.Items.Count = 0) and CheckConnectInfos()) then
   begin
-    Client := TCClient.CreateConnection();
+    Client := TCClient.Create();
     if (Assigned(Client)) then
     begin
       case (FConnectionType.ItemIndex) of
@@ -454,16 +399,6 @@ begin
       NewAccount.Connection.SavePassword := (NewAccount.Connection.User <> '') and ((NewAccount.Connection.Password <> '') or Assigned(Account) and (Account.Connection.User = NewAccount.Connection.User) and (Account.Connection.Password = ''));
       NewAccount.Connection.Database := ReplaceStr(Trim(FDatabase.Text), ';', ',');
 
-      NewAccount.Startup := Trim(FStartup.Text);
-
-      if (FLimitOff.Checked) then
-        NewAccount.DefaultLimit := dlOff
-      else if (FLimitOn.Checked) then
-        NewAccount.DefaultLimit := dlOn
-      else
-        NewAccount.DefaultLimit := dlRemember;
-      NewAccount.DefaultSorting := FDefaultSorting.Checked;
-
       NewAccount.CacheSize := FUDCacheSize.Position;
       NewAccount.Connection.ASynchron := FAsynchron.Checked;
       NewAccount.Connection.MultiStatements := FMultiStatements.Checked;
@@ -484,8 +419,6 @@ end;
 
 procedure TDAccount.FormCreate(Sender: TObject);
 begin
-  FStartup.Highlighter := MainHighlighter;
-
   FIcon.Picture.Icon.Height := 18;
   FIcon.Picture.Icon.Width := 18;
 
@@ -507,7 +440,6 @@ begin
   msDelete.Action := MainAction('aEDelete'); msDelete.ShortCut := 0;
   msSelectAll.Action := MainAction('aESelectAll'); msSelectAll.ShortCut := 0;
 
-  TSDataBrowser.TabVisible := False;
   TSDebug.TabVisible := False;
 end;
 
@@ -537,10 +469,6 @@ begin
     FUser.Text := 'root';
     FPassword.Text := '';
     FDatabase.Text := '';
-
-    FStartup.Lines.Clear();
-    FLimitRemember.Checked := True;
-    FDefaultSorting.Checked := True;
 
     FUDCacheSize.Position := 50;
     FMultiStatements.Checked := True;
@@ -574,18 +502,6 @@ begin
     FUser.Text := Username;
     FPassword.Text := Password;
     FDatabase.Text := Account.Connection.Database;
-
-    if (Account.Startup = '') then
-      FStartup.Lines.Clear
-    else
-      FStartup.Lines.Text := Account.Startup + #13#10;
-
-    case (Account.DefaultLimit) of
-      dlOff: FLimitOff.Checked := True;
-      dlRemember: FLimitRemember.Checked := True;
-      dlOn: FLimitOn.Checked := True;
-    end;
-    FDefaultSorting.Checked := Account.DefaultSorting;
 
     FUDCacheSize.Position := Account.CacheSize;
     FMultiStatements.Checked := Account.Connection.MultiStatements;

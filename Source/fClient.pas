@@ -1454,8 +1454,7 @@ type
     procedure CommitTransaction(); override;
     procedure FirstConnect(); overload; virtual;
     procedure FirstConnect(const AConnectionType: Integer; const ALibraryName: string; const AHost, AUser, APassword, ADatabase: string; const APort: Integer; const AAsynchron: Boolean); overload; virtual;
-    constructor CreateConnection(); overload; virtual;
-    constructor CreateConnection(const AAccount: TAAccount); overload; virtual;
+    constructor Create(const AAccount: TAAccount = nil); reintroduce; virtual;
     function DatabaseByName(const DatabaseName: string): TCDatabase; virtual;
     procedure DecodeInterval(const Value: string; const IntervalType: TMySQLIntervalType; var Year, Month, Day, Quarter, Week, Hour, Minute, Second, MSec: Word); virtual;
     function DeleteDatabase(const Database: TCDatabase): Boolean; virtual;
@@ -1535,15 +1534,12 @@ type
   type
     TOpenConnectionEvent = procedure(const AClient: TCClient; out UserAbort: Boolean) of object;
   private
-    FOnOpenConnection: TOpenConnectionEvent;
     function GetClient(Index: Integer): TCClient;
   public
-    constructor Create(); virtual;
+    procedure BindClient(const AClient: TCClient);
     function ClientByAccount(const Account: TAAccount; const DatabaseName: string): TCClient; virtual;
-    function CreateClient(const AAccount: TAAccount; out UserAbort: Boolean): TCClient;
     procedure ReleaseClient(var AClient: TCClient);
     property Client[Index: Integer]: TCClient read GetClient; default;
-    property OnOpenConnection: TOpenConnectionEvent read FOnOpenConnection write FOnOpenConnection;
   end;
 
 const
@@ -3478,6 +3474,9 @@ begin
   inherited;
 
   FSourceParsed := False;
+
+  if (Assigned(FDataSet) and FDataSet.Active) then
+    FDataSet.Close();
 end;
 
 function TCTable.GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string;
@@ -10559,38 +10558,7 @@ begin
   AutoCommit := AutoCommitBeforeTransaction;
 end;
 
-constructor TCClient.CreateConnection();
-begin
-  inherited Create(nil);
-
-  EventProcs := TList.Create();
-  FCurrentUser := '';
-  FInformationSchema := nil;
-  FMaxAllowedPacket := 0;
-  FPerformanceSchema := nil;
-  FAccount := nil;
-  SetLength(CachedTables, 0);
-
-  FSQLMonitor := nil;
-  StmtMonitor := nil;
-
-  FCharsets := TCCharsets.Create(Self);
-  FCollations := nil;
-  FDatabases :=  TCDatabases.Create(Self);
-  FFieldTypes := nil;
-  FEngines := nil;
-  FHosts := nil;
-  FInvalidObjects := nil;
-  FPlugins := nil;
-  FProcesses := nil;
-  FStati := nil;
-  FUsers := nil;
-  FVariables := TCVariables.Create(Self);
-
-  RegisterClient(Self, ConnectChange);
-end;
-
-constructor TCClient.CreateConnection(const AAccount: TAAccount);
+constructor TCClient.Create(const AAccount: TAAccount = nil);
 begin
   inherited Create(nil);
 
@@ -10602,32 +10570,53 @@ begin
   FAccount := AAccount;
   SetLength(CachedTables, 0);
 
-  FSQLMonitor := TMySQLMonitor.Create(nil);
-  FSQLMonitor.Connection := Self;
-  FSQLMonitor.CacheSize := Preferences.LogSize;
-  FSQLMonitor.Enabled := True;
-  FSQLMonitor.TraceTypes := [ttRequest];
-  if (Preferences.LogResult) then FSQLMonitor.TraceTypes := FSQLMonitor.TraceTypes + [ttInfo];
-  if (Preferences.LogTime) then FSQLMonitor.TraceTypes := FSQLMonitor.TraceTypes + [ttTime];
-  FSQLMonitor.OnMonitor := MonitorLog;
-  StmtMonitor := TMySQLMonitor.Create(nil);
-  StmtMonitor.Connection := Self;
-  StmtMonitor.Enabled := True;
-  StmtMonitor.TraceTypes := [ttResult];
-  StmtMonitor.OnMonitor := MonitorExecutedStmts;
+  if (not Assigned(AAccount)) then
+  begin
+    FSQLMonitor := nil;
+    StmtMonitor := nil;
 
-  FCharsets := TCCharsets.Create(Self);
-  FCollations := nil;
-  FDatabases :=  TCDatabases.Create(Self);
-  FFieldTypes := nil;
-  FEngines := nil;
-  FHosts := nil;
-  FInvalidObjects := TList.Create();
-  FPlugins := nil;
-  FProcesses := nil;
-  FStati := nil;
-  FUsers := nil;
-  FVariables := TCVariables.Create(Self);
+    FCharsets := TCCharsets.Create(Self);
+    FCollations := nil;
+    FDatabases :=  TCDatabases.Create(Self);
+    FFieldTypes := nil;
+    FEngines := nil;
+    FHosts := nil;
+    FInvalidObjects := nil;
+    FPlugins := nil;
+    FProcesses := nil;
+    FStati := nil;
+    FUsers := nil;
+    FVariables := TCVariables.Create(Self);
+  end
+  else
+  begin
+    FSQLMonitor := TMySQLMonitor.Create(nil);
+    FSQLMonitor.Connection := Self;
+    FSQLMonitor.CacheSize := Preferences.LogSize;
+    FSQLMonitor.Enabled := True;
+    FSQLMonitor.TraceTypes := [ttRequest];
+    if (Preferences.LogResult) then FSQLMonitor.TraceTypes := FSQLMonitor.TraceTypes + [ttInfo];
+    if (Preferences.LogTime) then FSQLMonitor.TraceTypes := FSQLMonitor.TraceTypes + [ttTime];
+    FSQLMonitor.OnMonitor := MonitorLog;
+    StmtMonitor := TMySQLMonitor.Create(nil);
+    StmtMonitor.Connection := Self;
+    StmtMonitor.Enabled := True;
+    StmtMonitor.TraceTypes := [ttResult];
+    StmtMonitor.OnMonitor := MonitorExecutedStmts;
+
+    FCharsets := TCCharsets.Create(Self);
+    FCollations := nil;
+    FDatabases :=  TCDatabases.Create(Self);
+    FFieldTypes := nil;
+    FEngines := nil;
+    FHosts := nil;
+    FInvalidObjects := TList.Create();
+    FPlugins := nil;
+    FProcesses := nil;
+    FStati := nil;
+    FUsers := nil;
+    FVariables := TCVariables.Create(Self);
+  end;
 
   RegisterClient(Self, ConnectChange);
 end;
@@ -11023,7 +11012,6 @@ begin
   OnUpdateIndexDefs := UpdateIndexDefs;
   Password := Account.Connection.Password;
   Port := Account.Connection.Port;
-  Startup := Account.Startup;
   Username := Account.Connection.User;
 
   try
@@ -11460,15 +11448,15 @@ begin
               case (DDLStmt.DefinitionType) of
                 dtCreate:
                   if (DDLStmt.ObjectType = otProcedure) then
+                  begin
                     if (not Assigned(Database.ProcedureByName(DDLStmt.ObjectName))) then
-                      ExecuteEvent(ceItemAltered, Database, Database.Routines, Database.ProcedureByName(DDLStmt.ObjectName))
-                    else
-                      Database.ProcedureByName(DDLStmt.ObjectName).Source := Trim(Text)
+                      ExecuteEvent(ceItemAltered, Database, Database.Routines, Database.ProcedureByName(DDLStmt.ObjectName));
+                  end
                   else
+                  begin
                     if (not Assigned(Database.FunctionByName(DDLStmt.ObjectName))) then
-                      Database.Routines.Add(TCFunction.Create(Database.Routines, DDLStmt.ObjectName), True)
-                    else
-                      Database.FunctionByName(DDLStmt.ObjectName).Source := Trim(Text);
+                      Database.Routines.Add(TCFunction.Create(Database.Routines, DDLStmt.ObjectName), True);
+                  end;
                 dtAlter,
                 dtAlterRename:
                   begin
@@ -12450,6 +12438,11 @@ end;
 
 { TCClients ***************************************************************}
 
+procedure TCClients.BindClient(const AClient: TCClient);
+begin
+  Add(AClient);
+end;
+
 function TCClients.ClientByAccount(const Account: TAAccount; const DatabaseName: string): TCClient;
 var
   I: Integer;
@@ -12466,43 +12459,6 @@ begin
         Result := Clients[I];
 end;
 
-constructor TCClients.Create();
-begin
-  inherited;
-
-  FOnOpenConnection := nil;
-end;
-
-function TCClients.CreateClient(const AAccount: TAAccount; out UserAbort: Boolean): TCClient;
-var
-  Client: TCClient;
-begin
-  UserAbort := False;
-
-  Client := TCClient.CreateConnection(AAccount);
-
-  if (Assigned(Client)) then
-  begin
-    Client.OnSQLError := Accounts.OnSQLError;
-
-    if (Assigned(OnOpenConnection)) then
-      OnOpenConnection(Client, UserAbort)
-    else
-      Client.FirstConnect();
-
-    if (not Client.Connected) then
-      FreeAndNil(Client)
-    else
-    begin
-      Add(Client);
-
-      AAccount.DesktopCount := AAccount.DesktopCount + 1;
-    end;
-  end;
-
-  Result := Client;
-end;
-
 function TCClients.GetClient(Index: Integer): TCClient;
 begin
   Assert(TObject(Items[Index]) is TCClient);
@@ -12514,8 +12470,6 @@ procedure TCClients.ReleaseClient(var AClient: TCClient);
 var
   Index: Integer;
 begin
-  AClient.Account.DesktopCount := AClient.Account.DesktopCount - 1;
-
   Index := IndexOf(AClient);
 
   Clients[Index].Free();
@@ -12525,6 +12479,6 @@ end;
 initialization
   Clients := TCClients.Create();
 finalization
-  FreeAndNil(Clients);
+  Clients.Free();
 end.
 

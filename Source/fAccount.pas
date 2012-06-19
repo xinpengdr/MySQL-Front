@@ -26,12 +26,12 @@ type
     property XML: IXMLNode read GetXML;
   public
     Caption: string;
-    property Bookmarks: TABookmarks read FBookmarks;
-    property URI: string read FURI write FURI;
     procedure Assign(const Source: TABookmark); virtual;
     constructor Create(const ABookmarks: TABookmarks; const AXML: IXMLNode = nil); virtual;
     procedure LoadFromXML(); virtual;
     procedure SaveToXML(); virtual;
+    property Bookmarks: TABookmarks read FBookmarks;
+    property URI: string read FURI write FURI;
   end;
 
   TABookmarks = class
@@ -46,8 +46,6 @@ type
     property Desktop: TADesktop read FDesktop;
     property XML: IXMLNode read GetXML;
   public
-    property Bookmark[Index: Integer]: TABookmark read GetBookmark; default;
-    property DataPath: TFileName read GetDataPath;
     function AddBookmark(const NewBookmark: TABookmark): Boolean; virtual;
     function ByCaption(const Caption: string): TABookmark; virtual;
     procedure Clear(); virtual;
@@ -60,25 +58,27 @@ type
     procedure MoveBookmark(const Bookmark: TABookmark; const NewIndex: Integer); virtual;
     procedure SaveToXML(); virtual;
     function UpdateBookmark(const Bookmark, NewBookmark: TABookmark): Boolean; virtual;
+    property Bookmark[Index: Integer]: TABookmark read GetBookmark; default;
+    property DataPath: TFileName read GetDataPath;
   end;
 
   TADesktop = class
   type
     TListViewKind = (lkServer, lkDatabase, lkTable, lkHosts, lkProcesses, lkStati, lkUsers, lkVariables);
   private
-    FAddress: string;
-    FBookmarks: TABookmarks;
     FAccount: TAAccount;
+    FBookmarks: TABookmarks;
+    FPath: string;
     FXML: IXMLNode;
     function GetAddress(): string;
     function GetXML(): IXMLNode;
     procedure SetAddress(AAddress: string);
   protected
-    property Account: TAAccount read FAccount;
-    property XML: IXMLNode read GetXML;
     procedure Assign(const Source: TADesktop); virtual;
     procedure LoadFromXML(); virtual;
     procedure SaveToXML(); virtual;
+    property Account: TAAccount read FAccount;
+    property XML: IXMLNode read GetXML;
   public
     AddressMRU: TMRUList;
     BookmarksVisible: Boolean;
@@ -93,10 +93,10 @@ type
     NavigatorVisible: Boolean;
     SelectorWitdth: Integer;
     SQLHistoryVisible: Boolean;
-    property Address: string read GetAddress write SetAddress;
-    property Bookmarks: TABookmarks read FBookmarks;
     constructor Create(const AAccount: TAAccount); overload; virtual;
     destructor Destroy(); override;
+    property Address: string read GetAddress write SetAddress;
+    property Bookmarks: TABookmarks read FBookmarks;
   end;
 
   TAConnection = class
@@ -106,9 +106,9 @@ type
     function GetXML(): IXMLNode;
   protected
     Section: string;
-    property XML: IXMLNode read GetXML;
     procedure LoadFromXML(); virtual;
     procedure SaveToXML(); virtual;
+    property XML: IXMLNode read GetXML;
   public
     Asynchron: Boolean;
     Charset: string;
@@ -124,14 +124,13 @@ type
     SavePassword: Boolean;
     UseInformationSchema: Boolean;
     User: string;
-    property Account: TAAccount read FAccount;
     procedure Assign(const Source: TAConnection); virtual;
     constructor Create(const AAccount: TAAccount); virtual;
+    property Account: TAAccount read FAccount;
   end;
 
   TAAccount = class
   type
-    TDefaultLimit = (dlOff = 0, dlRemember = 1, dlOn = 2);
     TEventProc = procedure (const ClassType: TClass) of object;
     TDesktop = record
       Control: Pointer;
@@ -143,7 +142,6 @@ type
     FHistoryXMLDocument: IXMLDocument;
     FLastLogin: TDateTime;
     FName: string;
-    FDesktopCount: Integer;
     FDesktops: array of TDesktop;
     FXML: IXMLNode;
     FAccounts: TAAccounts;
@@ -151,6 +149,7 @@ type
     function GetBookmarksFilename(): TFileName;
     function GetDataPath(): TFileName;
     function GetDesktop(): TADesktop;
+    function GetDesktopCount(): Integer;
     function GetDesktopFilename(): TFileName;
     function GetDesktopXML(): IXMLNode;
     function GetHistoryFilename(): TFileName;
@@ -162,46 +161,43 @@ type
     procedure SetName(const AName: string);
   protected
     Section: string;
+    function GetIndex(): Integer;
+    procedure LoadFromXML();
+    procedure SaveToXML(); virtual;
+    procedure AccountEvent(const ClassType: TClass); virtual;
+    function ValidDatabaseName(const ADatabaseName: string): Boolean;
     property BookmarksFilename: TFileName read GetBookmarksFilename;
     property DesktopFilename: TFileName read GetDesktopFilename;
     property DesktopXMLDocument: IXMLDocument read FDesktopXMLDocument;
     property HistoryFilename: TFileName read GetHistoryFilename;
     property HistoryXMLDocument: IXMLDocument read FHistoryXMLDocument;
     property XML: IXMLNode read GetXML;
-    function GetIndex(): Integer;
-    procedure LoadFromXML();
-    procedure SaveToXML(); virtual;
-    procedure AccountEvent(const ClassType: TClass); virtual;
-    function ValidDatabaseName(const ADatabaseName: string): Boolean;
   public
-    Startup: string;
     CacheSize: Integer;
     Connection: TAConnection;
-    DefaultLimit: TDefaultLimit;
-    DefaultSorting: Boolean;
     IconFetched: Boolean;
     ImageIndex: Integer;
     ManualURL: string;
     ManualURLFetched: Boolean;
+    procedure Assign(const Source: TAAccount); virtual;
+    constructor Create(const AAccounts: TAAccounts; const AXML: IXMLNode = nil); virtual;
+    destructor Destroy(); override;
+    function ExtractPath(const AAddress: string): string; virtual;
+    function FullAddress(const APath: string): string; virtual;
+    function Frame(): Pointer; virtual;
+    function GetDefaultDatabase(): string; virtual;
+    procedure RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc); virtual;
+    procedure UnRegisterDesktop(const AControl: Pointer); virtual;
+    property Accounts: TAAccounts read FAccounts;
     property DataPath: TFileName read GetDataPath;
     property Desktop: TADesktop read GetDesktop;
-    property DesktopCount: Integer read FDesktopCount write FDesktopCount;
+    property DesktopCount: Integer read GetDesktopCount;
     property DesktopXML: IXMLNode read GetDesktopXML;
-    function Frame(): Pointer; virtual;
     property HistoryXML: IXMLNode read GetHistoryXML;
     property IconFilename: TFileName read GetIconFilename;
     property Index: Integer read GetIndex;
     property LastLogin: TDateTime read FLastLogin write SetLastLogin;
     property Name: string read GetName write SetName;
-    property Accounts: TAAccounts read FAccounts;
-    procedure Assign(const Source: TAAccount); virtual;
-    constructor Create(const AAccounts: TAAccounts; const AXML: IXMLNode = nil); virtual;
-    destructor Destroy(); override;
-    function GetDefaultDatabase(): string; virtual;
-    procedure RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc); virtual;
-    procedure UnRegisterDesktop(const AControl: Pointer); virtual;
-    function PackAddress(const AAddress: string): string; virtual;
-    function FullAddress(const AAddress: string): string; virtual;
   end;
 
   TAAccounts = class(TList)
@@ -222,10 +218,8 @@ type
     property Filename: TFileName read GetFilename;
     property XML: IXMLNode read GetXML;
   public
-    property Default: TAAccount read GetDefault write SetDefault;
-    property DBLogin: TLogin read FDBLogin;
-    property OnSQLError: TMySQLConnection.TErrorEvent read FOnSQLError;
-    property Account[Index: Integer]: TAAccount read GetFAccounts; default;
+    function AccountByName(const AccountName: string): TAAccount; virtual;
+    function AccountByURI(const AURI: string; const DefaultAccount: TAAccount = nil): TAAccount; virtual;
     procedure AddAccount(const NewAccount: TAAccount); virtual;
     procedure AppendIconsToImageList(const AImageList: TImageList; const AAccount: TAAccount = nil); virtual;
     procedure Clear(); override;
@@ -234,9 +228,11 @@ type
     destructor Destroy(); override;
     procedure LoadFromXML(); virtual;
     procedure SaveToXML(); virtual;
-    function AccountByName(const AccountName: string): TAAccount; virtual;
-    function AccountByURI(const AURI: string; const DefaultAccount: TAAccount = nil): TAAccount; virtual;
     procedure UpdateAccount(const Account, NewAccount: TAAccount); virtual;
+    property Account[Index: Integer]: TAAccount read GetFAccounts; default;
+    property Default: TAAccount read GetDefault write SetDefault;
+    property DBLogin: TLogin read FDBLogin;
+    property OnSQLError: TMySQLConnection.TErrorEvent read FOnSQLError;
   end;
 
 var
@@ -348,7 +344,7 @@ begin
   XML.OwnerDocument.Options := XML.OwnerDocument.Options + [doNodeAutoCreate];
 
   XML.Attributes['name'] := Caption;
-  XMLNode(XML, 'uri').Text := Bookmarks.Desktop.Account.PackAddress(URI);
+  XMLNode(XML, 'uri').Text := Bookmarks.Desktop.Account.ExtractPath(URI);
 
   XML.OwnerDocument.Options := XML.OwnerDocument.Options - [doNodeAutoCreate];
 end;
@@ -554,7 +550,7 @@ var
   I: Integer;
   Kind: TListViewKind;
 begin
-  Address := Account.FullAddress(Source.Account.PackAddress(Source.Address));
+  Address := Account.FullAddress(Source.Account.ExtractPath(Source.Address));
   BlobHeight := Source.BlobHeight;
   BookmarksVisible := Source.BookmarksVisible;
   for Kind := lkServer to lkVariables do
@@ -582,7 +578,6 @@ begin
   FAccount := AAccount;
   FXML := nil;
 
-  FAddress := '/';
   BlobHeight := 100;
   BookmarksVisible := False;
   for Kind := lkServer to lkVariables do
@@ -596,6 +591,7 @@ begin
   NavigatorVisible := True;
   LogHeight := 80;
   LogVisible := False;
+  FPath := '/';
   SelectorWitdth := 150;
   SQLHistoryVisible := False;
 
@@ -614,7 +610,7 @@ end;
 
 function TADesktop.GetAddress(): string;
 begin
-  Result := Account.FullAddress(FAddress);
+  Result := Account.FullAddress(FPath);
 end;
 
 function TADesktop.GetXML(): IXMLNode;
@@ -629,12 +625,6 @@ procedure TADesktop.LoadFromXML();
 begin
   if (Assigned(XML)) then
   begin
-    if (Assigned(XMLNode(XML, 'address'))) then
-    begin
-      if (Assigned(XMLNode(XML, 'address/default')) and (XMLNode(XML, 'address/default').Text <> '')) then
-        FAddress := XMLNode(XML, 'address/default').Text;
-      AddressMRU.Clear();
-    end;
     if (Assigned(XMLNode(XML, 'datagrid/height'))) then TryStrToInt(XMLNode(XML, 'datagrid/height').Text, DataHeight);
     if (Assigned(XMLNode(XML, 'datagrid/blob/height'))) then TryStrToInt(XMLNode(XML, 'datagrid/blob/height').Text, BlobHeight);
     if (Assigned(XMLNode(XML, 'editor/content'))) then EditorContent := XMLNode(XML, 'editor/content').Text;
@@ -674,6 +664,7 @@ begin
     if (Assigned(XMLNode(XML, 'objects/users/widths/comment'))) then TryStrToInt(XMLNode(XML, 'objects/users/widths/comment').Text, ColumnWidths[lkUsers][2]);
     if (Assigned(XMLNode(XML, 'objects/variables/widths/name'))) then TryStrToInt(XMLNode(XML, 'objects/variables/widths/name').Text, ColumnWidths[lkVariables][0]);
     if (Assigned(XMLNode(XML, 'objects/variables/widths/value'))) then TryStrToInt(XMLNode(XML, 'objects/variables/widths/value').Text, ColumnWidths[lkVariables][1]);
+    if (Assigned(XMLNode(XML, 'path'))) then FPath := XMLNode(XML, 'path').Text;
     if (Assigned(XMLNode(XML, 'sidebar/explorer/folders/height'))) then TryStrToInt(XMLNode(XML, 'sidebar/explorer/folders/height').Text, FoldersHeight);
     if (Assigned(XMLNode(XML, 'sidebar/explorer/files/filter'))) then FilesFilter := XMLNode(XML, 'sidebar/explorer/files/filter').Text;
     if (Assigned(XMLNode(XML, 'sidebar/width'))) then TryStrToInt(XMLNode(XML, 'sidebar/width').Text, SelectorWitdth);
@@ -693,8 +684,6 @@ procedure TADesktop.SaveToXML();
 begin
   XML.OwnerDocument.Options := XML.OwnerDocument.Options + [doNodeAutoCreate];
 
-  XMLNode(XML, 'address').ChildNodes.Clear();
-  XMLNode(XML, 'address/default').Text := FAddress;
   XMLNode(XML, 'datagrid/height').Text := IntToStr(DataHeight);
   XMLNode(XML, 'datagrid/blob/height').Text := IntToStr(BlobHeight);
   try
@@ -739,6 +728,9 @@ begin
   XMLNode(XML, 'objects/users/widths/comment').Text := IntToStr(ColumnWidths[lkUsers][2]);
   XMLNode(XML, 'objects/variables/widths/name').Text := IntToStr(ColumnWidths[lkVariables][0]);
   XMLNode(XML, 'objects/variables/widths/value').Text := IntToStr(ColumnWidths[lkVariables][1]);
+  if (FPath = '/.') then
+    raise ERangeError.Create(SRangeError);
+  XMLNode(XML, 'path').Text := FPath;
   XMLNode(XML, 'sidebar/explorer/folders/height').Text := IntToStr(FoldersHeight);
   XMLNode(XML, 'sidebar/explorer/files/filter').Text := FilesFilter;
   XMLNode(XML, 'sidebar/width').Text := IntToStr(SelectorWitdth);
@@ -760,9 +752,9 @@ end;
 
 procedure TADesktop.SetAddress(AAddress: string);
 begin
-  FAddress := Account.PackAddress(AAddress);
+  FPath := Account.ExtractPath(AAddress);
 
-  if (FAddress = '/.') then
+  if (FPath = '/.') then
     raise ERangeError.Create(SRangeError);
 end;
 
@@ -885,15 +877,12 @@ begin
   if (not Assigned(Accounts)) then FAccounts := Source.Accounts;
 
   CacheSize := Source.CacheSize;
-  DefaultLimit := Source.DefaultLimit;
-  DefaultSorting := Source.DefaultSorting;
   FLastLogin := Source.LastLogin;
   IconFetched := Source.IconFetched;
   ImageIndex := Source.ImageIndex;
   ManualURL := Source.ManualURL;
   ManualURLFetched := Source.ManualURLFetched;
   Name := Source.Name;
-  Startup := Source.Startup;
 
   Modified := True;
 
@@ -907,11 +896,7 @@ begin
   FAccounts := AAccounts;
   FXML := AXML;
 
-  FDesktopCount := 0;
-
   CacheSize := 50;
-  DefaultLimit := dlRemember;
-  DefaultSorting := True;
   FDesktopXMLDocument := nil;
   FHistoryXMLDocument := nil;
   FLastLogin := 0;
@@ -920,7 +905,6 @@ begin
   ManualURL := '';
   ManualURLFetched := False;
   Modified := False;
-  Startup := '';
 
   Connection := TAConnection.Create(Self);
   FDesktop := nil;
@@ -934,6 +918,31 @@ begin
   inherited;
 end;
 
+function TAAccount.ExtractPath(const AAddress: string): string;
+var
+  URI: TUURI;
+begin
+  Result := AAddress;
+
+  try
+    URI := TUURI.Create(Result);
+
+    if (URI.Scheme = 'mysql') then
+      Delete(Result, 1, Length('mysql') + 1);
+    if (((URI.Host = LowerCase(Connection.Host)) or (URI.Host = LOCAL_HOST)) and ((URI.Port = 0) or (URI.Port = Connection.Port))) then
+    begin
+      Delete(Result, 1, 2);
+      if (Pos('/', Result) = 0) then
+        Result := ''
+      else
+        Delete(Result, 1, Pos('/', Result) - 1);
+    end;
+
+    URI.Free();
+  except
+  end;
+end;
+
 function TAAccount.Frame(): Pointer;
 begin
   if (Length(FDesktops) = 0) then
@@ -942,13 +951,13 @@ begin
     Result := FDesktops[0].Control;
 end;
 
-function TAAccount.FullAddress(const AAddress: string): string;
+function TAAccount.FullAddress(const APath: string): string;
 var
   Buffer: array[0 .. INTERNET_MAX_URL_LENGTH] of Char;
   Size: Cardinal;
   URLComponents: URL_COMPONENTS;
 begin
-  Result := AAddress;
+  Result := APath;
 
   if ((Copy(Result, 1, 1) = '/') and (Copy(Result, 1, 2) <> '//')) then
   begin
@@ -961,12 +970,12 @@ begin
     URLComponents.dwHostNameLength := Length(Connection.Host);
     if (Connection.Port <> MYSQL_PORT) then
       URLComponents.nPort := Connection.Port;
-    URLComponents.lpszUrlPath := PChar(AAddress);
+    URLComponents.lpszUrlPath := PChar(APath);
     URLComponents.dwUrlPathLength := StrLen(URLComponents.lpszUrlPath);
 
     Size := SizeOf(Buffer);
     if (not InternetCreateUrl(URLComponents, ICU_ESCAPE, @Buffer, Size)) then
-      raise EConvertError.CreateFmt(SConvStrParseError, [AAddress]);
+      raise EConvertError.CreateFmt(SConvStrParseError, [APath]);
     SetString(Result, PChar(@Buffer), Size);
   end;
   if (Copy(Result, 1, 2) = '//') then
@@ -1044,6 +1053,11 @@ begin
   Result := FDesktop;
 end;
 
+function TAAccount.GetDesktopCount(): Integer;
+begin
+  Result := Length(FDesktops);
+end;
+
 function TAAccount.GetDesktopFilename(): TFileName;
 begin
   if (not DirectoryExists(DataPath)) then
@@ -1070,7 +1084,7 @@ begin
     begin
       FDesktopXMLDocument := NewXMLDocument();
       FDesktopXMLDocument.Encoding := 'utf-8';
-      FDesktopXMLDocument.Node.AddChild('desktop').Attributes['version'] := '1.2';
+      FDesktopXMLDocument.Node.AddChild('desktop').Attributes['version'] := '1.3';
     end;
 
     if (FDesktopXMLDocument.DocumentElement.Attributes['version'] = '1.1') then
@@ -1081,6 +1095,15 @@ begin
           if (Node.ChildNodes[I].NodeName = 'browser') then
             Node.ChildNodes.Delete(I);
       FDesktopXMLDocument.DocumentElement.Attributes['version'] := '1.2';
+    end;
+
+    if (FDesktopXMLDocument.DocumentElement.Attributes['version'] = '1.2') then
+    begin
+      Node := FDesktopXMLDocument.DocumentElement;
+      if (Assigned(Node) and Assigned(XMLNode(Node, 'address'))) then
+        Node.ChildNodes.Remove(XMLNode(Node, 'address'));
+
+      FDesktopXMLDocument.DocumentElement.Attributes['version'] := '1.3';
     end;
 
     FDesktopXMLDocument.Options := FDesktopXMLDocument.Options - [doAttrNull, doNodeAutoCreate];
@@ -1175,43 +1198,12 @@ begin
       TryStrToFloat(ReplaceStr(XMLNode(XML, 'lastlogin').Text, '.', FormatSettings.DecimalSeparator), Double(FLastLogin));
     if (Assigned(XMLNode(XML, 'manualurl'))) then ManualURL := XMLNode(XML, 'manualurl').Text;
     if (Assigned(XMLNode(XML, 'manualurlfetched'))) then TryStrToBool(XMLNode(XML, 'manualurlfetched').Text, ManualURLFetched);
-    if (Assigned(XMLNode(XML, 'limit'))) then
-      if (UpperCase(XMLNode(XML, 'limit').Text) = 'REMEMBER') then DefaultLimit := dlRemember
-      else if (UpperCase(XMLNode(XML, 'limit').Text) = 'ON') then DefaultLimit := dlOn
-      else DefaultLimit := dlOff;
-    if (Assigned(XMLNode(XML, 'sorting'))) then TryStrToBool(XMLNode(XML, 'sorting').Text, DefaultSorting);
-    if (Assigned(XMLNode(XML, 'startup'))) then Startup := XMLNode(XML, 'startup').Text;
 
     Modified := False;
 
     Connection.LoadFromXML();
     if (Assigned(Desktop)) then
       Desktop.LoadFromXML(); // Client muss geladen sein, damit FullAddress funktioniert
-  end;
-end;
-
-function TAAccount.PackAddress(const AAddress: string): string;
-var
-  URI: TUURI;
-begin
-  Result := AAddress;
-
-  try
-    URI := TUURI.Create(Result);
-
-    if (URI.Scheme = 'mysql') then
-      Delete(Result, 1, Length('mysql') + 1);
-    if (((URI.Host = LowerCase(Connection.Host)) or (URI.Host = LOCAL_HOST)) and ((URI.Port = 0) or (URI.Port = Connection.Port))) then
-    begin
-      Delete(Result, 1, 2);
-      if (Pos('/', Result) = 0) then
-        Result := ''
-      else
-        Delete(Result, 1, Pos('/', Result) - 1);
-    end;
-
-    URI.Free();
-  except
   end;
 end;
 
@@ -1229,15 +1221,8 @@ begin
     XMLNode(XML, 'cache/size').Text := IntToStr(CacheSize);
     XMLNode(XML, 'iconfetched').Text := BoolToStr(IconFetched, True);
     XMLNode(XML, 'lastlogin').Text := FloatToStr(LastLogin);
-    case (DefaultLimit) of
-      dlOff: XMLNode(XML, 'limit').Text := '';
-      dlRemember: XMLNode(XML, 'limit').Text := 'Remember';
-      else XMLNode(XML, 'limit').Text := 'On';
-    end;
     XMLNode(XML, 'manualurl').Text := ManualURL;
     XMLNode(XML, 'manualurlfetched').Text := BoolToStr(ManualURLFetched, True);
-    XMLNode(XML, 'sorting').Text := BoolToStr(DefaultSorting, True);
-    XMLNode(XML, 'startup').Text := Startup;
 
     Connection.SaveToXML();
     if (Assigned(Desktop)) then

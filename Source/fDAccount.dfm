@@ -45,17 +45,13 @@ object DAccount: TDAccount
     Top = 8
     Width = 313
     Height = 277
-    ActivePage = TSDebug
+    ActivePage = TSLogin
     HotTrack = True
     MultiLine = True
     TabOrder = 0
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
       OnShow = TSBasicsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GBasics: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -117,10 +113,6 @@ object DAccount: TDAccount
     object TSConnection: TTabSheet
       Caption = 'TSConnection'
       ImageIndex = 1
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GServer: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -250,10 +242,6 @@ object DAccount: TDAccount
     object TSLogin: TTabSheet
       Caption = 'TSLogin'
       ImageIndex = 2
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GLogin: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -325,111 +313,8 @@ object DAccount: TDAccount
         end
       end
     end
-    object TSStartup: TTabSheet
-      Caption = 'TSStartup'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        305
-        231)
-      object FStartup: TSynMemo
-        Left = 4
-        Top = 8
-        Width = 297
-        Height = 217
-        Anchors = [akLeft, akTop, akRight, akBottom]
-        Font.Charset = DEFAULT_CHARSET
-        Font.Color = clWindowText
-        Font.Height = -13
-        Font.Name = 'Courier New'
-        Font.Style = []
-        PopupMenu = MSource
-        TabOrder = 0
-        Gutter.AutoSize = True
-        Gutter.DigitCount = 2
-        Gutter.Font.Charset = DEFAULT_CHARSET
-        Gutter.Font.Color = clWindowText
-        Gutter.Font.Height = -11
-        Gutter.Font.Name = 'Courier New'
-        Gutter.Font.Style = []
-        Gutter.LeftOffset = 2
-        Gutter.ShowLineNumbers = True
-        MaxScrollWidth = 65535
-        Options = [eoDragDropEditing, eoGroupUndo, eoHideShowScrollbars, eoShowScrollHint, eoSmartTabDelete, eoTabIndent, eoTabsToSpaces]
-        ScrollHintFormat = shfTopToBottom
-      end
-    end
-    object TSDataBrowser: TTabSheet
-      Caption = 'TSDataBrowser'
-      ImageIndex = 4
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      object GBrowser: TGroupBox_Ext
-        Left = 4
-        Top = 4
-        Width = 297
-        Height = 117
-        Caption = 'GBrowser'
-        TabOrder = 0
-        object FLDefaultSorting: TLabel
-          Left = 8
-          Top = 89
-          Width = 79
-          Height = 13
-          Caption = 'FLDefaultSorting'
-          FocusControl = FDefaultSorting
-        end
-        object FLLimit: TLabel
-          Left = 8
-          Top = 17
-          Width = 33
-          Height = 13
-          Caption = 'FLLimit'
-        end
-        object FLimitRemember: TRadioButton
-          Left = 128
-          Top = 38
-          Width = 161
-          Height = 17
-          Caption = 'FLimitRemember'
-          TabOrder = 1
-        end
-        object FDefaultSorting: TCheckBox
-          Left = 128
-          Top = 88
-          Width = 161
-          Height = 17
-          Caption = 'FDefaultSorting'
-          TabOrder = 3
-        end
-        object FLimitOff: TRadioButton
-          Left = 128
-          Top = 16
-          Width = 161
-          Height = 17
-          Caption = 'FLimitOff'
-          TabOrder = 0
-        end
-        object FLimitOn: TRadioButton
-          Left = 128
-          Top = 60
-          Width = 161
-          Height = 17
-          Caption = 'FLimitOn'
-          TabOrder = 2
-        end
-      end
-    end
     object TSDebug: TTabSheet
       Caption = 'TSDebug'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GDebug: TGroupBox_Ext
         Left = 4
         Top = 4

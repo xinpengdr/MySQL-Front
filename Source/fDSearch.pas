@@ -128,7 +128,8 @@ implementation {***************************************************************}
 uses
   Consts, StrUtils, CommCtrl, RichEdit,
   SQLUtils,
-  fPreferences, fURI;
+  fPreferences, fURI,
+  fDConnecting;
 
 var
   FSearch: TDSearch;
@@ -734,11 +735,17 @@ begin
 end;
 
 function TDSearch.GetClient(const Index: Integer): TCClient;
-var
-  B: Boolean;
 begin
   if (not Assigned(Clients[Index])) then
-    Clients[Index] := fClient.Clients.CreateClient(Accounts[Index], B);
+  begin
+    Clients[Index] := TCClient.Create(Accounts[Index]);
+    Clients[Index].OnSQLError := Accounts.OnSQLError;
+    DConnecting.Client := Clients[Index];
+    if (not DConnecting.Execute()) then
+      FreeAndNil(Clients[Index])
+    else
+      fClient.Clients.BindClient(Clients[Index]);
+  end;
 
   Result := Clients[Index];
 
@@ -880,7 +887,6 @@ procedure TDSearch.TSExecuteShow(Sender: TObject);
   end;
 
 var
-  B: Boolean;
   Client: TCClient;
   Database: TCDatabase;
   I: Integer;
@@ -958,10 +964,15 @@ begin
     end
     else
     begin
-      ReplaceClient := fClient.Clients.CreateClient(ExecuteClient.Account, B);
-
-      if (Assigned(ReplaceClient)) then
+      ReplaceClient := TCClient.Create(ExecuteClient.Account);
+      ReplaceClient.OnSQLError := Accounts.OnSQLError;
+      DConnecting.Client := ReplaceClient;
+      if (not DConnecting.Execute()) then
+        FreeAndNil(ReplaceClient)
+      else
       begin
+        fClient.Clients.BindClient(ReplaceClient);
+
         Find := TTReplace.Create(ExecuteClient, ReplaceClient);
 
         TTReplace(Find).Wnd := Self.Handle;

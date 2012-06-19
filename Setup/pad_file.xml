@@ -24,14 +24,8 @@
 		<Program_Language>Arabic,Bulgarian,Catalan,ChineseSimplified,ChineseTraditional,Croatian,Czech,Danish,Dutch,English,French,German,Greek,Hungarian,Indonesian,Italian,Japanese,Korean,Lithuanian,Norwegian,Polish,Portuguese,Romanian,Russian,Serbian,Slovak,Spanish,Swedish,Thai,Turkish,Ukrainian</Program_Language>
 		<Program_OS_Support>WinXP,Windows2003,Windows Vista Starter,Windows Vista Home Basic,Windows Vista Home Premium,Windows Vista Business,Windows Vista Enterprise,Windows Vista Ultimate,Windows Vista Home Basic x64,Windows Vista Home Premium x64,Windows Vista Business x64,Windows Vista Enterprise x64,Windows Vista Ultimate x64</Program_OS_Support>
 		<Program_Install_Support>Install and Uninstall</Program_Install_Support>
-		<Program_System_Requirements/>
-		<Includes_VB_Runtime/>
-		<Includes_JAVA_VM/>
-		<Includes_DirectX/>
 		<File_Info>
 			<Filename_Long>{BuildName}_Setup.exe</Filename_Long>
-			<Filename_Generic>Front.exe</Filename_Generic>
-			<Filename_Versioned>Front0{BuildVerMajor}.exe</Filename_Versioned>
 			<File_Size_Bytes>{BuildPADFileSizeB}</File_Size_Bytes>
 			<File_Size_K>{BuildPADFileSizeKB}</File_Size_K>
 			<File_Size_MB>{BuildPADFileSizeMB}</File_Size_MB>
@@ -50,7 +44,6 @@
 	<Web_Info>
 		<Application_URLs>
 			<Application_Info_URL>{BuildInternetHomepage}</Application_Info_URL>
-			<Application_Order_URL/>
 			<Application_Screenshot_URL>{BuildInternetPadFileScreenshot}</Application_Screenshot_URL>
 			<Application_Icon_URL>{BuildInternetPadFileIcon}</Application_Icon_URL>
 			<Application_XML_File_URL>{BuildInternetPadFile}</Application_XML_File_URL>

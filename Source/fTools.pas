@@ -3691,7 +3691,7 @@ begin
     end;
 
     SQL := 'SELECT ' + SQL + ' FROM ' + Table.Database.Client.EscapeIdentifier(Table.Database.Name) + '.' + Table.Database.Client.EscapeIdentifier(Table.Name);
-    if (Client.Account.DefaultSorting and (Table is TCBaseTable) and Assigned(TCBaseTable(Table).PrimaryIndex)) then
+    if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).PrimaryIndex)) then
     begin
       SQL := SQL + ' ORDER BY ';
       for I := 0 to TCBaseTable(Table).PrimaryIndex.Columns.Count - 1 do
