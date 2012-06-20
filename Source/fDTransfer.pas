@@ -309,7 +309,7 @@ begin
     begin
       Clients[I].UnRegisterEventProc(FormClientEvent);
       if (Assigned(Clients[I]) and (Clients[I] <> MasterClient) and (Clients[I] <> MasterClient)) then
-        fClient.Clients.ReleaseClient(Clients[I]);
+        FreeAndNil(Clients[I]);
     end;
   SetLength(Clients, 0);
 
@@ -406,13 +406,10 @@ function TDTransfer.GetClient(const Index: Integer): TCClient;
 begin
   if (not Assigned(Clients[Index])) then
   begin
-    Clients[Index] := TCClient.Create(Accounts[Index]);
-    Clients[Index].OnSQLError := Accounts.OnSQLError;
+    Clients[Index] := TCClient.Create(fClient.Clients, Accounts[Index]);
     DConnecting.Client := Clients[Index];
     if (not DConnecting.Execute()) then
-      FreeAndNil(Clients[Index])
-    else
-      fClient.Clients.BindClient(Clients[Index]);
+      FreeAndNil(Clients[Index]);
   end;
 
   Result := Clients[Index];

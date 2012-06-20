@@ -1166,7 +1166,7 @@ end;
 
 function SQLParseDDLStmt(out DDLStmt: TSQLDDLStmt; const SQL: PChar; const Len: Integer; const Version: Integer): Boolean;
 label
-  Alter, Create, Drop, Rename,
+  Alter, Create, Drop, RenameTable,
   Algorithm, AlgorithmL,
   Definer,
   ObjType,
@@ -1174,7 +1174,7 @@ label
   ODatabase, OEvent, OFunction, OProcedure, OTable, OTrigger, OView,
   Name,
   Found,
-  RenameL, RenameLE, RenameC, RenameE,
+  Rename, RenameL, RenameLE, RenameC, RenameE,
   Finish, Finish2;
 var
   InCondCode: Boolean;
@@ -1224,10 +1224,10 @@ begin
     Drop:
       MOV EAX,[KDrop]
       CALL CompareKeyword              // 'DROP'?
-      JNE Rename                       // No!
+      JNE RenameTable                  // No!
       MOV BYTE PTR [EBX + 0],dtDrop
       JMP ObjType
-    Rename:
+    RenameTable:
       MOV EAX,[KRename]
       CALL CompareKeyword              // 'RENAME'?
       JNE Finish                       // No!
@@ -1383,8 +1383,12 @@ begin
       CMP BYTE PTR [EBX + 0],dtAlter   // Alter statement?
       JNE Finish                       // No!
       CMP BYTE PTR [EBX + 1],otTable   // Table object?
-      JNE Finish                       // No!
+      JE Rename                        // Yes!
+      CMP BYTE PTR [EBX + 1],otEvent   // Event object?
+      JE Rename                        // Yes!
+      JMP Finish
 
+    Rename:
       PUSH ESI
 
       MOV EAX,[KRename]

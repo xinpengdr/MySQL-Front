@@ -198,10 +198,7 @@ begin
   if (Assigned(ExecuteClient)) then
     ExecuteClient := nil;
   if (Assigned(ReplaceClient)) then
-  begin
-    fClient.Clients.ReleaseClient(ReplaceClient);
-    ReplaceClient := nil;
-  end;
+    FreeAndNil(ReplaceClient);
 
   ModalResult := mrNone;
 
@@ -396,7 +393,7 @@ begin
     begin
       Clients[I].UnRegisterEventProc(FormClientEvent);
       if (Clients[I] <> Client) then
-        fClient.Clients.ReleaseClient(Clients[I]);
+        FreeAndNil(Clients[I]);
     end;
   SetLength(Clients, 0);
 
@@ -738,13 +735,10 @@ function TDSearch.GetClient(const Index: Integer): TCClient;
 begin
   if (not Assigned(Clients[Index])) then
   begin
-    Clients[Index] := TCClient.Create(Accounts[Index]);
-    Clients[Index].OnSQLError := Accounts.OnSQLError;
+    Clients[Index] := TCClient.Create(fClient.Clients, Accounts[Index]);
     DConnecting.Client := Clients[Index];
     if (not DConnecting.Execute()) then
-      FreeAndNil(Clients[Index])
-    else
-      fClient.Clients.BindClient(Clients[Index]);
+      FreeAndNil(Clients[Index]);
   end;
 
   Result := Clients[Index];
@@ -964,15 +958,12 @@ begin
     end
     else
     begin
-      ReplaceClient := TCClient.Create(ExecuteClient.Account);
-      ReplaceClient.OnSQLError := Accounts.OnSQLError;
+      ReplaceClient := TCClient.Create(fClient.Clients, ExecuteClient.Account);
       DConnecting.Client := ReplaceClient;
       if (not DConnecting.Execute()) then
         FreeAndNil(ReplaceClient)
       else
       begin
-        fClient.Clients.BindClient(ReplaceClient);
-
         Find := TTReplace.Create(ExecuteClient, ReplaceClient);
 
         TTReplace(Find).Wnd := Self.Handle;

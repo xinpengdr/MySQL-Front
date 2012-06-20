@@ -7,9 +7,6 @@ uses
   fPreferences, MySQLDB;
 
 type
-  TLogin = function(const Account: Pointer): Boolean of object;
-
-type
   TABookmarks = class;
   TADesktop = class;
   TAConnection = class;
@@ -201,10 +198,11 @@ type
   end;
 
   TAAccounts = class(TList)
+  type
+    TDBLogin = function(const Account: Pointer): Boolean of object;
   private
     DefaultAccountName: string;
-    FDBLogin: TLogin;
-    FOnSQLError: TMySQLConnection.TErrorEvent;
+    FDBLogin: TDBLogin;
     FXMLDocument: IXMLDocument;
     function GetDataPath(): TFileName;
     function GetDefault(): TAAccount; inline;
@@ -223,7 +221,7 @@ type
     procedure AddAccount(const NewAccount: TAAccount); virtual;
     procedure AppendIconsToImageList(const AImageList: TImageList; const AAccount: TAAccount = nil); virtual;
     procedure Clear(); override;
-    constructor Create(const ADBLogin: TLogin; const AOnSQLError: TMySQLConnection.TErrorEvent);
+    constructor Create(const ADBLogin: TDBLogin);
     function DeleteAccount(const AAccount: TAAccount): Boolean; virtual;
     destructor Destroy(); override;
     procedure LoadFromXML(); virtual;
@@ -231,8 +229,7 @@ type
     procedure UpdateAccount(const Account, NewAccount: TAAccount); virtual;
     property Account[Index: Integer]: TAAccount read GetFAccounts; default;
     property Default: TAAccount read GetDefault write SetDefault;
-    property DBLogin: TLogin read FDBLogin;
-    property OnSQLError: TMySQLConnection.TErrorEvent read FOnSQLError;
+    property DBLogin: TDBLogin read FDBLogin;
   end;
 
 var
@@ -246,12 +243,6 @@ uses
   MySQLConsts,
   CSVUtils,
   fURI;
-
-resourcestring
-  SDirNotExists = 'Verzeichnis "%s" nicht gefunden.';
-
-var
-  WSAData: WinSock.WSADATA;
 
 function ViewStyleToInteger(const ViewStyle: TViewStyle): Integer;
 begin
@@ -1357,14 +1348,13 @@ begin
   inherited;
 end;
 
-constructor TAAccounts.Create(const ADBLogin: TLogin; const AOnSQLError: TMySQLConnection.TErrorEvent);
+constructor TAAccounts.Create(const ADBLogin: TDBLogin);
 var
   StringList: TStringList;
 begin
   inherited Create();
 
   FDBLogin := ADBLogin;
-  FOnSQLError := AOnSQLError;
 
   Section := 'Accounts';
 
@@ -1638,9 +1628,4 @@ begin
   end;
 end;
 
-initialization
-  WSAData.wVersion := 0;
-finalization
-  if (WSAData.wVersion <> 0) then
-    WSACleanup();
 end.

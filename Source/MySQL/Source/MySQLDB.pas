@@ -403,7 +403,7 @@ type
       LibRow: MYSQL_ROW;
     end;
   private
-    CommandTextUsedForOpen: Boolean;
+    OpenByCommandText: Boolean;
     FConnection: TMySQLConnection;
     FHandle: MySQLConsts.MYSQL_RES;
     FIndexDefs: TIndexDefs;
@@ -1694,6 +1694,52 @@ begin
   inherited;
 end;
 
+{ TMySQLConnection.TTerminatedThreads *****************************************}
+
+function TMySQLConnection.TTerminatedThreads.Add(const Item: Pointer): Integer;
+begin
+  CriticalSection.Enter();
+  Result := inherited Add(Item);
+  CriticalSection.Leave();
+end;
+
+constructor TMySQLConnection.TTerminatedThreads.Create();
+begin
+  inherited;
+
+  CriticalSection := TCriticalSection.Create();
+end;
+
+procedure TMySQLConnection.TTerminatedThreads.Delete(const Item: Pointer);
+var
+  Index: Integer;
+begin
+  CriticalSection.Enter();
+
+  Index := IndexOf(Item);
+  if (Index >= 0) then
+    Delete(Index);
+
+  CriticalSection.Leave();
+end;
+
+destructor TMySQLConnection.TTerminatedThreads.Destroy();
+begin
+  CriticalSection.Enter();
+
+  while (Count > 0) do
+  begin
+    TerminateThread(TThread(Items[0]).Handle, 1);
+    inherited Delete(0);
+  end;
+
+  CriticalSection.Leave();
+
+  CriticalSection.Free();
+
+  inherited;
+end;
+
 { TMySQLConnection.TSynchroThread *********************************************}
 
 procedure TMySQLConnection.TSynchroThread.BindDataSet(const ADataSet: TMySQLDataSet);
@@ -1791,6 +1837,8 @@ begin
     Connection.Lib.mysql_close(LibHandle);
     LibHandle := nil;
   end;
+
+  Connection.TerminatedThreads.Delete(Self);
 end;
 
 function TMySQLConnection.TSynchroThread.GetIsRunning(): Boolean;
@@ -1911,52 +1959,6 @@ begin
   end
   else
     ExecuteE.SetEvent();
-end;
-
-{ TMySQLConnection.TTerminatedThreads *****************************************}
-
-function TMySQLConnection.TTerminatedThreads.Add(const Item: Pointer): Integer;
-begin
-  CriticalSection.Enter();
-  Result := inherited Add(Item);
-  CriticalSection.Leave();
-end;
-
-constructor TMySQLConnection.TTerminatedThreads.Create();
-begin
-  inherited;
-
-  CriticalSection := TCriticalSection.Create();
-end;
-
-procedure TMySQLConnection.TTerminatedThreads.Delete(const Item: Pointer);
-var
-  Index: Integer;
-begin
-  CriticalSection.Enter();
-
-  Index := IndexOf(Item);
-  if (Index >= 0) then
-    Delete(Index);
-
-  CriticalSection.Leave();
-end;
-
-destructor TMySQLConnection.TTerminatedThreads.Destroy();
-begin
-  CriticalSection.Enter();
-
-  while (Count > 0) do
-  begin
-    TerminateThread(TThread(Items[0]).Handle, 1);
-    inherited Delete(0);
-  end;
-
-  CriticalSection.Leave();
-
-  CriticalSection.Free();
-
-  inherited;
 end;
 
 function TMySQLConnection.GetCommandText(): string;
@@ -2288,21 +2290,24 @@ begin
     if Value = GetConnected then Exit;
     if Value then
     begin
+      if Assigned(BeforeConnect) then BeforeConnect(Self);
       if (not Assigned(FLib)) then
         FLib := LoadMySQLLibrary(FLibraryType, LibraryName);
       if (not Assigned(FLib)) then
-        DoError(ER_CANT_OPEN_LIBRARY, Format(SLibraryNotAvailable, [LibraryName]))
+      begin
+        DoError(ER_CANT_OPEN_LIBRARY, Format(SLibraryNotAvailable, [LibraryName]));
+        if Assigned(AfterConnect) then AfterConnect(Self);
+      end
       else
       begin
-        if Assigned(BeforeConnect) then BeforeConnect(Self);
-        DoConnect;
+        DoConnect();
         // Maybe we're using Asynchron. So the Events should be called after
         // thread execution in SyncConnected.
       end
     end else
     begin
       if Assigned(BeforeDisconnect) then BeforeDisconnect(Self);
-      DoDisconnect;
+      DoDisconnect();
       // Maybe we're using Asynchron. So the Events should be called after
       // thread execution in SyncDisconncted.
     end;
@@ -2359,12 +2364,6 @@ begin
 
   SynchroThread.ErrorCode := Lib.mysql_errno(SynchroThread.LibHandle);
   SynchroThread.ErrorMessage := LibDecode(Lib.mysql_error(SynchroThread.LibHandle));
-
-  if (SynchroThread.Terminated and Assigned(SynchroThread.LibHandle)) then
-  begin
-    Lib.mysql_close(SynchroThread.LibHandle);
-    SynchroThread.LibHandle := nil;
-  end;
 end;
 
 procedure TMySQLConnection.SyncConnected(const SynchroThread: TSynchroThread);
@@ -2859,7 +2858,7 @@ begin
 
       if (SynchroThread.SQLPacket < SynchroThread.SQLStmtsInPackets.Count) then
       begin
-        SynchroThread.SQLLastStmtInPacket := SynchroThread.SQLStmt + Integer(SynchroThread.SQLStmtsInPackets[SynchroThread.SQLPacket]);
+        SynchroThread.SQLLastStmtInPacket := SynchroThread.SQLStmt + Integer(SynchroThread.SQLStmtsInPackets[SynchroThread.SQLPacket]) - 1;
 
         S := '# ' + SysUtils.DateTimeToStr(Now() + TimeDiff, FormatSettings);
         WriteMonitor(PChar(S), Length(S), ttTime);
@@ -3134,8 +3133,6 @@ begin
     SynchroThread.WaitFor();
     SynchroThread.Free();
   end;
-  if (TerminatedThreads.Count > 0) then
-    Write;
   TerminatedThreads.Free();
 
   ExecuteSQLDone.Free();
@@ -3364,6 +3361,11 @@ begin
     Terminate();
   if (not Assigned(SynchroThread)) then
     FSynchroThread := TSynchroThread.Create(Self);
+
+  if (SynchroThread.Terminated) then                                       // Debugging only 2012-06-20
+    raise ERangeError.CreateFmt(SPropertyOutOfRange, ['SynchroThread']);
+  if (not Assigned(SynchroThread.SQLStmtLengths)) then                     // Debugging only 2012-06-20
+    raise ERangeError.CreateFmt(SPropertyOutOfRange, ['SQLStmtLengths']);
 
   SynchroThread.OnResult := OnResult;
   SynchroThread.SQL := SQL;
@@ -4413,7 +4415,7 @@ begin
   FRowsAffected := -1;
   FRecNo := -1;
 
-  if ((not (Self is TMySQLDataSet) or not TMySQLDataSet(Self).CachedUpdates) and not CommandTextUsedForOpen) then
+  if ((not (Self is TMySQLDataSet) or not TMySQLDataSet(Self).CachedUpdates) and not OpenByCommandText) then
     InternalOpenEvent(Connection, True);
 end;
 
@@ -4447,8 +4449,8 @@ begin
       inherited
     else
     begin
-      CommandTextUsedForOpen := not (Self is TMySQLTable) and (CommandText <> '') or (Self is TMySQLTable) and not TMySQLTable(Self).Asynchron;
-      if (CommandTextUsedForOpen) then
+      OpenByCommandText := not (Assigned(Connection.SynchroThread) and Connection.SynchroThread.IsRunning and (Connection.SynchroThread.State = ssResult)) and not ((Self is TMySQLDataSet) and TMySQLDataSet(Self).CachedUpdates);
+      if (OpenByCommandText) then
       begin
         if (not (Self is TMySQLTable)) then
         begin

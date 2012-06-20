@@ -77,6 +77,7 @@ type
   TCCollation = class;
   TCCollations = class;
   TCClient = class;
+  TCClients = class;
 
   TCSecurity = (seDefiner, seInvoker);
 
@@ -1386,6 +1387,7 @@ type
     EventProcs: TList;
     FAccount: TAAccount;
     FCharsets: TCCharsets;
+    FClients: TCClients;
     FCollations: TCCollations;
     FCreateDesktop: TCreateDesktop;
     FCurrentUser: string;
@@ -1437,6 +1439,7 @@ type
     procedure MonitorExecutedStmts(const Sender: TObject; const Text: PChar; const Len: Integer; const ATraceType: TMySQLMonitor.TTraceType); virtual;
     procedure SetAutoCommit(const AAutoCommit: Boolean); override;
     procedure SetCharset(const ACharset: string); override;
+    property Clients: TCClients read FClients;
     property InvalidObjects: TList read FInvalidObjects;
     property UseInformationSchema: Boolean read GetUseInformationSchema;
   public
@@ -1454,7 +1457,7 @@ type
     procedure CommitTransaction(); override;
     procedure FirstConnect(); overload; virtual;
     procedure FirstConnect(const AConnectionType: Integer; const ALibraryName: string; const AHost, AUser, APassword, ADatabase: string; const APort: Integer; const AAsynchron: Boolean); overload; virtual;
-    constructor Create(const AAccount: TAAccount = nil); reintroduce; virtual;
+    constructor Create(const AClients: TCClients; const AAccount: TAAccount = nil); reintroduce; virtual;
     function DatabaseByName(const DatabaseName: string): TCDatabase; virtual;
     procedure DecodeInterval(const Value: string; const IntervalType: TMySQLIntervalType; var Year, Month, Day, Quarter, Week, Hour, Minute, Second, MSec: Word); virtual;
     function DeleteDatabase(const Database: TCDatabase): Boolean; virtual;
@@ -1531,15 +1534,14 @@ type
   end;
 
   TCClients = class(TList)
-  type
-    TOpenConnectionEvent = procedure(const AClient: TCClient; out UserAbort: Boolean) of object;
   private
-    function GetClient(Index: Integer): TCClient;
+    FOnSQLError: TMySQLConnection.TErrorEvent;
+    function GetClient(Index: Integer): TCClient; inline;
   public
-    procedure BindClient(const AClient: TCClient);
+    function Add(Item: Pointer): Integer;
     function ClientByAccount(const Account: TAAccount; const DatabaseName: string): TCClient; virtual;
-    procedure ReleaseClient(var AClient: TCClient);
     property Client[Index: Integer]: TCClient read GetClient; default;
+    property OnSQLError: TMySQLConnection.TErrorEvent read FOnSQLError write FOnSQLError;
   end;
 
 const
@@ -6442,7 +6444,7 @@ begin
 
     if (not SQLParseKeyword(Parse, 'DO')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 41, SQL]);
 
-    FStmt := RightStr(SQL, Length(SQL) - SQLParseGetIndex(Parse));
+    FStmt := SQLParseRest(Parse);
   end;
 end;
 
@@ -10270,37 +10272,39 @@ end;
 
 function TCClient.ClientResult(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
 var
+  Database: TCDatabase;
   DatabaseName: string;
   DataSet: TMySQLQuery;
   Field: Integer;
   FunctionName: string;
   I: Integer;
-  Name: string;
+  ObjectName: string;
   Parse: TSQLParse;
+  Table: TCTable;
 begin
   Result := False;
 
   DataSet := TMySQLQuery.Create(nil);
   DataSet.Connection := Connection;
-  DataSet.Open();
 
-  if (SQLCreateParse(Parse, PChar(DataSet.CommandText), Length(DataSet.CommandText), ServerVersion)) then
+  if (SQLCreateParse(Parse, PChar(CommandText), Length(CommandText), ServerVersion)) then
     if (SQLParseKeyword(Parse, 'SELECT')) then
     begin
       DatabaseName := DataSet.DatabaseName;
-      if (SQLParseChar(Parse, '*') and SQLParseKeyword(Parse, 'FROM') and SQLParseObjectName(Parse, DatabaseName, Name)) then
+      if (SQLParseChar(Parse, '*') and SQLParseKeyword(Parse, 'FROM') and SQLParseObjectName(Parse, DatabaseName, ObjectName)) then
       begin
-        if (TableNameCmp(DatabaseName, information_schema) = 0) then
+        if (Databases.NameCmp(DatabaseName, information_schema) = 0) then
         begin
-          if (TableNameCmp(Name, 'CHARACTER_SETS') = 0) then
+          DataSet.Open();
+          if (TableNameCmp(ObjectName, 'CHARACTER_SETS') = 0) then
             Result := Charsets.Build(DataSet, True, not SQLParseEnd(Parse))
-          else if (TableNameCmp(Name, 'COLLATIONS') = 0) then
+          else if (TableNameCmp(ObjectName, 'COLLATIONS') = 0) then
             Result := Collations.Build(DataSet, True, not SQLParseEnd(Parse))
-          else if ((TableNameCmp(Name, 'COLUMNS') = 0) and SQLParseKeyword(Parse, 'WHERE') and (UpperCase(SQLParseValue(Parse)) = 'TABLE_SCHEMA') and SQLParseChar(Parse, '=')) then
+          else if ((TableNameCmp(ObjectName, 'COLUMNS') = 0) and SQLParseKeyword(Parse, 'WHERE') and (UpperCase(SQLParseValue(Parse)) = 'TABLE_SCHEMA') and SQLParseChar(Parse, '=')) then
             DatabaseByName(SQLParseValue(Parse)).Tables.BuildViewFields(DataSet, True)
-          else if (TableNameCmp(Name, 'ENGINES') = 0) then
+          else if (TableNameCmp(ObjectName, 'ENGINES') = 0) then
             Result := Engines.Build(DataSet, True, not SQLParseEnd(Parse))
-          else if (TableNameCmp(Name, 'EVENTS') = 0) then
+          else if (TableNameCmp(ObjectName, 'EVENTS') = 0) then
           begin
             if (SQLParseKeyword(Parse, 'WHERE') and (UpperCase(SQLParseValue(Parse)) = 'EVENT_SCHEMA') and SQLParseChar(Parse, '=')) then
             begin
@@ -10311,11 +10315,11 @@ begin
               for I := 0 to Databases.Count - 1 do
                 Result := Databases[I].Events.Build(DataSet, True, not SQLParseEnd(Parse));
           end
-          else if (TableNameCmp(Name, 'PLUGINS') = 0) then
+          else if (TableNameCmp(ObjectName, 'PLUGINS') = 0) then
             Result := Plugins.Build(DataSet, True, not SQLParseEnd(Parse))
-          else if (TableNameCmp(Name, 'PROCESSLIST') = 0) then
+          else if (TableNameCmp(ObjectName, 'PROCESSLIST') = 0) then
             Result := Processes.Build(DataSet, True, not SQLParseEnd(Parse))
-          else if (TableNameCmp(Name, 'ROUTINES') = 0) then
+          else if (TableNameCmp(ObjectName, 'ROUTINES') = 0) then
           begin
             if (SQLParseKeyword(Parse, 'WHERE') and (UpperCase(SQLParseValue(Parse)) = 'ROUTINE_SCHEMA') and SQLParseChar(Parse, '=')) then
             begin
@@ -10326,13 +10330,13 @@ begin
               for I := 0 to Databases.Count - 1 do
                 Result := Databases[I].Routines.Build(DataSet, True, not SQLParseEnd(Parse));
           end
-          else if (TableNameCmp(Name, 'SESSION_STATUS') = 0) then
+          else if (TableNameCmp(ObjectName, 'SESSION_STATUS') = 0) then
             Result := Stati.Build(DataSet, True, not SQLParseEnd(Parse))
-          else if (TableNameCmp(Name, 'SESSION_VARIABLES') = 0) then
+          else if (TableNameCmp(ObjectName, 'SESSION_VARIABLES') = 0) then
             Result := Variables.Build(DataSet, True, not SQLParseEnd(Parse))
-          else if (TableNameCmp(Name, 'SCHEMATA') = 0) then
+          else if (TableNameCmp(ObjectName, 'SCHEMATA') = 0) then
             Result := Databases.Build(DataSet, True, not SQLParseEnd(Parse))
-          else if (TableNameCmp(Name, 'TABLES') = 0) then
+          else if (TableNameCmp(ObjectName, 'TABLES') = 0) then
           begin
             if (SQLParseKeyword(Parse, 'WHERE') and (UpperCase(SQLParseValue(Parse)) = 'TABLE_SCHEMA') and SQLParseChar(Parse, '=')) then
             begin
@@ -10343,7 +10347,7 @@ begin
               for I := 0 to Databases.Count - 1 do
                 Result := Databases[I].Tables.Build(DataSet, True, not SQLParseEnd(Parse));
           end
-          else if (TableNameCmp(Name, 'TRIGGERS') = 0) then
+          else if (TableNameCmp(ObjectName, 'TRIGGERS') = 0) then
           begin
             if (SQLParseKeyword(Parse, 'WHERE') and (UpperCase(SQLParseValue(Parse)) = 'EVENT_OBJECT_SCHEMA') and SQLParseChar(Parse, '=')) then
             begin
@@ -10354,21 +10358,35 @@ begin
               for I := 0 to Databases.Count - 1 do
                 Result := Databases[I].Triggers.Build(DataSet, True, not SQLParseEnd(Parse));
           end
-          else if ((TableNameCmp(Name, 'USER_PRIVILEGES') = 0)) then
+          else if ((TableNameCmp(ObjectName, 'USER_PRIVILEGES') = 0)) then
             Result := Users.Build(DataSet, True, not SQLParseKeyword(Parse, 'GROUP BY') and not SQLParseEnd(Parse))
           else
-            raise EConvertError.CreateFmt(SUnknownSQLStmt, [DataSet.CommandText]);
+            raise EConvertError.CreateFmt(SUnknownSQLStmt, [CommandText]);
         end
-        else if (TableNameCmp(DatabaseName, 'mysql') = 0) then
+        else if (Databases.NameCmp(DatabaseName, 'mysql') = 0) then
         begin
-          if (TableNameCmp(Name, 'host') = 0) then
+          DataSet.Open();
+          if (TableNameCmp(ObjectName, 'host') = 0) then
             Result := FHosts.Build(DataSet, False, not SQLParseEnd(Parse))
-          else if (TableNameCmp(Name, 'user') = 0) then
+          else if (TableNameCmp(ObjectName, 'user') = 0) then
             Result := Users.Build(DataSet, False, not SQLParseEnd(Parse));
+        end
+        else
+        begin
+          Database := DatabaseByName(DatabaseName);
+          if (Assigned(Database)) then
+          begin
+            Table := Database.TableByName(ObjectName);
+            if (Assigned(Table.FDataSet) and not Table.FDataSet.Active) then
+              Table.FDataSet.Open()
+            else
+              DataSet.Open();
+          end;
         end;
       end
       else if (FCurrentUser = '') then
       begin
+        DataSet.Open();
         Field := 0;
         repeat
           FunctionName := SQLParseValue(Parse);
@@ -10389,6 +10407,7 @@ begin
     end
     else if (SQLParseKeyword(Parse, 'SHOW')) then
     begin
+      DataSet.Open();
       DatabaseName := DataSet.DatabaseName;
       if (SQLParseKeyword(Parse, 'CHARACTER SET')) then
         Result := Charsets.Build(DataSet, False, not SQLParseEnd(Parse))
@@ -10400,17 +10419,17 @@ begin
           if (SQLParseKeyword(Parse, 'DATABASE')) then
             DatabaseByName(SQLParseValue(Parse)).SetSource(DataSet)
           else if (SQLParseKeyword(Parse, 'EVENT')) then
-            begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).EventByName(Name).SetSource(DataSet); end
+            begin if (SQLParseObjectName(Parse, DatabaseName, ObjectName)) then DatabaseByName(DatabaseName).EventByName(ObjectName).SetSource(DataSet); end
           else if (SQLParseKeyword(Parse, 'FUNCTION')) then
-            begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).FunctionByName(Name).SetSource(DataSet); end
+            begin if (SQLParseObjectName(Parse, DatabaseName, ObjectName)) then DatabaseByName(DatabaseName).FunctionByName(ObjectName).SetSource(DataSet); end
           else if (SQLParseKeyword(Parse, 'PROCEDURE')) then
-            begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).ProcedureByName(Name).SetSource(DataSet); end
+            begin if (SQLParseObjectName(Parse, DatabaseName, ObjectName)) then DatabaseByName(DatabaseName).ProcedureByName(ObjectName).SetSource(DataSet); end
           else if (SQLParseKeyword(Parse, 'TABLE')) then
-            begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).TableByName(Name).SetSource(DataSet); end
+            begin if (SQLParseObjectName(Parse, DatabaseName, ObjectName)) then DatabaseByName(DatabaseName).TableByName(ObjectName).SetSource(DataSet); end
           else if (SQLParseKeyword(Parse, 'TRIGGER')) then
-            begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).TriggerByName(Name).SetSource(DataSet); end
+            begin if (SQLParseObjectName(Parse, DatabaseName, ObjectName)) then DatabaseByName(DatabaseName).TriggerByName(ObjectName).SetSource(DataSet); end
           else if (SQLParseKeyword(Parse, 'VIEW')) then
-            begin if (SQLParseObjectName(Parse, DatabaseName, Name)) then DatabaseByName(DatabaseName).TableByName(Name).SetSource(DataSet); end;
+            begin if (SQLParseObjectName(Parse, DatabaseName, ObjectName)) then DatabaseByName(DatabaseName).TableByName(ObjectName).SetSource(DataSet); end;
       end
       else if (SQLParseKeyword(Parse, 'DATABASES')) then
         Result := Databases.Build(DataSet, False, not SQLParseEnd(Parse))
@@ -10476,7 +10495,7 @@ begin
         Result := DatabaseByName(DatabaseName).Triggers.Build(DataSet, False, not SQLParseEnd(Parse));
       end
       else
-        raise EConvertError.CreateFmt(SUnknownSQLStmt, [DataSet.CommandText]);
+        raise EConvertError.CreateFmt(SUnknownSQLStmt, [CommandText]);
     end;
 
   DataSet.Free();
@@ -10558,9 +10577,12 @@ begin
   AutoCommit := AutoCommitBeforeTransaction;
 end;
 
-constructor TCClient.Create(const AAccount: TAAccount = nil);
+constructor TCClient.Create(const AClients: TCClients; const AAccount: TAAccount = nil);
 begin
   inherited Create(nil);
+
+  FClients := AClients;
+  Clients.Add(Self);
 
   EventProcs := TList.Create();
   FCurrentUser := '';
@@ -10812,6 +10834,8 @@ begin
     FSQLMonitor.Free();
   if (Assigned(StmtMonitor)) then
     StmtMonitor.Free();
+
+  Clients.Delete(Clients.IndexOf(Self));
 
   inherited;
 end;
@@ -11314,6 +11338,7 @@ var
   DatabaseName: string;
   DDLStmt: TSQLDDLStmt;
   DMLStmt: TSQLDMLStmt;
+  Event: TCEvent;
   NextDDLStmt: TSQLDDLStmt;
   NextSQL: string;
   ObjectName: string;
@@ -11404,11 +11429,11 @@ begin
                     begin
                       if (DDLStmt.DefinitionType = dtAlterRename) then
                       begin
-                        if (DDLStmt.NewDatabaseName <> DatabaseName) then
+                        if (Databases.NameCmp(DDLStmt.NewDatabaseName, Database.Name) <> 0) then
                           ExecuteEvent(ceItemDroped, Table.Database, Table.Tables, Table);
                         Table.SetDatabase(DatabaseByName(DDLStmt.NewDatabaseName));
                         Table.Name := DDLStmt.NewObjectName;
-                        if (DDLStmt.NewDatabaseName <> DatabaseName) then
+                        if (Databases.NameCmp(DDLStmt.NewDatabaseName, Database.Name) <> 0) then
                           ExecuteEvent(ceItemDroped, Table.Database, Table.Tables, Table)
                         else
                           ExecuteEvent(ceItemAltered, Database, Database.Tables, Table);
@@ -11450,7 +11475,7 @@ begin
                   if (DDLStmt.ObjectType = otProcedure) then
                   begin
                     if (not Assigned(Database.ProcedureByName(DDLStmt.ObjectName))) then
-                      ExecuteEvent(ceItemAltered, Database, Database.Routines, Database.ProcedureByName(DDLStmt.ObjectName));
+                      Database.Routines.Add(TCProcedure.Create(Database.Routines, DDLStmt.ObjectName), True);
                   end
                   else
                   begin
@@ -11519,6 +11544,33 @@ begin
               case (DDLStmt.DefinitionType) of
                 dtCreate:
                   Database.Events.Add(TCEvent.Create(Database.Events, DDLStmt.ObjectName), True);
+                dtAlter,
+                dtAlterRename:
+                  begin
+                    Event := Database.EventByName(DDLStmt.ObjectName);
+                    if (DDLStmt.DefinitionType = dtAlterRename) then
+                    begin
+                      if (Databases.NameCmp(DDLStmt.NewDatabaseName, Database.Name) <> 0) then
+                        ExecuteEvent(ceItemDroped, Event.Database, Event.Events, Event);
+                      Event.SetDatabase(DatabaseByName(DDLStmt.NewDatabaseName));
+                      Event.Name := DDLStmt.NewObjectName;
+                      if (Databases.NameCmp(DDLStmt.NewDatabaseName, Database.Name) <> 0) then
+                        ExecuteEvent(ceItemDroped, Event.Database, Event.Events, Event)
+                      else
+                        ExecuteEvent(ceItemAltered, Database, Database.Events, Event);
+                    end;
+
+                    if ((Event.Database <> Database) and Event.Database.Valid) then
+                    begin
+                      Event.Database.Invalidate();
+                      ExecuteEvent(ceItemAltered, Database, Database.Events, Event);
+                    end
+                    else if (Event.ValidSource) then
+                    begin
+                      Event.Invalidate();
+                      ExecuteEvent(ceItemAltered, Database, Database.Events, Event);
+                    end;
+                  end;
                 dtDrop:
                   Database.Events.Delete(Database.EventByName(DDLStmt.ObjectName));
               end;
@@ -11937,6 +11989,10 @@ begin
       SQL := SQL + Database.Tables.SQLGetViewFields(Tables);
     Tables.Clear();
   end;
+
+  for I := 0 to List.Count - 1 do
+    if ((TCDBObject(List[I]) is TCBaseTable) and Assigned(TCBaseTable(List[I]).FDataSet) and not TCBaseTable(List[I]).FDataSet.Active) then
+      SQL := SQL + TCBaseTable(List[I]).FDataSet.SQLSelect();
 
   for I := 0 to List.Count - 1 do
     if (TObject(List[I]) is TCDatabase) then
@@ -12436,11 +12492,13 @@ begin
     Result := Variables[Index];
 end;
 
-{ TCClients ***************************************************************}
+{ TCClients *******************************************************************}
 
-procedure TCClients.BindClient(const AClient: TCClient);
+function TCClients.Add(Item: Pointer): Integer;
 begin
-  Add(AClient);
+  Result := inherited Add(Item);
+
+  TCClient(Item).OnSQLError := OnSQLError;
 end;
 
 function TCClients.ClientByAccount(const Account: TAAccount; const DatabaseName: string): TCClient;
@@ -12461,20 +12519,10 @@ end;
 
 function TCClients.GetClient(Index: Integer): TCClient;
 begin
-  Assert(TObject(Items[Index]) is TCClient);
-
   Result := TCClient(Items[Index]);
 end;
 
-procedure TCClients.ReleaseClient(var AClient: TCClient);
-var
-  Index: Integer;
-begin
-  Index := IndexOf(AClient);
-
-  Clients[Index].Free();
-  Delete(Index);
-end;
+{ *****************************************************************************}
 
 initialization
   Clients := TCClients.Create();

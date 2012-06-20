@@ -11,7 +11,8 @@ uses
   {$ENDIF}
   SynEditHighlighter, SynHighlighterSQL,
   ExtCtrls_Ext, Forms_Ext, StdCtrls_Ext, ComCtrls_Ext, Dialogs_Ext, StdActns_Ext,
-  fClient, fPreferences, fFClient, fAccount, fBase, MySQLDB;
+  MySQLDB,
+  fClient, fPreferences, fFClient, fAccount, fBase;
 
 const
   cWindowClassName = 'MySQL-Front.Application';
@@ -25,14 +26,14 @@ type
     Msg: Cardinal;
     WParam: WPARAM;
     Param: PChar;
-    Result: Longint;
+    Result: LRESULT;
   end;
 
   TCMActivateTab = packed record
     Msg: Cardinal;
     WParam: WPARAM;
     Tab: TFClient;
-    Result: Longint;
+    Result: LRESULT;
   end;
 
   TCMCloseTab = TCMActivateTab;
@@ -913,12 +914,13 @@ begin
     aFCloseAll.Enabled := True;
 
     Tabs.Add(FClient);
+
     Perform(CM_ACTIVATETAB, 0, LPARAM(FClient));
 
     TBTabControl.Visible := TabControl.Visible;
   end;
 
-  Message.Result := Integer(Assigned(FClient));
+  Message.Result := LRESULT(Assigned(FClient));
 
   FirstOpen := False;
 end;
@@ -1582,7 +1584,9 @@ begin
     EurekaLog.OnCustomDataRequest := EurekaLogCustomDataRequest;
   {$ENDIF}
 
-  Accounts := TAAccounts.Create(DBLogin, SQLError);
+  Accounts := TAAccounts.Create(DBLogin);
+
+  Clients.OnSQLError := SQLError;
 
   MainActionList := ActionList;
   MainHighlighter := Highlighter;

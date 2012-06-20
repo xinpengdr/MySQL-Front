@@ -70,6 +70,10 @@ object DSearch: TDSearch
       ImageIndex = 1
       TabVisible = False
       OnShow = TSROptionsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         333
         279)
@@ -472,6 +476,10 @@ object DSearch: TDSearch
       Caption = 'TSFOptions'
       TabVisible = False
       OnShow = TSFOptionsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         333
         279)

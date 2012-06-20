@@ -173,10 +173,13 @@ procedure TDAccounts.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
   if ((ModalResult = mrOk) and not Assigned(Client)) then
   begin
-    Client := TCClient.Create(Accounts.AccountByName(FAccounts.Selected.Caption));
-    Client.OnSQLError := Accounts.OnSQLError;
+    Client := TCClient.Create(Clients, Accounts.AccountByName(FAccounts.Selected.Caption));
     DConnecting.Client := Client;
-    CanClose := DConnecting.Execute();
+    if (not DConnecting.Execute()) then
+    begin
+      FreeAndNil(Client);
+      CanClose := False;
+    end;
   end;
 end;
 

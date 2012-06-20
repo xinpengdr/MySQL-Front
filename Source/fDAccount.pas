@@ -197,7 +197,7 @@ var
 begin
   if (CheckConnectInfos()) then
   begin
-    Client := TCClient.Create();
+    Client := TCClient.Create(Clients);
     if (Assigned(Client)) then
     begin
       case (FConnectionType.ItemIndex) of
@@ -209,7 +209,7 @@ begin
       Client.BeginSilent();
       Client.FirstConnect(FConnectionType.ItemIndex, LibraryName, FHost.Text, FUser.Text, FPassword.Text, '', FUDPort.Position, True);
       if (Client.ErrorCode <> 0) then
-        Accounts.OnSQLError(Client, Client.ErrorCode, Client.ErrorMessage)
+        Client.OnSQLError(Client, Client.ErrorCode, Client.ErrorMessage)
       else if (Client.Connected) then
       begin
         DDatabases.Client := Client;
@@ -270,7 +270,7 @@ var
 begin
   if ((FCharset.Items.Count = 0) and CheckConnectInfos()) then
   begin
-    Client := TCClient.Create();
+    Client := TCClient.Create(Clients);
     if (Assigned(Client)) then
     begin
       case (FConnectionType.ItemIndex) of
@@ -282,7 +282,7 @@ begin
       Client.BeginSilent();
       Client.FirstConnect(FConnectionType.ItemIndex, LibraryName, FHost.Text, FUser.Text, FPassword.Text, '', FUDPort.Position, False);
       if (Client.ErrorCode <> 0) then
-        Accounts.OnSQLError(Client, Client.ErrorCode, Client.ErrorMessage)
+        Client.OnSQLError(Client, Client.ErrorCode, Client.ErrorMessage)
       else if (Client.Connected) then
       begin
         if (Client.Charsets.Update()) then

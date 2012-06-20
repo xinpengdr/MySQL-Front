@@ -972,6 +972,7 @@ type
     procedure FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
     procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure FormAccountEvent(const ClassType: TClass);
+    procedure FreeDBGrid(const DBGrid: TMySQLDBGrid);
     procedure FreeListView(const ListView: TListView);
     procedure FRTFShow(Sender: TObject);
     procedure FSQLHistoryRefresh(Sender: TObject);
@@ -1020,7 +1021,6 @@ type
     procedure OpenSQLFile(const AFilename: TFileName; const Insert: Boolean = False);
     procedure PasteExecute(const Node: TTreeNode; const Objects: string);
     procedure PContentChange(Sender: TObject);
-    procedure PContentRefresh(Sender: TObject);
     function PostObject(Sender: TObject): Boolean;
     procedure PropertiesServerExecute(Sender: TObject);
     procedure PSQLEditorUpdate();
@@ -1204,7 +1204,7 @@ begin
 
     for I := 0 to Results.Count - 1 do
     begin
-      TResult(Results[I]^).DBGrid.Free();
+      FClient.FreeDBGrid(TResult(Results[I]^).DBGrid);
       TResult(Results[I]^).DataSource.Free();
       FreeMem(Results[I]);
     end;
@@ -1325,6 +1325,7 @@ begin
       TCResultChange(nil);
     end;
 
+    FClient.ActiveDBGrid := TResult(Item^).DBGrid;
     TResult(Item^).DataSet.Open();
 
     FClient.SBResultRefresh(TResult(Item^).DataSet);
@@ -1363,14 +1364,16 @@ begin
 
     if (not Assigned(PDBGrid)) then
       PDBGrid := FClient.CreatePDBGrid();
+    if (not Assigned(FDBGrid)) then
+      FDBGrid := FClient.CreateDBGrid(PDBGrid, DataSource);
     if (not Assigned(DataSource)) then
     begin
       DataSource := TDataSource.Create(FClient.Owner);
       DataSource.Enabled := False;
     end;
     DataSource.DataSet := DataSet;
-    FDBGrid := FClient.CreateDBGrid(PDBGrid, DataSource);
 
+    FClient.ActiveDBGrid := FDBGrid;
     DataSet.Open();
   end;
 
@@ -1560,47 +1563,50 @@ var
   I: Integer;
   Width: Integer;
 begin
-  Table.DataSet.AfterOpen := FClient.DataSetAfterOpen;
-  Table.DataSet.Open();
+  if (Connection.ErrorCode = 0) then
+  begin
+    Table.DataSet.AfterOpen := FClient.DataSetAfterOpen;
+    Table.DataSet.Open();
 
-  DBGrid.ReadOnly := Table is TCSystemView;
-  for I := 0 to DBGrid.Columns.Count - 1 do
-    if (GetFieldInfo(DBGrid.Columns[I].Field.Origin, FieldInfo)) then
-    begin
-      Child := XMLNode(GridXML[FieldInfo.OriginalFieldName], 'width');
-      if (Assigned(Child) and TryStrToInt(Child.Text, Width) and (Width > 10)) then
+    DBGrid.ReadOnly := Table is TCSystemView;
+    for I := 0 to DBGrid.Columns.Count - 1 do
+      if (GetFieldInfo(DBGrid.Columns[I].Field.Origin, FieldInfo)) then
       begin
-        if ((Width > Preferences.GridMaxColumnWidth) and not (DBGrid.Columns[I].Field.DataType in [ftSmallint, ftInteger, ftLargeint, ftWord, ftFloat, ftDate, ftDateTime, ftTime, ftCurrency])) then
-          Width := Preferences.GridMaxColumnWidth;
-        DBGrid.Columns[I].Width := Width;
+        Child := XMLNode(GridXML[FieldInfo.OriginalFieldName], 'width');
+        if (Assigned(Child) and TryStrToInt(Child.Text, Width) and (Width > 10)) then
+        begin
+          if ((Width > Preferences.GridMaxColumnWidth) and not (DBGrid.Columns[I].Field.DataType in [ftSmallint, ftInteger, ftLargeint, ftWord, ftFloat, ftDate, ftDateTime, ftTime, ftCurrency])) then
+            Width := Preferences.GridMaxColumnWidth;
+          DBGrid.Columns[I].Width := Width;
+        end;
       end;
+
+    if (Table.DataSet.FilterSQL <> '') then
+      AddFilter(Table.DataSet.FilterSQL);
+    if (((Table.DataSet.Limit > 0) <> Limited) or (Limit <> Table.DataSet.Limit)) then
+    begin
+      Limited := Table.DataSet.Limit > 0;
+      Limit := Table.DataSet.Limit;
     end;
 
-  if (Table.DataSet.FilterSQL <> '') then
-    AddFilter(Table.DataSet.FilterSQL);
-  if (((Table.DataSet.Limit > 0) <> Limited) or (Limit <> Table.DataSet.Limit)) then
-  begin
-    Limited := Table.DataSet.Limit > 0;
-    Limit := Table.DataSet.Limit;
+    FClient.FUDOffset.Position := Table.DataSet.Offset;
+    FClient.FLimitEnabled.Down := Table.DataSet.Limit > 0;
+    if (FClient.FLimitEnabled.Down) then
+      FClient.FUDLimit.Position := Table.DataSet.Limit;
+
+    FClient.FFilterEnabled.Down := Table.DataSet.FilterSQL <> '';
+    FClient.FFilterEnabled.Enabled := FClient.FFilter.Text <> '';
+    FClient.FilterMRU.Clear();
+    if (FClient.FFilterEnabled.Down) then
+      FClient.FFilter.Text := Table.DataSet.FilterSQL;
+    for I := 0 to FilterCount - 1 do
+      FClient.FilterMRU.Add(Filters[I]);
+    FClient.gmFilter.Clear();
+
+    FClient.FQuickSearchEnabled.Down := Table.DataSet.QuickSearch <> '';
+
+    FClient.AddressChanged(nil);
   end;
-
-  FClient.FUDOffset.Position := Table.DataSet.Offset;
-  FClient.FLimitEnabled.Down := Table.DataSet.Limit > 0;
-  if (FClient.FLimitEnabled.Down) then
-    FClient.FUDLimit.Position := Table.DataSet.Limit;
-
-  FClient.FFilterEnabled.Down := Table.DataSet.FilterSQL <> '';
-  FClient.FFilterEnabled.Enabled := FClient.FFilter.Text <> '';
-  FClient.FilterMRU.Clear();
-  if (FClient.FFilterEnabled.Down) then
-    FClient.FFilter.Text := Table.DataSet.FilterSQL;
-  for I := 0 to FilterCount - 1 do
-    FClient.FilterMRU.Add(Filters[I]);
-  FClient.gmFilter.Clear();
-
-  FClient.FQuickSearchEnabled.Down := Table.DataSet.QuickSearch <> '';
-
-  FClient.Window.Perform(CM_UPDATETOOLBAR, 0, LPARAM(Self));
 
   Result := False;
 end;
@@ -1610,7 +1616,7 @@ begin
   if (Assigned(ListView)) then
     FClient.FreeListView(ListView);
   if (Assigned(DBGrid)) then
-    DBGrid.Free();
+    FClient.FreeDBGrid(DBGrid);
   if (Assigned(DataSource)) then
     DataSource.Free();
   if (Assigned(PDBGrid)) then
@@ -1804,7 +1810,7 @@ begin
 
     for I := 0 to Results.Count - 1 do
     begin
-      TResult(Results[I]^).DBGrid.Free();
+      FClient.FreeDBGrid(TResult(Results[I]^).DBGrid);
       TResult(Results[I]^).DataSource.Free();
       FreeMem(Results[I]);
     end;
@@ -1887,6 +1893,7 @@ begin
       TCResultChange(nil);
     end;
 
+    FClient.ActiveDBGrid := TResult(Item^).DBGrid;
     TResult(Item^).DataSet.Open();
   end;
 
@@ -2505,7 +2512,6 @@ begin
     OldControl := Window.ActiveControl;
 
     PContentChange(Sender);
-    PContentRefresh(Sender);
 
 
     while (Assigned(OldControl) and OldControl.Visible and OldControl.Enabled and Assigned(OldControl.Parent)) do
@@ -2552,7 +2558,7 @@ begin
           ToolBarData.Addresses.Delete(ToolBarData.CurrentAddress + 1);
         ToolBarData.Addresses.Add(Address);
 
-        while (ToolBarData.Addresses.Count > 100) do
+        while (ToolBarData.Addresses.Count > 30) do
           ToolBarData.Addresses.Delete(0);
 
         ToolBarData.CurrentAddress := ToolBarData.Addresses.Count - 1;
@@ -3070,7 +3076,7 @@ begin
   begin
     SQL := ActiveSynMemo.Text;
     Index := 1; Len := 0;
-    while (Index - 1 < aDRunExecuteSelStart) do
+    while (Index <= aDRunExecuteSelStart + 1) do
     begin
       Len := SQLStmtLength(SQL, Index);
       Inc(Index, Len);
@@ -3302,7 +3308,7 @@ var
 begin
   if (Client.InUse()) then
     MessageBeep(MB_ICONERROR)
-  else if (Window.ActiveControl = ActiveDBGrid) then
+  else if (Assigned(ActiveDBGrid) and (Window.ActiveControl = ActiveDBGrid)) then
   begin
     if (not Assigned(EditorField)) then
       ActiveDBGrid.PasteFromClipboard()
@@ -3311,12 +3317,12 @@ begin
     else if (FRTF.Visible) then
       FRTF.PasteFromClipboard();
   end
-  else if (Window.ActiveControl = ActiveDBGrid.InplaceEditor) then
+  else if (Assigned(ActiveDBGrid) and (Window.ActiveControl = ActiveDBGrid.InplaceEditor)) then
   begin
     ActiveDBGrid.DataSource.DataSet.Edit();
     ActiveDBGrid.InplaceEditor.PasteFromClipboard()
   end
-  else if ((Window.ActiveControl = FNavigator) or (Window.ActiveControl = ActiveListView)) then
+  else if (Assigned(ActiveListView) and (Window.ActiveControl = FNavigator) or (Window.ActiveControl = ActiveListView)) then
   begin
     if (Window.ActiveControl = FNavigator) then
       Node := FNavigatorMenuNode
@@ -3363,7 +3369,7 @@ begin
   end
   else if (Window.ActiveControl = FSQLEditorSynMemo) then
     FSQLEditorSynMemo.PasteFromClipboard()
-  else if ((Window.ActiveControl = ActiveWorkbench) and Assigned(ActiveWorkbench)) then
+  else if (Assigned(ActiveWorkbench) and (Window.ActiveControl = ActiveWorkbench)) then
     FWorkbenchPasteExecute(Sender)
   else
     MessageBeep(MB_ICONERROR);
@@ -4405,7 +4411,13 @@ begin
             ActiveDBGrid.DataSource.DataSet.CheckBrowseMode();
           end;
 
-          ActiveDBGrid.DataSource.DataSet.Refresh();
+          if ((View = vBrowser) and (FNavigator.Selected.ImageIndex in [iiBaseTable, iiSystemView, iiView]) and not TCTable(FNavigator.Selected.Data).Valid) then
+          begin
+            ActiveDBGrid.DataSource.DataSet.Close();
+            Client.Update();
+          end
+          else
+            ActiveDBGrid.DataSource.DataSet.Refresh();
         end;
     end;
   end;
@@ -4612,11 +4624,7 @@ begin
 
     if ((Event.EventType = ceItemAltered) and (Event.CItem is TCTable)
       and Assigned(Desktop(TCTable(Event.CItem)).DBGrid)) then
-    begin
       Desktop(TCTable(Event.CItem)).DBGrid.DataSource.DataSet.Close();
-//      if (Wanted.Nothing or (View = vBrowser)) then
-//        Wanted.Update := UpdateAfterAddressChanged;
-    end;
 
 
     if (Assigned(ActiveWorkbench)) then
@@ -4875,9 +4883,6 @@ begin
   FLog.Font.Color := Preferences.LogFontColor;
   FLog.Font.Size := Preferences.LogFontSize;
   FLog.Font.Charset := Preferences.LogFontCharset;
-
-  if (Visible) then
-    PContentRefresh(nil);
 
   PasteMode := False;
 end;
@@ -5624,7 +5629,6 @@ begin
 
   Client.CreateDesktop := CreateDesktop;
   Client.RegisterEventProc(FormClientEvent);
-  Clients.BindClient(Client);
 
   Client.Account.RegisterDesktop(Self, FormAccountEvent);
 
@@ -5675,6 +5679,10 @@ begin
     Result := TViewDesktop.Create(Self, TCView(CObject))
   else if (CObject is TCRoutine) then
     Result := TRoutineDesktop.Create(Self, TCRoutine(CObject))
+  else if (CObject is TCEvent) then
+    Result := TEventDesktop.Create(Self, TCEvent(CObject))
+  else if (CObject is TCTrigger) then
+    Result := TTriggerDesktop.Create(Self, TCTrigger(CObject))
   else
     Result := nil;
 end;
@@ -6940,7 +6948,7 @@ begin
   Client.Account.UnRegisterDesktop(Self);
 
   Client.UnRegisterEventProc(FormClientEvent);
-  Clients.ReleaseClient(Client);
+  Client.Free();
 
   FNavigator.Items.BeginUpdate();
   FNavigator.Items.Clear();
@@ -7406,7 +7414,6 @@ procedure TFClient.FFilterEnabledClick(Sender: TObject);
 begin
   FQuickSearchEnabled.Down := False;
   TableOpen(Sender);
-  AddressChanged(Sender);
   Window.ActiveControl := FFilter;
 end;
 
@@ -7833,10 +7840,7 @@ begin
     Field := TCBaseTableField(FocusedCItem);
     Table := Field.Table;
     if (Assigned(Field) and (MsgBox(Preferences.LoadStr(376, Field.Name), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES)) then
-    begin
       Table.EmptyFields([Field.Name]);
-      PContentRefresh(Sender);
-    end;
   end;
 end;
 
@@ -8612,6 +8616,13 @@ begin
     FQuickSearch.SelLength := Length(FQuickSearch.Text);
     Key := #0;
   end;
+end;
+
+procedure TFClient.FreeDBGrid(const DBGrid: TMySQLDBGrid);
+begin
+  if (ActiveDBGrid = DBGrid) then
+    ActiveDBGrid := nil;
+  DBGrid.Free();
 end;
 
 procedure TFClient.FreeListView(const ListView: TListView);
@@ -9695,6 +9706,12 @@ begin
     for I := 0 to FObjectIDEGrid.DataSource.DataSet.FieldCount - 1 do
       if ((FObjectIDEGrid.Columns[I].Width > Preferences.GridMaxColumnWidth) and not (FObjectIDEGrid.Columns[I].Field.DataType in [ftSmallint, ftInteger, ftLargeint, ftWord, ftFloat, ftDate, ftDateTime, ftTime, ftCurrency])) then
         FObjectIDEGrid.Columns[I].Width := Preferences.GridMaxColumnWidth;
+
+  if (Assigned(FObjectIDEGrid.DataSource.DataSet) and not FObjectIDEGrid.DataSource.Enabled) then
+  begin
+    FObjectIDEGrid.DataSource.Enabled := True;
+    DBGridColEnter(FObjectIDEGrid);
+  end;
 
   PObjectIDETrigger.Visible := (SelectedImageIndex = iiTrigger);
   if (PObjectIDETrigger.Visible) then
@@ -11602,7 +11619,7 @@ begin
             MainAction('aDCreateEvent').Enabled := (ActiveListView.SelCount = 0) and (Client.ServerVersion >= 50106) and (SelectedImageIndex = iiDatabase);
             MainAction('aDCreateIndex').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
             MainAction('aDCreateField').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
-            MainAction('aDCreateForeignKey').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and Assigned(Database.BaseTableByName(Item.Caption)) and Assigned(Client.DatabaseByName(SelectedDatabase).BaseTableByName(Item.Caption).Engine) and Client.DatabaseByName(SelectedDatabase).BaseTableByName(Item.Caption).Engine.ForeignKeyAllowed;
+            MainAction('aDCreateForeignKey').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and Assigned(TCBaseTable(Item.Data).Engine) and TCBaseTable(Item.Data).Engine.ForeignKeyAllowed;
             MainAction('aDCreateTrigger').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and Assigned(Database.Triggers);
             MainAction('aDDeleteTable').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
             MainAction('aDDeleteView').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiView);
@@ -11691,7 +11708,7 @@ begin
             MainAction('aDEditField').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField);
             MainAction('aDEditForeignKey').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiForeignKey);
             MainAction('aDEditTrigger').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiTrigger);
-            MainAction('aDEmpty').Enabled := (ActiveListView.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex = iiField) and (BaseTable.FieldByName(Item.Caption).NullAllowed);
+            MainAction('aDEmpty').Enabled := (ActiveListView.SelCount = 0) or Selected and Assigned(Item) and (Item.ImageIndex = iiField) and TCBaseTableField(Item.Data).NullAllowed;
             aDDelete.Enabled := (ActiveListView.SelCount >= 1);
 
             for I := 0 to ActiveListView.Items.Count - 1 do
@@ -12547,7 +12564,7 @@ begin
     if (Node = FNavigator.Selected) then
     begin
       if (URI.Param['view'] = 'browser') then
-        if (Desktop(TCTable(FNavigator.Selected.Data)).Table.DataSet.Active) then
+        if (Desktop(TCTable(FNavigator.Selected.Data)).Table.ValidDataSet) then
         begin
            if (Desktop(TCTable(FNavigator.Selected.Data)).Table.DataSet.Offset > 0) then
             URI.Param['offset'] := IntToStr(Desktop(TCTable(FNavigator.Selected.Data)).Table.DataSet.Offset);
@@ -12830,7 +12847,6 @@ var
   NewIndex: TCIndex;
   NewTable: TCBaseTable;
   SourceClient: TCClient;
-  SourceClientCreated: Boolean;
   SourceDatabase: TCDatabase;
   SourceHost: TCHost;
   SourceRoutine: TCRoutine;
@@ -12849,23 +12865,12 @@ begin
   begin
     SourceURI := TUURI.Create(StringList.Values['Address']);
     SourceClient := Clients.ClientByAccount(Accounts.AccountByURI(SourceURI.Address, Client.Account), SourceURI.Database);
-    if (Assigned(SourceClient)) then
-      SourceClientCreated := False
-    else if (not Assigned(Accounts.AccountByURI(SourceURI.Address))) then
+    if (not Assigned(SourceClient) and Assigned(Accounts.AccountByURI(SourceURI.Address))) then
     begin
-      SourceClient := nil;
-      SourceClientCreated := False;
-    end
-    else
-    begin
-      SourceClient := TCClient.Create(Accounts.AccountByURI(SourceURI.Address));
-      SourceClient.OnSQLError := Accounts.OnSQLError;
+      SourceClient := TCClient.Create(Clients, Accounts.AccountByURI(SourceURI.Address));
       DConnecting.Client := SourceClient;
       if (not DConnecting.Execute()) then
-        FreeAndNil(SourceClient)
-      else
-        fClient.Clients.BindClient(SourceClient);
-      SourceClientCreated := Assigned(SourceClient);
+        FreeAndNil(SourceClient);
     end;
 
     if (Assigned(SourceClient)) then
@@ -13137,9 +13142,6 @@ begin
               end;
             end;
       end;
-
-      if (SourceClientCreated) then
-        Clients.ReleaseClient(SourceClient);
     end;
 
     SourceURI.Free();
@@ -13378,12 +13380,6 @@ begin
   PObjectIDEResize(Sender);
   PanelResize(PContent);
   if (Assigned(PResult.OnResize)) then PResult.OnResize(PResult);
-end;
-
-procedure TFClient.PContentRefresh(Sender: TObject);
-begin
-  if (PSynMemo.Visible) then PSQLEditorUpdate();
-  if (PWorkbench.Visible) then begin ActiveWorkbench := GetActiveWorkbench(); PWorkbenchRefresh(Sender); end;
 end;
 
 procedure TFClient.PContentResize(Sender: TObject);
