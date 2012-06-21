@@ -1,6 +1,5 @@
-package Win32_Extensions;
+package FastMM_160;
 
-{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS OFF}
 {$BOOLEVAL OFF}
@@ -17,22 +16,20 @@ package Win32_Extensions;
 {$REFERENCEINFO OFF}
 {$SAFEDIVIDE OFF}
 {$STACKFRAMES OFF}
-{$TYPEDADDRESS ON}
+{$TYPEDADDRESS OFF}
 {$VARSTRINGCHECKS ON}
-{$WRITEABLECONST ON}
+{$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
-{$DEFINE DEBUG}
-{$ENDIF IMPLICITBUILDING}
+{$DEFINE FullDebugModeInIDE}
+{$DEFINE ClearLogFileOnStartup}
 {$RUNONLY}
-{$IMPLICITBUILD ON}
 
 requires
-  rtl,
-  vcl;
+  rtl;
 
 contains
-  WinCred in '..\Source\WinCred.pas',
-  ODBCAPI in '..\Source\ODBCAPI.pas';
+  FastMM4 in '..\Source\FastMM4.pas',
+  FastMM4Messages in '..\Source\FastMM4Messages.pas';
 
 end.

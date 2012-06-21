@@ -1,4 +1,4 @@
-package MySQL;
+package MySQL_160;
 
 {$ALIGN 8}
 {$ASSERTIONS OFF}
@@ -26,7 +26,7 @@ package MySQL;
 requires
   dcldb,
   bdertl,
-  VCL_Extensions;
+  VCL_Ext_160;
 
 contains
   MySQLConsts in '..\Source\MySQLConsts.pas',

@@ -1,4 +1,4 @@
-package SynEdit_D2010;
+package SynEdit_160;
 
 {$R 'SynEditReg.dcr'}
 {$ALIGN 8}
@@ -23,7 +23,6 @@ package SynEdit_D2010;
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
 {$DESCRIPTION 'SynEdit component suite'}
-{$IMPLICITBUILD OFF}
 
 requires
   vcl,

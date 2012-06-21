@@ -1,6 +1,6 @@
-package ShellBrowser_Pkg;
+package ShellBrowser_160;
 
-{$R 'ShellBrowser.dcr'}
+{$R 'ShellBrowser_160.dcr'}
 {$ALIGN 8}
 {$ASSERTIONS OFF}
 {$BOOLEVAL OFF}

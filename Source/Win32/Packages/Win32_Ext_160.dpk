@@ -1,4 +1,4 @@
-package FastMM_D2010;
+package Win32_Ext_160;
 
 {$ALIGN 8}
 {$ASSERTIONS OFF}
@@ -16,21 +16,20 @@ package FastMM_D2010;
 {$REFERENCEINFO OFF}
 {$SAFEDIVIDE OFF}
 {$STACKFRAMES OFF}
-{$TYPEDADDRESS OFF}
+{$TYPEDADDRESS ON}
 {$VARSTRINGCHECKS ON}
-{$WRITEABLECONST OFF}
+{$WRITEABLECONST ON}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
-{$DEFINE FullDebugModeInIDE}
-{$DEFINE ClearLogFileOnStartup}
+{$DEFINE DEBUG}
 {$RUNONLY}
-{$IMPLICITBUILD OFF}
 
 requires
-  rtl;
+  rtl,
+  vcl;
 
 contains
-  FastMM4 in '..\Source\FastMM4.pas',
-  FastMM4Messages in '..\Source\FastMM4Messages.pas';
+  WinCred in '..\Source\WinCred.pas',
+  ODBCAPI in '..\Source\ODBCAPI.pas';
 
 end.

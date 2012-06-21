@@ -1,7 +1,7 @@
 ﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 		<PropertyGroup>
-			<ProjectGuid>{23251FF1-A3D4-4402-968E-E658715339A8}</ProjectGuid>
-			<MainSource>acQueryBuilderDsgn_D2010.dpk</MainSource>
+			<ProjectGuid>{8CD4B70A-3A70-4F92-A6D0-249E1FE16894}</ProjectGuid>
+			<MainSource>Win32_Ext_160.dpk</MainSource>
 			<ProjectVersion>13.4</ProjectVersion>
 			<FrameworkType>None</FrameworkType>
 			<AppType>Package</AppType>
@@ -20,24 +20,24 @@
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<Manifest_File>None</Manifest_File>
 			<DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;Bde;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
-			<DCC_RangeChecking>true</DCC_RangeChecking>
-			<DCC_ImageBase>00400000</DCC_ImageBase>
-			<DCC_DependencyCheckOutputName>c:\program files (x86)\embarcadero\rad studio\7.0\Projects\Bpl\acQueryBuilderDsgn_D2010.bpl</DCC_DependencyCheckOutputName>
+			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
+			<DCC_AssertionsAtRuntime>false</DCC_AssertionsAtRuntime>
+			<DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
 			<DCC_DebugInformation>false</DCC_DebugInformation>
-			<DesignOnlyPackage>true</DesignOnlyPackage>
-			<DCC_UnitSearchPath>..\Resource;..\Source;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+			<DCC_DependencyCheckOutputName>c:\program files\embarcadero\rad studio\7.0\Projects\Bpl\Win32_Extensions.bpl</DCC_DependencyCheckOutputName>
+			<RuntimeOnlyPackage>true</RuntimeOnlyPackage>
+			<DCC_ImageBase>00400000</DCC_ImageBase>
+			<DCC_WriteableConstants>true</DCC_WriteableConstants>
+			<DCC_IOChecking>false</DCC_IOChecking>
+			<DCC_TypedAtParameter>true</DCC_TypedAtParameter>
 			<DCC_BplOutput>$(BDS)\Projects\Bpl</DCC_BplOutput>
 			<DCC_Platform>x86</DCC_Platform>
-			<DCC_Description>Active Query Builder Core</DCC_Description>
-			<DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
-			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
-			<DCC_S>false</DCC_S>
 			<DCC_N>true</DCC_N>
-			<DCC_DcpOutput>..\Bin</DCC_DcpOutput>
 			<DCC_K>false</DCC_K>
-			<DCC_DcuOutput>..\Bin</DCC_DcuOutput>
-			<DCC_AssertionsAtRuntime>false</DCC_AssertionsAtRuntime>
+			<DCC_S>false</DCC_S>
+			<DCC_DcpOutput>..\Bin</DCC_DcpOutput>
 			<DCC_F>false</DCC_F>
+			<DCC_DcuOutput>..\Bin</DCC_DcuOutput>
 			<DCC_E>false</DCC_E>
 		</PropertyGroup>
 		<ProjectExtensions>

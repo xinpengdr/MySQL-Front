@@ -1,4 +1,4 @@
-package acQueryBuilder_D2010;
+package acQueryBuilder_160;
 
 {$ALIGN 8}
 {$ASSERTIONS OFF}
@@ -23,7 +23,6 @@ package acQueryBuilder_D2010;
 {$IMAGEBASE $400000}
 {$DESCRIPTION 'Active Query Builder Core'}
 {$RUNONLY}
-{$IMPLICITBUILD ON}
 
 requires
   rtl,

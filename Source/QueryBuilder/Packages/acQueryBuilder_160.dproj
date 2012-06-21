@@ -1,7 +1,7 @@
 ﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 		<PropertyGroup>
-			<ProjectGuid>{5a86e69b-444e-478a-93e7-bf0239e244e9}</ProjectGuid>
-			<MainSource>TPerlRegEx_D2010.dpk</MainSource>
+			<ProjectGuid>{CA875146-EFD5-4C46-B51F-2A495A6E32FD}</ProjectGuid>
+			<MainSource>acQueryBuilder_160.dpk</MainSource>
 			<ProjectVersion>13.4</ProjectVersion>
 			<FrameworkType>None</FrameworkType>
 			<AppType>Package</AppType>
@@ -20,24 +20,25 @@
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<Manifest_File>None</Manifest_File>
 			<DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;Bde;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
-			<VerInfo_Keys>CompanyName=JGsoft;FileDescription=Perl Compatible Regular Expressions VCL Component Delphi 2009 Package;FileVersion=1.0.0.0;InternalName=PerlRegExD2009;LegalCopyright=Copyright (c) 1999-2008;LegalTrademarks=;OriginalFilename=PerlRegExD2009;ProductName=Perl Compatible Regular Expressions VCL Component;ProductVersion=1.0.0.0;Comments=See http://www.regular-expressions.info/delphi.html for more information</VerInfo_Keys>
+			<DCC_RangeChecking>true</DCC_RangeChecking>
+			<DCC_DependencyCheckOutputName>c:\program files (x86)\embarcadero\rad studio\7.0\Projects\Bpl\acQueryBuilder_D2010.bpl</DCC_DependencyCheckOutputName>
 			<RuntimeOnlyPackage>true</RuntimeOnlyPackage>
-			<DCC_Define>CONDITIONALEXPRESSIONS;$(DCC_Define)</DCC_Define>
-			<DCC_DcuOutput>..\Bin</DCC_DcuOutput>
-			<DCC_DcpOutput>..\Bin</DCC_DcpOutput>
-			<DCC_BplOutput>$(BDS)\Projects\Bpl</DCC_BplOutput>
-			<DCC_DependencyCheckOutputName>c:\program files (x86)\embarcadero\rad studio\7.0\Projects\Bpl\TPerlRegEx_D2010.bpl</DCC_DependencyCheckOutputName>
-			<DCC_IMPLICIT_STRING_CAST_LOSS>false</DCC_IMPLICIT_STRING_CAST_LOSS>
-			<DCC_IMPLICIT_STRING_CAST>false</DCC_IMPLICIT_STRING_CAST>
-			<DCC_WIDECHAR_REDUCED>false</DCC_WIDECHAR_REDUCED>
-			<DCC_ImageBase>00400000</DCC_ImageBase>
-			<DCC_WriteableConstants>true</DCC_WriteableConstants>
-			<DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
-			<DCC_Description>TPerlRegEx - Perl Compatible Regular Expressions VCL Component</DCC_Description>
-			<DCC_AssertionsAtRuntime>false</DCC_AssertionsAtRuntime>
-			<DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
 			<DCC_DebugInformation>false</DCC_DebugInformation>
+			<DCC_ImageBase>00400000</DCC_ImageBase>
+			<DCC_Platform>x86</DCC_Platform>
+			<DCC_BplOutput>$(BDS)\Projects\Bpl</DCC_BplOutput>
+			<DCC_UnitSearchPath>..\Source;..\Resource;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+			<DCC_Description>Active Query Builder Core</DCC_Description>
+			<DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
+			<DCC_S>false</DCC_S>
+			<DCC_N>true</DCC_N>
+			<DCC_K>false</DCC_K>
+			<DCC_DcpOutput>..\Bin</DCC_DcpOutput>
+			<DCC_DcuOutput>..\Bin</DCC_DcuOutput>
 			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
+			<DCC_F>false</DCC_F>
+			<DCC_E>false</DCC_E>
+			<DCC_AssertionsAtRuntime>false</DCC_AssertionsAtRuntime>
 		</PropertyGroup>
 		<ProjectExtensions>
 			<Borland.Personality>Delphi.Personality.12</Borland.Personality>

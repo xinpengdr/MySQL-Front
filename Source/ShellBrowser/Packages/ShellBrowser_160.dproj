@@ -1,7 +1,7 @@
 ﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 		<PropertyGroup>
-			<ProjectGuid>{FF234411-F330-4D89-A945-F2627A7D48D2}</ProjectGuid>
-			<MainSource>MPHexEditor_D2010.dpk</MainSource>
+			<ProjectGuid>{009a1040-55cd-44d2-a22d-d603a4c2c51b}</ProjectGuid>
+			<MainSource>ShellBrowser_160.dpk</MainSource>
 			<ProjectVersion>13.4</ProjectVersion>
 			<FrameworkType>None</FrameworkType>
 			<AppType>Package</AppType>
@@ -10,31 +10,31 @@
 			<Config Condition="'$(Config)'==''">Base</Config>
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<SkipResGeneration>true</SkipResGeneration>
+			<Base>True</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
+			<VerInfo_Locale>1031</VerInfo_Locale>
+			<VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0</VerInfo_Keys>
 			<GenDll>true</GenDll>
 			<GenPackage>true</GenPackage>
-			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<Manifest_File>None</Manifest_File>
-			<DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;Bde;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
-			<DCC_UnitSearchPath>..\Resource;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-			<DCC_ImageBase>00400000</DCC_ImageBase>
-			<DCC_DependencyCheckOutputName>c:\program files (x86)\embarcadero\rad studio\7.0\Projects\Bpl\MPHexEditor_D2010.bpl</DCC_DependencyCheckOutputName>
-			<DCC_IOChecking>false</DCC_IOChecking>
-			<DCC_BplOutput>$(BDS)\Projects\Bpl</DCC_BplOutput>
 			<DCC_Platform>x86</DCC_Platform>
-			<DCC_Description>mirkes.de HexEditor vcl</DCC_Description>
-			<DCC_S>false</DCC_S>
-			<DCC_N>true</DCC_N>
+			<DCC_Namespace>Vcl;Vcl.Imaging;Vcl.Shell;System;Xml;Data;Winapi;Bde;System.Win;$(DCC_Namespace)</DCC_Namespace>
+			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
+			<DCC_SYMBOL_PLATFORM>false</DCC_SYMBOL_PLATFORM>
+			<DCC_StringChecks>off</DCC_StringChecks>
+			<DCC_AssertionsAtRuntime>false</DCC_AssertionsAtRuntime>
+			<DCC_Optimize>false</DCC_Optimize>
+			<DCC_ImageBase>00400000</DCC_ImageBase>
+			<DCC_Description>ShellBrowser Components by JAM Software</DCC_Description>
+			<DCC_WriteableConstants>true</DCC_WriteableConstants>
+			<DCC_UnitSearchPath>..\Source;..\Resource;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+			<DCC_BplOutput>$(BDS)\Projects\Bpl</DCC_BplOutput>
 			<DCC_DcpOutput>..\Bin</DCC_DcpOutput>
-			<DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
-			<DCC_K>false</DCC_K>
 			<DCC_DcuOutput>..\Bin</DCC_DcuOutput>
-			<DCC_F>false</DCC_F>
-			<DCC_E>false</DCC_E>
 		</PropertyGroup>
 		<ProjectExtensions>
 			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
