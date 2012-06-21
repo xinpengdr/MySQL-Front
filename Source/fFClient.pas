@@ -3549,7 +3549,7 @@ var
   Database: TCDatabase;
   FolderName: string;
   I: Integer;
-  Initialized: Boolean;
+  Updated: Boolean;
   J: Integer;
   Table: TCBaseTable;
   TableNames: array of string;
@@ -3693,12 +3693,12 @@ begin
   end
   else
   begin
-    Initialized := False;
+    Updated := False;
     for I := 0 to DExport.Client.Databases.Count - 1 do
       if ((Client.TableNameCmp(Client.Databases[I].Name, 'mysql') <> 0) and not (Client.Databases[I] is TCSystemDatabase)) then
-        Initialized := Initialized or not Client.Databases[I].Update();
+        Updated := Updated or not Client.Databases[I].Update();
 
-    if (Initialized and (Sender is TAction)) then
+    if (Updated and (Sender is TAction)) then
       Wanted.Action := TAction(Sender)
     else
       for I := 0 to DExport.Client.Databases.Count - 1 do
@@ -3715,7 +3715,9 @@ begin
         end;
   end;
 
-  if (Assigned(DExport.DBGrid) or (DExport.DBObjects.Count >= 1)) then
+  if ((DExport.DBObjects.Count > 0) and (Client.Update(DExport.DBObjects)) and (Sender is TAction)) then
+    Wanted.Action := TAction(Sender)
+  else if (Assigned(DExport.DBGrid) or (DExport.DBObjects.Count >= 1)) then
   begin
     if (Assigned(Client) and (Client.Account.Connection.Charset <> '')) then
       CodePage := Client.CharsetToCodePage(Client.Account.Connection.Charset)

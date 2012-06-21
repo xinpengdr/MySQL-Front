@@ -6791,6 +6791,10 @@ begin
   if (Result) then
     if ((Client.ServerVersion < 40100) and Assigned(Table.AutoIncrementField)) then
     begin
+      Client.BeginSynchro();
+      BaseTableByName(NewTableName).Update();
+      Client.EndSynchro();
+
       NewTable := TCBaseTable.Create(Tables);
       NewTable.Assign(BaseTableByName(NewTableName));
       NewTable.FieldByName(Table.AutoIncrementField.Name).AutoIncrement := True;

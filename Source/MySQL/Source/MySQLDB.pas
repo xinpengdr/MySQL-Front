@@ -1871,16 +1871,16 @@ begin
       ssExecutingSQL:
         begin
           repeat
-            Connection.SyncExecutingSQL(Self);
-            Connection.SyncHandleResult(Self);
-            while (State = ssNextResult) do
+            Connection.SyncExecutingSQL(Self);         // PrepareSQL
+            Connection.SyncHandleResult(Self);         // OpenResult
+            while (State = ssNextResult) do            // NextResult
             begin
               Connection.SyncNextResult(Self);
               Connection.SyncHandleResult(Self);
             end;
           until (State <> ssExecutingSQL);
           if (State = ssReady) then
-            Connection.SyncExecutedSQL(Self);
+            Connection.SyncExecutedSQL(Self);          // CloseSQL
         end;
       ssReceivingData:
         begin

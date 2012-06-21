@@ -394,17 +394,23 @@ begin
         Success := Success and SQL_SUCCEEDED(SQLSetEnvAttr(ODBCEnv, SQL_ATTR_ODBC_VERSION, SQLPOINTER(SQL_OV_ODBC3), SQL_IS_UINTEGER));
         Success := Success and SQL_SUCCEEDED(SQLAllocHandle(SQL_HANDLE_DBC, ODBCEnv, @ODBC));
         Success := Success and SQL_SUCCEEDED(SQLDriverConnect(ODBC, Application.Handle, PSQLTCHAR(ConnStrIn), SQL_NTS, nil, 0, nil, SQL_DRIVER_COMPLETE));
-        if (not Success and (ODBC <> SQL_NULL_HANDLE)) then
-        begin
-          if (SQL_SUCCEEDED(SQLGetDiagRec(SQL_HANDLE_DBC, ODBC, 1, nil, nil, nil, 0, @cbMessageText))) then
+        if (not Success) then
+          if ((ODBCEnv <> SQL_NULL_HANDLE) and SQL_SUCCEEDED(SQLGetDiagRec(SQL_HANDLE_ENV, ODBCEnv, 1, nil, nil, nil, 0, @cbMessageText))
+            or (ODBC <> SQL_NULL_HANDLE) and SQL_SUCCEEDED(SQLGetDiagRec(SQL_HANDLE_DBC, ODBC, 1, nil, nil, nil, 0, @cbMessageText))) then
           begin
-            GetMem(MessageText, (cbMessageText + 1) * SizeOf(SQLTCHAR));
-            if (SQL_SUCCEEDED(SQLGetDiagRec(SQL_HANDLE_DBC, ODBC, 1, @SQLState, nil, MessageText, cbMessageText + 1, nil))) then
-              MsgBox(PChar(MessageText) + ' (' + SQLState + ')', Preferences.LoadStr(45), MB_OK + MB_ICONERROR);
-            FreeMem(MessageText);
-          end;
-          SQLFreeHandle(SQL_HANDLE_DBC, ODBC); ODBC := SQL_NULL_HANDLE;
-        end;
+            if (SQL_SUCCEEDED(SQLGetDiagRec(SQL_HANDLE_DBC, ODBC, 1, nil, nil, nil, 0, @cbMessageText))) then
+            begin
+              GetMem(MessageText, (cbMessageText + 1) * SizeOf(SQLTCHAR));
+              if (SQL_SUCCEEDED(SQLGetDiagRec(SQL_HANDLE_DBC, ODBC, 1, @SQLState, nil, MessageText, cbMessageText + 1, nil))) then
+                MsgBox(PChar(MessageText) + ' (' + SQLState + ')', Preferences.LoadStr(45), MB_OK + MB_ICONERROR);
+              FreeMem(MessageText);
+            end;
+            SQLFreeHandle(SQL_HANDLE_DBC, ODBC); ODBC := SQL_NULL_HANDLE;
+          end
+          else if (ODBCEnv = SQL_NULL_HANDLE) then
+            MsgBox('Can''t open ODBC Enviroment.', Preferences.LoadStr(45), MB_OK + MB_ICONERROR)
+          else
+            MsgBox('Unknown ODBC Error.', Preferences.LoadStr(45), MB_OK + MB_ICONERROR);
       end;
     itODBC:
       begin
@@ -450,7 +456,24 @@ begin
                 end;
               end;
             end;
-          until (Success or Cancel);
+          until (Success or Cancel)
+        else
+          if ((ODBCEnv <> SQL_NULL_HANDLE) and SQL_SUCCEEDED(SQLGetDiagRec(SQL_HANDLE_ENV, ODBCEnv, 1, nil, nil, nil, 0, @cbMessageText))
+            or (ODBC <> SQL_NULL_HANDLE) and SQL_SUCCEEDED(SQLGetDiagRec(SQL_HANDLE_DBC, ODBC, 1, nil, nil, nil, 0, @cbMessageText))) then
+          begin
+            if (SQL_SUCCEEDED(SQLGetDiagRec(SQL_HANDLE_DBC, ODBC, 1, nil, nil, nil, 0, @cbMessageText))) then
+            begin
+              GetMem(MessageText, (cbMessageText + 1) * SizeOf(SQLTCHAR));
+              if (SQL_SUCCEEDED(SQLGetDiagRec(SQL_HANDLE_DBC, ODBC, 1, @SQLState, nil, MessageText, cbMessageText + 1, nil))) then
+                MsgBox(PChar(MessageText) + ' (' + SQLState + ')', Preferences.LoadStr(45), MB_OK + MB_ICONERROR);
+              FreeMem(MessageText);
+            end;
+            SQLFreeHandle(SQL_HANDLE_DBC, ODBC); ODBC := SQL_NULL_HANDLE;
+          end
+          else if (ODBCEnv = SQL_NULL_HANDLE) then
+            MsgBox('Can''t open ODBC Enviroment.', Preferences.LoadStr(45), MB_OK + MB_ICONERROR)
+          else
+            MsgBox('Unknown ODBC Error.', Preferences.LoadStr(45), MB_OK + MB_ICONERROR);
       end;
     else
       Success := True;
