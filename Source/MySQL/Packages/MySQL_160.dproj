@@ -1,7 +1,7 @@
 ﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 		<PropertyGroup>
 			<ProjectGuid>{5038DA45-81FB-48A4-B6A7-32D2C8B596C8}</ProjectGuid>
-			<MainSource>MySQL.dpk</MainSource>
+			<MainSource>MySQL_160.dpk</MainSource>
 			<ProjectVersion>13.4</ProjectVersion>
 			<FrameworkType>None</FrameworkType>
 			<AppType>Package</AppType>

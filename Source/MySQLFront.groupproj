@@ -9,104 +9,104 @@
 				<Default.Personality/>
 			</BorlandProject>
 		</ProjectExtensions>
-		<Target Name="FastMM_D2010">
-			<MSBuild Projects="FastMM\Package\FastMM_D2010.dproj"/>
+		<Target Name="FastMM_160">
+			<MSBuild Projects="FastMM\Package\FastMM_160.dproj"/>
 		</Target>
-		<Target Name="FastMM_D2010:Clean">
-			<MSBuild Projects="FastMM\Package\FastMM_D2010.dproj" Targets="Clean"/>
+		<Target Name="FastMM_160:Clean">
+			<MSBuild Projects="FastMM\Package\FastMM_160.dproj" Targets="Clean"/>
 		</Target>
-		<Target Name="FastMM_D2010:Make">
-			<MSBuild Projects="FastMM\Package\FastMM_D2010.dproj" Targets="Make"/>
+		<Target Name="FastMM_160:Make">
+			<MSBuild Projects="FastMM\Package\FastMM_160.dproj" Targets="Make"/>
 		</Target>
-		<Target Name="TPerlRegEx_D2010">
-			<MSBuild Projects="TPerlRegEx\Packages\TPerlRegEx_D2010.dproj"/>
+		<Target Name="TPerlRegEx_160">
+			<MSBuild Projects="TPerlRegEx\Packages\TPerlRegEx_160.dproj"/>
 		</Target>
-		<Target Name="TPerlRegEx_D2010:Clean">
-			<MSBuild Projects="TPerlRegEx\Packages\TPerlRegEx_D2010.dproj" Targets="Clean"/>
+		<Target Name="TPerlRegEx_160:Clean">
+			<MSBuild Projects="TPerlRegEx\Packages\TPerlRegEx_160.dproj" Targets="Clean"/>
 		</Target>
-		<Target Name="TPerlRegEx_D2010:Make">
-			<MSBuild Projects="TPerlRegEx\Packages\TPerlRegEx_D2010.dproj" Targets="Make"/>
+		<Target Name="TPerlRegEx_160:Make">
+			<MSBuild Projects="TPerlRegEx\Packages\TPerlRegEx_160.dproj" Targets="Make"/>
 		</Target>
-		<Target Name="DISQLite3_D2010">
-			<MSBuild Projects="DISQLite3\Packages\DISQLite3_D2010.dproj"/>
+		<Target Name="DISQLite3_160">
+			<MSBuild Projects="DISQLite3\Packages\DISQLite3_160.dproj"/>
 		</Target>
-		<Target Name="DISQLite3_D2010:Clean">
-			<MSBuild Projects="DISQLite3\Packages\DISQLite3_D2010.dproj" Targets="Clean"/>
+		<Target Name="DISQLite3_160:Clean">
+			<MSBuild Projects="DISQLite3\Packages\DISQLite3_160.dproj" Targets="Clean"/>
 		</Target>
-		<Target Name="DISQLite3_D2010:Make">
-			<MSBuild Projects="DISQLite3\Packages\DISQLite3_D2010.dproj" Targets="Make"/>
+		<Target Name="DISQLite3_160:Make">
+			<MSBuild Projects="DISQLite3\Packages\DISQLite3_160.dproj" Targets="Make"/>
 		</Target>
-		<Target Name="MPHexEditor_D2010">
-			<MSBuild Projects="MPHexEditor\Packages\MPHexEditor_D2010.dproj"/>
+		<Target Name="MPHexEditor_160">
+			<MSBuild Projects="MPHexEditor\Packages\MPHexEditor_160.dproj"/>
 		</Target>
-		<Target Name="MPHexEditor_D2010:Clean">
-			<MSBuild Projects="MPHexEditor\Packages\MPHexEditor_D2010.dproj" Targets="Clean"/>
+		<Target Name="MPHexEditor_160:Clean">
+			<MSBuild Projects="MPHexEditor\Packages\MPHexEditor_160.dproj" Targets="Clean"/>
 		</Target>
-		<Target Name="MPHexEditor_D2010:Make">
-			<MSBuild Projects="MPHexEditor\Packages\MPHexEditor_D2010.dproj" Targets="Make"/>
+		<Target Name="MPHexEditor_160:Make">
+			<MSBuild Projects="MPHexEditor\Packages\MPHexEditor_160.dproj" Targets="Make"/>
 		</Target>
-		<Target Name="SynEdit_D2010">
-			<MSBuild Projects="SynEdit\Packages\SynEdit_D2010.dproj"/>
+		<Target Name="SynEdit_160">
+			<MSBuild Projects="SynEdit\Packages\SynEdit_160.dproj"/>
 		</Target>
-		<Target Name="SynEdit_D2010:Clean">
-			<MSBuild Projects="SynEdit\Packages\SynEdit_D2010.dproj" Targets="Clean"/>
+		<Target Name="SynEdit_160:Clean">
+			<MSBuild Projects="SynEdit\Packages\SynEdit_160.dproj" Targets="Clean"/>
 		</Target>
-		<Target Name="SynEdit_D2010:Make">
-			<MSBuild Projects="SynEdit\Packages\SynEdit_D2010.dproj" Targets="Make"/>
+		<Target Name="SynEdit_160:Make">
+			<MSBuild Projects="SynEdit\Packages\SynEdit_160.dproj" Targets="Make"/>
 		</Target>
-		<Target Name="acQueryBuilder_D2010">
-			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilder_D2010.dproj"/>
+		<Target Name="acQueryBuilder_160">
+			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilder_160.dproj"/>
 		</Target>
-		<Target Name="acQueryBuilder_D2010:Clean">
-			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilder_D2010.dproj" Targets="Clean"/>
+		<Target Name="acQueryBuilder_160:Clean">
+			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilder_160.dproj" Targets="Clean"/>
 		</Target>
-		<Target Name="acQueryBuilder_D2010:Make">
-			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilder_D2010.dproj" Targets="Make"/>
+		<Target Name="acQueryBuilder_160:Make">
+			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilder_160.dproj" Targets="Make"/>
 		</Target>
-		<Target Name="acQueryBuilderDsgn_D2010">
-			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilderDsgn_D2010.dproj"/>
+		<Target Name="acQueryBuilderDsgn_160">
+			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilderDsgn_160.dproj"/>
 		</Target>
-		<Target Name="acQueryBuilderDsgn_D2010:Clean">
-			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilderDsgn_D2010.dproj" Targets="Clean"/>
+		<Target Name="acQueryBuilderDsgn_160:Clean">
+			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilderDsgn_160.dproj" Targets="Clean"/>
 		</Target>
-		<Target Name="acQueryBuilderDsgn_D2010:Make">
-			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilderDsgn_D2010.dproj" Targets="Make"/>
+		<Target Name="acQueryBuilderDsgn_160:Make">
+			<MSBuild Projects="QueryBuilder\Packages\acQueryBuilderDsgn_160.dproj" Targets="Make"/>
 		</Target>
-		<Target Name="ShellBrowser_Pkg">
-			<MSBuild Projects="ShellBrowser\Packages\ShellBrowser_Pkg.dproj"/>
+		<Target Name="ShellBrowser_160">
+			<MSBuild Projects="ShellBrowser\Packages\ShellBrowser_160.dproj"/>
 		</Target>
-		<Target Name="ShellBrowser_Pkg:Clean">
-			<MSBuild Projects="ShellBrowser\Packages\ShellBrowser_Pkg.dproj" Targets="Clean"/>
+		<Target Name="ShellBrowser_160:Clean">
+			<MSBuild Projects="ShellBrowser\Packages\ShellBrowser_160.dproj" Targets="Clean"/>
 		</Target>
-		<Target Name="ShellBrowser_Pkg:Make">
-			<MSBuild Projects="ShellBrowser\Packages\ShellBrowser_Pkg.dproj" Targets="Make"/>
+		<Target Name="ShellBrowser_160:Make">
+			<MSBuild Projects="ShellBrowser\Packages\ShellBrowser_160.dproj" Targets="Make"/>
 		</Target>
-		<Target Name="Win32_Extensions">
-			<MSBuild Projects="Win32\Packages\Win32_Extensions.dproj"/>
+		<Target Name="Win32_Ext_160">
+			<MSBuild Projects="Win32\Packages\Win32_Ext_160.dproj"/>
 		</Target>
-		<Target Name="Win32_Extensions:Clean">
-			<MSBuild Projects="Win32\Packages\Win32_Extensions.dproj" Targets="Clean"/>
+		<Target Name="Win32_Ext_160:Clean">
+			<MSBuild Projects="Win32\Packages\Win32_Ext_160.dproj" Targets="Clean"/>
 		</Target>
-		<Target Name="Win32_Extensions:Make">
-			<MSBuild Projects="Win32\Packages\Win32_Extensions.dproj" Targets="Make"/>
+		<Target Name="Win32_Ext_160:Make">
+			<MSBuild Projects="Win32\Packages\Win32_Ext_160.dproj" Targets="Make"/>
 		</Target>
-		<Target Name="VCL_Extensions">
-			<MSBuild Projects="VCL\Packages\VCL_Extensions.dproj"/>
+		<Target Name="VCL_Ext_160">
+			<MSBuild Projects="VCL\Packages\VCL_Ext_160.dproj"/>
 		</Target>
-		<Target Name="VCL_Extensions:Clean">
-			<MSBuild Projects="VCL\Packages\VCL_Extensions.dproj" Targets="Clean"/>
+		<Target Name="VCL_Ext_160:Clean">
+			<MSBuild Projects="VCL\Packages\VCL_Ext_160.dproj" Targets="Clean"/>
 		</Target>
-		<Target Name="VCL_Extensions:Make">
-			<MSBuild Projects="VCL\Packages\VCL_Extensions.dproj" Targets="Make"/>
+		<Target Name="VCL_Ext_160:Make">
+			<MSBuild Projects="VCL\Packages\VCL_Ext_160.dproj" Targets="Make"/>
 		</Target>
-		<Target Name="MySQL">
-			<MSBuild Projects="MySQL\Packages\MySQL.dproj"/>
+		<Target Name="MySQL_160">
+			<MSBuild Projects="MySQL\Packages\MySQL_160.dproj"/>
 		</Target>
-		<Target Name="MySQL:Clean">
-			<MSBuild Projects="MySQL\Packages\MySQL.dproj" Targets="Clean"/>
+		<Target Name="MySQL_160:Clean">
+			<MSBuild Projects="MySQL\Packages\MySQL_160.dproj" Targets="Clean"/>
 		</Target>
-		<Target Name="MySQL:Make">
-			<MSBuild Projects="MySQL\Packages\MySQL.dproj" Targets="Make"/>
+		<Target Name="MySQL_160:Make">
+			<MSBuild Projects="MySQL\Packages\MySQL_160.dproj" Targets="Make"/>
 		</Target>
 		<Target Name="MySQLFront">
 			<MSBuild Projects="MySQLFront.dproj"/>
@@ -118,13 +118,13 @@
 			<MSBuild Projects="MySQLFront.dproj" Targets="Make"/>
 		</Target>
 		<Target Name="Build">
-			<CallTarget Targets="FastMM_D2010;TPerlRegEx_D2010;DISQLite3_D2010;MPHexEditor_D2010;SynEdit_D2010;acQueryBuilder_D2010;acQueryBuilderDsgn_D2010;ShellBrowser_Pkg;Win32_Extensions;VCL_Extensions;MySQL;MySQLFront"/>
+			<CallTarget Targets="FastMM_160;TPerlRegEx_160;DISQLite3_160;MPHexEditor_160;SynEdit_160;acQueryBuilder_160;acQueryBuilderDsgn_160;ShellBrowser_160;Win32_Ext_160;VCL_Ext_160;MySQL_160;MySQLFront"/>
 		</Target>
 		<Target Name="Clean">
-			<CallTarget Targets="FastMM_D2010:Clean;TPerlRegEx_D2010:Clean;DISQLite3_D2010:Clean;MPHexEditor_D2010:Clean;SynEdit_D2010:Clean;acQueryBuilder_D2010:Clean;acQueryBuilderDsgn_D2010:Clean;ShellBrowser_Pkg:Clean;Win32_Extensions:Clean;VCL_Extensions:Clean;MySQL:Clean;MySQLFront:Clean"/>
+			<CallTarget Targets="FastMM_160:Clean;TPerlRegEx_160:Clean;DISQLite3_160:Clean;MPHexEditor_160:Clean;SynEdit_160:Clean;acQueryBuilder_160:Clean;acQueryBuilderDsgn_160:Clean;ShellBrowser_160:Clean;Win32_Ext_160:Clean;VCL_Ext_160:Clean;MySQL_160:Clean;MySQLFront:Clean"/>
 		</Target>
 		<Target Name="Make">
-			<CallTarget Targets="FastMM_D2010:Make;TPerlRegEx_D2010:Make;DISQLite3_D2010:Make;MPHexEditor_D2010:Make;SynEdit_D2010:Make;acQueryBuilder_D2010:Make;acQueryBuilderDsgn_D2010:Make;ShellBrowser_Pkg:Make;Win32_Extensions:Make;VCL_Extensions:Make;MySQL:Make;MySQLFront:Make"/>
+			<CallTarget Targets="FastMM_160:Make;TPerlRegEx_160:Make;DISQLite3_160:Make;MPHexEditor_160:Make;SynEdit_160:Make;acQueryBuilder_160:Make;acQueryBuilderDsgn_160:Make;ShellBrowser_160:Make;Win32_Ext_160:Make;VCL_Ext_160:Make;MySQL_160:Make;MySQLFront:Make"/>
 		</Target>
 		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
 	</Project>
