@@ -2751,7 +2751,7 @@ begin
         else if ((URI.Param['objecttype'] = 'function') and (URI.Param['object'] <> Null)) then
           DBObject := Database.FunctionByName(URI.Param['object'])
         else if ((URI.Param['objecttype'] = 'trigger') and (URI.Param['object'] <> Null)) then
-          DBObject := Database.EventByName(URI.Param['object'])
+          DBObject := Database.TriggerByName(URI.Param['object'])
         else if ((URI.Param['objecttype'] = 'event') and (URI.Param['object'] <> Null)) then
           DBObject := Database.EventByName(URI.Param['object'])
         else
@@ -2759,8 +2759,10 @@ begin
 
         if (not Assigned(DBObject)) then
           NotFound := True
-        else if (not DBObject.Update() and (URI.Param['view'] = 'browser')) then
-          AllowChange := False;
+        else if (not DBObject.Update()) then
+          AllowChange := False
+        else if ((URI.Param['objecttype'] = 'trigger') and (URI.Param['object'] <> Null) and not Assigned(Database.TriggerByName(URI.Param['object']))) then
+          NotFound := True;
       end;
     end;
 
@@ -8028,7 +8030,7 @@ begin
     begin
       if (DatabaseNode.HasChildren and (DatabaseNode.Count = 0)) then
       begin
-        AllowExpansion := False;
+        AllowExpansion := True;
         FNavigatorExpanding(nil, DatabaseNode, AllowExpansion);
       end;
 
@@ -8041,7 +8043,7 @@ begin
           TableName := TCDatabase(DatabaseNode.Data).TriggerByName(URI.Param['object']).TableName;
         TableNode := nil;
         while (Assigned(Child) and not Assigned(TableNode)) do
-          if ((Child.ImageIndex in [iiBaseTable, iiSystemView, iiView]) and (TCDatabase(DatabaseNode.Data).Tables.NameCmp(TableName, Child.Text) = 0)) then
+          if ((Child.ImageIndex in [iiBaseTable]) and (TCDatabase(DatabaseNode.Data).Tables.NameCmp(TableName, Child.Text) = 0)) then
             TableNode := Child
           else
             Child := Child.getNextSibling();
@@ -8051,7 +8053,7 @@ begin
         begin
           if (TableNode.HasChildren and (TableNode.Count = 0)) then
           begin
-            AllowExpansion := False;
+            AllowExpansion := True;
             FNavigatorExpanding(nil, TableNode, AllowExpansion);
           end;
           Child := TableNode.getFirstChild();
@@ -9702,16 +9704,16 @@ begin
       FObjectIDEGrid.DataSource.DataSet := nil;
   end;
 
+  if (Assigned(FObjectIDEGrid.DataSource.DataSet) and not FObjectIDEGrid.DataSource.Enabled) then
+    FObjectIDEGrid.DataSource.Enabled := True;
+
   if (Assigned(FObjectIDEGrid.DataSource.DataSet)) then
     for I := 0 to FObjectIDEGrid.DataSource.DataSet.FieldCount - 1 do
       if ((FObjectIDEGrid.Columns[I].Width > Preferences.GridMaxColumnWidth) and not (FObjectIDEGrid.Columns[I].Field.DataType in [ftSmallint, ftInteger, ftLargeint, ftWord, ftFloat, ftDate, ftDateTime, ftTime, ftCurrency])) then
         FObjectIDEGrid.Columns[I].Width := Preferences.GridMaxColumnWidth;
 
   if (Assigned(FObjectIDEGrid.DataSource.DataSet) and not FObjectIDEGrid.DataSource.Enabled) then
-  begin
-    FObjectIDEGrid.DataSource.Enabled := True;
     DBGridColEnter(FObjectIDEGrid);
-  end;
 
   PObjectIDETrigger.Visible := (SelectedImageIndex = iiTrigger);
   if (PObjectIDETrigger.Visible) then
@@ -10436,9 +10438,7 @@ procedure TFClient.ListViewInitialize(const ListView: TListView; const Data: TCu
 
 var
   Count: Integer;
-  Group: TListGroup;
   I: Integer;
-  Item: TListItem;
   Update: Boolean;
 begin
   Update := ListView.Columns.Count > 0;
@@ -10887,8 +10887,8 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const List
       else
         Item.ImageIndex := iiView;
       Item.Caption := TCTable(Data).Caption;
-      if ((TCTable(Data) is TCBaseTable) and Assigned(TCBaseTable(TCTable(Data)).Engine)) then
-        Item.SubItems.Add(TCBaseTable(TCTable(Data)).Engine.Name)
+      if ((TCTable(Data) is TCBaseTable) and Assigned(TCBaseTable(Data).Engine)) then
+        Item.SubItems.Add(TCBaseTable(Data).Engine.Name)
       else if ((TCTable(Data) is TCView)) then
         Item.SubItems.Add(ReplaceStr(Preferences.LoadStr(738), '&', ''))
       else
@@ -12546,6 +12546,7 @@ begin
         begin
           URI.Param['view'] := 'ide';
           URI.Database := Node.Parent.Parent.Text;
+          URI.Table := Node.Parent.Text;
           URI.Param['objecttype'] := 'trigger';
           URI.Param['object'] := Node.Text;
         end;

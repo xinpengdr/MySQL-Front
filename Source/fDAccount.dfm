@@ -45,7 +45,7 @@ object DAccount: TDAccount
     Top = 8
     Width = 313
     Height = 277
-    ActivePage = TSLogin
+    ActivePage = TSBasics
     HotTrack = True
     MultiLine = True
     TabOrder = 0

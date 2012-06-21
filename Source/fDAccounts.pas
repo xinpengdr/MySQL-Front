@@ -67,6 +67,7 @@ implementation {***************************************************************}
 uses
   CommCtrl, Math, StrUtils,
   CommCtrl_Ext,
+  MySQLConsts,
   fDAccount, fPreferences, fDConnecting;
 
 var
@@ -394,10 +395,7 @@ begin
         Item.SubItems.Add('???')
       else
         Item.SubItems.Add(DateTimeToStr(Accounts[I].LastLogin, LocaleFormatSettings));
-      if (Accounts[I].ImageIndex < 0) then
-        Item.ImageIndex := iiServer
-      else
-        Item.ImageIndex := Accounts[I].ImageIndex;
+      Item.ImageIndex := Accounts[I].ImageIndex;
     end;
 
   FAccountsColumnClick(Account, FAccounts.Column[FAccounts.Tag]);

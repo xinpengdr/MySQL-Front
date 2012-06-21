@@ -533,8 +533,8 @@ end;
 
 procedure TDAccount.TSBasicsShow(Sender: TObject);
 begin
-  if (Assigned(Account) and FileExists(Account.IconFilename)) then
-    FIcon.Picture.Icon.LoadFromFile(Account.IconFilename)
+  if (Assigned(Account)) then
+    Preferences.SmallImages.GetIcon(Account.ImageIndex, FIcon.Picture.Icon)
   else
     Preferences.SmallImages.GetIcon(iiServer, FIcon.Picture.Icon);
 end;

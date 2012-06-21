@@ -1921,7 +1921,11 @@ begin
         end;
       ssReceivingData:
         begin
+try
           Connection.SyncHandledResult(Self);
+except
+          Connection.SyncHandledResult(Self);
+end;
           if (State in [ssNextResult, ssExecutingSQL]) then
             ExecuteE.SetEvent()
           else
@@ -3161,9 +3165,9 @@ end;
 function TMySQLConnection.ExecuteSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean;
 begin
   if (InOnResult) then
-    raise Exception.Create(SOutOfSync);
+    raise Exception.Create(SOutOfSync + ' (in OnResult): ' + CommandText);
   if (InMonitor) then
-    raise Exception.Create(SOutOfSync);
+    raise Exception.Create(SOutOfSync + ' (in Monitor): ' + CommandText);
 
   if (Assigned(SynchroThread) and not (SynchroThread.State in [ssClose, ssReady])) then
     Terminate();
@@ -3353,9 +3357,9 @@ end;
 function TMySQLConnection.SendSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean;
 begin
   if (InOnResult) then
-    raise Exception.Create(SOutOfSync);
+    raise Exception.Create(SOutOfSync + ' (in OnResult): ' + CommandText);
   if (InMonitor) then
-    raise Exception.Create(SOutOfSync);
+    raise Exception.Create(SOutOfSync + ' (in Monitor): ' + CommandText);
 
   if (Assigned(SynchroThread) and not (SynchroThread.State in [ssClose, ssReady])) then
     Terminate();
@@ -4449,7 +4453,7 @@ begin
       inherited
     else
     begin
-      OpenByCommandText := not (Assigned(Connection.SynchroThread) and Connection.SynchroThread.IsRunning and (Connection.SynchroThread.State = ssResult)) and not ((Self is TMySQLDataSet) and TMySQLDataSet(Self).CachedUpdates);
+      OpenByCommandText := (CommandText <> '') and not (Assigned(Connection.SynchroThread) and Connection.SynchroThread.IsRunning and (Connection.SynchroThread.State = ssResult)) and not ((Self is TMySQLDataSet) and TMySQLDataSet(Self).CachedUpdates);
       if (OpenByCommandText) then
       begin
         if (not (Self is TMySQLTable)) then
@@ -5708,7 +5712,7 @@ begin
         InternRecordBuffers.Index := InternRecordBuffers.Add(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer);
     end;
 
-    if (Connection.Connected) then
+    if (not CachedUpdates and Connection.Connected) then
       for I := 0 to Fields.Count - 1 do
         if ((Fields[I].AutoGenerateValue = arAutoInc) and (Fields[I].IsNull or (Fields[I].AsInteger = 0))) then
           Fields[I].AsInteger := Connection.Lib.mysql_insert_id(Connection.Handle);
@@ -6515,7 +6519,7 @@ begin
       if (pfInWhere in Fields[I].ProviderFlags) then
       begin
         if (ValueHandled) then Result := Result + ' AND ';
-        if (not Assigned(InternRecordBuffer^.OldData^.LibRow^[I])) then
+        if (not Assigned(InternRecordBuffer^.OldData) or not Assigned(InternRecordBuffer^.OldData^.LibRow^[I])) then
           Result := Result + Connection.EscapeIdentifier(Fields[I].FieldName) + ' IS NULL'
         else
           Result := Result + Connection.EscapeIdentifier(Fields[I].FieldName) + '=' + SQLFieldValue(Fields[I], InternRecordBuffer^.OldData);
@@ -6566,16 +6570,21 @@ var
 begin
   ExternRecordBuffer := PExternRecordBuffer(ActiveBuffer());
 
-  Result := 'INSERT INTO ' + SQLTableClausel() + ' SET ';
-  ValueHandled := False;
-  for I := 0 to FieldCount - 1 do
-    if (Assigned(ExternRecordBuffer^.InternRecordBuffer^.NewData^.LibRow^[I]) or Fields[I].Required and not (Fields[I].AutoGenerateValue = arAutoInc)) then
-    begin
-      if (ValueHandled) then Result := Result + ',';
-      Result := Result + Connection.EscapeIdentifier(Fields[I].FieldName) + '=' + SQLFieldValue(Fields[I], TRecordBuffer(ExternRecordBuffer));
-      ValueHandled := True;
-    end;
-  Result := Result + ';' + #13#10;
+  if (not Assigned(ExternRecordBuffer^.InternRecordBuffer^.NewData)) then
+    Result := ''
+  else
+  begin
+    Result := 'INSERT INTO ' + SQLTableClausel() + ' SET ';
+    ValueHandled := False;
+    for I := 0 to FieldCount - 1 do
+      if (Assigned(ExternRecordBuffer^.InternRecordBuffer^.NewData^.LibRow^[I]) or Fields[I].Required and (Fields[I].AutoGenerateValue <> arAutoInc)) then
+      begin
+        if (ValueHandled) then Result := Result + ',';
+        Result := Result + Connection.EscapeIdentifier(Fields[I].FieldName) + '=' + SQLFieldValue(Fields[I], TRecordBuffer(ExternRecordBuffer));
+        ValueHandled := True;
+      end;
+    Result := Result + ';' + #13#10;
+  end;
 end;
 
 procedure TMySQLTable.SetLimit(const ALimit: Integer);

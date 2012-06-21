@@ -710,33 +710,6 @@ begin
   end;
 end;
 
-procedure ConvertTo32BitImageList(const ImageList: TImageList);
-const
-  Mask: array[Boolean] of Longint = (0, ILC_MASK);
-var
-  TempList: TImageList;
-begin
-  if Assigned(ImageList) then
-  begin
-    TempList := TImageList.Create(nil);
-    try
-      TempList.Assign(ImageList);
-      with ImageList do
-      begin
-        Handle := ImageList_Create(
-          Width, Height, ILC_COLOR32 or Mask[Masked], 0, AllocBy);
-
-        if not HandleAllocated then
-          raise EInvalidOperation.Create(SInvalidImageList);
-      end;
-
-      Imagelist.AddImages(TempList);
-    finally
-      FreeAndNil(TempList);
-    end;
-  end;
-end;
-
 function GetFileIcon(const CSIDL: Integer): HIcon;
 var
   FileInfo: TSHFileInfo;
@@ -1892,7 +1865,9 @@ begin
   end;
 
   for I := 0 to MaxIconIndex do
-    if (Assigned(FSkinIniFile) and FileExists(ImageFileaname(I))) then
+    if (I = 13) then
+      ImageList_AddIcon(FSmallImages.Handle, GetFileIcon(CSIDL_DRIVES))
+    else if (Assigned(FSkinIniFile) and FileExists(ImageFileaname(I))) then
       ImageList_AddIcon(FSmallImages.Handle, LoadImage(hInstance, PChar(ImageFileaname(I)), IMAGE_ICON, FSmallImages.Height, FSmallImages.Width, LR_DEFAULTCOLOR + LR_LOADFROMFILE))
     else if (FindResource(HInstance, MAKEINTRESOURCE(10000 + I), RT_GROUP_ICON) > 0) then
       ImageList_AddIcon(FSmallImages.Handle, LoadImage(hInstance, MAKEINTRESOURCE(10000 + I), IMAGE_ICON, FSmallImages.Height, FSmallImages.Width, LR_DEFAULTCOLOR))

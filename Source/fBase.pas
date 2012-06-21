@@ -9,6 +9,7 @@ uses
   fPreferences, fClient, fAccount, MySQLDB;
 
 const
+  iiLocalhost = 13;
   iiServer = 23;
   iiDatabase = 24;
   iiSystemDatabase = 90;

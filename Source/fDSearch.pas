@@ -491,8 +491,7 @@ begin
       Clients[I] := nil;
 
     Node := FSelect.Items.Add(nil, Accounts[I].Name);
-    Node.ImageIndex := Accounts[I].ImageIndex;
-    if (Node.ImageIndex < 0) then Node.ImageIndex := iiServer;
+    Node.ImageIndex := iiServer;
     Node.HasChildren := True;
   end;
 

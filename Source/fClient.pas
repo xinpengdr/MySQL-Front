@@ -6027,10 +6027,15 @@ begin
     FInputDataSet.Connection := Database.Client;
     FInputDataSet.CommandText := 'SELECT * FROM ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(FTableName) + ' LIMIT 0';
     FInputDataSet.Open();
-    if (FInputDataSet.Active) then
+    if (not FInputDataSet.Active) then
       FreeAndNil(FInputDataSet)
     else
+    begin
       FInputDataSet.CachedUpdates := True;
+      FInputDataSet.Append();
+      FInputDataSet.Post();
+      FInputDataSet.Edit();
+    end;
   end;
 
   Result := FInputDataSet;
@@ -6110,29 +6115,35 @@ end;
 function TCTrigger.SQLReplace(): string;
 begin
   Result := SQLInsert();
-  Result := 'REPLACE ' + RightStr(Result, Length(Result) - Length('INSERT'));
+  if (Result <> '') then
+    Result := 'REPLACE ' + RightStr(Result, Length(Result) - Length('INSERT'));
 end;
 
 function TCTrigger.SQLUpdate(): string;
 var
   I: Integer;
 begin
-  Result := 'UPDATE ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(FTableName);
-  Result := Result + ' SET ';
-  for I := 0 to InputDataSet.FieldCount - 1 do
+  if (not InputDataSet.Modified) then
+    Result := ''
+  else
   begin
-    if (I > 0) then Result := Result + ',';
-    Result := Result + Database.Client.EscapeIdentifier(InputDataSet.Fields[I].FieldName);
-    Result := Result + '=' + InputDataSet.SQLFieldValue(InputDataSet.Fields[I]);
+    Result := 'UPDATE ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(FTableName);
+    Result := Result + ' SET ';
+    for I := 0 to InputDataSet.FieldCount - 1 do
+    begin
+      if (I > 0) then Result := Result + ',';
+      Result := Result + Database.Client.EscapeIdentifier(InputDataSet.Fields[I].FieldName);
+      Result := Result + '=' + InputDataSet.SQLFieldValue(InputDataSet.Fields[I]);
+    end;
+    Result := Result + ' WHERE ';
+    for I := 0 to InputDataSet.FieldCount - 1 do
+    begin
+      if (I > 0) then Result := Result + ' AND ';
+      Result := Result + Database.Client.EscapeIdentifier(InputDataSet.Fields[I].FieldName);
+      Result := Result + '=' + InputDataSet.SQLFieldValue(InputDataSet.Fields[I]);
+    end;
+    Result := Result + ';' + #13#10;
   end;
-  Result := Result + ' WHERE ';
-  for I := 0 to InputDataSet.FieldCount - 1 do
-  begin
-    if (I > 0) then Result := Result + ' AND ';
-    Result := Result + Database.Client.EscapeIdentifier(InputDataSet.Fields[I].FieldName);
-    Result := Result + '=' + InputDataSet.SQLFieldValue(InputDataSet.Fields[I]);
-  end;
-  Result := Result + ';' + #13#10;
 end;
 
 { TCTriggers ******************************************************************}

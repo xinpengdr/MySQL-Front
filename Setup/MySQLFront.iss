@@ -69,7 +69,7 @@ Root: HKCR; Subkey: "mysql\shell\open\command"; ValueType: string; ValueName: ""
 
 [Dirs]
 Name: "{userappdata}\{BuildName}"
-Name: "{userappdata}\{BuildName}\Sessions"
+Name: "{userappdata}\{BuildName}\Accounts"
 
 [Files]
 Source: "{BuildTempPath}\{BuildName}.exe"; DestDir: "{app}"; Flags: ignoreversion

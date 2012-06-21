@@ -152,11 +152,13 @@ type
     function GetHistoryFilename(): TFileName;
     function GetHistoryXML(): IXMLNode;
     function GetIconFilename(): TFileName;
+    function GetImageIndex(): Integer;
     function GetName(): string;
     function GetXML(): IXMLNode;
     procedure SetLastLogin(const ALastLogin: TDateTime);
     procedure SetName(const AName: string);
   protected
+    FImageIndex: Integer;
     Section: string;
     function GetIndex(): Integer;
     procedure LoadFromXML();
@@ -173,7 +175,6 @@ type
     CacheSize: Integer;
     Connection: TAConnection;
     IconFetched: Boolean;
-    ImageIndex: Integer;
     ManualURL: string;
     ManualURLFetched: Boolean;
     procedure Assign(const Source: TAAccount); virtual;
@@ -192,6 +193,7 @@ type
     property DesktopXML: IXMLNode read GetDesktopXML;
     property HistoryXML: IXMLNode read GetHistoryXML;
     property IconFilename: TFileName read GetIconFilename;
+    property ImageIndex: Integer read GetImageIndex write FImageIndex;
     property Index: Integer read GetIndex;
     property LastLogin: TDateTime read FLastLogin write SetLastLogin;
     property Name: string read GetName write SetName;
@@ -1141,10 +1143,20 @@ end;
 
 function TAAccount.GetIconFilename(): TFileName;
 begin
-  if (not DirectoryExists(DataPath)) then
+  if (not ForceDirectories(DataPath)) then
     Result := ''
   else
     Result := DataPath + 'favicon.ico';
+end;
+
+function TAAccount.GetImageIndex(): Integer;
+begin
+  if (FImageIndex >= 0) then
+    Result := FImageIndex
+  else if (Connection.Host = LOCAL_HOST) then
+    Result := 13
+  else
+    Result := 23;
 end;
 
 function TAAccount.GetIndex(): Integer;
@@ -1358,6 +1370,7 @@ begin
 
   Section := 'Accounts';
 
+  // "Sessions" used up to version 5.1 // May 2012
   if (DirectoryExists(Preferences.UserPath + 'Sessions' + PathDelim)
     and not DirectoryExists(DataPath)) then
     CopyDir(PChar(Preferences.UserPath + 'Sessions' + PathDelim), PChar(DataPath));
