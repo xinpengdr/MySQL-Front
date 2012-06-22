@@ -1493,12 +1493,10 @@ object FClient: TFClient
     object aDInsertRecord: TDataSetInsert
       Category = 'Database'
       Caption = 'aDInsertRecord'
-      ImageIndex = 4
     end
     object aDDeleteRecord: TDataSetDelete
       Category = 'Database'
       Caption = 'aDDeleteRecord'
-      ImageIndex = 5
     end
     object aDNext: TAction
       Category = 'Database'
@@ -1518,7 +1516,6 @@ object FClient: TFClient
     end
     object DataSetDelete: TDataSetDelete
       Category = 'Database'
-      ImageIndex = 5
     end
     object DataSetFirst: TDataSetFirst
       Category = 'Database'
@@ -1790,17 +1787,14 @@ object FClient: TFClient
     end
     object gmECut: TMenuItem
       Caption = 'aECut'
-      ImageIndex = 0
       ShortCut = 16472
     end
     object gmECopy: TMenuItem
       Caption = 'aECopy'
-      ImageIndex = 1
       ShortCut = 16451
     end
     object gmEPaste: TMenuItem
       Caption = 'aEPaste'
-      ImageIndex = 2
       ShortCut = 16470
     end
     object gmEDelete: TMenuItem

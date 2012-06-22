@@ -184,9 +184,9 @@ type
     ODBCEnv: SQLHENV;
     SQLWait: Boolean;
     procedure CheckActivePageChange(const ActivePageIndex: Integer);
-    procedure ClearTSFields(Sender: TObject);
+    procedure ClearTSFields();
     procedure FormClientEvent(const Event: TCClient.TEvent);
-    procedure InitTSFields(Sender: TObject);
+    procedure InitTSFields();
     procedure OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMExecutionDone(var Message: TMessage); message CM_EXECUTIONDONE;
@@ -323,7 +323,7 @@ begin
     ActiveControl := FBForward;
 end;
 
-procedure TDExport.ClearTSFields(Sender: TObject);
+procedure TDExport.ClearTSFields();
 var
   I: Integer;
 begin
@@ -719,6 +719,9 @@ begin
   begin
     PageControl.Visible := True;
     PSQLWait.Visible := not PageControl.Visible;
+
+    if (TSFields.Enabled) then
+      InitTSFields();
     CheckActivePageChange(PageControl.ActivePageIndex);
   end;
 end;
@@ -810,7 +813,7 @@ begin
   FODBCSelect.Items.BeginUpdate();
   FODBCSelect.Items.Clear();
   FODBCSelect.Items.EndUpdate();
-  ClearTSFields(Sender);
+  ClearTSFields();
   PageControl.ActivePage := nil;
 
   if (ODBC <> SQL_NULL_HANDLE) then
@@ -864,9 +867,6 @@ begin
   TSFields.Enabled := (ExportType in [etExcelFile]) and ((DBObjects.Count = 1) or Assigned(DBGrid)) or (ExportType in [etXMLFile]) and Assigned(DBGrid);
   TSExecute.Enabled := not TSODBCSelect.Enabled and not TSSQLOptions.Enabled and not TSCSVOptions.Enabled and not TSHTMLOptions.Enabled and not TSFields.Enabled;
 
-  if (TSFields.Enabled) then
-    InitTSFields(Sender);
-
   for I := 0 to PageControl.PageCount - 1 do
     if ((PageControl.ActivePageIndex < 0) and PageControl.Pages[I].Enabled) then
       PageControl.ActivePageIndex := I;
@@ -880,14 +880,19 @@ begin
   PageControl.Visible := Client.Update(DBObjects);
   PSQLWait.Visible := not PageControl.Visible;
 
+  if (PageControl.Visible) then
+  begin
+    if (TSFields.Enabled) then
+      InitTSFields();
+    CheckActivePageChange(PageControl.ActivePageIndex);
+  end;
+
   FBBack.Visible := TSODBCSelect.Enabled or TSSQLOptions.Enabled or TSCSVOptions.Enabled or TSXMLOptions.Enabled or TSHTMLOptions.Enabled or TSFields.Enabled;
   FBForward.Visible := FBBack.Visible;
   FBForward.Enabled := PageControl.Visible and FBForward.Visible and (not TSODBCSelect.Enabled or Assigned(FODBCSelect.Selected));
 
   if (not FBForward.Enabled) then
     ActiveControl := FBCancel;
-
-  CheckActivePageChange(PageControl.ActivePageIndex);
 end;
 
 procedure TDExport.FQuoteCharExit(Sender: TObject);
@@ -958,13 +963,13 @@ begin
   FTableTagClick(Sender);
 end;
 
-procedure TDExport.InitTSFields(Sender: TObject);
+procedure TDExport.InitTSFields();
 var
   I: Integer;
   J: Integer;
   K: Integer;
 begin
-  ClearTSFields(Sender);
+  ClearTSFields();
 
   if ((DBObjects.Count > 0) and (TCDBObject(DBObjects[0]) is TCTable)) then
     SetLength(FFields, TCTable(DBObjects[0]).Fields.Count)
@@ -1095,7 +1100,7 @@ end;
 
 procedure TDExport.TSCSVOptionsShow(Sender: TObject);
 begin
-  ClearTSFields(Sender);
+  ClearTSFields();
 
   FSeparatorClick(Self);
 
@@ -1509,7 +1514,7 @@ end;
 procedure TDExport.TSOptionsHide(Sender: TObject);
 begin
   if (TSFields.Enabled) then
-    InitTSFields(Sender);
+    InitTSFields();
 end;
 
 procedure TDExport.TSSQLOptionsShow(Sender: TObject);
@@ -1553,7 +1558,7 @@ end;
 procedure TDExport.TSXMLOptionsHide(Sender: TObject);
 begin
   if (TSFields.Enabled) then
-    InitTSFields(Sender);
+    InitTSFields();
 end;
 
 procedure TDExport.TSXMLOptionsShow(Sender: TObject);

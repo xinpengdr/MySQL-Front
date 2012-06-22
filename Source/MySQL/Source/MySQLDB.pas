@@ -757,7 +757,7 @@ function SQLFormatToDisplayFormat(const SQLFormat: string): string;
 
 const
   UnquotedDataTypes = [ftShortInt, ftByte, ftSmallInt, ftWord, ftInteger, ftLongWord, ftLargeint, ftSingle, ftFloat, ftExtended];
-  BinaryDataTypes = [ftString, ftBytes, ftBlob];
+  BinaryDataTypes = [ftString, ftBlob];
   TextDataTypes = [ftWideString, ftWideMemo];
 
 var
@@ -1871,16 +1871,16 @@ begin
       ssExecutingSQL:
         begin
           repeat
-            Connection.SyncExecutingSQL(Self);         // PrepareSQL
-            Connection.SyncHandleResult(Self);         // OpenResult
-            while (State = ssNextResult) do            // NextResult
+            Connection.SyncExecutingSQL(Self);
+            Connection.SyncHandleResult(Self);
+            while (State = ssNextResult) do
             begin
               Connection.SyncNextResult(Self);
               Connection.SyncHandleResult(Self);
             end;
           until (State <> ssExecutingSQL);
           if (State = ssReady) then
-            Connection.SyncExecutedSQL(Self);          // CloseSQL
+            Connection.SyncExecutedSQL(Self);
         end;
       ssReceivingData:
         begin
@@ -4003,7 +4003,6 @@ begin
           ftDateTime: begin SetString(S, Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]); DT := MySQLDB.StrToDateTime(S, Connection.FormatSettings); DataConvert(Field, @DT, Buffer, True); end;
           ftTime: begin SetString(S, Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]); Longint(Buffer^) := StrToTime(S, TMySQLTimeField(Field).SQLFormat); end;
           ftTimeStamp: begin SetString(S, Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]); PSQLTimeStamp(Buffer)^ := StrToMySQLTimeStamp(S, TMySQLTimeStampField(Field).SQLFormat); end;
-          ftBytes: begin ZeroMemory(Buffer, Field.DataSize); Move(Data^.LibRow^[Field.FieldNo - 1]^, Buffer^, Data^.LibLengths^[Field.FieldNo - 1]); end;
           ftBlob: begin TMemoryStream(Buffer).SetSize(Data^.LibLengths^[Field.FieldNo - 1]); Move(Data^.LibRow^[Field.FieldNo - 1]^, TMemoryStream(Buffer).Memory^, Data^.LibLengths^[Field.FieldNo - 1]); end;
           ftWideString: Move(Data, Buffer^, SizeOf(Data));
           ftWideMemo: DataConvert(Field, Data, Buffer, False);
@@ -4581,7 +4580,7 @@ begin
     else
       Data := TMySQLDataSet.PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData;
 
-  if (not Assigned(Data^.LibRow^[Field.FieldNo - 1]) and (not Field.Required or (Field.AutoGenerateValue = arAutoInc))) then
+  if (not Assigned(Data) or not Assigned(Data^.LibRow^[Field.FieldNo - 1]) and (not Field.Required or (Field.AutoGenerateValue = arAutoInc))) then
     Result := 'NULL'
   else if (not Assigned(Data^.LibRow^[Field.FieldNo - 1])) then
     case (Field.DataType) of
@@ -4599,7 +4598,6 @@ begin
       ftDate,
       ftTime,
       ftDateTime: if (Field.DefaultExpression = '') then Result := 'NULL' else Result := SQLEscape(Field.DefaultExpression);
-      ftBytes: Result := SQLEscape('');
       ftBlob,
       ftWideMemo,
       ftWideString: Result := '''''';
@@ -4625,7 +4623,6 @@ begin
       ftDateTime,
       ftTime: Result := '''' + Connection.LibUnpack(Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]) + '''';
       ftTimeStamp: Connection.LibUnpack(Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]);
-      ftBytes,
       ftBlob: Result := SQLEscape(Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1], Connection.ServerVersion <= 40000);
       ftWideMemo,
       ftWideString: Result := SQLEscape(Connection.LibDecode(Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]));
@@ -5621,7 +5618,7 @@ begin
       RBS := Connection.LibEncode(SQLUnescape(Fields[I].DefaultExpression));
       SetFieldData(Fields[I], @RBS[1], Length(RBS));
     end
-    else if (Fields[I].Required and (Fields[I].DataType in [ftString, ftWideString, ftWideMemo, ftBytes, ftBlob])) then
+    else if (Fields[I].Required and (Fields[I].DataType in BinaryDataTypes * TextDataTypes)) then
       SetFieldData(Fields[I], Pointer(1), 0);
 end;
 
@@ -6406,7 +6403,6 @@ var
             StringB := Connection.LibDecode(B^.NewData^.LibRow^[Field.FieldNo - 1], B^.NewData^.LibLengths^[Field.FieldNo - 1]);
             Result := lstrcmpi(PChar(StringA), PChar(StringB));
           end;
-        ftBytes,
         ftBlob: Result := lstrcmpA(A^.NewData^.LibRow^[Field.FieldNo - 1], B^.NewData^.LibRow^[Field.FieldNo - 1]);
         else
           raise EDatabaseError.CreateFMT(SUnknownFieldType + '(%d)', [Field.Name, Integer(Field.DataType)]);
@@ -6560,6 +6556,7 @@ begin
               Result := Result + '(' + Connection.EscapeIdentifier(Fields[I].FieldName) + '=' + SQLFieldValue(WhereField, InternRecordBuffer^.OldData) + ')';
           end;
   end;
+  Result := Result + ';' + #13#10;
 end;
 
 function TMySQLDataSet.SQLInsert(): string;

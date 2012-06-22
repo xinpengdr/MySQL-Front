@@ -67,7 +67,6 @@ object DSearch: TDSearch
     TabStop = False
     object TSROptions: TTabSheet
       Caption = 'TSROptions'
-      ImageIndex = 1
       TabVisible = False
       OnShow = TSROptionsShow
       DesignSize = (
@@ -205,12 +204,8 @@ object DSearch: TDSearch
     end
     object TSExecute: TTabSheet
       Caption = 'TSExecute'
-      ImageIndex = 2
       TabVisible = False
       OnShow = TSExecuteShow
-      DesignSize = (
-        333
-        279)
       object GProgress: TGroupBox_Ext
         Left = 4
         Top = 0

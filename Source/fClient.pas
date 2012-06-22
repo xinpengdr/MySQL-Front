@@ -6099,7 +6099,7 @@ end;
 
 function TCTrigger.SQLDelete(): string;
 begin
-  InputDataSet.SQLDelete();
+  Result := InputDataSet.SQLDelete();
 end;
 
 function TCTrigger.SQLGetSource(): string;
@@ -6116,34 +6116,29 @@ function TCTrigger.SQLReplace(): string;
 begin
   Result := SQLInsert();
   if (Result <> '') then
-    Result := 'REPLACE ' + RightStr(Result, Length(Result) - Length('INSERT'));
+    Result := 'REPLACE' + RightStr(Result, Length(Result) - Length('INSERT'));
 end;
 
 function TCTrigger.SQLUpdate(): string;
 var
   I: Integer;
 begin
-  if (not InputDataSet.Modified) then
-    Result := ''
-  else
+  Result := 'UPDATE ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(FTableName);
+  Result := Result + ' SET ';
+  for I := 0 to InputDataSet.FieldCount - 1 do
   begin
-    Result := 'UPDATE ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(FTableName);
-    Result := Result + ' SET ';
-    for I := 0 to InputDataSet.FieldCount - 1 do
-    begin
-      if (I > 0) then Result := Result + ',';
-      Result := Result + Database.Client.EscapeIdentifier(InputDataSet.Fields[I].FieldName);
-      Result := Result + '=' + InputDataSet.SQLFieldValue(InputDataSet.Fields[I]);
-    end;
-    Result := Result + ' WHERE ';
-    for I := 0 to InputDataSet.FieldCount - 1 do
-    begin
-      if (I > 0) then Result := Result + ' AND ';
-      Result := Result + Database.Client.EscapeIdentifier(InputDataSet.Fields[I].FieldName);
-      Result := Result + '=' + InputDataSet.SQLFieldValue(InputDataSet.Fields[I]);
-    end;
-    Result := Result + ';' + #13#10;
+    if (I > 0) then Result := Result + ',';
+    Result := Result + Database.Client.EscapeIdentifier(InputDataSet.Fields[I].FieldName);
+    Result := Result + '=' + InputDataSet.SQLFieldValue(InputDataSet.Fields[I]);
   end;
+  Result := Result + ' WHERE ';
+  for I := 0 to InputDataSet.FieldCount - 1 do
+  begin
+    if (I > 0) then Result := Result + ' AND ';
+    Result := Result + Database.Client.EscapeIdentifier(InputDataSet.Fields[I].FieldName);
+    Result := Result + '=' + InputDataSet.SQLFieldValue(InputDataSet.Fields[I]);
+  end;
+  Result := Result + ';' + #13#10;
 end;
 
 { TCTriggers ******************************************************************}

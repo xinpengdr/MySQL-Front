@@ -1011,7 +1011,7 @@ type
     function ImageIndexByData(const Data: TObject): Integer;
     procedure ImportError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
     procedure ListViewEmpty(Sender: TObject);
-    procedure ListViewInitialize(const ListView: TListView; const Data: TCustomData);
+    procedure ListViewInitialize(const ListView: TListView);
     procedure ListViewUpdate(const ClientEvent: TCClient.TEvent; const ListView: TListView; const Data: TCustomData = nil);
     procedure MGridHeaderMenuOrderClick(Sender: TObject);
     procedure MGridTitleMenuVisibleClick(Sender: TObject);
@@ -3715,9 +3715,7 @@ begin
         end;
   end;
 
-  if ((DExport.DBObjects.Count > 0) and (Client.Update(DExport.DBObjects)) and (Sender is TAction)) then
-    Wanted.Action := TAction(Sender)
-  else if (Assigned(DExport.DBGrid) or (DExport.DBObjects.Count >= 1)) then
+  if (Assigned(DExport.DBGrid) or (DExport.DBObjects.Count >= 1)) then
   begin
     if (Assigned(Client) and (Client.Account.Connection.Charset <> '')) then
       CodePage := Client.CharsetToCodePage(Client.Account.Connection.Charset)
@@ -4596,6 +4594,8 @@ begin
         ListViewUpdate(Event, FServerListView);
         if (not (Event.CItems is TCTriggers)) then
           ListViewUpdate(Event, Desktop(TCDatabase(Event.Sender)).ListView)
+        else if (Event.EventType = ceItemDroped) then
+          ListViewUpdate(Event, Desktop(TCTrigger(Event.CItem).Table).ListView)
         else
           for I := 0 to TCTriggers(Event.CItems).Count - 1 do
             ListViewUpdate(Event, Desktop(TCTriggers(Event.CItems)[I].Table).ListView);
@@ -4692,16 +4692,16 @@ procedure TFClient.CMChangePreferences(var Message: TMessage);
 var
   I: Integer;
 begin
-  TBSideBar.Images := Preferences.SmallImages;
-  ToolBar.Images := Preferences.SmallImages;
-  FNavigator.Images := Preferences.SmallImages;
-  FBookmarks.SmallImages := Preferences.SmallImages;
-  FSQLHistory.Images := Preferences.SmallImages;
-  TBLimitEnabled.Images := Preferences.SmallImages;
-  TBQuickSearchEnabled.Images := Preferences.SmallImages;
-  TBFilterEnabled.Images := Preferences.SmallImages;
-  FServerListView.SmallImages := Preferences.SmallImages;
-
+  if (not CheckWin32Version(6) or TStyleManager.Enabled and (TStyleManager.ActiveStyle <> TStyleManager.SystemStyle)) then
+  begin
+    TBSideBar.BorderWidth := 0;
+    ToolBar.BorderWidth := 0;
+  end
+  else
+  begin
+    TBSideBar.BorderWidth := 2;
+    ToolBar.BorderWidth := 2;
+  end;
 
   Client.SQLMonitor.CacheSize := Preferences.LogSize;
   if (Preferences.LogResult) then
@@ -4869,7 +4869,7 @@ begin
   smEEmpty.Caption := Preferences.LoadStr(181);
 
   FNavigatorInitialize(nil);
-  ListViewInitialize(FServerListView, Client);
+  ListViewInitialize(FServerListView);
 
   BINSERT.Font := FSQLEditorSynMemo.Font;
   BINSERT.Font.Style := [fsBold];
@@ -5269,9 +5269,6 @@ begin
     PDBGrid.BevelInner := bvNone; PDBGrid.BevelOuter := bvNone;
     PBlob.BevelInner := bvNone; PBlob.BevelOuter := bvNone;
     PLog.BevelInner := bvNone; PLog.BevelOuter := bvNone;
-
-    TBSideBar.BorderWidth := 2;
-    ToolBar.BorderWidth := 2;
   end;
 
   PSideBarHeader.AutoSize := False;
@@ -5442,13 +5439,20 @@ begin
   CreateLine := False;
 
 
-  if (FNavigator.Items.Count = 0) then
-  begin
-    Node := FNavigator.Items.Add(nil, Client.Caption);
-    Node.Data := Client;
-    Node.HasChildren := True;
-    Node.ImageIndex := iiServer;
-  end;
+  TBSideBar.Images := Preferences.SmallImages;
+  ToolBar.Images := Preferences.SmallImages;
+  FNavigator.Images := Preferences.SmallImages;
+  FBookmarks.SmallImages := Preferences.SmallImages;
+  FSQLHistory.Images := Preferences.SmallImages;
+  TBLimitEnabled.Images := Preferences.SmallImages;
+  TBQuickSearchEnabled.Images := Preferences.SmallImages;
+  TBFilterEnabled.Images := Preferences.SmallImages;
+  FServerListView.SmallImages := Preferences.SmallImages;
+
+  Node := FNavigator.Items.Add(nil, Client.Caption);
+  Node.Data := Client;
+  Node.HasChildren := True;
+  Node.ImageIndex := iiServer;
 
   FUDOffset.HandleNeeded();
   FOffset.HandleNeeded();
@@ -5868,7 +5872,7 @@ begin
   if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, SizeOf(NonClientMetrics), @NonClientMetrics, 0)) then
     Window.ApplyWinAPIUpdates(Result, NonClientMetrics.lfStatusFont);
 
-  ListViewInitialize(Result, Data);
+  ListViewInitialize(Result);
 end;
 
 function TFClient.CreatePDBGrid(): TPanel_Ext;
@@ -8276,6 +8280,8 @@ procedure TFClient.FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
               FNavigatorNodeToExpand := nil;
             NavigatorElapse := 1; // We're inside a Monitor callback - but the related Address change has to be outside the callback
             Node.Item[I].Delete();
+            if (not Assigned(FNavigator.Selected)) then
+              FNavigator.Selected := Node;
           end;
     end;
   end;
@@ -10425,7 +10431,7 @@ begin
   AllowEdit := (Item.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50107) or (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013) or (Item.ImageIndex in [iiBaseTable, iiView, iiEvent, iiField, iiTrigger, iiHost, iiUser]);
 end;
 
-procedure TFClient.ListViewInitialize(const ListView: TListView; const Data: TCustomData);
+procedure TFClient.ListViewInitialize(const ListView: TListView);
 
   procedure SetColumnWidths(const ListView: TListView; const Kind: TADesktop.TListViewKind);
   var
@@ -10465,7 +10471,7 @@ begin
       ListView.Groups.Add().GroupID := giDatabases;
       ListView.Groups.Add().GroupID := giSystemTools;
     end
-    else if (TObject(Data) is TCDatabase) then
+    else if (TObject(ListView.Tag) is TCDatabase) then
     begin
       ListView.Columns.Add();
       ListView.Columns.Add();
@@ -10485,7 +10491,7 @@ begin
       ListView.Groups.Add().GroupID := giRoutines;
       ListView.Groups.Add().GroupID := giEvents;
     end
-    else if (TObject(Data) is TCBaseTable) then
+    else if (TObject(ListView.Tag) is TCBaseTable) then
     begin
       ListView.Columns.Add();
       ListView.Columns.Add();
@@ -10504,7 +10510,7 @@ begin
       ListView.Groups.Add().GroupID := giForeignKeys;
       ListView.Groups.Add().GroupID := giTriggers;
     end
-    else if (TObject(Data) is TCView) then
+    else if (TObject(ListView.Tag) is TCView) then
     begin
       ListView.Columns.Add();
       ListView.Columns.Add();
@@ -10518,7 +10524,7 @@ begin
 
       ListView.Groups.Add().GroupID := giFields;
     end
-    else if (TObject(Data) is TCHosts) then
+    else if (TObject(ListView.Tag) is TCHosts) then
     begin
       ListView.Columns.Add();
       ListView.Columns.EndUpdate();
@@ -10526,7 +10532,7 @@ begin
 
       ListView.Groups.Add().GroupID := giHosts;
     end
-    else if (TObject(Data) is TCProcesses) then
+    else if (TObject(ListView.Tag) is TCProcesses) then
     begin
       ListView.Columns.Add();
       ListView.Columns.Add();
@@ -10541,7 +10547,7 @@ begin
 
       ListView.Groups.Add().GroupID := giProcesses;
     end
-    else if (TObject(Data) is TCStati) then
+    else if (TObject(ListView.Tag) is TCStati) then
     begin
       ListView.Columns.Add();
       ListView.Columns.Add();
@@ -10550,7 +10556,7 @@ begin
 
       ListView.Groups.Add().GroupID := giStati;
     end
-    else if (TObject(Data) is TCUsers) then
+    else if (TObject(ListView.Tag) is TCUsers) then
     begin
       ListView.Columns.Add();
       ListView.Columns.EndUpdate();
@@ -10558,7 +10564,7 @@ begin
 
       ListView.Groups.Add().GroupID := giUsers;
     end
-    else if (TObject(Data) is TCVariables) then
+    else if (TObject(ListView.Tag) is TCVariables) then
     begin
       ListView.Columns.Add();
       ListView.Columns.Add();
@@ -10590,7 +10596,7 @@ begin
 
     ListView.Groups[1].Header := ReplaceStr(Preferences.LoadStr(12), '&', '') + ' (' + IntToStr(Count) + ')';
   end
-  else if (TObject(Data) is TCDatabase) then
+  else if (TObject(ListView.Tag) is TCDatabase) then
   begin
     ListView.Columns[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
     ListView.Columns[1].Caption := Preferences.LoadStr(69);
@@ -10600,7 +10606,7 @@ begin
     ListView.Columns[5].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
     ListView.Columns[6].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
   end
-  else if (TObject(Data) is TCBaseTable) then
+  else if (TObject(ListView.Tag) is TCBaseTable) then
   begin
     ListView.Columns[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
     ListView.Columns[1].Caption := Preferences.LoadStr(69);
@@ -10610,7 +10616,7 @@ begin
     if (Client.ServerVersion >= 40100) then
       ListView.Columns[5].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
   end
-  else if (TObject(Data) is TCView) then
+  else if (TObject(ListView.Tag) is TCView) then
   begin
     ListView.Columns[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
     ListView.Columns[1].Caption := Preferences.LoadStr(69);
@@ -10618,11 +10624,11 @@ begin
     ListView.Columns[3].Caption := Preferences.LoadStr(72);
     ListView.Columns[4].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
   end
-  else if (ListView = HostsListView) then
+  else if (TObject(ListView.Tag) is TCHosts) then
   begin
     ListView.Columns[0].Caption := Preferences.LoadStr(335);
   end
-  else if (ListView = ProcessesListView) then
+  else if (TObject(ListView.Tag) is TCProcesses) then
   begin
     ListView.Columns[0].Caption := Preferences.LoadStr(269);
     ListView.Columns[1].Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
@@ -10633,16 +10639,16 @@ begin
     ListView.Columns[6].Caption := ReplaceStr(Preferences.LoadStr(661), '&', '');
     ListView.Columns[7].Caption := Preferences.LoadStr(276);
   end
-  else if (TObject(Data) is TCStati) then
+  else if (TObject(ListView.Tag) is TCStati) then
   begin
     ListView.Columns[0].Caption := Preferences.LoadStr(267);
     ListView.Columns[1].Caption := Preferences.LoadStr(268);
   end
-  else if (ListView = UsersListView) then
+  else if (TObject(ListView.Tag) is TCUsers) then
   begin
     ListView.Columns[0].Caption := ReplaceStr(Preferences.LoadStr(561), '&', '');
   end
-  else if (ListView = VariablesListView) then
+  else if (TObject(ListView.Tag) is TCVariables) then
   begin
     ListView.Columns[0].Caption := Preferences.LoadStr(267);
     ListView.Columns[1].Caption := Preferences.LoadStr(268);
@@ -11400,7 +11406,7 @@ begin
               InsertItem(Kind, Client.Users);
             if (Assigned(Client.Variables)) then
               InsertItem(Kind, Client.Variables);
-            ListViewInitialize(ListView, Data);
+            ListViewInitialize(ListView);
           end;
 
           if (ClientEvent.CItems is TCDatabases) then
@@ -11851,9 +11857,9 @@ begin
           if (Assigned(Table)) then
           begin
             Client.BeginSynchro();
-            Table.Update();
-            for I := 0 to Table.Fields.Count - 1 do
-              AFields.AddField(Table.Fields[I].Name, Client.LowerCaseTableNames = 0);
+            if (Table.Update()) then
+              for I := 0 to Table.Fields.Count - 1 do
+                AFields.AddField(Table.Fields[I].Name, Client.LowerCaseTableNames = 0);
             Client.EndSynchro();
           end;
         end;
@@ -12095,7 +12101,7 @@ begin
         AddFilterMenuItem(ActiveDBGrid.SelectedField, Value, 3);
         AddFilterMenuItem(ActiveDBGrid.SelectedField, Value, 4);
         AddFilterMenuItem(ActiveDBGrid.SelectedField, Value, 5);
-        if (ActiveDBGrid.SelectedField.DataType in [ftString, ftBytes, ftWideString]) then
+        if (ActiveDBGrid.SelectedField.DataType in [ftString, ftWideString]) then
           AddFilterMenuItem(ActiveDBGrid.SelectedField, SQLEscape('%' + ActiveDBGrid.SelectedField.DisplayText + '%'), 6);
         AddFilterMenuItem(ActiveDBGrid.SelectedField, '', -1);
       end;
@@ -12108,7 +12114,7 @@ begin
       AddFilterMenuItem(ActiveDBGrid.SelectedField, Value, 8);
       AddFilterMenuItem(ActiveDBGrid.SelectedField, Value, 9);
       AddFilterMenuItem(ActiveDBGrid.SelectedField, Value, 10);
-      if (ActiveDBGrid.SelectedField.DataType in [ftString, ftBytes, ftWideString]) then
+      if (ActiveDBGrid.SelectedField.DataType in [ftString, ftWideString]) then
         AddFilterMenuItem(ActiveDBGrid.SelectedField, Value, 11);
     end;
 

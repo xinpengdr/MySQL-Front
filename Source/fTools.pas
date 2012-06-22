@@ -5140,8 +5140,7 @@ begin
       ftDateTime,
       ftTimestamp,
       ftTime,
-      ftWideString,
-      ftBytes:
+      ftWideString:
         FreeMem(Parameter[I].Buffer);
     end;
   SetLength(Parameter, 0);
@@ -5357,14 +5356,6 @@ begin
             Parameter[I].BufferSize := ODBCDataSize;
             Parameter[I].Buffer := SQLPOINTER(I);
           end;
-        ftBytes:
-          begin
-            ValueType := SQL_C_BINARY;
-            ParameterType := SQL_BINARY;
-            ColumnSize := Fields[I].Size;
-            Parameter[I].BufferSize := ColumnSize;
-            GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
-          end;
         ftBlob:
           begin
             ValueType := SQL_C_BINARY;
@@ -5466,11 +5457,6 @@ begin
         ftWideMemo:
           Parameter[I].Size := SQL_LEN_DATA_AT_EXEC(MultiByteToWideChar(Client.CodePage, 0,
             DataSet.LibRow^[I], DataSet.LibLengths^[I], nil, 0) * SizeOf(Char));
-        ftBytes:
-          begin
-            Parameter[I].Size := Min(Parameter[I].BufferSize, DataSet.LibLengths^[I]);
-            MoveMemory(Parameter[I].Buffer, DataSet.LibRow^[I], Parameter[I].Size);
-          end;
         ftBlob:
           Parameter[I].Size := SQL_LEN_DATA_AT_EXEC(DataSet.LibLengths^[I]);
         else
@@ -5667,8 +5653,6 @@ begin
           SQL := SQL + 'STRING'
         else
           SQL := SQL + 'LONGTEXT';
-      ftBytes:
-        SQL := SQL + 'BINARY';
       ftBlob:
         if (Fields[I].Size <= 255) then
           SQL := SQL + 'BINARY'
@@ -5839,7 +5823,6 @@ begin
             Text[I] := UTF8Encode(DataSet.GetAsString(Fields[I].FieldNo));
             sqlite3_bind_text(Stmt, 1 + I, PAnsiChar(@Text[I][1]), Length(Text[I]), SQLITE_STATIC);
           end;
-        ftBytes,
         ftBlob:
           sqlite3_bind_blob(Stmt, 1 + I, DataSet.LibRow^[I], DataSet.LibLengths^[I], SQLITE_STATIC);
         else

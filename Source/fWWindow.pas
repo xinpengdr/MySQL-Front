@@ -520,7 +520,8 @@ implementation {***************************************************************}
 {$R *.dfm}
 
 uses
-  ShellApi, ShlObj, Themes, DBConsts, CommCtrl, StrUtils, ShLwApi, IniFiles,
+  ShellApi, ShlObj, DBConsts, CommCtrl, StrUtils, ShLwApi, IniFiles,
+  Styles, Themes,
   MySQLConsts,
   HTTPTunnel,
   fDAccounts, fDAccount, fDOptions, fDLogin, fDStatement,
@@ -947,13 +948,34 @@ end;
 procedure TWWindow.CMChangePreferences(var Message: TMessage);
 var
   I: Integer;
+  StyleInfo: TStyleInfo;
 begin
+  if (not FileExists(Preferences.StyleFilename()) or not TStyleManager.IsValidStyle(Preferences.StyleFilename(), StyleInfo)) then
+    TStyleManager.SetStyle(TStyleManager.SystemStyle)
+  else
+  begin
+    if (not Assigned(TStyleManager.Style[StyleInfo.Name])) then
+      TStyleManager.LoadFromFile(Preferences.StyleFilename());
+    TStyleManager.TrySetStyle(StyleInfo.Name);
+  end;
+
   ToolBar.Images := Preferences.LargeImages;
   TBAddressBar.Images := Preferences.SmallImages;
   TabControl.Images := Preferences.SmallImages;
   TBTabControl.Images := Preferences.SmallImages;
 
   Perform(CM_SYSFONTCHANGED, 0, 0);
+
+  if (not CheckWin32Version(6) or TStyleManager.Enabled and (TStyleManager.ActiveStyle <> TStyleManager.SystemStyle)) then
+  begin
+    ToolBar.BorderWidth := 0;
+    TBAddressBar.BorderWidth := 0;
+  end
+  else
+  begin
+    ToolBar.BorderWidth := 2;
+    TBAddressBar.BorderWidth := 2;
+  end;
 
   TabControl.Canvas.Font := Font;
 
@@ -1318,17 +1340,11 @@ begin
   begin
     ToolBar.EdgeBorders := [ebTop,ebBottom];
     TBAddressBar.EdgeBorders := [ebBottom];
-
-    ToolBar.BorderWidth := 0;
-    TBAddressBar.BorderWidth := 0;
   end
   else
   begin
     ToolBar.EdgeBorders := [];
     TBAddressBar.EdgeBorders := [];
-
-    ToolBar.BorderWidth := 2;
-    TBAddressBar.BorderWidth := 2;
   end;
 
   if (Assigned(ToolBar.Images) and Assigned(TBAddressBar.Images)) then
@@ -1565,9 +1581,9 @@ var
 begin
   DiableApplicationActivate := False;
   FirstOpen := True;
+  MouseDownPoint := Point(-1, -1);
   QuitAfterShow := False;
   UniqueTabNameCounter := 0;
-  MouseDownPoint := Point(-1, -1);
   UpdateAvailable := False;
 
   MySQLDB.MySQLConnectionOnSynchronize := MySQLConnectionSynchronize;

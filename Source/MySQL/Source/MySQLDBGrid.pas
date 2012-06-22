@@ -620,7 +620,6 @@ begin
   else
     case (SelectedField.DataType) of
       ftString: Result := SelectedField.DataSize;
-      ftBytes,
       ftVarBytes:  Result := SelectedField.Size - 1;
       ftSmallInt,
       ftInteger:

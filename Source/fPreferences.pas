@@ -413,6 +413,7 @@ type
     function LoadStr(const Index: Integer; const Param1: string = ''; const Param2: string = ''; const Param3: string = ''): string; overload; virtual;
     procedure SaveToRegistry(); virtual;
     procedure SaveToXML(); virtual;
+    function StyleFilename(): string;
   end;
 
 function EncodeVersion(const AMajor, AMinor, APatch, ABuild: Integer): Integer;
@@ -2101,6 +2102,16 @@ begin
   if (XML.OwnerDocument.Modified and ForceDirectories(ExtractFilePath(Filename))) then
     XML.OwnerDocument.SaveToFile(Filename);
 end;
+
+function TPPreferences.StyleFilename(): string;
+begin
+  Result := '';
+
+  if (Assigned(FSkinIniFile) and (FSkinIniFile.ReadString('VCL Style', 'File', '') <> '')) then
+    Result := SkinPath + IncludeTrailingPathDelimiter(FSkinIniFile.ReadString('Global', 'Path', '')) + FSkinIniFile.ReadString('VCL Style', 'File', '');
+end;
+
+{******************************************************************************}
 
 initialization
   Preferences := nil;

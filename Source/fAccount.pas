@@ -968,7 +968,7 @@ begin
 
     Size := SizeOf(Buffer);
     if (not InternetCreateUrl(URLComponents, ICU_ESCAPE, @Buffer, Size)) then
-      raise EConvertError.CreateFmt(SConvStrParseError, [APath]);
+      raise EConvertError.CreateFmt(SConvStrParseError, ['mysql://' + Connection.Host + APath]);
     SetString(Result, PChar(@Buffer), Size);
   end;
   if (Copy(Result, 1, 2) = '//') then

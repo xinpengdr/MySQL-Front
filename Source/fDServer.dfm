@@ -206,15 +206,7 @@ object DServer: TDServer
     end
     object TSProcesses: TTabSheet
       Caption = 'TSProcesses'
-      ImageIndex = 3
       OnShow = TSProcessesShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        313
-        257)
       object FProcesses: TListView
         Left = 8
         Top = 8
@@ -334,12 +326,7 @@ object DServer: TDServer
     end
     object TSStati: TTabSheet
       Caption = 'TSStati'
-      ImageIndex = 1
       OnShow = TSStatiShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -369,15 +356,7 @@ object DServer: TDServer
     end
     object TSVariables: TTabSheet
       Caption = 'TSVariables'
-      ImageIndex = 2
       OnShow = TSVariablesShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        313
-        257)
       object FVariables: TListView
         Left = 8
         Top = 8

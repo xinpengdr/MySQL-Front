@@ -116,7 +116,6 @@ object DAccount: TDAccount
     end
     object TSConnection: TTabSheet
       Caption = 'TSConnection'
-      ImageIndex = 1
       ExplicitLeft = 0
       ExplicitTop = 0
       ExplicitWidth = 0
@@ -249,11 +248,6 @@ object DAccount: TDAccount
     end
     object TSLogin: TTabSheet
       Caption = 'TSLogin'
-      ImageIndex = 2
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GLogin: TGroupBox_Ext
         Left = 4
         Top = 4

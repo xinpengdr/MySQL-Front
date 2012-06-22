@@ -231,14 +231,6 @@ object DTable: TDTable
     end
     object TSTables: TTabSheet
       Caption = 'TSTables'
-      ImageIndex = 7
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        313
-        261)
       object GTablesBasics: TGroupBox_Ext
         Left = 8
         Top = 8
@@ -364,12 +356,7 @@ object DTable: TDTable
     end
     object TSInformations: TTabSheet
       Caption = 'TSInformations'
-      ImageIndex = 1
       OnShow = TSInformationsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -508,15 +495,7 @@ object DTable: TDTable
     end
     object TSFields: TTabSheet
       Caption = 'TSFields'
-      ImageIndex = 4
       OnShow = TSFieldsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        313
-        261)
       object FFields: TListView
         Left = 8
         Top = 32
@@ -605,15 +584,7 @@ object DTable: TDTable
     end
     object TSIndices: TTabSheet
       Caption = 'TSIndices'
-      ImageIndex = 5
       OnShow = TSIndicesShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        313
-        261)
       object FIndices: TListView
         Left = 8
         Top = 32
@@ -672,15 +643,7 @@ object DTable: TDTable
     end
     object TSForeignKeys: TTabSheet
       Caption = 'TSForeignKeys'
-      ImageIndex = 6
       OnShow = TSForeignKeysShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        313
-        261)
       object FForeignKeys: TListView
         Left = 8
         Top = 32
@@ -960,15 +923,7 @@ object DTable: TDTable
     end
     object TSExtras: TTabSheet
       Caption = 'TSExtras'
-      ImageIndex = 2
       OnShow = TSExtrasShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        313
-        261)
       object GOptimize: TGroupBox_Ext
         Left = 8
         Top = 8
@@ -1070,15 +1025,7 @@ object DTable: TDTable
     end
     object TSSource: TTabSheet
       Caption = 'TSSource'
-      ImageIndex = 3
       OnShow = TSSourceShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        313
-        261)
       object FSource: TSynMemo
         Left = 8
         Top = 8
