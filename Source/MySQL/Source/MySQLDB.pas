@@ -1921,11 +1921,7 @@ begin
         end;
       ssReceivingData:
         begin
-try
           Connection.SyncHandledResult(Self);
-except
-          Connection.SyncHandledResult(Self);
-end;
           if (State in [ssNextResult, ssExecutingSQL]) then
             ExecuteE.SetEvent()
           else
@@ -4069,7 +4065,11 @@ begin
   if (not (Self is TMySQLDataSet)) then
   begin
     if (Assigned(SynchroThread)) then
+    begin
       Connection.SyncHandledResult(SynchroThread);
+      if (OpenByCommandText) then
+        Connection.SyncExecutedSQL(SynchroThread);
+    end;
     FHandle := nil;
   end;
 

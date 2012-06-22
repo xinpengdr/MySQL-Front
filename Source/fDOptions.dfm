@@ -45,7 +45,7 @@ object DOptions: TDOptions
     Top = 8
     Width = 362
     Height = 345
-    ActivePage = TSView
+    ActivePage = TSHighlighter
     HotTrack = True
     MultiLine = True
     TabOrder = 0

@@ -704,6 +704,7 @@ begin
   Highlighter.IdentifierAttri.Foreground := Preferences.Editor.IdentifierForeground;
   Highlighter.IdentifierAttri.Background := Preferences.Editor.IdentifierBackground;
   Highlighter.IdentifierAttri.Style := Preferences.Editor.IdentifierStyle;
+  Highlighter.DelimitedIdentifierAttri := Highlighter.IdentifierAttri;
   Highlighter.KeyAttri.Foreground := Preferences.Editor.KeywordForeground;
   Highlighter.KeyAttri.Background := Preferences.Editor.KeywordBackground;
   Highlighter.KeyAttri.Style := Preferences.Editor.KeywordStyle;
@@ -722,7 +723,7 @@ begin
   LineNumbersAttri.Foreground := Preferences.Editor.LineNumbersForeground;
   LineNumbersAttri.Background := Preferences.Editor.LineNumbersBackground;
   LineNumbersAttri.Style := Preferences.Editor.LineNumbersStyle; FPreviewRefresh();
-  FStyles.ItemIndex := 0;
+  FStyles.ItemIndex := 0; FStylesSelectItem(Self, FStyles.Selected, True);
   FUpdateCheckNever.Checked := Preferences.UpdateCheck = utNever;
   FUpdateCheckStartup.Checked := Preferences.UpdateCheck = utStartup;
   FUpdateCheckDaily.Checked := Preferences.UpdateCheck = utDaily;
@@ -742,6 +743,7 @@ begin
   else
     FPreview.Gutter.Color := LineNumbersAttri.Background;
   FPreview.Gutter.Font.Style := LineNumbersAttri.Style;
+  Highlighter.DelimitedIdentifierAttri := Highlighter.IdentifierAttri;
   FPreview.Refresh();
 end;
 
