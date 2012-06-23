@@ -18,7 +18,7 @@
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<Manifest_File>None</Manifest_File>
 			<DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
-			<DCC_Namespace>Vcl;Vcl.Imaging;Vcl.Shell;System;Xml;Data;Winapi;Bde;System.Win;$(DCC_Namespace)</DCC_Namespace>
+			<DCC_Namespace>Vcl;Vcl.Imaging;Vcl.Shell;System;Xml;Data;Winapi;Bde;System.Win;System.Generics;$(DCC_Namespace)</DCC_Namespace>
 			<DCC_UsePackage>vcl;rtl;vclimg;dbrtl;vcldb;xmlrtl;bdertl;DISQLite3_D2010;MySQL;Win32_Extensions;TPerlRegEx_D2010;$(DCC_UsePackage)</DCC_UsePackage>
 			<DCC_UnitSearchPath>FastMM\Bin;TPerlRegEx\Bin;DISQLite3\API;DISQLite3\Bin;SynEdit\Resource;SynEdit\Bin;MPHexEditor\Resource;MPHexEditor\Bin;QueryBuilder\Resource;QueryBuilder\Bin;ShellBrowser\Bin;ShellBrowser\Resource;Win32\Bin;MySQL\Bin;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
 			<DCC_RangeChecking>true</DCC_RangeChecking>
