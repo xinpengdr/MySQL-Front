@@ -9,11 +9,9 @@ DefaultGroupName={BuildName}
 ChangesAssociations=yes
 WizardImageFile={BuildImagesPath}\Setup.bmp
 WizardSmallImageFile={BuildImagesPath}\Setup_Header.bmp
-WizardImageStretch=no
 AllowNoIcons=yes
 ShowLanguageDialog=auto
 VersionInfoVersion={BuildVerStrFull}
-Compression=lzma
 SolidCompression=yes
 UninstallDisplayName={BuildName}
 UninstallDisplayIcon={app}\{BuildName}.exe
@@ -53,7 +51,6 @@ Name: "Ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
 
 [Tasks]
 Name: DesktopIcon; Description: "&Desktop Icon"; GroupDescription: "Icons:";
-Name: QuickLaunchIcon; Description: "&Quick Launch Icon"; GroupDescription: "Icons:"; Flags: unchecked;
 Name: AssociateSQL; Description: "Associate .sql (SQL File) with {BuildName}"; GroupDescription: "Explorer integration:";
 
 [Registry]
@@ -77,16 +74,11 @@ Source: "{BuildTempPath}\{BuildName}.chm"; DestDir: "{app}"
 Source: "{BuildTempPath}\PAD_File.xml"; DestDir: "{app}"
 Source: "{BuildTempPath}\libMySQL.php"; DestDir: "{app}"
 Source: "{BuildLanguagesPath}\*.ini"; DestDir: "{app}\Languages"; Flags: comparetimestamp
-Source: "{BuildSkinsPath}\*.ini"; DestDir: "{app}\Skins"; Flags: comparetimestamp
-Source: "{BuildSkinsPath}\Smoothie\*.ico"; DestDir: "{app}\Skins\Smoothie"; Flags: comparetimestamp
-Source: "{BuildSkinsPath}\WinXP\*.ico"; DestDir: "{app}\Skins\WinXP"; Flags: comparetimestamp
-Source: "{BuildSkinsPath}\Zara\*.ico"; DestDir: "{app}\Skins\Zara"; Flags: comparetimestamp
 
 [Icons]
 Name: "{group}\{BuildName}"; Filename: "{app}\{BuildName}.exe";
 Name: "{group}\Help"; Filename: "{app}\{BuildName}.chm";
 Name: "{userdesktop}\{BuildName}"; Filename: "{app}\{BuildName}.exe"; Tasks: DesktopIcon;
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{BuildName}"; Filename: "{app}\{BuildName}.exe"; Tasks: QuickLaunchIcon;
 
 [Run]
 Filename: "{app}\{BuildName}.exe"; Description: "&Launch {BuildName}"; Flags: postinstall nowait

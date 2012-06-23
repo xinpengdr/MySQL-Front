@@ -45,7 +45,7 @@ object DOptions: TDOptions
     Top = 8
     Width = 362
     Height = 345
-    ActivePage = TSHighlighter
+    ActivePage = TSView
     HotTrack = True
     MultiLine = True
     TabOrder = 0
@@ -55,7 +55,7 @@ object DOptions: TDOptions
         Left = 4
         Top = 4
         Width = 345
-        Height = 81
+        Height = 50
         Caption = 'GProgram'
         TabOrder = 0
         object FLLanguage: TLabel
@@ -67,14 +67,6 @@ object DOptions: TDOptions
           Caption = 'FLLanguage'
           FocusControl = FLanguage
         end
-        object FLSkin: TLabel
-          Left = 8
-          Top = 51
-          Width = 33
-          Height = 13
-          Caption = 'FLSkin'
-          FocusControl = FSkin
-        end
         object FLanguage: TComboBox_Ext
           Left = 144
           Top = 16
@@ -85,20 +77,10 @@ object DOptions: TDOptions
           Sorted = True
           TabOrder = 0
         end
-        object FSkin: TComboBox_Ext
-          Left = 144
-          Top = 48
-          Width = 191
-          Height = 21
-          Style = csDropDownList
-          DropDownCount = 15
-          Sorted = True
-          TabOrder = 1
-        end
       end
       object GTabs: TGroupBox_Ext
         Left = 4
-        Top = 96
+        Top = 67
         Width = 345
         Height = 45
         Caption = 'GTabs'
@@ -122,6 +104,10 @@ object DOptions: TDOptions
     end
     object TSBrowser: TTabSheet
       Caption = 'TSBrowser'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GGrid: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -285,6 +271,10 @@ object DOptions: TDOptions
     end
     object TSEditor: TTabSheet
       Caption = 'TSEditor'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GEditor: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -487,7 +477,7 @@ object DOptions: TDOptions
           Width = 41
           Height = 21
           TabOrder = 11
-          Text = '1.000'
+          Text = '1000'
         end
         object FUDEditorCompletitionTime: TUpDown
           Left = 203
@@ -504,6 +494,10 @@ object DOptions: TDOptions
     end
     object TSLog: TTabSheet
       Caption = 'TSLog'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GLog: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -603,6 +597,10 @@ object DOptions: TDOptions
     object TSHighlighter: TTabSheet
       Caption = 'TSHighlighter'
       OnShow = TSHighlighterShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GColors: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -753,6 +751,10 @@ object DOptions: TDOptions
     end
     object TSExtras: TTabSheet
       Caption = 'TSExtras'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GAssociate: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -779,6 +781,10 @@ object DOptions: TDOptions
     end
     object TSUpdates: TTabSheet
       Caption = 'TSUpdates'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GUpdates: TGroupBox_Ext
         Left = 4
         Top = 4

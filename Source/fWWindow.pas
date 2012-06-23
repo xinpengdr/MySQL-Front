@@ -520,8 +520,7 @@ implementation {***************************************************************}
 {$R *.dfm}
 
 uses
-  ShellApi, ShlObj, DBConsts, CommCtrl, StrUtils, ShLwApi, IniFiles,
-  Styles, Themes,
+  ShellApi, ShlObj, DBConsts, CommCtrl, StrUtils, ShLwApi, IniFiles, Themes,
   MySQLConsts,
   HTTPTunnel,
   fDAccounts, fDAccount, fDOptions, fDLogin, fDStatement,
@@ -948,17 +947,7 @@ end;
 procedure TWWindow.CMChangePreferences(var Message: TMessage);
 var
   I: Integer;
-  StyleInfo: TStyleInfo;
 begin
-  if (not FileExists(Preferences.StyleFilename()) or not TStyleManager.IsValidStyle(Preferences.StyleFilename(), StyleInfo)) then
-    TStyleManager.SetStyle(TStyleManager.SystemStyle)
-  else
-  begin
-    if (not Assigned(TStyleManager.Style[StyleInfo.Name])) then
-      TStyleManager.LoadFromFile(Preferences.StyleFilename());
-    TStyleManager.TrySetStyle(StyleInfo.Name);
-  end;
-
   ToolBar.Images := Preferences.LargeImages;
   TBAddressBar.Images := Preferences.SmallImages;
   TabControl.Images := Preferences.SmallImages;
@@ -966,7 +955,7 @@ begin
 
   Perform(CM_SYSFONTCHANGED, 0, 0);
 
-  if (not CheckWin32Version(6) or TStyleManager.Enabled and (TStyleManager.ActiveStyle <> TStyleManager.SystemStyle)) then
+  if (not CheckWin32Version(6)) then
   begin
     ToolBar.BorderWidth := 0;
     TBAddressBar.BorderWidth := 0;

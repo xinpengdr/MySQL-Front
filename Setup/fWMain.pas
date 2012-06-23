@@ -179,7 +179,6 @@ begin
       AwkFile.Add('  gsub("{BuildPublishPath}", "' + StringReplace(GetEnvironmentVariable('BuildPublishPath'), '\', '\\', [rfReplaceAll]) + '", $0)');
       AwkFile.Add('  gsub("{BuildRootPath}", "' + StringReplace(GetEnvironmentVariable('BuildRootPath'), '\', '\\', [rfReplaceAll]) + '", $0)');
       AwkFile.Add('  gsub("{BuildSetupPath}", "' + StringReplace(GetEnvironmentVariable('BuildSetupPath'), '\', '\\', [rfReplaceAll]) + '", $0)');
-      AwkFile.Add('  gsub("{BuildSkinsPath}", "' + StringReplace(GetEnvironmentVariable('BuildSkinsPath'), '\', '\\', [rfReplaceAll]) + '", $0)');
       AwkFile.Add('  gsub("{BuildSourcePath}", "' + StringReplace(GetEnvironmentVariable('BuildSourcePath'), '\', '\\', [rfReplaceAll]) + '", $0)');
       AwkFile.Add('  gsub("{BuildTempPath}", "' + StringReplace(GetEnvironmentVariable('BuildTempPath'), '\', '\\', [rfReplaceAll]) + '", $0)');
       if (not FBeta.Checked) then

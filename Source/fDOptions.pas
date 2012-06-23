@@ -69,14 +69,12 @@ type
     FLogResult: TCheckBox;
     FLogSize: TEdit;
     FLogTime: TCheckBox;
-    FLSkin: TLabel;
     FLTabsVisible: TLabel;
     FLUpdateCheck: TLabel;
     FLViewDatas: TLabel;
     FMaxColumnWidth: TEdit;
     FontDialog: TFontDialog;
     FPreview: TSynMemo;
-    FSkin: TComboBox_Ext;
     FStyles: TListView;
     FTabsVisible: TCheckBox;
     FUDEditorCompletitionTime: TUpDown;
@@ -204,7 +202,6 @@ begin
   TSView.Caption := Preferences.LoadStr(491);
   GProgram.Caption := Preferences.LoadStr(52);
   FLLanguage.Caption := Preferences.LoadStr(32) + ':';
-  FLSkin.Caption := Preferences.LoadStr(385) + ':';
   GTabs.Caption := ReplaceStr(Preferences.LoadStr(851), '&', '');
   FLTabsVisible.Caption := ReplaceStr(Preferences.LoadStr(851), '&', '') + ':';
   FTabsVisible.Caption := LowerCase(Preferences.LoadStr(699));
@@ -493,10 +490,6 @@ begin
       for I := 0 to Length(Languages) - 1 do
         if (Trim(FLanguage.Text) = Languages[I].Name) then
           Preferences.LanguageFilename := Languages[I].Filename;
-    if (FSkin.ItemIndex >= 0) then
-      for I := 0 to Length(Skins) - 1 do
-        if (Trim(FSkin.Text) = Skins[I].Name) then
-          Preferences.SkinFilename := Skins[I].Filename;
 
     Preferences.TabsVisible := FTabsVisible.Checked;
 
@@ -610,35 +603,12 @@ begin
     FindClose(SearchRec);
   end;
 
-  SetLength(Skins, 0);
-  if (FindFirst(Preferences.SkinPath + '*.ini', faAnyFile, SearchRec) = NO_ERROR) then
-  begin
-    repeat
-      IniFile := TMemIniFile.Create(Preferences.SkinPath + SearchRec.Name);
-      if (UpperCase(IniFile.ReadString('Global', 'Type', '')) = 'SKIN') then
-      begin
-        SetLength(Skins, Length(Skins) + 1);
-        Skins[Length(Skins) - 1].Name := IniFile.ReadString('Global', 'Name', '');
-        Skins[Length(Skins) - 1].Filename := SearchRec.Name;
-      end;
-      FreeAndNil(IniFile);
-    until (FindNext(SearchRec) <> NO_ERROR);
-    FindClose(SearchRec);
-  end;
-
   FLanguage.Items.Clear();
   for I := 0 to Length(Languages) - 1 do
     FLanguage.Items.Add(Languages[I].Name);
   for I := 0 to Length(Languages) - 1 do
     if (lstrcmpi(PChar(Preferences.LanguageFilename), PChar(Languages[I].Filename)) = 0) then
       FLanguage.ItemIndex := FLanguage.Items.IndexOf(Languages[I].Name);
-
-  FSkin.Items.Clear();
-  for I := 0 to Length(Skins) - 1 do
-    FSkin.Items.Add(Skins[I].Name);
-  for I := 0 to Length(Skins) - 1 do
-    if (lstrcmpi(PChar(Preferences.SkinFilename), PChar(Skins[I].Filename)) = 0) then
-      FSkin.ItemIndex := FSkin.Items.IndexOf(Skins[I].Name);
 
 
   FTabsVisible.Checked := Preferences.TabsVisible;

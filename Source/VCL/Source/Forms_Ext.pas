@@ -81,7 +81,7 @@ begin
   else if (Control is TTreeView) then
   begin
     if ((ComCtl32MajorVersion > 4) or (ComCtl32MinorVersion >= 71)) then
-      SendMessage(Control.Handle, TVM_SETITEMHEIGHT, GetSystemMetrics(SM_CYSMICON) + 2, 0);
+      SendMessage(Control.Handle, TVM_SETITEMHEIGHT, GetSystemMetrics(SM_CYSMICON) + 4, 0);
     if (CheckWin32Version(6)) then
     begin
       SetWindowLong(Control.Handle, GWL_STYLE, GetWindowLong(Control.Handle, GWL_STYLE) or TVS_NOHSCROLL);

@@ -312,7 +312,6 @@ type
     FLanguage: TPLanguage;
     FLargeImages: TImageList;
     FSmallImages: TImageList;
-    FSkinIniFile: TMemIniFile;
     FVerMajor, FVerMinor, FVerPatch, FVerBuild: Integer;
     FXMLDocument: IXMLDocument;
     OldAssociateSQL: Boolean;
@@ -320,7 +319,6 @@ type
     function GetFilename(): TFileName;
     function GetLanguage(): TPLanguage;
     function GetLanguagePath(): TFileName;
-    function GetSkinPath(): TFileName;
     function GetVersion(var VerMajor, VerMinor, VerPatch, VerBuild: Integer): Boolean;
     function GetVersionInfo(): Integer;
     function GetVersionStr(): string;
@@ -356,7 +354,7 @@ type
     User: TPUser;
     View: TPView;
     SoundFileNavigating: string;
-    LanguageFilename, SkinFilename: TFileName;
+    LanguageFilename: TFileName;
     WindowState: TWindowState;
     Left, Top, Width, Height: Integer;
     AddressBarVisible: Boolean;
@@ -399,7 +397,6 @@ type
     property LanguagePath: TFileName read GetLanguagePath;
     property LargeImages: TImageList read FLargeImages;
     property SmallImages: TImageList read FSmallImages;
-    property SkinPath: TFileName read GetSkinPath;
     property VerMajor: Integer read FVerMajor;
     property VerMinor: Integer read FVerMinor;
     property VerPatch: Integer read FVerPatch;
@@ -408,12 +405,10 @@ type
     property VersionStr: string read GetVersionStr;
     constructor Create(); virtual;
     destructor Destroy(); override;
-    function ImageFileaname(const Index: Integer): string; virtual;
     procedure LoadFromXML(); virtual;
     function LoadStr(const Index: Integer; const Param1: string = ''; const Param2: string = ''; const Param3: string = ''): string; overload; virtual;
     procedure SaveToRegistry(); virtual;
     procedure SaveToXML(); virtual;
-    function StyleFilename(): string;
   end;
 
 function EncodeVersion(const AMajor, AMinor, APatch, ABuild: Integer): Integer;
@@ -1353,7 +1348,9 @@ end;
 
 constructor TPPreferences.Create();
 var
+  MaxIconIndex: Integer;
   Foldername: array [0..MAX_PATH] of Char;
+  I: Integer;
   Path: string;
   StringList: TStringList;
 begin
@@ -1396,7 +1393,6 @@ begin
   LogResult := False;
   LogSize := 100 * 1024;
   LanguageFilename := 'English.ini';
-  SkinFilename := 'Gio_medium.ini';
   TabsVisible := False;
   ToolbarTabs := [ttObjects, ttBrowser, ttEditor];
   UpdateCheck := utNever;
@@ -1446,9 +1442,35 @@ begin
   end;
 
 
+  MaxIconIndex := 0;
+  for I := 1 to 200 do
+    if (FindResource(HInstance, MAKEINTRESOURCE(10000 + I), RT_GROUP_ICON) > 0) then
+      MaxIconIndex := I;
+
   FSmallImages := TImageList.Create(nil);
   FSmallImages.ColorDepth := cd32Bit;
-  FLargeImages := nil;
+  FSmallImages.Height := GetSystemMetrics(SM_CYSMICON);
+  FSmallImages.Width := GetSystemMetrics(SM_CXSMICON);
+
+  for I := 0 to MaxIconIndex do
+    if (I = 13) then
+      ImageList_AddIcon(FSmallImages.Handle, GetFileIcon(CSIDL_DRIVES))
+    else if (FindResource(HInstance, MAKEINTRESOURCE(10000 + I), RT_GROUP_ICON) > 0) then
+      ImageList_AddIcon(FSmallImages.Handle, LoadImage(hInstance, MAKEINTRESOURCE(10000 + I), IMAGE_ICON, GetSystemMetrics(SM_CYSMICON), GetSystemMetrics(SM_CXSMICON), LR_DEFAULTCOLOR))
+    else if (I > 0) then
+      ImageList_AddIcon(FSmallImages.Handle, ImageList_GetIcon(FSmallImages.Handle, 0, 0));
+
+  FLargeImages := TImageList.Create(nil);
+  FLargeImages.ColorDepth := cd32Bit;
+  FLargeImages.Height := 24;
+  FLargeImages.Width := 24;
+
+  for I := 0 to MaxIconIndex do
+    if (FindResource(HInstance, MAKEINTRESOURCE(10000 + I), RT_GROUP_ICON) > 0) then
+      ImageList_AddIcon(FLargeImages.Handle, LoadImage(hInstance, MAKEINTRESOURCE(10000 + I), IMAGE_ICON, FLargeImages.Height, FLargeImages.Width, LR_DEFAULTCOLOR))
+    else
+      ImageList_AddIcon(FLargeImages.Handle, ImageList_GetIcon(FSmallImages.Handle, I, 0));
+
 
   Database := TPDatabase.Create(Self);
   Databases := TPDatabases.Create(Self);
@@ -1510,14 +1532,9 @@ begin
   User.Free();
   View.Free();
 
-  if (FLargeImages = FSmallImages) then
-    FLargeImages := nil
-  else
-    FreeAndNil(FLargeImages);
-  FreeAndNil(FSmallImages);
+  FLargeImages.Free();
+  FSmallImages.Free();
 
-  if (Assigned(FSkinIniFile)) then
-    FSkinIniFile.Free();
   if (Assigned(FLanguage)) then
     FLanguage.Free();
 
@@ -1544,16 +1561,6 @@ begin
   {$IFDEF Debug}
     if (not FileExists(Result)) then
       Result := IncludeTrailingPathDelimiter('..\Languages\');
-  {$ENDIF}
-end;
-
-function TPPreferences.GetSkinPath(): TFileName;
-begin
-  Result := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName) + 'Skins');
-
-  {$IFDEF Debug}
-    if (not FileExists(Result)) then
-      Result := IncludeTrailingPathDelimiter('..\Skins\');
   {$ENDIF}
 end;
 
@@ -1626,13 +1633,6 @@ begin
       try
         FXMLDocument := LoadXMLDocument(Filename);
 
-        if (VersionStrToVersion(FXMLDocument.DocumentElement.Attributes['version']) < 10001)  then
-        begin
-          XMLNode(FXMLDocument.DocumentElement, 'skin/file').Text := 'Gio_medium.ini';
-
-          FXMLDocument.DocumentElement.Attributes['version'] := '1.0.1';
-        end;
-
         if (VersionStrToVersion(FXMLDocument.DocumentElement.Attributes['version']) < 10002)  then
         begin
           XMLNode(FXMLDocument.DocumentElement, 'grid/maxcolumnwidth').Text := IntToStr(100);
@@ -1662,21 +1662,6 @@ begin
   end;
 
   Result := FXMLDocument.DocumentElement;
-end;
-
-function TPPreferences.ImageFileaname(const Index: Integer): string;
-begin
-  Result := '';
-
-  if (Assigned(FSkinIniFile) and (FSkinIniFile.ReadString('Icons', IntToStr(Index), '') <> '')) then
-    Result := SkinPath + IncludeTrailingPathDelimiter(FSkinIniFile.ReadString('Global', 'Path', '')) + FSkinIniFile.ReadString('Icons', IntToStr(Index), '');
-
-  {$IFDEF Debug}
-    if (not FileExists(Result)) then
-      Result := IncludeTrailingPathDelimiter('..\Skins\Gio\') + FSkinIniFile.ReadString('Icons', IntToStr(Index), '');
-    if (not FileExists(Result)) then
-      Result := '..\Images\Blank.ico';
-  {$ENDIF}
 end;
 
 procedure TPPreferences.LoadFromRegistry();
@@ -1715,10 +1700,6 @@ end;
 
 procedure TPPreferences.LoadFromXML();
 var
-  I: Integer;
-  IconIndex: Integer;
-  MaxIconIndex: Integer;
-  StringList: TStringList;
   Visible: Boolean;
 begin
   XML.OwnerDocument.Options := XML.OwnerDocument.Options - [doNodeAutoCreate];
@@ -1762,7 +1743,6 @@ begin
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttEditor] else ToolbarTabs := ToolbarTabs - [ttEditor];
   if (Assigned(XMLNode(XML, 'toolbar/diagram')) and TryStrToBool(XMLNode(XML, 'toolbar/diagram').Attributes['visible'], Visible)) then
     if (Visible) then ToolbarTabs := ToolbarTabs + [ttDiagram] else ToolbarTabs := ToolbarTabs - [ttDiagram];
-  if (Assigned(XMLNode(XML, 'skin/file'))) then SkinFilename := ExtractFileName(XMLNode(XML, 'skin/file').Text);
   if (Assigned(XMLNode(XML, 'sql/font/charset'))) then TryStrToInt(XMLNode(XML, 'sql/font/charset').Text, SQLFontCharset);
   if (Assigned(XMLNode(XML, 'sql/font/color'))) then SQLFontColor := StringToColor(XMLNode(XML, 'sql/font/color').Text);
   if (Assigned(XMLNode(XML, 'sql/font/name'))) then SQLFontName := XMLNode(XML, 'sql/font/name').Text;
@@ -1834,77 +1814,6 @@ begin
 
 
   FreeAndNil(FLanguage);
-
-  FreeAndNil(FSkinIniFile);
-  if (FileExists(SkinPath + ExtractFileName(SkinFilename))) then
-    FSkinIniFile := TMemIniFile.Create(SkinPath + ExtractFileName(SkinFilename));
-
-  MaxIconIndex := 0;
-  if (Assigned(FSkinIniFile)) then
-  begin
-    StringList := TStringList.Create();
-    FSkinIniFile.ReadSection('Icons', StringList);
-    for I := 0 to StringList.Count - 1 do
-      if (TryStrToInt(StringList.Strings[I], IconIndex) and (IconIndex > MaxIconIndex)) then
-        MaxIconIndex := IconIndex;
-    FreeAndNil(StringList);
-  end;
-  for I := 1 to 200 do
-    if (FindResource(HInstance, MAKEINTRESOURCE(10000 + I), RT_GROUP_ICON) > 0) then
-      MaxIconIndex := I;
-
-  FSmallImages.Clear();
-  if (not Assigned(FSkinIniFile)) then
-  begin
-    FSmallImages.Height := GetSystemMetrics(SM_CYSMICON);
-    FSmallImages.Width := GetSystemMetrics(SM_CXSMICON);
-  end
-  else
-  begin
-    FSmallImages.Height := FSkinIniFile.ReadInteger('Global', 'Size', GetSystemMetrics(SM_CYSMICON));
-    FSmallImages.Width := FSkinIniFile.ReadInteger('Global', 'Size', GetSystemMetrics(SM_CXSMICON));
-  end;
-
-  for I := 0 to MaxIconIndex do
-    if (I = 13) then
-      ImageList_AddIcon(FSmallImages.Handle, GetFileIcon(CSIDL_DRIVES))
-    else if (Assigned(FSkinIniFile) and FileExists(ImageFileaname(I))) then
-      ImageList_AddIcon(FSmallImages.Handle, LoadImage(hInstance, PChar(ImageFileaname(I)), IMAGE_ICON, FSmallImages.Height, FSmallImages.Width, LR_DEFAULTCOLOR + LR_LOADFROMFILE))
-    else if (FindResource(HInstance, MAKEINTRESOURCE(10000 + I), RT_GROUP_ICON) > 0) then
-      ImageList_AddIcon(FSmallImages.Handle, LoadImage(hInstance, MAKEINTRESOURCE(10000 + I), IMAGE_ICON, FSmallImages.Height, FSmallImages.Width, LR_DEFAULTCOLOR))
-    else if (I > 0) then
-      ImageList_AddIcon(FSmallImages.Handle, ImageList_GetIcon(FSmallImages.Handle, 0, 0));
-
-  if (Assigned(FLargeImages)) then
-    if (FLargeImages = FSmallImages) then
-      FLargeImages := nil
-    else
-      FreeAndNil(FLargeImages);
-  if (Assigned(FSkinIniFile) and (FSkinIniFile.ReadInteger('ToolBar', 'Size', FSmallImages.Height) = FSmallImages.Height)) then
-    FLargeImages := SmallImages
-  else
-  begin
-    FLargeImages := TImageList.Create(nil);
-    FLargeImages.ColorDepth := cd32Bit;
-    if (not Assigned(FSkinIniFile)) then
-    begin
-      FLargeImages.Height := 24;
-      FLargeImages.Width := 24;
-    end
-    else
-    begin
-      FLargeImages.Height := FSkinIniFile.ReadInteger('ToolBar', 'Size', 24);
-      FLargeImages.Width := FSkinIniFile.ReadInteger('ToolBar', 'Size', 24);
-    end;
-
-    for I := 0 to MaxIconIndex do
-      if (FileExists(ImageFileaname(I))) then
-        ImageList_AddIcon(FLargeImages.Handle, LoadImage(hInstance, PChar(ImageFileaname(I)), IMAGE_ICON, FLargeImages.Height, FLargeImages.Width, LR_DEFAULTCOLOR + LR_LOADFROMFILE))
-      else if (FindResource(HInstance, MAKEINTRESOURCE(10000 + I), RT_GROUP_ICON) > 0) then
-        ImageList_AddIcon(FLargeImages.Handle, LoadImage(hInstance, MAKEINTRESOURCE(10000 + I), IMAGE_ICON, FLargeImages.Height, FLargeImages.Width, LR_DEFAULTCOLOR))
-      else
-        ImageList_AddIcon(FLargeImages.Handle, ImageList_GetIcon(FSmallImages.Handle, I, 0));
-  end;
 end;
 
 function TPPreferences.LoadStr(const Index: Integer; const Param1: string = ''; const Param2: string = ''; const Param3: string = ''): string;
@@ -2029,7 +1938,6 @@ begin
   XMLNode(XML, 'toolbar/builder').Attributes['visible'] := ttBuilder in ToolbarTabs;
   XMLNode(XML, 'toolbar/editor').Attributes['visible'] := ttEditor in ToolbarTabs;
   XMLNode(XML, 'toolbar/diagram').Attributes['visible'] := ttDiagram in ToolbarTabs;
-  XMLNode(XML, 'skin/file').Text := ExtractFileName(SkinFilename);
   XMLNode(XML, 'sql/font/charset').Text := IntToStr(SQLFontCharset);
   XMLNode(XML, 'sql/font/color').Text := ColorToString(SQLFontColor);
   XMLNode(XML, 'sql/font/name').Text := SQLFontName;
@@ -2101,14 +2009,6 @@ begin
 
   if (XML.OwnerDocument.Modified and ForceDirectories(ExtractFilePath(Filename))) then
     XML.OwnerDocument.SaveToFile(Filename);
-end;
-
-function TPPreferences.StyleFilename(): string;
-begin
-  Result := '';
-
-  if (Assigned(FSkinIniFile) and (FSkinIniFile.ReadString('VCL Style', 'File', '') <> '')) then
-    Result := SkinPath + IncludeTrailingPathDelimiter(FSkinIniFile.ReadString('Global', 'Path', '')) + FSkinIniFile.ReadString('VCL Style', 'File', '');
 end;
 
 {******************************************************************************}
