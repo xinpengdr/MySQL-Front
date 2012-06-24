@@ -8053,7 +8053,7 @@ begin
           TableName := TCDatabase(DatabaseNode.Data).TriggerByName(URI.Param['object']).TableName;
         TableNode := nil;
         while (Assigned(Child) and not Assigned(TableNode)) do
-          if ((Child.ImageIndex in [iiBaseTable]) and (TCDatabase(DatabaseNode.Data).Tables.NameCmp(TableName, Child.Text) = 0)) then
+          if ((Child.ImageIndex in [iiBaseTable, iiSystemView, iiView]) and (TCDatabase(DatabaseNode.Data).Tables.NameCmp(TableName, Child.Text) = 0)) then
             TableNode := Child
           else
             Child := Child.getNextSibling();

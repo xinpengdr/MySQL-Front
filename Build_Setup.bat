@@ -61,7 +61,6 @@ if exist "%BuildEurekaLog%" (
 )
 if Errorlevel 1 goto Error
 DEL "%BuildTempPath%\*.dcu"
-DEL "%BuildSourcePath%\*.drc"
 
 if exist "%BuildTempPath%\%BuildName%.exe" DEL "%BuildTempPath%\%BuildName%.exe"
 MOVE "%BuildTempPath%\MySQLFront.exe" "%BuildTempPath%\%BuildName%.exe" 
