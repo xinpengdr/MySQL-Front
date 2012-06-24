@@ -6,7 +6,7 @@ REM ****************************************************************************
 
 SET PublishGit=%ProgramFiles(x86)%\Git\bin\git.exe
 SET PublishFTP=ftp.exe
-SET PublishMOVEit=%ProgramFiles(x86)%\MOVEit\FTPS.exe
+SET PublishMOVEit=%ProgramFiles(x86)%\MOVEit\FTPS.exe -quiterror
 
 SET BuildRootPath=%CD%\..
 SET BuildPublishPath=%BuildRootPath%\Publish
