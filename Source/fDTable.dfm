@@ -231,6 +231,13 @@ object DTable: TDTable
     end
     object TSTables: TTabSheet
       Caption = 'TSTables'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
+      DesignSize = (
+        313
+        261)
       object GTablesBasics: TGroupBox_Ext
         Left = 8
         Top = 8
@@ -357,6 +364,10 @@ object DTable: TDTable
     object TSInformations: TTabSheet
       Caption = 'TSInformations'
       OnShow = TSInformationsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -496,6 +507,13 @@ object DTable: TDTable
     object TSFields: TTabSheet
       Caption = 'TSFields'
       OnShow = TSFieldsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
+      DesignSize = (
+        313
+        261)
       object FFields: TListView
         Left = 8
         Top = 32
@@ -585,6 +603,13 @@ object DTable: TDTable
     object TSIndices: TTabSheet
       Caption = 'TSIndices'
       OnShow = TSIndicesShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
+      DesignSize = (
+        313
+        261)
       object FIndices: TListView
         Left = 8
         Top = 32
@@ -644,6 +669,13 @@ object DTable: TDTable
     object TSForeignKeys: TTabSheet
       Caption = 'TSForeignKeys'
       OnShow = TSForeignKeysShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
+      DesignSize = (
+        313
+        261)
       object FForeignKeys: TListView
         Left = 8
         Top = 32
@@ -924,6 +956,13 @@ object DTable: TDTable
     object TSExtras: TTabSheet
       Caption = 'TSExtras'
       OnShow = TSExtrasShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
+      DesignSize = (
+        313
+        261)
       object GOptimize: TGroupBox_Ext
         Left = 8
         Top = 8
@@ -1026,6 +1065,13 @@ object DTable: TDTable
     object TSSource: TTabSheet
       Caption = 'TSSource'
       OnShow = TSSourceShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
+      DesignSize = (
+        313
+        261)
       object FSource: TSynMemo
         Left = 8
         Top = 8

@@ -18,13 +18,14 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMPostShow(var Message: TMessage); message CM_POSTSHOW;
   public
     Database: TCDatabase;
     ServiceMode: TDTableServiceMode;
-    TableNames: array of string;
+    Tables: TList;
     function Execute(): Boolean;
   end;
 
@@ -75,29 +76,31 @@ begin
   Database.Client.Terminate();
 end;
 
+procedure TDTableService.FormCreate(Sender: TObject);
+begin
+  Tables := TList.Create();
+end;
+
 procedure TDTableService.FormDestroy(Sender: TObject);
 begin
-  SetLength(TableNames, 0);
+  Tables.Free();
 end;
 
 procedure TDTableService.FormHide(Sender: TObject);
 var
   Success: Boolean;
-  Table: TCBaseTable;
 begin
-  if (Length(TableNames) = 1) then
+  if (Tables.Count = 1) then
   begin
-    Table := Database.BaseTableByName(TableNames[0]);
-    Success := Assigned(Table);
     case (ServiceMode) of
       smOptimize:
-        Success := Success and Table.Optimize();
+        Success := TCBaseTable(Tables[0]).Optimize();
       smCheck:
-        Success := Success and Table.Check();
+        Success := TCBaseTable(Tables[0]).Check();
       smFlush:
-        Success := Success and Table.Flush();
+        Success := TCBaseTable(Tables[0]).Flush();
       smRepair:
-        Success := Success and Table.Repair();
+        Success := TCBaseTable(Tables[0]).Repair();
       else
         Success := False;
     end;
@@ -106,9 +109,9 @@ begin
   begin
     case (ServiceMode) of
       smOptimize:
-        Success := Database.OptimizeTables(TableNames);
+        Success := Database.OptimizeTables(Tables);
       smFlush:
-        Success := Database.FlushTables(TableNames);
+        Success := Database.FlushTables(Tables);
       else
         Success := False;
     end;

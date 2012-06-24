@@ -831,29 +831,24 @@ begin
 
   if (not Assigned(Tables)) then
   begin
-    SetLength(DTableService.TableNames, 1);
-    DTableService.TableNames[0] := NewTable.Name;
+    DTableService.Tables.Add(Table);
     DTableService.ServiceMode := smCheck;
 
     Success := DTableService.Execute();
-    if (not Success and (UpperCase(NewTable.Engine.Name) = 'MYISAM')) then
+    if (not Success and (UpperCase(Table.Engine.Name) = 'MYISAM')) then
     begin
       DTableService.ServiceMode := smRepair;
       DTableService.Execute();
     end;
-
-    if (Success) then
-      NewTable.Checked := Database.BaseTableByName(DTableService.TableNames[0]).Checked;
+    DTableService.Tables.Clear();
   end
   else
   begin
     Success := True;
-    SetLength(DTableService.TableNames, Tables.Count);
-
     for I := 0 to Tables.Count - 1 do
       if (Success) then
       begin
-        DTableService.TableNames[I] := TCBaseTable(Tables[I]).Name;
+        DTableService.Tables.Add(Tables[I]);
         DTableService.ServiceMode := smCheck;
 
         Success := DTableService.Execute();
@@ -862,6 +857,7 @@ begin
           DTableService.ServiceMode := smRepair;
           Success := DTableService.Execute();
         end;
+        DTableService.Tables.Clear();
       end;
   end;
 
@@ -881,17 +877,12 @@ begin
   DTableService.Database := Database;
 
   if (not Assigned(Tables)) then
-  begin
-    SetLength(DTableService.TableNames, 1);
-    DTableService.TableNames[0] := NewTable.Name;
-  end
+    DTableService.Tables.Add(NewTable)
   else
-  begin
-    SetLength(DTableService.TableNames, Tables.Count);
     for I := 0 to Tables.Count - 1 do
-      DTableService.TableNames[I] := TCBaseTable(Tables[I]).Name;
-  end;
+      DTableService.Tables.Add(TCBaseTable(Tables[I]));
   DTableService.Execute();
+  DTableService.Tables.Clear();
 
   FBFlush.Enabled := False;
   ActiveControl := FBCancel;
@@ -920,18 +911,18 @@ begin
 
   if (not Assigned(Tables)) then
   begin
-    SetLength(DTableService.TableNames, 1);
-    DTableService.TableNames[0] := NewTable.Name;
+    DTableService.Tables.Add(Table);
     if (DTableService.Execute()) then
-      NewTable.UnusedSize := Database.BaseTableByName(DTableService.TableNames[0]).UnusedSize;
+      NewTable.UnusedSize := Table.UnusedSize;
+    DTableService.Tables.Clear();
   end
   else
   begin
-    SetLength(DTableService.TableNames, Tables.Count);
     for I := 0 to Tables.Count - 1 do
-      DTableService.TableNames[I] := TCBaseTable(Tables[I]).Name;
+      DTableService.Tables.Add(Tables[I]);
 
     DTableService.Execute();
+    DTableService.Tables.Clear();
   end;
 
   TSExtrasShow(Sender);

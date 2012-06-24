@@ -620,7 +620,6 @@ type
     FOffset: Integer;
     procedure SetLimit(const ALimit: Integer);
     procedure SetOffset(const AOffset: Integer);
-    procedure SetTableName(const ATableName: string);
   protected
     FFilterSQL: string;
     RequestedRecordCount: Integer;
@@ -635,14 +634,13 @@ type
     function LoadNextRecords(const AllRecords: Boolean = False): Boolean; virtual;
     procedure Open(const OnResult: TMySQLConnection.TResultEvent); overload; virtual;
     procedure Sort(const ASortDef: TIndexDef); override;
-    property CommandText: string read FCommandText write FCommandText;
+    property CommandText: string read FCommandText write SetCommandText;
     property LimitedDataReceived: Boolean read FLimitedDataReceived;
   published
     property AutomaticLoadNextRecords: Boolean read FAutomaticLoadNextRecords write FAutomaticLoadNextRecords default False;
     property FilterSQL: string read FFilterSQL write FFilterSQL;
     property Limit: Integer read FLimit write SetLimit default 0;
     property Offset: Integer read FOffset write SetOffset default 0;
-    property TableName: string read FTableName write SetTableName;
   end;
 
   TMySQLBitField = class(TLargeintField)
@@ -6197,6 +6195,11 @@ begin
   SetLength(DeleteBookmarks, 0);
 end;
 
+function TMySQLTable.GetCanModify(): Boolean;
+begin
+  Result := not FReadOnly and inherited;
+end;
+
 function TMySQLDataSet.GetFieldData(Field: TField; Buffer: Pointer): Boolean;
 begin
   Result := Assigned(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer)
@@ -6222,6 +6225,24 @@ begin
     for I := 0 to InternRecordBuffers.Count - 1 do
       Result := Max(Result, TextWidth(Connection.LibDecode(InternRecordBuffers[I]^.NewData^.LibRow^[Index], InternRecordBuffers[I]^.NewData^.LibLengths^[Index])));
   InternRecordBuffers.CriticalSection.Leave();
+end;
+
+procedure TMySQLTable.InternalClose();
+begin
+  inherited;
+
+  FLimitedDataReceived := False;
+end;
+
+procedure TMySQLTable.InternalOpen();
+begin
+  Assert(CommandText <> '');
+
+  inherited;
+
+  if (IsCursorOpen()) then
+    if (Filtered) then
+      InternActivateFilter();
 end;
 
 function TMySQLDataSet.Locate(const KeyFields: string; const KeyValues: Variant;
@@ -6313,6 +6334,34 @@ begin
 
   SetLength(Values, 0);
   SetLength(FieldNames, 0);
+end;
+
+procedure TMySQLTable.SetCommandText(const ACommandText: string);
+var
+  FieldInfo: TFieldInfo;
+  I: Integer;
+begin
+  FTableName := ACommandText;
+
+  for I := 0 to FieldCount - 1 do
+    if (GetFieldInfo(Fields[I].Origin, FieldInfo)) then
+      Fields[I].Origin := '"' + DatabaseName + '"."' + FTableName + '"."' + FieldInfo.OriginalFieldName + '"';
+end;
+
+procedure TMySQLTable.SetLimit(const ALimit: Integer);
+begin
+  Assert(not IsCursorOpen());
+
+
+  FLimit := ALimit;
+end;
+
+procedure TMySQLTable.SetOffset(const AOffset: Integer);
+begin
+  Assert(not IsCursorOpen());
+
+
+  FOffset := AOffset;
 end;
 
 procedure TMySQLDataSet.Sort(const ASortDef: TIndexDef);
@@ -6582,62 +6631,6 @@ begin
       end;
     Result := Result + ';' + #13#10;
   end;
-end;
-
-procedure TMySQLTable.SetLimit(const ALimit: Integer);
-begin
-  Assert(not IsCursorOpen());
-
-
-  FLimit := ALimit;
-end;
-
-procedure TMySQLTable.SetOffset(const AOffset: Integer);
-begin
-  Assert(not IsCursorOpen());
-
-
-  FOffset := AOffset;
-end;
-
-procedure TMySQLTable.SetTableName(const ATableName: string);
-var
-  FieldInfo: TFieldInfo;
-  I: Integer;
-begin
-  FTableName := ATableName;
-
-  for I := 0 to FieldCount - 1 do
-    if (GetFieldInfo(Fields[I].Origin, FieldInfo)) then
-      Fields[I].Origin := '"' + DatabaseName + '"."' + FTableName + '"."' + FieldInfo.OriginalFieldName + '"';
-end;
-
-function TMySQLTable.GetCanModify(): Boolean;
-begin
-  Result := not FReadOnly and inherited;
-end;
-
-procedure TMySQLTable.InternalClose();
-begin
-  inherited;
-
-  FLimitedDataReceived := False;
-end;
-
-procedure TMySQLTable.InternalOpen();
-begin
-  Assert(CommandText <> '');
-
-  inherited;
-
-  if (IsCursorOpen()) then
-    if (Filtered) then
-      InternActivateFilter();
-end;
-
-procedure TMySQLTable.SetCommandText(const ACommandText: string);
-begin
-  FTableName := ACommandText;
 end;
 
 function TMySQLTable.SQLSelect(const IgnoreLimit: Boolean = False): string;

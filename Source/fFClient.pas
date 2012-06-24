@@ -2295,11 +2295,11 @@ end;
 procedure TFClient.aDDeleteExecute(Sender: TObject);
 var
   CItems: TList;
+  Database: TCDatabase;
   I: Integer;
+  List: TList;
   Msg: string;
-  Names: array of string;
   NewTable: TCBaseTable;
-  Objects: array of TCDBObject;
   Success: Boolean;
   Table: TCBaseTable;
 begin
@@ -2347,30 +2347,31 @@ begin
 
   if ((Msg <> '') and (MsgBox(Msg, Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES)) then
   begin
+    List := TList.Create();
+
     Success := True;
 
-    SetLength(Names, 0);
+    List.Clear();
     for I := 0 to CItems.Count - 1 do
       if (TCItem(CItems[I]) is TCDatabase) then
       begin
-        SetLength(Names, Length(Names) + 1);
-        Names[Length(Names) - 1] := TCDatabase(CItems[I]).Name;
+        List.Add(TCDatabase(CItems[I]));
         CItems[I] := nil;
       end;
-    if (Success and (Length(Names) > 0)) then
-      Success := Client.DeleteDatabases(Names);
+    if (Success and (List.Count > 0)) then
+      Success := Client.DeleteDatabases(List);
 
-    SetLength(Objects, 0);
+    Database := nil;
+    List.Clear();
     for I := 0 to CItems.Count - 1 do
       if (TCItem(CItems[I]) is TCDBObject) then
       begin
-        SetLength(Objects, Length(Objects) + 1);
-        Objects[Length(Objects) - 1] := TCDBObject(CItems[I]);
+        Database := TCDBObject(CItems[I]).Database;
+        List.Add(TCDBObject(CItems[I]));
         CItems[I] := nil;
       end;
-    if (Success and (Length(Objects) > 0)) then
-      Success := Objects[0].Database.DeleteObjects(Objects);
-    SetLength(Objects, 0);
+    if (Success and (List.Count > 0)) then
+      Success := Database.DeleteObjects(List);
 
     Table := nil;
     for I := 0 to CItems.Count - 1 do
@@ -2403,47 +2404,44 @@ begin
         end;
 
       if (NewTable.Fields.Count = 0) then
-        Success := Table.Database.DeleteObjects([NewTable])
+        Success := Table.Database.DeleteObject(NewTable)
       else
         Success := Table.Database.UpdateTable(Table, NewTable);
 
       NewTable.Free();
     end;
 
-    SetLength(Names, 0);
+    List.Clear();
     for I := 0 to CItems.Count - 1 do
       if (TCItem(CItems[I]) is TCHost) then
       begin
-        SetLength(Names, Length(Names) + 1);
-        Names[Length(Names) - 1] := TCHost(CItems[I]).Name;
+        List.Add(TCHost(CItems[I]));
         CItems[I] := nil;
       end;
-    if (Success and (Length(Names) > 0)) then
-      Success := Client.DeleteHosts(Names);
+    if (Success and (List.Count > 0)) then
+      Success := Client.DeleteHosts(List);
 
-    SetLength(Names, 0);
+    List.Clear();
     for I := 0 to CItems.Count - 1 do
       if (TCItem(CItems[I]) is TCUser) then
       begin
-        SetLength(Names, Length(Names) + 1);
-        Names[Length(Names) - 1] := TCUser(CItems[I]).Name;
+        List.Add(TCUser(CItems[I]));
         CItems[I] := nil;
       end;
-    if (Success and (Length(Names) > 0)) then
-      Success := Client.DeleteUsers(Names);
+    if (Success and (List.Count > 0)) then
+      Success := Client.DeleteUsers(List);
 
-    SetLength(Names, 0);
+    List.Clear();
     for I := 0 to CItems.Count - 1 do
       if (TCItem(CItems[I]) is TCProcess) then
       begin
-        SetLength(Names, Length(Names) + 1);
-        Names[Length(Names) - 1] := TCProcess(CItems[I]).Name;
+        List.Add(TCProcess(CItems[I]));
         CItems[I] := nil;
       end;
-    if (Success and (Length(Names) > 0)) then
-      Client.DeleteProcesses(Names);
+    if (Success and (List.Count > 0)) then
+      Client.DeleteProcesses(List);
 
-    SetLength(Names, 0);
+    List.Free();
   end;
 
   CItems.Free();
@@ -7827,6 +7825,7 @@ procedure TFClient.FNavigatorEmptyExecute(Sender: TObject);
 var
   Database: TCDatabase;
   Field: TCBaseTableField;
+  List: TList;
   Table: TCBaseTable;
 begin
   Wanted.Clear();
@@ -7848,7 +7847,12 @@ begin
     Field := TCBaseTableField(FocusedCItem);
     Table := Field.Table;
     if (Assigned(Field) and (MsgBox(Preferences.LoadStr(376, Field.Name), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES)) then
-      Table.EmptyFields([Field.Name]);
+    begin
+      List := TList.Create();
+      List.Add(Field);
+      Table.EmptyFields(List);
+      List.Free();
+    end;
   end;
 end;
 
@@ -10687,7 +10691,6 @@ end;
 procedure TFClient.ListViewEmpty(Sender: TObject);
 var
   I: Integer;
-  Names: array of string;
   List: TList;
 begin
   Wanted.Clear();
@@ -10696,7 +10699,6 @@ begin
     FNavigatorEmptyExecute(Sender)
   else
   begin
-    SetLength(Names, 0);
     case (SelectedImageIndex) of
       iiServer:
         if (MsgBox(Preferences.LoadStr(405), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
@@ -10721,16 +10723,14 @@ begin
       iiBaseTable:
         if (MsgBox(Preferences.LoadStr(407), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
         begin
+          List := TList.Create();
           for I := 0 to ActiveListView.Items.Count - 1 do
-            if (ActiveListView.Items[I].Selected) then
-            begin
-              SetLength(Names, Length(Names) + 1);
-              Names[Length(Names) - 1] := ActiveListView.Items[I].Caption;
-            end;
-          TCBaseTable(FNavigator.Selected.Data).EmptyFields(Names);
+            if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex = iiField)) then
+              List.Add(ActiveListView.Items[I].Data);
+          TCBaseTable(FNavigator.Selected.Data).EmptyFields(List);
+          List.Free();
         end;
     end;
-    SetLength(Names, 0);
   end;
 end;
 

@@ -676,7 +676,7 @@ end;
 
 function SQLCreateParse(out Handle: TSQLParse; const SQL: PChar; const Len: Integer; const Version: Integer; const InCondCode: Boolean = False): Boolean;
 begin
-  Result := True;
+  Result := Assigned(SQL) and (Len > 0);
   if (Result) then
   begin
     Handle.Pos := SQL;

@@ -1073,7 +1073,7 @@ begin
       NewTableName := Item.TableName + BackupExtension;
 
       if (Assigned(Database.BaseTableByName(NewTableName))) then
-        while ((Success = daSuccess) and not Database.DeleteObjects([Database.BaseTableByName(NewTableName)])) do
+        while ((Success = daSuccess) and not Database.DeleteObject(Database.BaseTableByName(NewTableName))) do
           DoError(DatabaseError(Item.Client), Item);
 
       if (Rename) then
@@ -1307,7 +1307,7 @@ begin
       if (Structure) then
       begin
         if (Assigned(Database.TableByName(Items[I].TableName))) then
-          while ((Success = daSuccess) and not Database.DeleteObjects([Database.TableByName(Items[I].TableName)])) do
+          while ((Success = daSuccess) and not Database.DeleteObject(Database.TableByName(Items[I].TableName))) do
             DoError(DatabaseError(Database.Client), ToolsItem(Items[I]));
         if (Success = daSuccess) then
           ExecuteStructure(Items[I]);
@@ -5967,7 +5967,7 @@ begin
           ExecuteMatchCase(Items[I], Table);
 
         if (Self is TTReplace) then
-          Table.Clear();
+          Table.InvalidateData();
       end;
 
       Items[I].Done := Success <> daAbort;
@@ -7076,7 +7076,7 @@ begin
 
   if (Assigned(TargetTable)) then
   begin
-    while ((Success = daSuccess) and not TargetDatabase.DeleteObjects([TargetTable])) do
+    while ((Success = daSuccess) and not TargetDatabase.DeleteObject(TargetTable)) do
       DoError(DatabaseError(TargetDatabase.Client), ToolsItem(Target));
     TargetTable := nil;
   end;
