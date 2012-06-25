@@ -280,6 +280,7 @@ type
     procedure DoConvertError(const Sender: TObject; const Text: string; const Error: EConvertError); virtual;
     procedure DoDisconnect(); override;
     procedure DoError(const AErrorCode: Integer; const AErrorMessage: string); virtual;
+    function ErrorMsg(const AHandle: MySQLConsts.MYSQL): string; virtual;
     function GetAutoCommit(): Boolean; virtual;
     function GetConnected(): Boolean; override;
     function GetInsertId(): my_ulonglong; virtual;
@@ -2144,6 +2145,14 @@ begin
       FOnSQLError(Self, AErrorCode, AErrorMessage);
 end;
 
+function TMySQLConnection.ErrorMsg(const AHandle: MySQLConsts.MYSQL): string;
+begin
+//  if (ServerVersion < 50000) then
+    Result := LibDecode(my_char(SQLUnescape(RawByteString(Lib.mysql_error(AHandle)))))
+//  else
+//    Result := LibDecode(Lib.mysql_error(AHandle));
+end;
+
 function TMySQLConnection.GetAutoCommit(): Boolean;
 begin
   Result := FAutoCommit;
@@ -2361,7 +2370,7 @@ begin
   end;
 
   SynchroThread.ErrorCode := Lib.mysql_errno(SynchroThread.LibHandle);
-  SynchroThread.ErrorMessage := LibDecode(Lib.mysql_error(SynchroThread.LibHandle));
+  SynchroThread.ErrorMessage := ErrorMsg(SynchroThread.LibHandle);
 end;
 
 procedure TMySQLConnection.SyncConnected(const SynchroThread: TSynchroThread);
@@ -2464,7 +2473,7 @@ begin
   else
   begin
     SynchroThread.ErrorCode := Lib.mysql_errno(SynchroThread.LibHandle);
-    SynchroThread.ErrorMessage := LibDecode(Lib.mysql_error(SynchroThread.LibHandle));
+    SynchroThread.ErrorMessage := ErrorMsg(SynchroThread.LibHandle);
 
     Lib.mysql_close(SynchroThread.LibHandle);
     SynchroThread.LibHandle := nil;
@@ -2697,7 +2706,7 @@ begin
   end;
 
   SynchroThread.ErrorCode := Lib.mysql_errno(SynchroThread.LibHandle);
-  SynchroThread.ErrorMessage := LibDecode(Lib.mysql_error(SynchroThread.LibHandle));
+  SynchroThread.ErrorMessage := ErrorMsg(SynchroThread.LibHandle);
 end;
 
 procedure TMySQLConnection.SyncHandleResult(const SynchroThread: TSynchroThread);
@@ -2886,7 +2895,7 @@ begin
   end;
 
   SynchroThread.ErrorCode := Lib.mysql_errno(SynchroThread.LibHandle);
-  SynchroThread.ErrorMessage := LibDecode(Lib.mysql_error(SynchroThread.LibHandle));
+  SynchroThread.ErrorMessage := ErrorMsg(SynchroThread.LibHandle);
 end;
 
 procedure TMySQLConnection.SyncOpenDataSet(const SynchroThread: TSynchroThread; const DataSet: TMySQLDataSet);
@@ -2931,7 +2940,7 @@ begin
   SynchroThread.Success := Lib.mysql_errno(SynchroThread.LibHandle) = 0;
 
   SynchroThread.ErrorCode := Lib.mysql_errno(SynchroThread.LibHandle);
-  SynchroThread.ErrorMessage := LibDecode(Lib.mysql_error(SynchroThread.LibHandle));
+  SynchroThread.ErrorMessage := ErrorMsg(SynchroThread.LibHandle);
 
   if (SynchroThread.DataSet is TMySQLTable) then
   begin
@@ -3402,7 +3411,7 @@ begin
   else if (Lib.mysql_shutdown(SynchroThread.LibHandle, SHUTDOWN_DEFAULT) <> 0) then
   begin
     FErrorCode := Lib.mysql_errno(SynchroThread.LibHandle);
-    FErrorMessage := LibDecode(Lib.mysql_error(SynchroThread.LibHandle));
+    FErrorMessage := ErrorMsg(SynchroThread.LibHandle);
     DoError(FErrorCode, FErrorMessage);
     Result := False;
   end

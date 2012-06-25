@@ -962,10 +962,16 @@ begin
   URLComponents.lpszUrlPath := PChar(APath);
   URLComponents.dwUrlPathLength := StrLen(URLComponents.lpszUrlPath);
 
-  Len := SizeOf(URL);
-  if (not InternetCreateUrl(URLComponents, ICU_ESCAPE, @URL, Len)) then
-    raise EConvertError.CreateFmt(SysErrorMessage(GetLastError()) + '  (%s)', ['mysql://' + Connection.Host + APath]);
-  SetString(Result, PChar(@URL), Len);
+  Len := SizeOf(URL) - 1;
+  if (InternetCreateUrl(URLComponents, ICU_ESCAPE, @URL, Len)) then
+    SetString(Result, PChar(@URL), Len)
+  else
+  begin
+    Result := 'mysql://' + Connection.Host;
+    if (Connection.Port <> MYSQL_PORT) then
+      Result := Result + ':' + IntToStr(Connection.Port);
+    Result := Result + APath;
+  end;
 end;
 
 function TAAccount.GetBookmarksFilename(): TFileName;

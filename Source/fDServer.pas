@@ -27,6 +27,7 @@ type
     FLUptime: TLabel;
     FLUser: TLabel;
     FLVersion: TLabel;
+    FPlugins: TListView;
     FProcesses: TListView;
     FSlowSQLLog: TSynMemo;
     FSQLLog: TSynMemo;
@@ -58,6 +59,7 @@ type
     TSBasics: TTabSheet;
     TSExtras: TTabSheet;
     TSHosts: TTabSheet;
+    TSPlugins: TTabSheet;
     TSProcesses: TTabSheet;
     TSSlowSQLLog: TTabSheet;
     TSSQLLog: TTabSheet;
@@ -74,6 +76,8 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure FPluginsSelectItem(Sender: TObject; Item: TListItem;
+      Selected: Boolean);
     procedure FProcessesSelectItem(Sender: TObject; Item: TListItem;
       Selected: Boolean);
     procedure FStatiSelectItem(Sender: TObject; Item: TListItem;
@@ -94,6 +98,7 @@ type
     procedure miPropertiesClick(Sender: TObject);
     procedure TSExtrasShow(Sender: TObject);
     procedure TSHostsShow(Sender: TObject);
+    procedure TSPluginsShow(Sender: TObject);
     procedure TSProcessesShow(Sender: TObject);
     procedure TSSlowSQLLogShow(Sender: TObject);
     procedure TSSQLLogShow(Sender: TObject);
@@ -221,6 +226,10 @@ begin
     FStartup.Gutter.Color := Preferences.Editor.LineNumbersBackground;
   FStartup.Gutter.Font.Style := Preferences.Editor.LineNumbersStyle;
 
+  TSPlugins.Caption := ReplaceStr(Preferences.LoadStr(811), '&', '');
+  FPlugins.Columns[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
+  FPlugins.Columns[1].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
+
   TSExtras.Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
   GServiceServer.Caption := ReplaceStr(Preferences.LoadStr(37), '&', '');
   FLUptime.Caption := Preferences.LoadStr(520) + ':';
@@ -304,6 +313,7 @@ begin
   FUsers.SmallImages := Preferences.SmallImages;
   FHosts.SmallImages := Preferences.SmallImages;
   FStartup.Highlighter := MainHighlighter;
+  FPlugins.SmallImages := Preferences.SmallImages;
 
   FSQLLog.Highlighter := MainHighlighter;
   FSlowSQLLog.Highlighter := MainHighlighter;
@@ -347,6 +357,10 @@ begin
   FUsers.DisableAlign(); FUsers.Items.BeginUpdate();
   FUsers.Items.Clear();
   FUsers.EnableAlign(); FUsers.Items.EndUpdate();
+
+  FPlugins.DisableAlign(); FPlugins.Items.BeginUpdate();
+  FPlugins.Items.Clear();
+  FPlugins.EnableAlign(); FPlugins.Items.EndUpdate();
 end;
 
 procedure TDServer.FormShow(Sender: TObject);
@@ -376,6 +390,7 @@ begin
   TSSQLLog.TabVisible := Client.LogActive;
   TSSlowSQLLog.TabVisible := Client.SlowLogActive;
   TSStartup.TabVisible := Assigned(Client.VariableByName('init_connect')) and (Client.VariableByName('init_connect').Value <> '');
+  TSPlugins.TabVisible := Assigned(Client.Plugins);
   TSHosts.TabVisible := not Assigned(Client.UserRights) or Client.UserRights.RGrant;
 
   FBCancel.Caption := Preferences.LoadStr(231);
@@ -383,6 +398,14 @@ begin
   PageControl.ActivePage := TSBasics;
 
   ActiveControl := FBCancel;
+end;
+
+procedure TDServer.FPluginsSelectItem(Sender: TObject; Item: TListItem;
+  Selected: Boolean);
+begin
+  miAdd.Visible := not Assigned(FPlugins.Selected);
+  miDelete.Visible := Assigned(FPlugins.Selected);
+  miProperties.Visible := False;
 end;
 
 procedure TDServer.FProcessesSelectItem(Sender: TObject; Item: TListItem;
@@ -717,6 +740,41 @@ begin
   end;
 
   FHostsSelectItem(Sender, FHosts.Selected, Assigned(FHosts.Selected));
+end;
+
+procedure TDServer.TSPluginsShow(Sender: TObject);
+var
+  I: Integer;
+  Item: TListItem;
+begin
+  if (FPlugins.Items.Count = 0) then
+  begin
+    FPlugins.DisableAlign(); FPlugins.Items.BeginUpdate();
+
+    for I := 0 to Client.Plugins.Count - 1 do
+    begin
+      Item := FPlugins.Items.Add();
+      Item.Caption := Client.Plugins[I].Name;
+      Item.ImageIndex := iiPlugin;
+      Item.SubItems.Add(Client.Plugins[I].Comment);
+    end;
+    if (FPlugins.Items.Count = 0) then
+      FPlugins.Selected := nil
+    else
+      FPlugins.Selected := FPlugins.Items[0];
+    FPlugins.ItemFocused := FPlugins.Selected;
+
+    FPlugins.Columns[0].Tag := 1;
+    FPlugins.Columns[1].Tag := 0;
+    ListViewShowSortDirection(FPlugins);
+
+    FPlugins.EnableAlign(); FPlugins.Items.EndUpdate();
+
+    FPlugins.Columns[0].Width := FPlugins.ClientWidth div 2;
+    FPlugins.Columns[1].Width := FPlugins.ClientWidth - FPlugins.Columns[0].Width;
+  end;
+
+  FPluginsSelectItem(FPlugins, FPlugins.Selected, Assigned(FPlugins.Selected));
 end;
 
 procedure TDServer.TSProcessesShow(Sender: TObject);

@@ -67,6 +67,8 @@ type
   TCHostDatabases = class;
   TCHost = class;
   TCHosts = class;
+  TCPlugin = class;
+  TCPlugins = class;
   TCEngine = class;
   TCEngines = class;
   TCFieldType = class;
@@ -1068,6 +1070,26 @@ type
     property Engine[Index: Integer]: TCEngine read GetEngine; default;
   end;
 
+  TCPlugin = class(TCEntity)
+  private
+    function GetPlugins(): TCPlugins; inline;
+  protected
+    FComment: string;
+  public
+    property Comment: string read FComment;
+    property Plugins: TCPlugins read GetPlugins;
+  end;
+
+  TCPlugins = class(TCEntities)
+  private
+    function GetPlugin(Index: Integer): TCPlugin;
+  protected
+    function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean; Filtered: Boolean = False): Boolean; override;
+    function SQLGetItems(const Name: string = ''): string; override;
+  public
+    property Plugin[Index: Integer]: TCPlugin read GetPlugin; default;
+  end;
+
   TCFieldType = class
   private
     FCaption: string;
@@ -1357,6 +1379,7 @@ type
     FInformationSchema: TCDatabase;
     FInvalidObjects: TList;
     FPerformanceSchema: TCDatabase;
+    FPlugins: TCPlugins;
     FProcesses: TCProcesses;
     FStati: TCStati;
     FSQLMonitor: TMySQLMonitor;
@@ -1438,6 +1461,7 @@ type
     function HostByCaption(const Caption: string): TCHost; virtual;
     function HostByName(const HostName: string): TCHost; virtual;
     procedure Invalidate(); virtual;
+    function PluginByName(const PluginName: string): TCPlugin; virtual;
     function ProcessById(const ProcessId: Integer): TCProcess; virtual;
     procedure RegisterEventProc(const AEventProc: TEventProc); virtual;
     procedure RollbackTransaction(); override;
@@ -1474,6 +1498,7 @@ type
     property LogActive: Boolean read GetLogActive;
     property LowerCaseTableNames: Byte read FLowerCaseTableNames;
     property PerformanceSchema: TCDatabase read FPerformanceSchema;
+    property Plugins: TCPlugins read FPlugins;
     property Processes: TCProcesses read FProcesses;
     property SlowLog: string read GetSlowLog;
     property SlowLogActive: Boolean read GetSlowLogActive;
@@ -8377,6 +8402,71 @@ begin
     Result := 'SELECT * FROM ' + Client.EscapeIdentifier(information_schema) + '.' + Client.EscapeIdentifier('ENGINES') + ';' + #13#10;
 end;
 
+{ TCPlugin ********************************************************************}
+
+function TCPlugin.GetPlugins(): TCPlugins;
+begin
+  Assert(CItems is TCPlugins);
+
+  Result := TCPlugins(CItems);
+end;
+
+{ TCPlugins *******************************************************************}
+
+function TCPlugins.Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean; Filtered: Boolean = False): Boolean;
+var
+  DeleteList: TList;
+  Index: Integer;
+  Name: string;
+begin
+  DeleteList := TList.Create();
+  DeleteList.Assign(Self);
+
+  if (not DataSet.IsEmpty()) then
+    repeat
+      if (not UseInformationSchema) then
+        Name := DataSet.FieldByName('Name').AsString
+      else
+        Name := DataSet.FieldByName('PLUGIN_NAME').AsString;
+
+      if (InsertIndex(Name, Index)) then
+        if (Index < Count) then
+          Insert(Index, TCPlugin.Create(Self, Name))
+        else
+          Add(TCPlugin.Create(Self, Name));
+
+      if (UseInformationSchema) then
+        Plugin[Index].FComment := DataSet.FieldByName('PLUGIN_DESCRIPTION').AsString;
+    until (not DataSet.FindNext());
+
+  Result := inherited;
+
+  if (not Filtered) then
+    while (DeleteList.Count > 0) do
+    begin
+      Index := IndexOf(DeleteList.Items[0]);
+      Item[Index].Free();
+      Delete(Index);
+      DeleteList.Delete(0);
+    end;
+  DeleteList.Free();
+end;
+
+function TCPlugins.GetPlugin(Index: Integer): TCPlugin;
+begin
+  Result := TCPlugin(Items[Index]);
+end;
+
+function TCPlugins.SQLGetItems(const Name: string = ''): string;
+begin
+  if (not Client.UseInformationSchema and (Client.ServerVersion < 50109)) then
+    Result := 'SHOW PLUGIN;' + #13#10
+  else if (not Client.UseInformationSchema or (Client.ServerVersion < 50105)) then
+    Result := 'SHOW PLUGINS;' + #13#10
+  else
+    Result := 'SELECT * FROM ' + Client.EscapeIdentifier(information_schema) + '.' + Client.EscapeIdentifier('PLUGINS') + ';' + #13#10;
+end;
+
 { TCFieldType *****************************************************************}
 
 constructor TCFieldType.Create(const AFieldTypes: TCFieldTypes; const AMySQLFieldType: TMySQLFieldType; const ACaption: string; const AHighlighted: Boolean);
@@ -9804,6 +9894,7 @@ begin
     if (not Assigned(FFieldTypes)) then FFieldTypes := TCFieldTypes.Create(Self);
     if (not Assigned(FEngines)) then FEngines := TCEngines.Create(Self);
     if (not Assigned(FHosts)) then FHosts := TCHosts.Create(Self);
+    if (not Assigned(FPlugins) and (ServerVersion >= 50105)) then FPlugins := TCPlugins.Create(Self);
     if (not Assigned(FStati)) then FStati := TCStati.Create(Self);
     if (not Assigned(FUsers)) then FUsers := TCUsers.Create(Self);
 
@@ -9992,6 +10083,8 @@ begin
               for I := 0 to Databases.Count - 1 do
                 Result := Databases[I].Events.Build(DataSet, True, not SQLParseEnd(Parse));
           end
+          else if (TableNameCmp(ObjectName, 'PLUGINS') = 0) then
+            Result := Plugins.Build(DataSet, True, not SQLParseEnd(Parse))
           else if (TableNameCmp(ObjectName, 'PROCESSLIST') = 0) then
             Result := Processes.Build(DataSet, True, not SQLParseEnd(Parse))
           else if (TableNameCmp(ObjectName, 'ROUTINES') = 0) then
@@ -10123,6 +10216,8 @@ begin
         if ((SQLParseKeyword(Parse, 'FOR') and (SQLParseKeyword(Parse, 'CURRENT_USER') or (lstrcmpi(PChar(SQLParseValue(Parse)), PChar(CurrentUser)) = 0)))) then
           BuildUser(DataSet);
       end
+      else if (SQLParseKeyword(Parse, 'PLUGINS')) then
+        Result := Plugins.Build(DataSet, False, not SQLParseEnd(Parse))
       else if (SQLParseKeyword(Parse, 'PROCEDURE STATUS')
         or SQLParseKeyword(Parse, 'FUNCTION STATUS')) then
       begin
@@ -10270,6 +10365,7 @@ begin
     FEngines := nil;
     FHosts := nil;
     FInvalidObjects := nil;
+    FPlugins := nil;
     FProcesses := nil;
     FStati := nil;
     FUsers := nil;
@@ -10298,6 +10394,7 @@ begin
     FEngines := nil;
     FHosts := nil;
     FInvalidObjects := TList.Create();
+    FPlugins := nil;
     FProcesses := nil;
     FStati := nil;
     FUsers := nil;
@@ -10484,6 +10581,7 @@ begin
   if (Assigned(FFieldTypes)) then FFieldTypes.Free();
   if (Assigned(FHosts)) then FHosts.Free();
   if (Assigned(FInvalidObjects)) then FInvalidObjects.Free();
+  if (Assigned(FPlugins)) then FPlugins.Free();
   if (Assigned(FProcesses)) then FProcesses.Free();
   if (Assigned(FStati)) then FStati.Free();
   if (Assigned(FUsers)) then FUsers.Free();
@@ -10981,6 +11079,7 @@ begin
   if (Assigned(Charsets)) then Charsets.Invalidate();
   if (Assigned(Collations)) then Collations.Invalidate();
   if (Assigned(Databases)) then Databases.Invalidate();
+  if (Assigned(Plugins)) then Plugins.Invalidate();
   if (Assigned(Users)) then Users.Invalidate();
   if (Assigned(FHosts)) then Hosts.Invalidate();
 end;
@@ -11007,6 +11106,7 @@ var
   Table: TCTable;
   Trigger: TCTrigger;
   User: TCUser;
+  Variable: TCVariable;
 begin
   if (SQLCreateParse(Parse, Text, Len, ServerVersion)) then
     if (SQLParseKeyword(Parse, 'SELECT') or SQLParseKeyword(Parse, 'SHOW')) then
@@ -11245,6 +11345,20 @@ begin
         else if (TableNameCmp(DMLStmt.TableNames[0], 'user') = 0) then
           Users.Invalidate();
     end
+    else if (SQLParseKeyword(Parse, 'SET')) then
+    begin
+      repeat
+        if (SQLParseKeyword(Parse, 'SESSION') and not SQLParseChar(Parse, '@', False)) then
+        begin
+          Variable := VariableByName(SQLParseValue(Parse));
+          if (Assigned(Variable) and SQLParseChar(Parse, '=')) then
+          begin
+            Variable.FValue := SQLParseValue(Parse);
+            ExecuteEvent(ceItemAltered, Self, Variables, Variable);
+          end;
+        end;
+      until (not SQLParseChar(Parse, ','));
+    end
     else if (SQLParseKeyword(Parse, 'OPTIMIZE')) then
     begin
       SQLParseKeyword(Parse, 'NO_WRITE_TO_BINLOG');
@@ -11347,6 +11461,17 @@ begin
       if (Assigned(Process)) then
         Processes.Delete(Process);
     end;
+end;
+
+function TCClient.PluginByName(const PluginName: string): TCPlugin;
+var
+  Index: Integer;
+begin
+  Index := Plugins.IndexByName(PluginName);
+  if (Index < 0) then
+    Result := nil
+  else
+    Result := Plugins[Index];
 end;
 
 function TCClient.ProcessById(const ProcessId: Integer): TCProcess;
@@ -11580,6 +11705,7 @@ begin
   if (Assigned(Charsets) and not Charsets.Valid) then List.Add(Charsets);
   if (Assigned(Collations) and not Collations.Valid) then List.Add(Collations);
   if (Assigned(Databases) and not Databases.Valid) then List.Add(Databases);
+  if (Assigned(Plugins) and not Plugins.Valid) then List.Add(Plugins);
   if (Assigned(Users) and not Users.Valid) then List.Add(Users);
   if (Assigned(FHosts) and not FHosts.Valid) then List.Add(Hosts);
 

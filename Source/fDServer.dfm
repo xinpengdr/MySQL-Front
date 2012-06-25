@@ -39,17 +39,13 @@ object DServer: TDServer
     Top = 8
     Width = 321
     Height = 321
-    ActivePage = TSExtras
+    ActivePage = TSBasics
     Anchors = [akLeft, akTop, akRight, akBottom]
     HotTrack = True
     MultiLine = True
     TabOrder = 0
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -207,10 +203,6 @@ object DServer: TDServer
     object TSProcesses: TTabSheet
       Caption = 'TSProcesses'
       OnShow = TSProcessesShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -260,10 +252,6 @@ object DServer: TDServer
     object TSSQLLog: TTabSheet
       Caption = 'TSSQLLog'
       OnShow = TSSQLLogShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -297,10 +285,6 @@ object DServer: TDServer
     object TSSlowSQLLog: TTabSheet
       Caption = 'TSSlowSQLLog'
       OnShow = TSSlowSQLLogShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -334,10 +318,6 @@ object DServer: TDServer
     object TSStati: TTabSheet
       Caption = 'TSStati'
       OnShow = TSStatiShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -368,10 +348,6 @@ object DServer: TDServer
     object TSVariables: TTabSheet
       Caption = 'TSVariables'
       OnShow = TSVariablesShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -405,10 +381,6 @@ object DServer: TDServer
     object TSUsers: TTabSheet
       Caption = 'TSUsers'
       OnShow = TSUsersShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -438,10 +410,6 @@ object DServer: TDServer
     object TSHosts: TTabSheet
       Caption = 'TSHosts'
       OnShow = TSHostsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -469,10 +437,6 @@ object DServer: TDServer
     object TSStartup: TTabSheet
       Caption = 'TSStartup'
       OnShow = TSStartupShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -507,13 +471,35 @@ object DServer: TDServer
         ScrollHintFormat = shfTopToBottom
       end
     end
+    object TSPlugins: TTabSheet
+      Caption = 'TSPlugins'
+      OnShow = TSPluginsShow
+      DesignSize = (
+        313
+        257)
+      object FPlugins: TListView
+        Left = 8
+        Top = 8
+        Width = 296
+        Height = 231
+        Anchors = [akLeft, akTop, akRight, akBottom]
+        Columns = <
+          item
+            AutoSize = True
+          end
+          item
+            AutoSize = True
+          end>
+        ReadOnly = True
+        RowSelect = True
+        TabOrder = 0
+        ViewStyle = vsReport
+        OnSelectItem = FPluginsSelectItem
+      end
+    end
     object TSExtras: TTabSheet
       Caption = 'TSExtras'
       OnShow = TSExtrasShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         257)
