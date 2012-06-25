@@ -946,33 +946,26 @@ end;
 
 function TAAccount.FullAddress(const APath: string): string;
 var
-  Buffer: array[0 .. INTERNET_MAX_URL_LENGTH] of Char;
-  Size: Cardinal;
+  Len: Cardinal;
+  URL: array[0 .. INTERNET_MAX_URL_LENGTH] of Char;
   URLComponents: URL_COMPONENTS;
 begin
-  Result := APath;
+  ZeroMemory(@URLComponents, SizeOf(URLComponents));
+  URLComponents.dwStructSize := SizeOf(URLComponents);
 
-  if ((Copy(Result, 1, 1) = '/') and (Copy(Result, 1, 2) <> '//')) then
-  begin
-    ZeroMemory(@URLComponents, SizeOf(URLComponents));
-    URLComponents.dwStructSize := SizeOf(URLComponents);
+  URLComponents.lpszScheme := PChar('mysql');
+  URLComponents.dwSchemeLength := StrLen(URLComponents.lpszScheme);
+  URLComponents.lpszHostName := PChar(Connection.Host);
+  URLComponents.dwHostNameLength := Length(Connection.Host);
+  if (Connection.Port <> MYSQL_PORT) then
+    URLComponents.nPort := Connection.Port;
+  URLComponents.lpszUrlPath := PChar(APath);
+  URLComponents.dwUrlPathLength := StrLen(URLComponents.lpszUrlPath);
 
-    URLComponents.lpszScheme := PChar('mysql');
-    URLComponents.dwSchemeLength := StrLen(URLComponents.lpszScheme);
-    URLComponents.lpszHostName := PChar(Connection.Host);
-    URLComponents.dwHostNameLength := Length(Connection.Host);
-    if (Connection.Port <> MYSQL_PORT) then
-      URLComponents.nPort := Connection.Port;
-    URLComponents.lpszUrlPath := PChar(APath);
-    URLComponents.dwUrlPathLength := StrLen(URLComponents.lpszUrlPath);
-
-    Size := SizeOf(Buffer);
-    if (not InternetCreateUrl(URLComponents, ICU_ESCAPE, @Buffer, Size)) then
-      raise EConvertError.CreateFmt(SConvStrParseError, ['mysql://' + Connection.Host + APath]);
-    SetString(Result, PChar(@Buffer), Size);
-  end;
-  if (Copy(Result, 1, 2) = '//') then
-    Result := 'mysql:' + Result;
+  Len := SizeOf(URL);
+  if (not InternetCreateUrl(URLComponents, ICU_ESCAPE, @URL, Len)) then
+    raise EConvertError.CreateFmt(SysErrorMessage(GetLastError()) + '  (%s)', ['mysql://' + Connection.Host + APath]);
+  SetString(Result, PChar(@URL), Len);
 end;
 
 function TAAccount.GetBookmarksFilename(): TFileName;

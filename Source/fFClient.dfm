@@ -82,7 +82,7 @@ object FClient: TFClient
         Left = 2
         Top = 106
         Width = 116
-        Height = 484
+        Height = 471
         Align = alClient
         BevelOuter = bvNone
         Color = clWindow
@@ -162,7 +162,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 588
+        Height = 575
         HelpContext = 1082
         Align = alClient
         BorderStyle = bsNone

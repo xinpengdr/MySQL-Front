@@ -1327,7 +1327,7 @@ begin
   else
     Import := nil;
 
-  if (Assigned(Import) and Assigned(Table)) then
+  if (Assigned(ImportText) and Assigned(Table)) then
     for I := 0 to Table.Fields.Count - 1 do
       for J := 0 to Length(FFields) - 1 do
         if ((FSourceFields[J].Text <> '') and (FFields[J].ItemIndex = I + 1)) then

@@ -747,7 +747,6 @@ type
     TTableDesktop = class(TCObjectDesktop)
     private
       DataSource: TDataSource;
-      FColumnIndices: array of Integer;
       PDBGrid: TPanel_Ext;
       FXML: IXMLNode;
       function GetFilter(Index: Integer): string;
@@ -760,7 +759,6 @@ type
       procedure SetLimit(const Limit: Integer);
       procedure SetLimited(const ALimited: Boolean);
     protected
-      procedure Clear(); override;
       procedure SaveToXML(); override;
       property GridXML[FieldName: string]: IXMLNode read GetGridXML;
     public
@@ -1509,13 +1507,6 @@ begin
 
   while (FiltersXML.ChildNodes.Count > 10) do
     FiltersXML.ChildNodes.Delete(0);
-end;
-
-procedure TFClient.TTableDesktop.Clear();
-begin
-  SetLength(FColumnIndices, 0);
-
-  inherited;
 end;
 
 constructor TFClient.TTableDesktop.Create(const AFClient: TFClient; const ATable: TCTable);
@@ -4351,7 +4342,7 @@ begin
   KillTimer(Handle, tiStatusBar);
   KillTimer(Handle, tiNavigator);
 
-  Client.Clear();
+  Client.Invalidate();
 
   TempAddress := Address;
 
@@ -7830,10 +7821,12 @@ var
 begin
   Wanted.Clear();
 
-  if (FocusedCItem is TCDatabase) then
+  if ((FocusedCItem is TCDatabase) and (Sender is TAction)) then
   begin
     Database := TCDatabase(FocusedCItem);
-    if (MsgBox(Preferences.LoadStr(374, Database.Name), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
+    if (Database.Update()) then
+      Wanted.Action := TAction(Sender)
+    else if (MsgBox(Preferences.LoadStr(374, Database.Name), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
       Database.EmptyTables();
   end
   else if (FocusedCItem is TCBaseTable) then
@@ -10697,40 +10690,40 @@ begin
 
   if (ActiveListView.SelCount <= 1) then
     FNavigatorEmptyExecute(Sender)
-  else
+  else if (Sender is TAction) then
   begin
+    List := TList.Create();
     case (SelectedImageIndex) of
       iiServer:
-        if (MsgBox(Preferences.LoadStr(405), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
         begin
-          List := TList.Create();
           for I := 0 to ActiveListView.Items.Count - 1 do
             if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex in [iiDatabase, iiSystemDatabase])) then
               List.Add(ActiveListView.Items[I].Data);
-          Client.EmptyDatabases(List);
-          List.Free();
+          if (Client.Update(List)) then
+            Wanted.Action := TAction(Sender)
+          else if (MsgBox(Preferences.LoadStr(405), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
+            Client.EmptyDatabases(List);
         end;
       iiDatabase:
-        if (MsgBox(Preferences.LoadStr(406), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
         begin
-          List := TList.Create();
           for I := 0 to ActiveListView.Items.Count - 1 do
             if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex in [iiBaseTable])) then
               List.Add(ActiveListView.Items[I].Data);
-          Client.DatabaseByName(SelectedDatabase).EmptyTables(List);
-          List.Free();
+          if (Client.Update(List)) then
+            Wanted.Action := TAction(Sender)
+          else if (MsgBox(Preferences.LoadStr(406), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
+            Client.DatabaseByName(SelectedDatabase).EmptyTables(List);
         end;
       iiBaseTable:
         if (MsgBox(Preferences.LoadStr(407), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
         begin
-          List := TList.Create();
           for I := 0 to ActiveListView.Items.Count - 1 do
             if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex = iiField)) then
               List.Add(ActiveListView.Items[I].Data);
           TCBaseTable(FNavigator.Selected.Data).EmptyFields(List);
-          List.Free();
         end;
     end;
+    List.Free();
   end;
 end;
 
@@ -13225,7 +13218,7 @@ begin
     ActiveDBGrid := GetActiveDBGrid();
     ActiveWorkbench := GetActiveWorkbench();
 
-    if (View = vBrowser) then
+    if ((View = vBrowser) and Assigned(FNavigator.Selected)) then
     begin
       FUDOffset.Position := 0;
       FUDLimit.Position := Desktop(TCTable(FNavigator.Selected.Data)).Limit;
@@ -14730,20 +14723,27 @@ end;
 
 procedure TFClient.WMParentNotify(var Message: TWMParentNotify);
 var
-  Client: TPoint;
-  Screen: TPoint;
+  ClientPoint: TPoint;
+  GridPoint: TPoint;
+  GridCoord: TGridCoord;
+  ScreenPoint: TPoint;
 begin
-  Client := Point(Message.XPos, Message.YPos);
-  Screen := ClientToScreen(Client);
+  ClientPoint := Point(Message.XPos, Message.YPos);
+  ScreenPoint := ClientToScreen(ClientPoint);
 
   if ((Message.Event = WM_RBUTTONDOWN)
-    and (ControlAtPos(Client, False, True) = PContent)
-    and (PContent.ControlAtPos(PContent.ScreenToClient(Screen), False, True) = PResult)
-    and (PResult.ControlAtPos(PResult.ScreenToClient(Screen), False, True) = ActiveDBGrid.Parent)
-    and (ActiveDBGrid.Parent.ControlAtPos(ActiveDBGrid.Parent.ScreenToClient(Screen), False, True) = ActiveDBGrid)) then
+    and (ControlAtPos(ClientPoint, False, True) = PContent)
+    and (PContent.ControlAtPos(PContent.ScreenToClient(ScreenPoint), False, True) = PResult)
+    and (PResult.ControlAtPos(PResult.ScreenToClient(ScreenPoint), False, True) = ActiveDBGrid.Parent)
+    and (ActiveDBGrid.Parent.ControlAtPos(ActiveDBGrid.Parent.ScreenToClient(ScreenPoint), False, True) = ActiveDBGrid)) then
   begin
     Window.ActiveControl := ActiveDBGrid;
-    ActiveDBGrid.PopupMenu := MGridHeader;
+    GridPoint := ActiveDBGrid.Parent.ScreenToClient(ScreenPoint);
+    GridCoord := ActiveDBGrid.MouseCoord(GridPoint.X, GridPoint.Y);
+    if ((GridCoord.X >= 0) and (GridCoord.Y = 0)) then
+      ActiveDBGrid.PopupMenu := MGridHeader
+    else
+      ActiveDBGrid.PopupMenu := MGrid;
   end;
 
   inherited;

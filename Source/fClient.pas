@@ -133,7 +133,6 @@ type
     function GetValid(): Boolean; virtual;
     function SQLGetItems(const Name: string = ''): string; virtual; abstract;
   public
-    procedure Clear(); override;
     constructor Create(const AClient: TCClient); reintroduce; virtual;
     procedure Invalidate(); virtual;
     procedure PushBuildEvent(const Sender: TObject); virtual;
@@ -148,7 +147,6 @@ type
     private
       FCObject: TCObject;
     protected
-      procedure Clear(); virtual;
       procedure SaveToXML(); virtual;
       property CObject: TCObject read FCObject;
     public
@@ -227,7 +225,6 @@ type
     Field: TCBaseTableField;
     Length: Integer;
     procedure Assign(const Source: TCIndexColumn); virtual;
-    procedure Clear(); virtual;
     constructor Create(const AIndexColumns: TCIndexColumns); virtual;
     function Equal(const Second: TCIndexColumn): Boolean; virtual;
     property IndexColumns: TCIndexColumns read FIndexColumns;
@@ -695,8 +692,6 @@ type
   public
     procedure AddTable(const NewTable: TCTable); virtual;
     function ApplyMySQLTableName(const ATableName: string): string; virtual;
-    procedure Assign(const Source: TCTables); virtual;
-    constructor Create(const ADatabase: TCDatabase); override;
     function NameCmp(const Name1, Name2: string): Integer; override;
     property Table[Index: Integer]: TCTable read GetTable; default;
   end;
@@ -785,8 +780,6 @@ type
     function SQLGetItems(const Name: string = ''): string; override;
   public
     procedure AddRoutine(const NewRoutine: TCRoutine); virtual;
-    procedure Assign(const Source: TCRoutines); virtual;
-    constructor Create(const ADatabase: TCDatabase); reintroduce; virtual;
     property Routine[Index: Integer]: TCRoutine read GetRoutine; default;
   end;
 
@@ -842,7 +835,6 @@ type
     procedure Delete(const AEntity: TCEntity); override;
     function SQLGetItems(const Name: string = ''): string; override;
   public
-    constructor Create(const ADatabase: TCDatabase); reintroduce; virtual;
     procedure Invalidate(); override;
     property Trigger[Index: Integer]: TCTrigger read GetTrigger; default;
   end;
@@ -937,7 +929,6 @@ type
     function AddTable(const NewTable: TCBaseTable): Boolean; virtual;
     function AddTrigger(const NewTrigger: TCTrigger): Boolean; virtual;
     function AddView(const NewView: TCView): Boolean; virtual;
-    procedure Assign(const Source: TCDatabase); reintroduce; virtual;
     function BaseTableByName(const TableName: string): TCBaseTable; overload; virtual;
     function CloneRoutine(const Routine: TCRoutine; const NewRoutineName: string): Boolean; overload; virtual;
     function CloneTable(const Table: TCBaseTable; const NewTableName: string; const Data: Boolean): Boolean; overload; virtual;
@@ -994,8 +985,6 @@ type
     procedure Delete(const AEntity: TCEntity); override;
     function SQLGetItems(const Name: string = ''): string; override;
   public
-    procedure Clear(); override;
-    constructor Create(AClient: TCClient); reintroduce; virtual;
     function NameCmp(const Name1, Name2: string): Integer; override;
     property Database[Index: Integer]: TCDatabase read GetDatabase; default;
   end;
@@ -1418,7 +1407,6 @@ type
     procedure GridCanEditShow(Sender: TObject); virtual;
     function CharsetByName(const CharsetName: string): TCCharset; virtual;
     function CharsetByCollation(const Collation: string): TCCharset; virtual;
-    procedure Clear(); virtual;
     function CloneDatabase(const SourceDatabase, TargetDatabase: TCDatabase; const Data: Boolean): Boolean; virtual;
     function CloneHost(const Host: TCHost; const NewHostHost: string): Boolean; virtual;
     function CloneUser(const User: TCUser; const NewUserName: string): Boolean; virtual;
@@ -1842,20 +1830,13 @@ begin
   Result := (Client.ErrorCode = ER_DBACCESS_DENIED_ERROR) or (Client.ErrorCode = ER_TABLEACCESS_DENIED_ERROR);
 end;
 
-procedure TCEntities.Clear();
-begin
-  inherited;
-
-  FValid := False;
-end;
-
 constructor TCEntities.Create(const AClient: TCClient);
 begin
   inherited Create(AClient);
 
   FClient := AClient;
 
-  Clear();
+  FValid := False;
 end;
 
 procedure TCEntities.Delete(const AEntity: TCEntity);
@@ -1904,11 +1885,6 @@ begin
   inherited Create();
 
   FCObject := ACObject;
-  Clear();
-end;
-
-procedure TCObject.TDesktop.Clear();
-begin
 end;
 
 procedure TCObject.TDesktop.SaveToXML();
@@ -1940,6 +1916,7 @@ destructor TCObject.Destroy();
 begin
   if (Assigned(FDesktop)) then
     FDesktop.Free();
+
   if (Assigned(Client.InvalidObjects) and (Client.InvalidObjects.IndexOf(Self) > 0)) then
     Client.InvalidObjects.Delete(Client.InvalidObjects.IndexOf(Self));
 
@@ -1978,11 +1955,11 @@ end;
 
 procedure TCObject.Invalidate();
 begin
+  if (Valid and Assigned(Client.InvalidObjects) and (Client.InvalidObjects.IndexOf(Self) < 0)) then
+    Client.InvalidObjects.Add(Self);
+
   FSource := '';
   FValidSource := False;
-
-  if (Assigned(Client.InvalidObjects) and (Client.InvalidObjects.IndexOf(Self) < 0)) then
-    Client.InvalidObjects.Add(Self);
 end;
 
 procedure TCObject.SetName(const AName: string);
@@ -2175,18 +2152,13 @@ begin
   Length := Source.Length;
 end;
 
-procedure TCIndexColumn.Clear();
-begin
-  Ascending := True;
-  Field := nil;
-  Length := 0;
-end;
-
 constructor TCIndexColumn.Create(const AIndexColumns: TCIndexColumns);
 begin
   FIndexColumns := AIndexColumns;
 
-  Clear();
+  Ascending := True;
+  Field := nil;
+  Length := 0;
 end;
 
 function TCIndexColumn.Equal(const Second: TCIndexColumn): Boolean;
@@ -3292,8 +3264,6 @@ begin
   if (Assigned(FDataSet)) then
     FreeAndNil(FDataSet);
 
-  Desktop.Clear();
-
   FFields.Clear();
   for I := 0 to Source.Fields.Count - 1 do
     FFields.AddField(Source.Fields[I]);
@@ -3403,7 +3373,7 @@ end;
 
 function TCTable.GetInServerCache(): Boolean;
 begin
-  Result := (Database is TCSystemDatabase) or FInServerCache;
+  Result := (Database is TCSystemDatabase) or FInServerCache or (Self is TCBaseTable) and TCBaseTable(Self).Temporary;
 end;
 
 function TCTable.GetTables(): TCTables;
@@ -4899,18 +4869,6 @@ begin
     Result := LowerCase(Result);
 end;
 
-procedure TCTables.Assign(const Source: TCTables);
-var
-  I: Integer;
-begin
-  for I := 0 to TList(Self).Count - 1 do
-    Table[I].Free();
-  Clear();
-
-  for I := 0 to Source.Count - 1 do
-    AddTable(Source.Table[I]);
-end;
-
 function TCTables.Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean; Filtered: Boolean = False): Boolean;
 var
   BaseTable: TCBaseTable;
@@ -5119,13 +5077,6 @@ begin
   end;
 
   Client.ExecuteEvent(ceItemsValid, Client, Client.Databases);
-end;
-
-constructor TCTables.Create(const ADatabase: TCDatabase);
-begin
-  inherited;
-
-  Clear();
 end;
 
 function TCTables.GetTable(Index: Integer): TCTable;
@@ -5752,17 +5703,6 @@ begin
   end;
 end;
 
-procedure TCRoutines.Assign(const Source: TCRoutines);
-var
-  I: Integer;
-begin
-  Clear();
-
-  for I := 0 to Source.Count - 1 do
-    AddRoutine(Source.Routine[I]);
-  FValid := Source.Valid;
-end;
-
 function TCRoutines.Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean; Filtered: Boolean = False): Boolean;
 var
   DeleteList: TList;
@@ -5857,13 +5797,6 @@ begin
     Client.ExecuteEvent(ceItemsValid, Client, Client.Databases);
     Client.ExecuteEvent(ceItemsValid, Database, Self);
   end;
-end;
-
-constructor TCRoutines.Create(const ADatabase: TCDatabase);
-begin
-  inherited Create(ADatabase);
-
-  Clear();
 end;
 
 function TCRoutines.GetRoutine(Index: Integer): TCRoutine;
@@ -6158,13 +6091,6 @@ begin
     Client.ExecuteEvent(ceItemsValid, Client, Client.Databases);
     Client.ExecuteEvent(ceItemsValid, Database, Self);
   end;
-end;
-
-constructor TCTriggers.Create(const ADatabase: TCDatabase);
-begin
-  inherited Create(ADatabase);
-
-  Clear();
 end;
 
 procedure TCTriggers.Delete(const AEntity: TCEntity);
@@ -6518,25 +6444,6 @@ function TCDatabase.AddTrigger(const NewTrigger: TCTrigger): Boolean;
 begin
   NewTrigger.FDatabase := Self;
   Result := UpdateTrigger(nil, NewTrigger);
-end;
-
-procedure TCDatabase.Assign(const Source: TCDatabase);
-begin
-  inherited Assign(Source);
-
-  if (Assigned(Tables)) then
-    Tables.Clear();
-  if (Assigned(Routines)) then
-    Routines.Clear();
-  if (Assigned(Triggers)) then
-    Triggers.Clear();
-  if (Assigned(Events)) then
-    Events.Clear();
-
-  if (Assigned(Source.FClient)) then FClient := Source.FClient;
-
-  DefaultCharset := Source.DefaultCharset;
-  FCollation := Source.FCollation;
 end;
 
 function TCDatabase.BaseTableByName(const TableName: string): TCBaseTable;
@@ -7975,21 +7882,6 @@ begin
 
   if ((OldCount > 0) or (Count > 0)) then
     Client.ExecuteEvent(ceItemsValid, Client, Self);
-end;
-
-procedure TCDatabases.Clear();
-begin
-  Client.FInformationSchema := nil;
-  Client.FPerformanceSchema := nil;
-
-  inherited;
-end;
-
-constructor TCDatabases.Create(AClient: TCClient);
-begin
-  inherited Create(AClient);
-
-  Clear();
 end;
 
 procedure TCDatabases.Delete(const AEntity: TCEntity);
@@ -10043,20 +9935,6 @@ begin
         Result := Collations[I].Charset;
 end;
 
-procedure TCClient.Clear();
-begin
-  FDatabases.Clear();
-  if (Assigned(FHosts)) then FHosts.Clear();
-  if (Assigned(FProcesses)) then FProcesses.Clear();
-  if (Assigned(FStati)) then FStati.Clear();
-  if (Assigned(FUsers)) then FUsers.Clear();
-  FVariables.Clear();
-
-  FCurrentUser := '';
-  if (Assigned(FUser)) then
-    FreeAndNil(FUser);
-end;
-
 function TCClient.ClientResult(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
 var
   Database: TCDatabase;
@@ -11494,7 +11372,7 @@ begin
   inherited;
   AutoCommit := AutoCommitBeforeTransaction;
 
-//  Clear(); DImport.Table soll nicht undefiniert werden
+  Invalidate();
 end;
 
 procedure TCClient.SetAutoCommit(const AAutoCommit: Boolean);
