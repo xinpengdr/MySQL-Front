@@ -4649,7 +4649,7 @@ begin
       Window.ActiveControl := TempActiveControl;
   end;
 
-  if (Assigned(Event) and (Event.EventType in [ceItemCreated, ceItemAltered]) and (Screen.ActiveForm = Window) and Wanted.Nothing) then
+  if (Assigned(Event) and ((Event.EventType in [ceItemCreated, ceItemAltered]) or ((Event.EventType in [ceItemValid]) and (Event.CItem is TCObject) and not TCObject(Event.CItem).Valid)) and (Screen.ActiveForm = Window) and Wanted.Nothing) then
     Wanted.Update := Client.Update;
 end;
 

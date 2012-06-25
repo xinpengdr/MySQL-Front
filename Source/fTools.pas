@@ -2361,7 +2361,7 @@ begin
     GetMem(ODBCData, ODBCDataSize);
 
     SQL := '';
-    if (not Structure and (Length(Items) = 1)) then
+    if (not Structure and (Length(SourceFields) > 1)) then
       for I := 0 to Length(SourceFields) - 1 do
       begin
         if (I > 0) then SQL := SQL + ',';

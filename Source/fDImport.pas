@@ -1327,15 +1327,15 @@ begin
   else
     Import := nil;
 
-  if (Assigned(ImportText) and Assigned(Table)) then
+  if (Assigned(Import) and Assigned(Table)) then
     for I := 0 to Table.Fields.Count - 1 do
       for J := 0 to Length(FFields) - 1 do
         if ((FSourceFields[J].Text <> '') and (FFields[J].ItemIndex = I + 1)) then
         begin
-          SetLength(ImportText.Fields, Length(ImportText.Fields) + 1);
-          ImportText.Fields[Length(ImportText.Fields) - 1] := Table.Fields[I];
-          SetLength(ImportText.SourceFields, Length(ImportText.SourceFields) + 1);
-          ImportText.SourceFields[Length(ImportText.Fields) - 1].Name := FSourceFields[J].Text;
+          SetLength(Import.Fields, Length(Import.Fields) + 1);
+          Import.Fields[Length(Import.Fields) - 1] := Table.Fields[I];
+          SetLength(Import.SourceFields, Length(Import.SourceFields) + 1);
+          Import.SourceFields[Length(Import.Fields) - 1].Name := FSourceFields[J].Text;
         end;
 
   Success := Assigned(Import);

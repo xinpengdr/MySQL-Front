@@ -2006,6 +2006,7 @@ begin
   if (ExecuteEvent) then
   begin
     TCObject(AEntity).Invalidate();
+    Client.InvalidObjects.Add(AEntity);
     Client.ExecuteEvent(ceItemCreated, Client, Self, AEntity);
   end;
 end;
@@ -2114,6 +2115,7 @@ begin
   if (ExecuteEvent) then
   begin
     TCObject(AEntity).Invalidate();
+    Client.InvalidObjects.Add(AEntity);
     Client.ExecuteEvent(ceItemCreated, Database, Self, AEntity);
   end;
 end;
@@ -3398,7 +3400,11 @@ end;
 procedure TCTable.InvalidateData();
 begin
   if (Assigned(FDataSet) and FDataSet.Active) then
+  begin
     FDataSet.Close();
+    if (Client.InvalidObjects.IndexOf(Self) < 0) then
+      Client.InvalidObjects.Add(Self);
+  end;
 end;
 
 function TCTable.GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string;
@@ -4131,6 +4137,9 @@ end;
 procedure TCBaseTable.InvalidateStatus();
 begin
   FValidStatus := False;
+
+  if (Client.InvalidObjects.IndexOf(Self) < 0) then
+    Client.InvalidObjects.Add(Self);
 end;
 
 function TCBaseTable.Optimize(): Boolean;
@@ -4527,7 +4536,7 @@ begin
           begin
             while (not SQLParseEnd(Parse) and not SQLParseChar(Parse, ')')) do
             begin
-              NewPartition := TCPartition.Create(Partitions, Self);
+              NewPartition := TCPartition.Create(FPartitions, Self);
 
               while (not SQLParseEnd(Parse) and not SQLParseChar(Parse, ',', False) and not SQLParseChar(Parse, ')', False)) do
               begin
@@ -8265,7 +8274,9 @@ begin
         else
           Name := DataSet.FieldByName('ENGINE').AsString;
 
-        if (InsertIndex(Name, Index)) then
+        if (not InsertIndex(Name, Index)) then
+          DeleteList.Delete(DeleteList.IndexOf(Items[Index]))
+        else
         begin
           if (UpperCase(Name) = 'PERFORMANCE_SCHEMA') then
             NewEngine := TCSystemEngine.Create(Self, Name)
@@ -8515,11 +8526,12 @@ begin
       else
         Name := DataSet.FieldByName('CHARACTER_SET_NAME').AsString;
 
-      if (InsertIndex(Name, Index)) then
-        if (Index < Count) then
-          Insert(Index, TCCharset.Create(Self, Name))
-        else
-          Add(TCCharset.Create(Self, Name));
+      if (not InsertIndex(Name, Index)) then
+        DeleteList.Delete(DeleteList.IndexOf(Items[Index]))
+      else if (Index < Count) then
+        Insert(Index, TCCharset.Create(Self, Name))
+      else
+        Add(TCCharset.Create(Self, Name));
 
       if (not UseInformationSchema) then
       begin
