@@ -57,7 +57,7 @@ type
     aDCreateFunction: TAction;
     aDCreateFunction1: TMenuItem;
     aDCreateHost: TAction;
-    aDCreateIndex: TAction;
+    aDCreateKey: TAction;
     aDCreateProcedure: TAction;
     aDCreateTable: TAction;
     aDCreateTrigger: TAction;
@@ -68,7 +68,7 @@ type
     aDDeleteField: TAction;
     aDDeleteForeignKey: TAction;
     aDDeleteHost: TAction;
-    aDDeleteIndex: TAction;
+    aDDeleteKey: TAction;
     aDDeleteProcess: TAction;
     aDDeleteRecord: TAction;
     aDDeleteRoutine: TAction;
@@ -81,7 +81,7 @@ type
     aDEditField: TAction;
     aDEditForeignKey: TAction;
     aDEditHost: TAction;
-    aDEditIndex: TAction;
+    aDEditKey: TAction;
     aDEditProcess: TAction;
     aDEditRecord: TAction;
     aDEditRoutine: TAction;
@@ -142,6 +142,7 @@ type
     aHIndex: TAction;
     aHInfo: TAction;
     aHManual: TAction;
+    aHSQL: TAction;
     aHUpdate: TAction;
     aOGlobals: TAction;
     aOAccounts: TAction;
@@ -273,6 +274,7 @@ type
     miHIndex: TMenuItem;
     miHInfo: TMenuItem;
     miHManual: TMenuItem;
+    miHSQL: TMenuItem;
     miHUpdate: TMenuItem;
     miOGlobals: TMenuItem;
     miOptions: TMenuItem;
@@ -405,7 +407,6 @@ type
     procedure aFOpenAccountExecute(Sender: TObject);
     procedure aHIndexExecute(Sender: TObject);
     procedure aHInfoExecute(Sender: TObject);
-    procedure aHManualExecute(Sender: TObject);
     procedure aHUpdateExecute(Sender: TObject);
     procedure aOGlobalsExecute(Sender: TObject);
     procedure aOAccountsExecute(Sender: TObject);
@@ -604,18 +605,15 @@ end;
 
 procedure TWWindow.aHIndexExecute(Sender: TObject);
 begin
-  Application.HelpCommand(HELP_FINDER, 0);
+  if (not Assigned(ActiveControl) or (ActiveControl.HelpContext < 0)) then
+    Application.HelpCommand(HELP_FINDER, 0)
+  else
+    Application.HelpCommand(HELP_CONTEXT, ActiveControl.HelpContext);
 end;
 
 procedure TWWindow.aHInfoExecute(Sender: TObject);
 begin
   DInfo.ShowModal();
-end;
-
-procedure TWWindow.aHManualExecute(Sender: TObject);
-begin
-  if (Assigned(ActiveTab)) then
-    ShellExecute(Application.Handle, 'open', PChar(ActiveTab.Client.Account.ManualURL), '', '', SW_SHOW);
 end;
 
 procedure TWWindow.aHUpdateExecute(Sender: TObject);
@@ -844,8 +842,6 @@ begin
 
   Perform(CM_BOOKMARKCHANGED, 0, 0);
 
-  aHManual.Enabled := Message.Tab.Client.Account.ManualURL <> '';
-
   tbDBPrev.Action := Message.Tab.aDPrev;
   tbDBFirst.Action := Message.Tab.DataSetFirst;
   tbDBLast.Action := Message.Tab.DataSetLast;
@@ -1049,7 +1045,7 @@ begin
   aDCreateFunction.Caption := Preferences.LoadStr(769) + '...';
   aDCreateTrigger.Caption := Preferences.LoadStr(788) + '...';
   aDCreateEvent.Caption := Preferences.LoadStr(812) + '...';
-  aDCreateIndex.Caption := Preferences.LoadStr(163) + '...';
+  aDCreateKey.Caption := Preferences.LoadStr(163) + '...';
   aDCreateField.Caption := Preferences.LoadStr(164) + '...';
   aDCreateForeignKey.Caption := Preferences.LoadStr(248) + '...';
   aDCreateHost.Caption := Preferences.LoadStr(560) + '...';
@@ -1059,7 +1055,7 @@ begin
   aDDeleteTable.Caption := Preferences.LoadStr(302);
   aDDeleteView.Caption := Preferences.LoadStr(738);
   aDDeleteRoutine.Caption := Preferences.LoadStr(774);
-  aDDeleteIndex.Caption := Preferences.LoadStr(163);
+  aDDeleteKey.Caption := Preferences.LoadStr(163);
   aDDeleteField.Caption := Preferences.LoadStr(164);
   aDDeleteForeignKey.Caption := Preferences.LoadStr(248);
   aDDeleteTrigger.Caption := Preferences.LoadStr(788);
@@ -1073,7 +1069,7 @@ begin
   aDEditTable.Caption := Preferences.LoadStr(302) + '...';
   aDEditView.Caption := Preferences.LoadStr(738) + '...';
   aDEditRoutine.Caption := Preferences.LoadStr(774) + '...';
-  aDEditIndex.Caption := Preferences.LoadStr(163) + '...';
+  aDEditKey.Caption := Preferences.LoadStr(163) + '...';
   aDEditField.Caption := Preferences.LoadStr(164) + '...';
   aDEditForeignKey.Caption := Preferences.LoadStr(248) + '...';
   aDEditTrigger.Caption := Preferences.LoadStr(788) + '...';
@@ -1107,6 +1103,7 @@ begin
 
   miHelp.Caption := Preferences.LoadStr(167);
   aHIndex.Caption := Preferences.LoadStr(653) + '...';
+  aHSQL.Caption := Preferences.LoadStr(883) + '...';
   aHManual.Caption := Preferences.LoadStr(573);
   aHUpdate.Caption := Preferences.LoadStr(666) + '...';
   aHInfo.Caption := Preferences.LoadStr(168) + '...';

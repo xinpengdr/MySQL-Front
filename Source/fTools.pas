@@ -3130,7 +3130,7 @@ begin
         SQLParseChar(Parse, ')');
       end;
 
-      // Ignore all further field properties like constraints, indices and foreign keys
+      // Ignore all further field properties like keys and foreign keys
       while (not SQLParseChar(Parse, ',', False) and not SQLParseChar(Parse, ')', False) and (SQLParseGetIndex(Parse) <= Length(SQL))) do
         SQLParseValue(Parse);
 
@@ -5270,7 +5270,7 @@ begin
           end;
           SQL := SQL + ');';
 
-          // Execute silent, since some ODBC drivers doesn't support indices
+          // Execute silent, since some ODBC drivers doesn't support keys
           // and the user should know that...
           SQLExecDirect(Stmt, PSQLTCHAR(SQL), SQL_NTS);
         end;

@@ -274,7 +274,7 @@ type
     property Index: Integer read GetIndex;
     property Keys: TCKeys read GetKeys;
     property Table: TCBaseTable read GetTable;
-    property xKey: Integer read GetKey;
+    property Key: Integer read GetKey;
   end;
 
   TCKeys = class(TCItems)
@@ -8100,7 +8100,7 @@ begin
 
   if (Count > 0) then
   begin
-    if (Client.ServerVersion < 40101) then
+    if ((Client.ServerVersion < 40101) and Assigned(Client.VariableByName('character_set'))) then
     begin
       if (Assigned(Client.Account) and (Client.Account.Connection.Charset = '')) then
         Client.Charset := Client.VariableByName('character_set').Value;

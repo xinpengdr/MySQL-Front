@@ -34,6 +34,8 @@ object WWindow: TWWindow
     Color = clAppWorkSpace
     ParentBackground = False
     TabOrder = 5
+    ExplicitTop = 116
+    ExplicitHeight = 323
   end
   object TabControl: TTabControl
     Left = 0
@@ -270,12 +272,12 @@ object WWindow: TWWindow
       object tbCreateIndex: TToolButton
         Left = 262
         Top = 0
-        Action = aDCreateIndex
+        Action = aDCreateKey
       end
       object tbDeleteIndex: TToolButton
         Left = 285
         Top = 0
-        Action = aDDeleteIndex
+        Action = aDDeleteKey
       end
       object ToolButton15: TToolButton
         Left = 308
@@ -508,6 +510,14 @@ object WWindow: TWWindow
   object ActionList: TActionList
     Left = 80
     Top = 240
+    object aHIndex: TAction
+      Category = 'Help'
+      Caption = 'aHIndex'
+      HelpContext = 1069
+      HelpType = htContext
+      ShortCut = 112
+      OnExecute = aHIndexExecute
+    end
     object aVObjectBrowser: TAction
       Category = 'View'
       Caption = 'aVObjectBrowser'
@@ -516,6 +526,13 @@ object WWindow: TWWindow
       HelpType = htContext
       ImageIndex = 1
       ShortCut = 117
+    end
+    object aHSQL: TAction
+      Category = 'Help'
+      Caption = 'aHSQL'
+      Enabled = False
+      HelpContext = 1135
+      HelpType = htContext
     end
     object aVDataBrowser: TAction
       Category = 'View'
@@ -928,9 +945,9 @@ object WWindow: TWWindow
       HelpContext = 1102
       HelpType = htContext
     end
-    object aDCreateIndex: TAction
+    object aDCreateKey: TAction
       Category = 'Database'
-      Caption = 'aDCreateIndex'
+      Caption = 'aDCreateKey'
       Enabled = False
       HelpContext = 1046
       HelpType = htContext
@@ -1008,9 +1025,9 @@ object WWindow: TWWindow
       Caption = 'aDDeleteTrigger'
       Enabled = False
     end
-    object aDDeleteIndex: TAction
+    object aDDeleteKey: TAction
       Category = 'Database'
-      Caption = 'aDDeleteIndex'
+      Caption = 'aDDeleteKey'
       Enabled = False
       HelpContext = 1052
       HelpType = htContext
@@ -1098,9 +1115,9 @@ object WWindow: TWWindow
       Caption = 'aDEditTrigger'
       Enabled = False
     end
-    object aDEditIndex: TAction
+    object aDEditKey: TAction
       Category = 'Database'
-      Caption = 'aDEditIndex'
+      Caption = 'aDEditKey'
       Enabled = False
       HelpContext = 1055
       HelpType = htContext
@@ -1337,21 +1354,12 @@ object WWindow: TWWindow
       ShortCut = 32883
       OnExecute = aFExitExecute
     end
-    object aHIndex: TAction
-      Category = 'Help'
-      Caption = 'aHIndex'
-      HelpContext = 1069
-      HelpType = htContext
-      ShortCut = 112
-      OnExecute = aHIndexExecute
-    end
     object aHManual: TAction
       Category = 'Help'
       Caption = 'aHManual'
       Enabled = False
       HelpContext = 1119
       HelpType = htContext
-      OnExecute = aHManualExecute
     end
     object aHUpdate: TAction
       Category = 'Help'
@@ -1694,7 +1702,7 @@ object WWindow: TWWindow
           Action = aDCreateEvent
         end
         object miDCreateIndex: TMenuItem
-          Action = aDCreateIndex
+          Action = aDCreateKey
         end
         object miDCreateField: TMenuItem
           Action = aDCreateField
@@ -1730,7 +1738,7 @@ object WWindow: TWWindow
           Action = aDDeleteEvent
         end
         object miDDeleteIndex: TMenuItem
-          Action = aDDeleteIndex
+          Action = aDDeleteKey
         end
         object miDDeleteField: TMenuItem
           Action = aDDeleteField
@@ -1772,7 +1780,7 @@ object WWindow: TWWindow
           Action = aDEditView
         end
         object miDEditIndex: TMenuItem
-          Action = aDEditIndex
+          Action = aDEditKey
         end
         object miDEditField: TMenuItem
           Action = aDEditField
@@ -1876,6 +1884,9 @@ object WWindow: TWWindow
       GroupIndex = 3
       object miHIndex: TMenuItem
         Action = aHIndex
+      end
+      object miHSQL: TMenuItem
+        Action = aHSQL
       end
       object miHManual: TMenuItem
         Action = aHManual

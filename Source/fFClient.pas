@@ -923,7 +923,8 @@ type
     procedure aFSaveExecute(Sender: TObject);
     procedure AfterConnect(Sender: TObject);
     procedure AfterExecuteSQL(Sender: TObject);
-    function ApplicationHelp(Command: Word; Data: THelpEventData; var CallHelp: Boolean): Boolean;
+    procedure aHManualExecute(Sender: TObject);
+    procedure aHSQLExecute(Sender: TObject);
     procedure aViewExecute(Sender: TObject);
     procedure aVRefreshAllExecute(Sender: TObject);
     procedure aVRefreshExecute(Sender: TObject);
@@ -1031,7 +1032,6 @@ type
     procedure SetAddress(const AAddress: string);
     procedure SetPath(const APath: TFileName);
     procedure SQLError(DataSet: TDataSet; E: EDatabaseError; var Action: TDataAction);
-    procedure SQLHelp();
     procedure SynMemoApllyPreferences(const SynMemo: TSynMemo);
     procedure SynMemoPrintExecute(Sender: TObject);
     procedure TableOpen(Sender: TObject);
@@ -1116,7 +1116,7 @@ const
   giTables = 3;
   giRoutines = 4;
   giEvents = 5;
-  giIndices = 6;
+  giKeys = 6;
   giFields = 7;
   giForeignKeys = 8;
   giTriggers = 9;
@@ -3151,7 +3151,7 @@ begin
           iiProcedure:  Data := Data + 'Procedure='  + ActiveListView.Items[I].Caption + #13#10;
           iiFunction:   Data := Data + 'Function='   + ActiveListView.Items[I].Caption + #13#10;
           iiEvent:      Data := Data + 'Event='      + ActiveListView.Items[I].Caption + #13#10;
-          iiKey:      Data := Data + 'Key='      + TCKey(ActiveListView.Items[I].Data).Name + #13#10;
+          iiKey:        Data := Data + 'Key='      + TCKey(ActiveListView.Items[I].Data).Name + #13#10;
           iiField,
           iiViewField:  Data := Data + 'Field='      + ActiveListView.Items[I].Caption + #13#10;
           iiForeignKey: Data := Data + 'ForeignKey=' + ActiveListView.Items[I].Caption + #13#10;
@@ -4077,6 +4077,11 @@ begin
     Wanted.Execute();
 end;
 
+procedure TFClient.aHManualExecute(Sender: TObject);
+begin
+  ShellExecute(Application.Handle, 'open', PChar(Client.Account.ManualURL), '', '', SW_SHOW);
+end;
+
 procedure TFClient.aHRunClick(Sender: TObject);
 var
   SQL: string;
@@ -4121,6 +4126,54 @@ begin
       SendQuery(Sender, SQL);
     end;
   end;
+end;
+
+procedure TFClient.aHSQLExecute(Sender: TObject);
+var
+  Cancel: Boolean;
+  DataSet: TMySQLQuery;
+begin
+  DataSet := TMySQLQuery.Create(Self);
+  DataSet.Connection := Client;
+  if (ActiveSynMemo.SelText <> '') then
+    DataSet.CommandText := 'HELP ' + SQLEscape(ActiveSynMemo.SelText)
+  else if (ActiveSynMemo.WordAtCursor <> '') then
+    DataSet.CommandText := 'HELP ' + SQLEscape(ActiveSynMemo.WordAtCursor)
+  else
+    DataSet.CommandText := 'HELP ' + SQLEscape('CONTENTS');
+  DataSet.Open();
+
+  if (not DataSet.Active or DataSet.IsEmpty() or not Assigned(DataSet.FindField('name'))) then
+    MessageBeep(MB_ICONERROR)
+  else
+  begin
+    Cancel := False;
+    while (not Cancel and not Assigned(DataSet.FindField('description')) and not DataSet.IsEmpty()) do
+    begin
+      repeat
+        SetLength(DSelection.Values, Length(DSelection.Values) + 1);
+        DSelection.Values[Length(DSelection.Values) - 1] := DataSet.FieldByName('name').AsString;
+      until (not DataSet.FindNext());
+      Cancel := not DSelection.Execute();
+      if (not Cancel) then
+      begin
+        DataSet.Close();
+        DataSet.CommandText := 'HELP ' + SQLEscape(DSelection.Selected);
+        DataSet.Open();
+      end;
+    end;
+
+    if (Assigned(DataSet.FindField('description'))) then
+    begin
+      DSQLHelp.Title := DataSet.FieldByName('name').AsString;
+      DSQLHelp.Description := Trim(DataSet.FieldByName('description').AsString);
+      DSQLHelp.Example := Trim(DataSet.FieldByName('example').AsString);
+      DSQLHelp.ManualURL := Client.Account.ManualURL;
+      DSQLHelp.Refresh();
+    end;
+  end;
+
+  DataSet.Free();
 end;
 
 procedure TFClient.aPCollapseExecute(Sender: TObject);
@@ -4183,23 +4236,6 @@ begin
   else if (Window.ActiveControl = FFiles) then
     if (LowerCase(ExtractFileExt(Path + PathDelim + FFiles.Selected.Caption)) = '.sql') then
       OpenInNewTabExecute(SelectedDatabase, '', True, Path + PathDelim + FFiles.Selected.Caption);
-end;
-
-function TFClient.ApplicationHelp(Command: Word; Data: THelpEventData; var CallHelp: Boolean): Boolean;
-begin
-  if ((Window.ActiveControl = ActiveSynMemo) and (Client.ServerVersion >= 40100)) then
-  begin
-    CallHelp := False;
-
-    SQLHelp();
-
-    Result := True;
-  end
-  else
-  begin
-    CallHelp := True;
-    Result := False;
-  end;
 end;
 
 procedure TFClient.aPResultExecute(Sender: TObject);
@@ -4937,8 +4973,6 @@ begin
   FormatSettings.DateSeparator := Client.FormatSettings.DateSeparator;
   FormatSettings.TimeSeparator := Client.FormatSettings.TimeSeparator;
 
-  Application.OnHelp := ApplicationHelp;
-
   Client.BeforeConnect := BeforeConnect;
   Client.AfterConnect := AfterConnect;
   Client.OnConvertError := OnConvertError;
@@ -5002,7 +5036,7 @@ begin
     MainAction('aDCreateView').OnExecute := aDCreateViewExecute;
     MainAction('aDCreateProcedure').OnExecute := aDCreateRoutineExecute;
     MainAction('aDCreateFunction').OnExecute := aDCreateRoutineExecute;
-    MainAction('aDCreateIndex').OnExecute := aDCreateIndexExecute;
+    MainAction('aDCreateKey').OnExecute := aDCreateIndexExecute;
     MainAction('aDCreateField').OnExecute := aDCreateFieldExecute;
     MainAction('aDCreateForeignKey').OnExecute := aDCreateForeignKeyExecute;
     MainAction('aDCreateTrigger').OnExecute := aDCreateTriggerExecute;
@@ -5016,7 +5050,7 @@ begin
     MainAction('aDEditRoutine').OnExecute := aDPropertiesExecute;
     MainAction('aDEditEvent').OnExecute := aDPropertiesExecute;
     MainAction('aDEditTrigger').OnExecute := aDPropertiesExecute;
-    MainAction('aDEditIndex').OnExecute := aDPropertiesExecute;
+    MainAction('aDEditKey').OnExecute := aDPropertiesExecute;
     MainAction('aDEditField').OnExecute := aDPropertiesExecute;
     MainAction('aDEditForeignKey').OnExecute := aDPropertiesExecute;
     MainAction('aDEditHost').OnExecute := aDPropertiesExecute;
@@ -5027,7 +5061,7 @@ begin
     MainAction('aDDeleteTable').OnExecute := aDDeleteExecute;
     MainAction('aDDeleteView').OnExecute := aDDeleteExecute;
     MainAction('aDDeleteRoutine').OnExecute := aDDeleteExecute;
-    MainAction('aDDeleteIndex').OnExecute := aDDeleteExecute;
+    MainAction('aDDeleteKey').OnExecute := aDDeleteExecute;
     MainAction('aDDeleteField').OnExecute := aDDeleteExecute;
     MainAction('aDDeleteForeignKey').OnExecute := aDDeleteExecute;
     MainAction('aDDeleteTrigger').OnExecute := aDDeleteExecute;
@@ -5043,6 +5077,8 @@ begin
     MainAction('aDAutoCommit').OnExecute := aDAutoCommitExecute;
     MainAction('aDCommit').OnExecute := aDCommitExecute;
     MainAction('aDRollback').OnExecute := aDRollbackExecute;
+    MainAction('aHSQL').OnExecute := aHSQLExecute;
+    MainAction('aHManual').OnExecute := aHManualExecute;
 
 
     MainAction('aSAddress').Enabled := True;
@@ -5062,6 +5098,7 @@ begin
     MainAction('aBAdd').Enabled := True;
     MainAction('aDCancel').Enabled := Client.InUse();
     aDCommitRefresh(nil);
+    MainAction('aHManual').Enabled := Client.Account.ManualURL <> '';
 
     aPResult.ShortCut := ShortCut(VK_F8, [ssAlt]);
 
@@ -5089,8 +5126,6 @@ begin
 
   ActiveControlOnDeactivate := Window.ActiveControl;
 
-  Application.OnHelp := nil;
-
   MainAction('aSAddress').Enabled := False;
   MainAction('aVObjectBrowser').Enabled := False;
   MainAction('aVDataBrowser').Enabled := False;
@@ -5110,6 +5145,7 @@ begin
   MainAction('aDAutoCommit').Enabled := False;
   MainAction('aDCommit').Enabled := False;
   MainAction('aDRollback').Enabled := False;
+  MainAction('aHManual').Enabled := False;
 
   MainAction('aECopy').OnExecute := nil;
   MainAction('aEPaste').OnExecute := nil;
@@ -5260,14 +5296,14 @@ begin
     PLog.BevelInner := bvNone; PLog.BevelOuter := bvNone;
   end;
 
-  PSideBarHeader.AutoSize := False;
   TBSideBar.Left := 0;
   TBSideBar.Top := 0;
   TBSideBar.ButtonHeight := TBSideBar.Images.Height + 6; TBSideBar.ButtonWidth := TBSideBar.Images.Width + 7;
-  PSideBarHeader.AutoSize := True;
+  PSideBarHeader.Height := PSideBarHeader.Height;
 
+  PToolBar.AutoSize := False;
   ToolBar.ButtonHeight := ToolBar.Images.Height + 6; ToolBar.ButtonWidth := ToolBar.Images.Width + 7;
-  PToolBar.Height := PSideBarHeader.Height;
+  PToolBar.AutoSize := True;
 
   if (CheckWin32Version(6)) then
   begin
@@ -5488,7 +5524,7 @@ begin
   miNCreateView.Action := MainAction('aDCreateView');
   miNCreateProcedure.Action := MainAction('aDCreateProcedure');
   miNCreateFunction.Action := MainAction('aDCreateFunction');
-  miNCreateIndex.Action := MainAction('aDCreateIndex');
+  miNCreateIndex.Action := MainAction('aDCreateKey');
   miNCreateField.Action := MainAction('aDCreateField');
   miNCreateForeignKey.Action := MainAction('aDCreateForeignKey');
   miNCreateTrigger.Action := MainAction('aDCreateTrigger');
@@ -5526,7 +5562,7 @@ begin
   mlDCreateView.Action := MainAction('aDCreateView');
   mlDCreateProcedure.Action := MainAction('aDCreateProcedure');
   mlDCreateFunction.Action := MainAction('aDCreateFunction');
-  mlDCreateIndex.Action := MainAction('aDCreateIndex');
+  mlDCreateIndex.Action := MainAction('aDCreateKey');
   mlDCreateField.Action := MainAction('aDCreateField');
   mlDCreateForeignKey.Action := MainAction('aDCreateForeignKey');
   mlDCreateTrigger.Action := MainAction('aDCreateTrigger');
@@ -7730,7 +7766,7 @@ begin
       iiProcedure:  Objects := Objects + 'Procedure='   + SourceNode.Text + #13#10;
       iiFunction:   Objects := Objects + 'Function='    + SourceNode.Text + #13#10;
       iiEvent:      Objects := Objects + 'Event='       + SourceNode.Text + #13#10;
-      iiKey:      Objects := Objects + 'Index='       + SourceNode.Text + #13#10;
+      iiKey:        Objects := Objects + 'Index='       + SourceNode.Text + #13#10;
       iiField,
       iiViewField:  Objects := Objects + 'Field='       + SourceNode.Text + #13#10;
       iiForeignKey: Objects := Objects + 'ForeignKey='  + SourceNode.Text + #13#10;
@@ -7755,7 +7791,7 @@ begin
           iiProcedure:  Objects := Objects + 'Procedure='  + TListView(Source).Items[I].Caption + #13#10;
           iiFunction:   Objects := Objects + 'Function='   + TListView(Source).Items[I].Caption + #13#10;
           iiEvent:      Objects := Objects + 'Event='      + TListView(Source).Items[I].Caption + #13#10;
-          iiKey:      Objects := Objects + 'Key='      + TCKey(TListView(Source).Items[I].Data).Name + #13#10;
+          iiKey:        Objects := Objects + 'Key='      + TCKey(TListView(Source).Items[I].Data).Name + #13#10;
           iiField,
           iiViewField:  Objects := Objects + 'Field='      + TListView(Source).Items[I].Caption + #13#10;
           iiForeignKey: Objects := Objects + 'ForeignKey=' + TListView(Source).Items[I].Caption + #13#10;
@@ -7887,7 +7923,7 @@ begin
   MainAction('aDCreateFunction').Enabled := False;
   MainAction('aDCreateEvent').Enabled := False;
   MainAction('aDCreateTrigger').Enabled := False;
-  MainAction('aDCreateIndex').Enabled := False;
+  MainAction('aDCreateKey').Enabled := False;
   MainAction('aDCreateField').Enabled := False;
   MainAction('aDCreateForeignKey').Enabled := False;
   MainAction('aDCreateHost').Enabled := False;
@@ -7897,7 +7933,7 @@ begin
   MainAction('aDDeleteView').Enabled := False;
   MainAction('aDDeleteRoutine').Enabled := False;
   MainAction('aDDeleteEvent').Enabled := False;
-  MainAction('aDDeleteIndex').Enabled := False;
+  MainAction('aDDeleteKey').Enabled := False;
   MainAction('aDDeleteField').Enabled := False;
   MainAction('aDDeleteForeignKey').Enabled := False;
   MainAction('aDDeleteTrigger').Enabled := False;
@@ -7908,7 +7944,7 @@ begin
   MainAction('aDEditRoutine').Enabled := False;
   MainAction('aDEditEvent').Enabled := False;
   MainAction('aDEditTrigger').Enabled := False;
-  MainAction('aDEditIndex').Enabled := False;
+  MainAction('aDEditKey').Enabled := False;
   MainAction('aDEditField').Enabled := False;
   MainAction('aDEditForeignKey').Enabled := False;
   MainAction('aDEditHost').Enabled := False;
@@ -8112,7 +8148,7 @@ procedure TFClient.FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
       iiEvent:
         Result := giEvents;
       iiKey:
-        Result := giIndices;
+        Result := giKeys;
       iiField,
       iiSystemViewField,
       iiViewField:
@@ -8356,7 +8392,7 @@ begin
         Expanded := Node.Expanded;
 
         if (Table is TCBaseTable) then
-          UpdateGroup(Node, giIndices, TCBaseTable(Table).Keys);
+          UpdateGroup(Node, giKeys, TCBaseTable(Table).Keys);
         UpdateGroup(Node, giFields, Table.Fields);
         if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).ForeignKeys)) then
           UpdateGroup(Node, giForeignKeys, TCBaseTable(Table).ForeignKeys);
@@ -8414,7 +8450,7 @@ begin
   MainAction('aDCreateFunction').Enabled := MainAction('aDCreateProcedure').Enabled;
   MainAction('aDCreateEvent').Enabled := Assigned(Node) and (Node.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50106);
   MainAction('aDCreateTrigger').Enabled := Assigned(Node) and (Node.ImageIndex = iiBaseTable) and Assigned(Client.DatabaseByName(Node.Parent.Text).Triggers);
-  MainAction('aDCreateIndex').Enabled := Assigned(Node) and (Node.ImageIndex = iiBaseTable);
+  MainAction('aDCreateKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiBaseTable);
   MainAction('aDCreateField').Enabled := Assigned(Node) and (Node.ImageIndex = iiBaseTable);
   MainAction('aDCreateForeignKey').Enabled := Assigned(Node) and (Node.ImageIndex in [iiBaseTable]) and Assigned(Client.DatabaseByName(Node.Parent.Text).BaseTableByName(Node.Text)) and Assigned(Client.DatabaseByName(Node.Parent.Text).BaseTableByName(Node.Text).Engine) and Client.DatabaseByName(Node.Parent.Text).BaseTableByName(Node.Text).Engine.ForeignKeyAllowed;
   MainAction('aDCreateHost').Enabled := Assigned(Node) and (Node.ImageIndex = iiHosts);
@@ -8424,7 +8460,7 @@ begin
   MainAction('aDDeleteView').Enabled := Assigned(Node) and (Node.ImageIndex = iiView);
   MainAction('aDDeleteRoutine').Enabled := Assigned(Node) and (Node.ImageIndex in [iiProcedure, iiFunction]);
   MainAction('aDDeleteEvent').Enabled := Assigned(Node) and (Node.ImageIndex = iiEvent);
-  MainAction('aDDeleteIndex').Enabled := Assigned(Node) and (Node.ImageIndex = iiKey);
+  MainAction('aDDeleteKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiKey);
   MainAction('aDDeleteField').Enabled := Assigned(Node) and (Node.ImageIndex = iiField) and (Client.DatabaseByName(Node.Parent.Parent.Text).TableByName(Node.Parent.Text).Fields.Count > 1);
   MainAction('aDDeleteForeignKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013);
   MainAction('aDDeleteTrigger').Enabled := Assigned(Node) and (Node.ImageIndex = iiTrigger);
@@ -8437,7 +8473,7 @@ begin
   MainAction('aDEditView').Enabled := Assigned(Node) and (Node.ImageIndex = iiView);
   MainAction('aDEditRoutine').Enabled := Assigned(Node) and (Node.ImageIndex in [iiProcedure, iiFunction]);
   MainAction('aDEditEvent').Enabled := Assigned(Node) and (Node.ImageIndex = iiEvent);
-  MainAction('aDEditIndex').Enabled := Assigned(Node) and (Node.ImageIndex = iiKey);
+  MainAction('aDEditKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiKey);
   MainAction('aDEditField').Enabled := Assigned(Node) and (Node.ImageIndex = iiField);
   MainAction('aDEditForeignKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiForeignKey);
   MainAction('aDEditTrigger').Enabled := Assigned(Node) and (Node.ImageIndex = iiTrigger);
@@ -8450,7 +8486,7 @@ begin
     or MainAction('aDDeleteView').Enabled
     or MainAction('aDDeleteRoutine').Enabled
     or MainAction('aDDeleteEvent').Enabled
-    or MainAction('aDDeleteIndex').Enabled
+    or MainAction('aDDeleteKey').Enabled
     or MainAction('aDDeleteField').Enabled
     or MainAction('aDDeleteForeignKey').Enabled
     or MainAction('aDDeleteTrigger').Enabled;
@@ -8466,7 +8502,7 @@ begin
       iiFunction: miNProperties.Action := MainAction('aDEditRoutine');
       iiEvent: miNProperties.Action := MainAction('aDEditEvent');
       iiTrigger: miNProperties.Action := MainAction('aDEditTrigger');
-      iiKey: miNProperties.Action := MainAction('aDEditIndex');
+      iiKey: miNProperties.Action := MainAction('aDEditKey');
       iiField: miNProperties.Action := MainAction('aDEditField');
       iiForeignKey: miNProperties.Action := MainAction('aDEditForeignKey');
       iiHost: miNProperties.Action := MainAction('aDEditHost');
@@ -9293,7 +9329,7 @@ begin
   MainAction('aDCreateProcedure').Enabled := not Assigned(Control) and (Client.ServerVersion >= 50004);
   MainAction('aDCreateFunction').Enabled := MainAction('aDCreateProcedure').Enabled;
   MainAction('aDCreateEvent').Enabled := not Assigned(Control) and (Client.ServerVersion >= 50106);
-  MainAction('aDCreateIndex').Enabled := Control is TWTable;
+  MainAction('aDCreateKey').Enabled := Control is TWTable;
   MainAction('aDCreateField').Enabled := Control is TWTable;
   MainAction('aDCreateForeignKey').Enabled := (Control is TWTable) and Assigned(Database.BaseTableByName(TWTable(Control).Caption)) and Database.BaseTableByName(TWTable(Control).Caption).Engine.ForeignKeyAllowed;
   mwCreateSection.Enabled := not Assigned(Control);
@@ -9404,7 +9440,7 @@ begin
   MainAction('aDCreateProcedure').Enabled := False;
   MainAction('aDCreateFunction').Enabled := False;
   MainAction('aDCreateEvent').Enabled := False;
-  MainAction('aDCreateIndex').Enabled := False;
+  MainAction('aDCreateKey').Enabled := False;
   MainAction('aDCreateField').Enabled := False;
   MainAction('aDCreateForeignKey').Enabled := False;
   MainAction('aDCreateTrigger').Enabled := False;
@@ -10502,7 +10538,7 @@ begin
       if (ListView.Column[1].Width > 2 * Preferences.GridMaxColumnWidth) then
         ListView.Column[1].Width := 2 * Preferences.GridMaxColumnWidth;
 
-      ListView.Groups.Add().GroupID := giIndices;
+      ListView.Groups.Add().GroupID := giKeys;
       ListView.Groups.Add().GroupID := giFields;
       ListView.Groups.Add().GroupID := giForeignKeys;
       ListView.Groups.Add().GroupID := giTriggers;
@@ -10775,7 +10811,7 @@ begin
   MainAction('aDCreateFunction').Enabled := False;
   MainAction('aDCreateEvent').Enabled := False;
   MainAction('aDCreateTrigger').Enabled := False;
-  MainAction('aDCreateIndex').Enabled := False;
+  MainAction('aDCreateKey').Enabled := False;
   MainAction('aDCreateField').Enabled := False;
   MainAction('aDCreateForeignKey').Enabled := False;
   MainAction('aDCreateHost').Enabled := False;
@@ -10785,7 +10821,7 @@ begin
   MainAction('aDDeleteView').Enabled := False;
   MainAction('aDDeleteRoutine').Enabled := False;
   MainAction('aDDeleteEvent').Enabled := False;
-  MainAction('aDDeleteIndex').Enabled := False;
+  MainAction('aDDeleteKey').Enabled := False;
   MainAction('aDDeleteField').Enabled := False;
   MainAction('aDDeleteForeignKey').Enabled := False;
   MainAction('aDDeleteTrigger').Enabled := False;
@@ -10797,7 +10833,7 @@ begin
   MainAction('aDEditView').Enabled := False;
   MainAction('aDEditRoutine').Enabled := False;
   MainAction('aDEditEvent').Enabled := False;
-  MainAction('aDEditIndex').Enabled := False;
+  MainAction('aDEditKey').Enabled := False;
   MainAction('aDEditField').Enabled := False;
   MainAction('aDEditForeignKey').Enabled := False;
   MainAction('aDEditTrigger').Enabled := False;
@@ -10976,7 +11012,7 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const List
     end
     else if (Data is TCKey) then
     begin
-      Item.GroupID := giIndices;
+      Item.GroupID := giKeys;
       Item.ImageIndex := iiKey;
       Item.Caption := TCKey(Data).Caption;
       S := '';
@@ -11339,7 +11375,7 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const List
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(874) + ' + ' + Preferences.LoadStr(875), '&', '') + ' (' + IntToStr(ClientEvent.CItems.Count) + ')';
         giEvents:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(876), '&', '') + ' (' + IntToStr(ClientEvent.CItems.Count) + ')';
-        giIndices:
+        giKeys:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(458), '&', '') + ' (' + IntToStr(TCBaseTable(ClientEvent.Sender).Keys.Count) + ')';
         giFields:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(TCTable(ClientEvent.Sender).Fields.Count) + ')';
@@ -11426,7 +11462,7 @@ begin
           Table := TCTable(ClientEvent.Sender);
 
           if (Table is TCBaseTable) then
-            UpdateGroup(Kind, giIndices, TCBaseTable(Table).Keys);
+            UpdateGroup(Kind, giKeys, TCBaseTable(Table).Keys);
           UpdateGroup(Kind, giFields, Table.Fields);
           if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).ForeignKeys)) then
             UpdateGroup(Kind, giForeignKeys, TCBaseTable(Table).ForeignKeys);
@@ -11494,7 +11530,7 @@ begin
     MainAction('aDCreateFunction').Enabled := False;
     MainAction('aDCreateTrigger').Enabled := False;
     MainAction('aDCreateEvent').Enabled := False;
-    MainAction('aDCreateIndex').Enabled := False;
+    MainAction('aDCreateKey').Enabled := False;
     MainAction('aDCreateField').Enabled := False;
     MainAction('aDCreateForeignKey').Enabled := False;
     MainAction('aDCreateHost').Enabled := False;
@@ -11503,7 +11539,7 @@ begin
     MainAction('aDDeleteTable').Enabled := False;
     MainAction('aDDeleteView').Enabled := False;
     MainAction('aDDeleteRoutine').Enabled := False;
-    MainAction('aDDeleteIndex').Enabled := False;
+    MainAction('aDDeleteKey').Enabled := False;
     MainAction('aDDeleteField').Enabled := False;
     MainAction('aDDeleteForeignKey').Enabled := False;
     MainAction('aDDeleteTrigger').Enabled := False;
@@ -11516,7 +11552,7 @@ begin
     MainAction('aDEditView').Enabled := False;
     MainAction('aDEditRoutine').Enabled := False;
     MainAction('aDEditEvent').Enabled := False;
-    MainAction('aDEditIndex').Enabled := False;
+    MainAction('aDEditKey').Enabled := False;
     MainAction('aDEditField').Enabled := False;
     MainAction('aDEditForeignKey').Enabled := False;
     MainAction('aDEditTrigger').Enabled := False;
@@ -11618,7 +11654,7 @@ begin
             MainAction('aDCreateProcedure').Enabled := (ActiveListView.SelCount = 0) and (Client.ServerVersion >= 50004) and (SelectedImageIndex = iiDatabase);
             MainAction('aDCreateFunction').Enabled := MainAction('aDCreateProcedure').Enabled;
             MainAction('aDCreateEvent').Enabled := (ActiveListView.SelCount = 0) and (Client.ServerVersion >= 50106) and (SelectedImageIndex = iiDatabase);
-            MainAction('aDCreateIndex').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
+            MainAction('aDCreateKey').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
             MainAction('aDCreateField').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable);
             MainAction('aDCreateForeignKey').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and Assigned(TCBaseTable(Item.Data).Engine) and TCBaseTable(Item.Data).Engine.ForeignKeyAllowed;
             MainAction('aDCreateTrigger').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiBaseTable) and Assigned(Database.Triggers);
@@ -11696,16 +11732,16 @@ begin
             MainAction('aECopy').Enabled := (ActiveListView.SelCount >= 1);
             MainAction('aEPaste').Enabled := not Assigned(Item) and Clipboard.HasFormat(CF_MYSQLTABLE);
             MainAction('aERename').Enabled := Assigned(Item) and (ActiveListView.SelCount = 1) and ((Item.ImageIndex in [iiField, iiTrigger]) or (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013));
-            MainAction('aDCreateIndex').Enabled := (ActiveListView.SelCount = 0);
+            MainAction('aDCreateKey').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aDCreateField').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aDCreateForeignKey').Enabled := (ActiveListView.SelCount = 0) and Assigned(BaseTable.Engine) and BaseTable.Engine.ForeignKeyAllowed;
             MainAction('aDCreateTrigger').Enabled := (ActiveListView.SelCount = 0) and Assigned(BaseTable.Database.Triggers);
-            MainAction('aDDeleteIndex').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiKey);
+            MainAction('aDDeleteKey').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiKey);
             MainAction('aDDeleteField').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField) and (BaseTable.Fields.Count > ActiveListView.SelCount);
             MainAction('aDDeleteForeignKey').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013);
             MainAction('aDDeleteTrigger').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiTrigger);
             MainAction('aDEditTable').Enabled := (ActiveListView.SelCount = 0);
-            MainAction('aDEditIndex').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiKey);
+            MainAction('aDEditKey').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiKey);
             MainAction('aDEditField').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField);
             MainAction('aDEditForeignKey').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiForeignKey);
             MainAction('aDEditTrigger').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiTrigger);
@@ -11716,10 +11752,10 @@ begin
               if (ActiveListView.Items[I].Selected) then
               begin
                 MainAction('aFExportSQL').Enabled := MainAction('aFExportSQL').Enabled and (ActiveListView.Items[I].ImageIndex in [iiTrigger]);
-                MainAction('aDDeleteIndex').Enabled := MainAction('aDDeleteIndex').Enabled and (ActiveListView.Items[I].ImageIndex in [iiKey]);
+                MainAction('aDDeleteKey').Enabled := MainAction('aDDeleteKey').Enabled and (ActiveListView.Items[I].ImageIndex in [iiKey]);
                 MainAction('aDDeleteField').Enabled := MainAction('aDDeleteField').Enabled and (ActiveListView.Items[I].ImageIndex in [iiField]);
                 MainAction('aDDeleteForeignKey').Enabled := MainAction('aDDeleteForeignKey').Enabled and (ActiveListView.Items[I].ImageIndex in [iiForeignKey]);
-                MainAction('aDEditIndex').Enabled := MainAction('aDEditIndex').Enabled and (ActiveListView.Items[I].ImageIndex in [iiKey]);
+                MainAction('aDEditKey').Enabled := MainAction('aDEditKey').Enabled and (ActiveListView.Items[I].ImageIndex in [iiKey]);
                 MainAction('aDEditField').Enabled := MainAction('aDEditField').Enabled and (ActiveListView.Items[I].ImageIndex in [iiField]);
                 MainAction('aDEditForeignKey').Enabled := MainAction('aDEditForeignKey').Enabled and (ActiveListView.Items[I].ImageIndex in [iiForeignKey]);
                 MainAction('aDEditTrigger').Enabled := MainAction('aDEditTrigger').Enabled and (ActiveListView.Items[I].ImageIndex in [iiTrigger]);
@@ -11732,7 +11768,7 @@ begin
               mlEProperties.Action := MainAction('aDEditTable')
             else
               case (Item.ImageIndex) of
-                iiKey: mlEProperties.Action := MainAction('aDEditIndex');
+                iiKey: mlEProperties.Action := MainAction('aDEditKey');
                 iiField: mlEProperties.Action := MainAction('aDEditField');
                 iiForeignKey: mlEProperties.Action := MainAction('aDEditForeignKey');
                 iiTrigger: mlEProperties.Action := MainAction('aDEditTrigger');
@@ -14072,54 +14108,6 @@ begin
   end;
 end;
 
-procedure TFClient.SQLHelp();
-var
-  Cancel: Boolean;
-  DataSet: TMySQLQuery;
-begin
-  DataSet := TMySQLQuery.Create(Self);
-  DataSet.Connection := Client;
-  if (ActiveSynMemo.SelText <> '') then
-    DataSet.CommandText := 'HELP ' + SQLEscape(ActiveSynMemo.SelText)
-  else if (ActiveSynMemo.WordAtCursor <> '') then
-    DataSet.CommandText := 'HELP ' + SQLEscape(ActiveSynMemo.WordAtCursor)
-  else
-    DataSet.CommandText := 'HELP ' + SQLEscape('CONTENTS');
-  DataSet.Open();
-
-  if (not DataSet.Active or DataSet.IsEmpty() or not Assigned(DataSet.FindField('name'))) then
-    MessageBeep(MB_ICONERROR)
-  else
-  begin
-    Cancel := False;
-    while (not Cancel and not Assigned(DataSet.FindField('description')) and not DataSet.IsEmpty()) do
-    begin
-      repeat
-        SetLength(DSelection.Values, Length(DSelection.Values) + 1);
-        DSelection.Values[Length(DSelection.Values) - 1] := DataSet.FieldByName('name').AsString;
-      until (not DataSet.FindNext());
-      Cancel := not DSelection.Execute();
-      if (not Cancel) then
-      begin
-        DataSet.Close();
-        DataSet.CommandText := 'HELP ' + SQLEscape(DSelection.Selected);
-        DataSet.Open();
-      end;
-    end;
-
-    if (Assigned(DataSet.FindField('description'))) then
-    begin
-      DSQLHelp.Title := DataSet.FieldByName('name').AsString;
-      DSQLHelp.Description := Trim(DataSet.FieldByName('description').AsString);
-      DSQLHelp.Example := Trim(DataSet.FieldByName('example').AsString);
-      DSQLHelp.ManualURL := Client.Account.ManualURL;
-      DSQLHelp.Refresh();
-    end;
-  end;
-
-  DataSet.Free();
-end;
-
 procedure TFClient.SResultMoved(Sender: TObject);
 begin
   if (SBResult.Visible and (SBResult.Align = alBottom)) then
@@ -14215,7 +14203,7 @@ begin
       if (Window.ActiveControl = ActiveSynMemo) then
         Text := IntToStr(ActiveSynMemo.CaretXY.Line) + ':' + IntToStr(ActiveSynMemo.CaretXY.Char)
       else if ((Window.ActiveControl = ActiveListView) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiKey)) then
-        Text := Preferences.LoadStr(377) + ': ' + IntToStr(TCKey(ActiveListView.ItemFocused.Data).Index)
+        Text := Preferences.LoadStr(377) + ': ' + IntToStr(TCKey(ActiveListView.ItemFocused.Data).Key)
       else if ((Window.ActiveControl = ActiveListView) and (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiField)) then
         Text := ReplaceStr(Preferences.LoadStr(164), '&', '') + ': ' + IntToStr(TCTableField(ActiveListView.ItemFocused.Data).Index)
       else if ((Window.ActiveControl = ActiveDBGrid) and Assigned(ActiveDBGrid.SelectedField) and (ActiveDBGrid.DataSource.DataSet.RecNo >= 0)) then
@@ -14339,6 +14327,11 @@ begin
   MainAction('aEPasteFromFile').OnExecute := aEPasteFromExecute;
   MainAction('aSGoto').OnExecute := TSymMemoGotoExecute;
 
+  MainAction('aHSQL').Enabled := Client.ServerVersion >= 40100;
+
+  MainAction('aHIndex').ShortCut := 0;
+  MainAction('aHSQL').ShortCut := ShortCut(VK_F1, []);
+
   SynMemoStatusChange(Sender, [scAll]);
   StatusBarRefresh();
 end;
@@ -14352,6 +14345,10 @@ begin
   MainAction('aECopyToFile').Enabled := False;
   MainAction('aEPasteFromFile').Enabled := False;
   MainAction('aSGoto').Enabled := False;
+  MainAction('aHSQL').Enabled := False;
+
+  MainAction('aHIndex').ShortCut := ShortCut(VK_F1, []);
+  MainAction('aHSQL').ShortCut := 0;
 end;
 
 procedure TFClient.SynMemoPrintExecute(Sender: TObject);

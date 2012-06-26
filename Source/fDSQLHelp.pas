@@ -69,6 +69,8 @@ end;
 
 procedure TDSQLHelp.CMChangePreferences(var Message: TMessage);
 begin
+  Preferences.SmallImages.GetIcon(14, Icon);
+
   msCopy.Action := MainAction('aECopy'); msCopy.ShortCut := 0;
   msSelectAll.Action := MainAction('aESelectAll'); msSelectAll.ShortCut := 0;
 
@@ -151,10 +153,6 @@ begin
     Left := Application.MainForm.Left + Application.MainForm.Width div 2 - Width div 2;
     Top := Application.MainForm.Top + Application.MainForm.Height div 2 - Height div 2;
   end;
-
-  Icon.ReleaseHandle();
-  Icon.Handle := LoadImageA(GetModuleHandleA('shell32.dll'), MakeIntResourceA(24),
-    IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR)
 end;
 
 procedure TDSQLHelp.FormHide(Sender: TObject);
@@ -178,7 +176,7 @@ procedure TDSQLHelp.Refresh();
 var
   URL: string;
 begin
-  Caption := ReplaceStr(Preferences.LoadStr(167), '&', '') + ': ' + Title;
+  Caption := ReplaceStr(Preferences.LoadStr(883), '&', '') + ': ' + Title;
 
   FDescription.Lines.Text := Description;
   if (Pos('URL: ', FDescription.Lines[FDescription.Lines.Count - 1]) = 1) then
