@@ -3858,6 +3858,7 @@ end;
 procedure TMySQLQuery.DataConvert(Field: TField; Source, Dest: Pointer; ToNative: Boolean);
 var
   Len: Integer;
+  S: string;
 begin
   case (Field.DataType) of
     ftWideMemo:
@@ -3893,7 +3894,10 @@ begin
               PRecordBufferData(Source)^.LibRow^[Field.FieldNo - 1], PRecordBufferData(Source)^.LibLengths^[Field.FieldNo - 1],
               TMemoryStream(Dest).Memory, Len)
           else if (GetLastError() <> 0) then
-            DatabaseErrorFmt(SysErrorMessage(GetLastError()) + '(%s)', [Field.DisplayName]);
+          begin
+            S := SQLEscape(PAnsiChar(@(PRecordBufferData(Source)^.LibRow^[Field.FieldNo - 1])), PRecordBufferData(Source)^.LibLengths^[Field.FieldNo - 1], False);
+            DatabaseErrorFmt(SysErrorMessage(GetLastError()) + '(%s: %s - %s)', [Field.DisplayName, S, Connection.Charset]);
+          end;
         end;
       end;
     ftWideString:
