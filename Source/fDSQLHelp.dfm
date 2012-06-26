@@ -16,6 +16,7 @@ object DSQLHelp: TDSQLHelp
   OnCreate = FormCreate
   OnHide = FormHide
   OnKeyPress = FormKeyPress
+  OnShow = FormShow
   PixelsPerInch = 106
   TextHeight = 13
   object Panel: TPanel_Ext
@@ -85,11 +86,13 @@ object DSQLHelp: TDSQLHelp
     Height = 544
     TabStop = False
     Align = alClient
+    BorderStyle = bsNone
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -11
     Font.Name = 'Courier New'
     Font.Style = []
+    HideSelection = False
     Constraints.MinHeight = 100
     Constraints.MinWidth = 100
     Lines.Strings = (

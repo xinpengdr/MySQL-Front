@@ -1097,7 +1097,7 @@ uses
   fDField, fDKey, fDTable, fDVariable, fDDatabase, fDForeignKey,
   fDHost, fDUser, fDQuickFilter, fDGoto, fDSQLHelp, fDTransfer,
   fDSearch, fDServer, fDBookmark, fURI, fDView, fDRoutine,
-  fDTrigger, fDStatement, fDEvent, fDSelection, fDColumns, fWForeignKeySelect,
+  fDTrigger, fDStatement, fDEvent, fDColumns, fWForeignKeySelect,
   fDPaste, fDSegment, fDConnecting;
 
 const
@@ -1731,7 +1731,7 @@ begin
 
     if (Assigned(DBGrid) and DBGrid.DataSource.DataSet.Active) then
       for I := 0 to DBGrid.Columns.Count - 1 do
-        if (GetFieldInfo(DBGrid.Columns[I].Field.Origin, FieldInfo)) then
+        if (Assigned(DBGrid.Columns[I].Field) and GetFieldInfo(DBGrid.Columns[I].Field.Origin, FieldInfo)) then
         begin
           FieldName := FieldInfo.OriginalFieldName;
           Child := nil;
@@ -4129,51 +4129,43 @@ begin
 end;
 
 procedure TFClient.aHSQLExecute(Sender: TObject);
-var
-  Cancel: Boolean;
-  DataSet: TMySQLQuery;
-begin
-  DataSet := TMySQLQuery.Create(Self);
-  DataSet.Connection := Client;
-  if (ActiveSynMemo.SelText <> '') then
-    DataSet.CommandText := 'HELP ' + SQLEscape(ActiveSynMemo.SelText)
-  else if (ActiveSynMemo.WordAtCursor <> '') then
-    DataSet.CommandText := 'HELP ' + SQLEscape(ActiveSynMemo.WordAtCursor)
-  else
-    DataSet.CommandText := 'HELP ' + SQLEscape('CONTENTS');
-  DataSet.Open();
 
-  if (not DataSet.Active or DataSet.IsEmpty() or not Assigned(DataSet.FindField('name'))) then
-    MessageBeep(MB_ICONERROR)
-  else
+  function FLogWordAtCursor(): string;
+  var
+    Index: Integer;
+    Len: Integer;
+    Line: string;
+    LineIndex: Integer;
   begin
-    Cancel := False;
-    while (not Cancel and not Assigned(DataSet.FindField('description')) and not DataSet.IsEmpty()) do
-    begin
-      repeat
-        SetLength(DSelection.Values, Length(DSelection.Values) + 1);
-        DSelection.Values[Length(DSelection.Values) - 1] := DataSet.FieldByName('name').AsString;
-      until (not DataSet.FindNext());
-      Cancel := not DSelection.Execute();
-      if (not Cancel) then
-      begin
-        DataSet.Close();
-        DataSet.CommandText := 'HELP ' + SQLEscape(DSelection.Selected);
-        DataSet.Open();
-      end;
-    end;
-
-    if (Assigned(DataSet.FindField('description'))) then
-    begin
-      DSQLHelp.Title := DataSet.FieldByName('name').AsString;
-      DSQLHelp.Description := Trim(DataSet.FieldByName('description').AsString);
-      DSQLHelp.Example := Trim(DataSet.FieldByName('example').AsString);
-      DSQLHelp.ManualURL := Client.Account.ManualURL;
-      DSQLHelp.Refresh();
-    end;
+    LineIndex := FLog.Perform(EM_EXLINEFROMCHAR, 0, FLog.SelStart);
+    Index := FLog.SelStart - FLog.Perform(EM_LINEINDEX, LineIndex, 0);
+    Line := FLog.Lines[LineIndex];
+    while ((Index > 1) and not CharInSet(Line[Index - 1], [#9, #10, #13, ' ', '"', '`', '.', ',', ')', ']', '=', ';'])) do Dec(Index);
+    Len := 0;
+    while ((Len <= Length(Line) - Index) and not CharInSet(Line[Index + Len], [#9, #10, #13, ' ', '"', '`', '.', ',', '(', '[', '=', ';'])) do Inc(Len);
+    Result := copy(Line, Index, Len);
   end;
 
-  DataSet.Free();
+begin
+  if (Window.ActiveControl = FLog) then
+  begin
+    if (FLog.SelText <> '') then
+      DSQLHelp.Keyword := FLog.SelText
+    else
+      DSQLHelp.Keyword := FLogWordAtCursor()
+  end
+  else if (Assigned(ActiveSynMemo) and (Window.ActiveControl = ActiveSynMemo)) then
+    if (ActiveSynMemo.SelText <> '') then
+      DSQLHelp.Keyword := ActiveSynMemo.SelText
+    else if (ActiveSynMemo.WordAtCursor <> '') then
+      DSQLHelp.Keyword := ActiveSynMemo.WordAtCursor
+    else
+      DSQLHelp.Keyword := ActiveSynMemo.Text
+  else
+    DSQLHelp.Keyword := '';
+
+  DSQLHelp.Client := Client;
+  DSQLHelp.Execute();
 end;
 
 procedure TFClient.aPCollapseExecute(Sender: TObject);
@@ -5094,6 +5086,7 @@ begin
     MainAction('aBAdd').Enabled := True;
     MainAction('aDCancel').Enabled := Client.InUse();
     aDCommitRefresh(nil);
+    MainAction('aHSQL').Enabled := Client.ServerVersion >= 40100;
     MainAction('aHManual').Enabled := Client.Account.ManualURL <> '';
 
     aPResult.ShortCut := ShortCut(VK_F8, [ssAlt]);
@@ -5141,6 +5134,7 @@ begin
   MainAction('aDAutoCommit').Enabled := False;
   MainAction('aDCommit').Enabled := False;
   MainAction('aDRollback').Enabled := False;
+  MainAction('aHSQL').Enabled := False;
   MainAction('aHManual').Enabled := False;
 
   MainAction('aECopy').OnExecute := nil;
@@ -7674,6 +7668,9 @@ begin
   MainAction('aSSearchReplace').Enabled := False;
   MainAction('aSGoto').Enabled := True;
 
+  MainAction('aHIndex').ShortCut := 0;
+  MainAction('aHSQL').ShortCut := ShortCut(VK_F1, []);
+
   FLogSelectionChange(Sender);
   StatusBarRefresh();
 end;
@@ -7683,6 +7680,9 @@ begin
   MainAction('aFPrint').Enabled := False;
   MainAction('aECopyToFile').Enabled := False;
   MainAction('aSGoto').Enabled := False;
+
+  MainAction('aHIndex').ShortCut := ShortCut(VK_F1, []);
+  MainAction('aHSQL').ShortCut := 0;
 end;
 
 procedure TFClient.FLogSelectionChange(Sender: TObject);
@@ -8241,13 +8241,17 @@ procedure TFClient.FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
 
     if (Index = Node.Count) then
     begin
+      NavigatorElapse := 1;
       Child := FNavigator.Items.AddChild(Node, Text);
       Added := True;
+      NavigatorElapse := 0;
     end
     else if (Node.Item[Index].Data <> Data) then
     begin
+      NavigatorElapse := 1;
       Child := FNavigator.Items.Insert(Node.Item[Index], Text);
       Added := True;
+      NavigatorElapse := 0;
     end
     else
     begin
@@ -14323,8 +14327,6 @@ begin
   MainAction('aEPasteFromFile').OnExecute := aEPasteFromExecute;
   MainAction('aSGoto').OnExecute := TSymMemoGotoExecute;
 
-  MainAction('aHSQL').Enabled := Client.ServerVersion >= 40100;
-
   MainAction('aHIndex').ShortCut := 0;
   MainAction('aHSQL').ShortCut := ShortCut(VK_F1, []);
 
@@ -14341,7 +14343,6 @@ begin
   MainAction('aECopyToFile').Enabled := False;
   MainAction('aEPasteFromFile').Enabled := False;
   MainAction('aSGoto').Enabled := False;
-  MainAction('aHSQL').Enabled := False;
 
   MainAction('aHIndex').ShortCut := ShortCut(VK_F1, []);
   MainAction('aHSQL').ShortCut := 0;

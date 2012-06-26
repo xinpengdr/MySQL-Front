@@ -434,14 +434,11 @@ const
 
 function VersionStrToVersion(VersionStr: string): Integer;
 begin
-  if (Pos('-', VersionStr) > 0) then
-    VersionStr := Copy(VersionStr, 1, Pos('-', VersionStr)-1);
-  if (VersionStr[2] = '.') and (VersionStr[4] = '.') then
-    Insert('0', VersionStr, 3);
-  if ((VersionStr[2] = '.') and (Length(VersionStr) = 6)) then
-    Insert('0', VersionStr, 6);
-
-  if (not TryStrToInt(ReplaceStr(VersionStr, '.', ''), Result)) then Result := 0;
+  if (Pos('.', VersionStr) = 0) then
+    Result := StrToInt(VersionStr) * 10000
+  else
+    Result := StrToInt(copy(VersionStr, 1, Pos('.', VersionStr) - 1)) * 10000
+      + VersionStrToVersion(Copy(VersionStr, Pos('.', VersionStr) + 1, Length(VersionStr) - Pos('.', VersionStr))) div 100;
 end;
 
 function IsConnectedToInternet(): Boolean;

@@ -61,7 +61,7 @@ type
   public
     Client: TCClient;
     Database: TCDatabase;
-    function Execute: Boolean;
+    function Execute(): Boolean;
     property Name: string read GetName;
   end;
 

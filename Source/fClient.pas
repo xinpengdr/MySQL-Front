@@ -8100,7 +8100,7 @@ begin
 
   if (Count > 0) then
   begin
-    if ((Client.ServerVersion < 40101) and Assigned(Client.VariableByName('character_set'))) then
+    if (Client.ServerVersion < 40101) then
     begin
       if (Assigned(Client.Account) and (Client.Account.Connection.Charset = '')) then
         Client.Charset := Client.VariableByName('character_set').Value;

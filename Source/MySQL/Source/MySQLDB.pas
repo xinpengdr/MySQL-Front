@@ -2806,14 +2806,7 @@ begin
   FErrorCode := SynchroThread.ErrorCode;
   FErrorMessage := SynchroThread.ErrorMessage;
 
-  if (SynchroThread.Terminated) then
-  begin
-    S := '----> Connection Terminated <----';
-    WriteMonitor(PChar(S), Length(S), ttInfo);
-    if (Assigned(SynchroThread.DataSet)) then
-      SynchroThread.ReleaseDataSet(SynchroThread.DataSet);
-  end
-  else
+  if (not SynchroThread.Terminated) then
   begin
     if (SynchroThread.State = ssResult) then
     begin
@@ -3443,11 +3436,18 @@ begin
 end;
 
 procedure TMySQLConnection.Terminate();
+var
+  S: string;
 begin
   TerminateCS.Enter();
 
   if (Assigned(SynchroThread)) then
   begin
+    S := '----> Connection Terminated <----';
+    WriteMonitor(PChar(S), Length(S), ttInfo);
+    if (Assigned(SynchroThread.DataSet)) then
+      SynchroThread.ReleaseDataSet(SynchroThread.DataSet);
+
     SynchroThread.Terminate();
     FSynchroThread := nil;
   end;
