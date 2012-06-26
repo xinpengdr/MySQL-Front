@@ -522,6 +522,7 @@ implementation {***************************************************************}
 
 uses
   ShellApi, ShlObj, DBConsts, CommCtrl, StrUtils, ShLwApi, IniFiles, Themes,
+  acQBLocalizer,
   MySQLConsts,
   HTTPTunnel,
   fDAccounts, fDAccount, fDOptions, fDLogin, fDStatement,
@@ -1173,6 +1174,11 @@ begin
   Highlighter.VariableAttri.Foreground := Preferences.Editor.VariableForeground;
   Highlighter.VariableAttri.Background := Preferences.Editor.VariableBackground;
   Highlighter.VariableAttri.Style := Preferences.Editor.VariableStyle;
+
+  acQBLanguageManager.CurrentLanguageIndex := -1;
+  for I := 0 to acQBLanguageManager.LanguagesCount - 1 do
+    if (lstrcmpi(PChar(acQBLanguageManager.Language[i].LanguageName), PChar(Preferences.Language.ActiveQueryBuilderLanguageName)) = 0) then
+      acQBLanguageManager.CurrentLanguageIndex := I;
 
   if (Assigned(Tabs)) then
     for I := 0 to Tabs.Count - 1 do

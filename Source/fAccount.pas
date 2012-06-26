@@ -1576,7 +1576,7 @@ begin
       begin
         Result := Account[I];
         Inc(Found);
-        if (Result = DefaultAccount) then
+        if ((Result = DefaultAccount) or (Result.DesktopCount > 0)) then
           break;
       end;
     end;

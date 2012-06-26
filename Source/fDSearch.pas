@@ -497,6 +497,8 @@ begin
 
   if (Assigned(Client)) then
   begin
+    Client.BeginSynchro();
+
     SelectedNodes := TList.Create();
     DatabaseNames := TStringList.Create();
     TableNames := TStringList.Create();
@@ -562,6 +564,8 @@ begin
     DatabaseNames.Free();
     TableNames.Free();
     FieldNames.Free();
+
+    Client.EndSynchro();
   end;
 
   FFFindText.Text := '';
@@ -655,7 +659,7 @@ begin
           begin
             Client := GetClient(Node.Parent.Index);
             Database := Client.DatabaseByName(Node.Text);
-            if (not Database.Tables.Update() and Client.Asynchron) then
+            if ((not Database.Tables.Update() or not Client.Update(Database.Tables)) and Client.Asynchron) then
               WantedNodeExpand := Node
             else
             begin

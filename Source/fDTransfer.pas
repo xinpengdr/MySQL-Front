@@ -446,13 +446,14 @@ begin
     Node.HasChildren := True;
 
     Node := FSlave.Items.Add(nil, Accounts[I].Name);
-    Node.ImageIndex := Accounts[I].ImageIndex;
-    if (Node.ImageIndex < 0) then Node.ImageIndex := iiServer;
+    Node.ImageIndex := iiServer;
     Node.HasChildren := True;
   end;
 
   if (Assigned(MasterClient)) then
   begin
+    MasterClient.BeginSynchro();
+
     SelectedNodes := TList.Create();
     DatabaseNames := TStringList.Create();
     TableNames := TStringList.Create();
@@ -540,6 +541,7 @@ begin
         end;
         AccountNode := AccountNode.getNextSibling();
       end;
+      MasterClient.EndSynchro();
     end;
     if (Assigned(FSlave.Selected) and FSlave.AutoExpand) then
       FSlave.Selected.Expand(False);
@@ -695,7 +697,7 @@ begin
           begin
             Client := GetClient(Node.Parent.Index);
             Database := Client.DatabaseByName(Node.Text);
-            if (not Database.Tables.Update() and Client.Asynchron) then
+            if ((not Database.Tables.Update() or not Client.Update(Database.Tables)) and Client.Asynchron) then
               WantedNodeExpand := Node
             else
             begin

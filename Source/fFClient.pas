@@ -4835,10 +4835,6 @@ begin
   if (not (tsLoading in FrameState)) then
     ClientUpdate(nil);
 
-  acQBLanguageManager.CurrentLanguageIndex := -1;
-  for I := 0 to acQBLanguageManager.LanguagesCount - 1 do
-    if (lstrcmpi(PChar(acQBLanguageManager.Language[i].LanguageName), PChar(Preferences.Language.ActiveQueryBuilderLanguageName)) = 0) then
-      acQBLanguageManager.CurrentLanguageIndex := I;
   SQLBuilder.RightMargin := Preferences.Editor.RightEdge;
 
   FOffset.Hint := ReplaceStr(Preferences.LoadStr(846), '&', '') + ' (' + ShortCutToText(aTBOffset.ShortCut) + ')';
