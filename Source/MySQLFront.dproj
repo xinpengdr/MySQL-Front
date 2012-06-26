@@ -101,14 +101,14 @@
 			<DCCReference Include="fDImport.pas">
 				<Form>DImport</Form>
 			</DCCReference>
-			<DCCReference Include="fDIndex.pas">
-				<Form>DIndex</Form>
-			</DCCReference>
 			<DCCReference Include="fDInfo.pas">
 				<Form>DInfo</Form>
 			</DCCReference>
 			<DCCReference Include="fDInstallUpdate.pas">
 				<Form>DInstallUpdate</Form>
+			</DCCReference>
+			<DCCReference Include="fDKey.pas">
+				<Form>DIndex</Form>
 			</DCCReference>
 			<DCCReference Include="fDLogin.pas">
 				<Form>DDBLogin</Form>

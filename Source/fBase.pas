@@ -17,7 +17,7 @@ const
   iiBaseTable = 25;
   iiSystemView = 79;
   iiView = 74;
-  iiIndex = 26;
+  iiKey = 26;
   iiField = 27;
   iiSystemViewField = 80;
   iiViewField = 75;

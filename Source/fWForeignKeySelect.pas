@@ -150,13 +150,13 @@ begin
         SQL := SQL + Client.EscapeIdentifier(ParentTable.Fields[I].Name);
       end;
       SQL := 'SELECT ' + SQL + ' FROM ' + Client.EscapeIdentifier(ParentDatabase.Name) + '.' + Client.EscapeIdentifier(ParentTable.Name);
-      if ((ParentTable.Indices.Count > 0) and (ParentTable.Indices[0].Name = '')) then
+      if ((ParentTable.Keys.Count > 0) and (ParentTable.Keys[0].Name = '')) then
       begin
         SQL := SQL + ' ORDER BY ';
-        for I := 0 to ParentTable.Indices[0].Columns.Count - 1 do
+        for I := 0 to ParentTable.Keys[0].Columns.Count - 1 do
         begin
           if (I > 0) then SQL := SQL + ',';
-          SQL := SQL + Client.EscapeIdentifier(ParentTable.Indices[0].Columns[I].Field.Name);
+          SQL := SQL + Client.EscapeIdentifier(ParentTable.Keys[0].Columns[I].Field.Name);
         end;
       end;
 

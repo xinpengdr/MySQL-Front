@@ -238,7 +238,7 @@ implementation {***************************************************************}
 uses
   Clipbrd, StrUtils,
   SQLUtils,
-  fDField, fDIndex, fDForeignKey, fDTableService, fPreferences,
+  fDField, fDKey, fDForeignKey, fDTableService, fPreferences,
   fDTrigger, fDPartition;
 
 var
@@ -289,7 +289,7 @@ procedure TDTable.aPCreateIndexExecute(Sender: TObject);
 begin
   DIndex.Database := nil;
   DIndex.Table := NewTable;
-  DIndex.Index := nil;
+  DIndex.Key := nil;
   if (DIndex.Execute()) then
   begin
     FIndicesRefresh(Sender);
@@ -363,7 +363,7 @@ begin
   begin
     for I := FIndices.Items.Count - 1 downto 0 do
       if (FIndices.Items.Item[I].Selected) then
-        NewTable.Indices.DeleteIndex(NewTable.Indices.Index[I]);
+        NewTable.Keys.DeleteKey(NewTable.Keys.Key[I]);
 
     FIndicesRefresh(Sender);
 
@@ -486,7 +486,7 @@ procedure TDTable.aPEditIndexExecute(Sender: TObject);
 begin
   DIndex.Database := nil;
   DIndex.Table := NewTable;
-  DIndex.Index := NewTable.Indices.Index[FIndices.ItemIndex];
+  DIndex.Key := NewTable.Keys.Key[FIndices.ItemIndex];
   if (DIndex.Execute()) then
   begin
     FIndicesRefresh(Sender);
@@ -1124,7 +1124,7 @@ begin
   aPDeleteField.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiField) and (NewTable.Fields.Count > 1);
   aPEditField.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSFields);
   aPCreateIndex.Enabled := not Selected and (Page = TSIndices);
-  aPDeleteIndex.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiIndex);
+  aPDeleteIndex.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiKey);
   aPEditIndex.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSIndices);
   aPCreateForeignKey.Enabled := not Selected and (Page = TSForeignKeys);
   aPDeleteForeignKey.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiForeignKey);
@@ -1288,9 +1288,9 @@ end;
 procedure TDTable.FormShow(Sender: TObject);
 var
   I: Integer;
-  NewColumn: TCIndexColumn;
   NewField: TCBaseTableField;
-  NewIndex: TCIndex;
+  NewKey: TCKey;
+  NewKeyColumn: TCKeyColumn;
   TableName: string;
 begin
   Database.Client.RegisterEventProc(FormClientEvent);
@@ -1371,16 +1371,16 @@ begin
       NewTable.Fields.AddField(NewField);
       FreeAndNil(NewField);
 
-      NewIndex := TCIndex.Create(NewTable.Indices);
-      NewIndex.Primary := True;
+      NewKey := TCKey.Create(NewTable.Keys);
+      NewKey.Primary := True;
 
-      NewColumn := TCIndexColumn.Create(NewIndex.Columns);
-      NewColumn.Field := TCBaseTableField(NewTable.Fields[0]);
-      NewIndex.Columns.AddColumn(NewColumn);
-      FreeAndNil(NewColumn);
+      NewKeyColumn := TCKeyColumn.Create(NewKey.Columns);
+      NewKeyColumn.Field := TCBaseTableField(NewTable.Fields[0]);
+      NewKey.Columns.AddColumn(NewKeyColumn);
+      FreeAndNil(NewKeyColumn);
 
-      NewTable.Indices.AddIndex(NewIndex);
-      FreeAndNil(NewIndex);
+      NewTable.Keys.AddKey(NewKey);
+      FreeAndNil(NewKey);
 
       if (NewTable.Name = '') then
         FName.Text := Preferences.LoadStr(114)
@@ -1750,21 +1750,21 @@ begin
   mlDDelete.ShortCut := VK_DELETE;
 
   if (FIndices.Items.Count = 0) then
-    for I := 0 to NewTable.Indices.Count - 1 do
+    for I := 0 to NewTable.Keys.Count - 1 do
     begin
       ListItem := FIndices.Items.Add();
-      ListItem.Caption := NewTable.Indices.Index[I].Caption;
+      ListItem.Caption := NewTable.Keys.Key[I].Caption;
       FieldNames := '';
-      for J := 0 to NewTable.Indices.Index[I].Columns.Count - 1 do
-        begin if (FieldNames <> '') then FieldNames := FieldNames + ','; FieldNames := FieldNames + NewTable.Indices.Index[I].Columns.Column[J].Field.Name; end;
+      for J := 0 to NewTable.Keys.Key[I].Columns.Count - 1 do
+        begin if (FieldNames <> '') then FieldNames := FieldNames + ','; FieldNames := FieldNames + NewTable.Keys.Key[I].Columns.Column[J].Field.Name; end;
       ListItem.SubItems.Add(FieldNames);
-      if (NewTable.Indices.Index[I].Unique) then
+      if (NewTable.Keys.Key[I].Unique) then
         ListItem.SubItems.Add('unique')
-      else if (NewTable.Indices.Index[I].Fulltext) then
+      else if (NewTable.Keys.Key[I].Fulltext) then
         ListItem.SubItems.Add('fulltext')
       else
         ListItem.SubItems.Add('');
-      ListItem.ImageIndex := iiIndex;
+      ListItem.ImageIndex := iiKey;
     end;
 
   FListSelectItem(FIndices, FIndices.Selected, Assigned(FIndices.Selected));

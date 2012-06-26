@@ -1094,7 +1094,7 @@ uses
   acQBLocalizer, acQBStrings,
   CommCtrl_Ext, StdActns_Ext,
   MySQLConsts, SQLUtils,
-  fDField, fDIndex, fDTable, fDVariable, fDDatabase, fDForeignKey,
+  fDField, fDKey, fDTable, fDVariable, fDDatabase, fDForeignKey,
   fDHost, fDUser, fDQuickFilter, fDGoto, fDSQLHelp, fDTransfer,
   fDSearch, fDServer, fDBookmark, fURI, fDView, fDRoutine,
   fDTrigger, fDStatement, fDEvent, fDSelection, fDColumns, fWForeignKeySelect,
@@ -1178,7 +1178,7 @@ var
 begin
   Result := Name;
   I := 1;
-  while (Items.IndexByName(Result) >= 0) do
+  while (Items.KeyByName(Result) >= 0) do
   begin
     if (I = 1) then
       Result := Preferences.LoadStr(680, Name)
@@ -2209,7 +2209,7 @@ begin
   begin
     DIndex.Table := TCBaseTable(FocusedCItem);
     DIndex.Database := DIndex.Table.Database;
-    DIndex.Index := nil;
+    DIndex.Key := nil;
     if (DIndex.Execute()) then
       Client.Update();
   end;
@@ -2326,7 +2326,7 @@ begin
     else if (TCItem(CItems[0]) is TCFunction) then Msg := Preferences.LoadStr(773, TCItem(CItems[0]).Name)
     else if (TCItem(CItems[0]) is TCEvent) then Msg := Preferences.LoadStr(813, TCItem(CItems[0]).Name)
     else if (TCItem(CItems[0]) is TCTrigger) then Msg := Preferences.LoadStr(787, TCItem(CItems[0]).Name)
-    else if (TCItem(CItems[0]) is TCIndex) then Msg := Preferences.LoadStr(162, TCItem(CItems[0]).Name)
+    else if (TCItem(CItems[0]) is TCKey) then Msg := Preferences.LoadStr(162, TCItem(CItems[0]).Name)
     else if (TCItem(CItems[0]) is TCField) then Msg := Preferences.LoadStr(100, TCItem(CItems[0]).Name)
     else if (TCItem(CItems[0]) is TCForeignKey) then Msg := Preferences.LoadStr(692, TCItem(CItems[0]).Name)
     else if (TCItem(CItems[0]) is TCHost) then Msg := Preferences.LoadStr(429, TCItem(CItems[0]).Name)
@@ -2366,8 +2366,8 @@ begin
 
     Table := nil;
     for I := 0 to CItems.Count - 1 do
-      if (TCItem(CItems[I]) is TCIndex) then
-        Table := TCIndex(CItems[I]).Table
+      if (TCItem(CItems[I]) is TCKey) then
+        Table := TCKey(CItems[I]).Table
       else if (TCItem(CItems[I]) is TCBaseTableField) then
         Table := TCBaseTableField(CItems[I]).Table
       else if (TCItem(CItems[I]) is TCForeignKey) then
@@ -2378,9 +2378,9 @@ begin
       NewTable.Assign(Table);
 
       for I := CItems.Count - 1 downto 0 do
-        if ((TCItem(CItems[I]) is TCIndex) and (TCIndex(CItems[I]).Table = Table)) then
+        if ((TCItem(CItems[I]) is TCKey) and (TCKey(CItems[I]).Table = Table)) then
         begin
-          NewTable.Indices.DeleteIndex(NewTable.Indices[TCIndex(CItems[I]).Index]);
+          NewTable.Keys.DeleteKey(NewTable.Keys[TCKey(CItems[I]).Index]);
           CItems[I] := nil;
         end
         else if ((TCItem(CItems[I]) is TCBaseTableField) and (TCBaseTableField(CItems[I]).Table = Table)) then
@@ -2926,11 +2926,11 @@ begin
       DEvent.Event := TCEvent(CItem);
       Execute := DEvent.Execute;
     end
-    else if (CItem is TCIndex) then
+    else if (CItem is TCKey) then
     begin
-      DIndex.Database := TCIndex(CItem).Table.Database;
-      DIndex.Table := TCIndex(CItem).Table;
-      DIndex.Index := TCIndex(CItem);
+      DIndex.Database := TCKey(CItem).Table.Database;
+      DIndex.Table := TCKey(CItem).Table;
+      DIndex.Key := TCKey(CItem);
       Execute := DIndex.Execute;
     end
     else if (CItem is TCBaseTableField) then
@@ -3125,7 +3125,7 @@ begin
         iiProcedure:  Data := Data + 'Procedure='   + FNavigatorMenuNode.Text + #13#10;
         iiFunction:   Data := Data + 'Function='    + FNavigatorMenuNode.Text + #13#10;
         iiEvent:      Data := Data + 'Event='       + FNavigatorMenuNode.Text + #13#10;
-        iiIndex:      Data := Data + 'Index='       + FNavigatorMenuNode.Text + #13#10;
+        iiKey:      Data := Data + 'Index='       + FNavigatorMenuNode.Text + #13#10;
         iiSystemViewField,
         iiField,
         iiViewField:  Data := Data + 'Field='       + FNavigatorMenuNode.Text + #13#10;
@@ -3151,7 +3151,7 @@ begin
           iiProcedure:  Data := Data + 'Procedure='  + ActiveListView.Items[I].Caption + #13#10;
           iiFunction:   Data := Data + 'Function='   + ActiveListView.Items[I].Caption + #13#10;
           iiEvent:      Data := Data + 'Event='      + ActiveListView.Items[I].Caption + #13#10;
-          iiIndex:      Data := Data + 'Index='      + TCIndex(ActiveListView.Items[I].Data).Name + #13#10;
+          iiKey:      Data := Data + 'Key='      + TCKey(ActiveListView.Items[I].Data).Name + #13#10;
           iiField,
           iiViewField:  Data := Data + 'Field='      + ActiveListView.Items[I].Caption + #13#10;
           iiForeignKey: Data := Data + 'ForeignKey=' + ActiveListView.Items[I].Caption + #13#10;
@@ -6595,8 +6595,8 @@ begin
     if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView])) then
     begin
       Table := TCBaseTable(FNavigator.Selected.Data);
-      for I := 0 to Table.Indices.Count - 1 do
-        if (Table.Indices[I].Unique) then
+      for I := 0 to Table.Keys.Count - 1 do
+        if (Table.Keys[I].Unique) then
           MainAction('aSGoto').Enabled := True;
     end;
 
@@ -6648,31 +6648,31 @@ end;
 procedure TFClient.DBGridGotoExecute(Sender: TObject);
 var
   I: Integer;
-  Index: TCIndex;
+  Key: TCKey;
   Line: Integer;
   Table: TCBaseTable;
 begin
   Wanted.Clear();
 
   Table := TCBaseTable(FNavigator.Selected.Data);
-  Index := nil;
-  if (Assigned(Table) and (ActiveDBGrid.DataSource.DataSet = Table.DataSet) and (Table.Indices.Count >= 0)) then
-    Index := Table.Indices[0];
+  Key := nil;
+  if (Assigned(Table) and (ActiveDBGrid.DataSource.DataSet = Table.DataSet) and (Table.Keys.Count >= 0)) then
+    Key := Table.Keys[0];
 
-  if (Assigned(Index) and Index.Unique) then
+  if (Assigned(Key) and Key.Unique) then
   begin
     DGoto.Captions := '';
-    for I := 0 to Index.Columns.Count - 1 do
+    for I := 0 to Key.Columns.Count - 1 do
     begin
       if (DGoto.Captions <> '') then DGoto.Captions := DGoto.Captions + ';';
-      DGoto.Captions := DGoto.Captions + Index.Columns.Column[I].Field.Name;
+      DGoto.Captions := DGoto.Captions + Key.Columns.Column[I].Field.Name;
     end;
     if (DGoto.Execute()) then
       if (not ActiveDBGrid.DataSource.DataSet.Locate(DGoto.Captions, DGoto.Values, [loCaseInsensitive])) then
         MsgBox(Preferences.LoadStr(677), Preferences.LoadStr(43), MB_OK + MB_ICONINFORMATION)
       else
         for I := ActiveDBGrid.Columns.Count - 1 downto 0 do
-          if (ActiveDBGrid.Columns[I].Field.FieldName = Index.Columns.Column[0].Field.Name) then
+          if (ActiveDBGrid.Columns[I].Field.FieldName = Key.Columns.Column[0].Field.Name) then
             ActiveDBGrid.SelectedField := ActiveDBGrid.Columns[I].Field;
   end
   else
@@ -6864,7 +6864,7 @@ begin
   begin
     Table := TCBaseTable(FNavigator.Selected.Data);
 
-    if (TCBaseTable(Table).Indices.Count > 0) then
+    if (TCBaseTable(Table).Keys.Count > 0) then
     begin
       MenuItem := TMenuItem.Create(Self);
       MenuItem.Caption := '-';
@@ -6876,10 +6876,10 @@ begin
       MenuItem.Tag := -1;
       MGridHeader.Items.Add(SortMenuItem);
 
-      for I := 0 to TCBaseTable(Table).Indices.Count - 1 do
+      for I := 0 to TCBaseTable(Table).Keys.Count - 1 do
       begin
         MenuItem := TMenuItem.Create(Self);
-        MenuItem.Caption := TCBaseTable(Table).Indices[I].Caption;
+        MenuItem.Caption := TCBaseTable(Table).Keys[I].Caption;
         MenuItem.Tag := I;
         MenuItem.RadioItem := True;
         MenuItem.OnClick := MGridHeaderMenuOrderClick;
@@ -7689,7 +7689,7 @@ end;
 procedure TFClient.FNavigatorChanging(Sender: TObject; Node: TTreeNode;
   var AllowChange: Boolean);
 begin
-  AllowChange := AllowChange and not Dragging(Sender) and not (Assigned(Node) and (Node.ImageIndex in [iiIndex, iiField, iiSystemViewField, iiViewField, iiForeignKey]));
+  AllowChange := AllowChange and not Dragging(Sender) and not (Assigned(Node) and (Node.ImageIndex in [iiKey, iiField, iiSystemViewField, iiViewField, iiForeignKey]));
 
   if (AllowChange and Assigned(ActiveDBGrid) and Assigned(ActiveDBGrid.DataSource.DataSet) and ActiveDBGrid.DataSource.DataSet.Active) then
     try
@@ -7730,7 +7730,7 @@ begin
       iiProcedure:  Objects := Objects + 'Procedure='   + SourceNode.Text + #13#10;
       iiFunction:   Objects := Objects + 'Function='    + SourceNode.Text + #13#10;
       iiEvent:      Objects := Objects + 'Event='       + SourceNode.Text + #13#10;
-      iiIndex:      Objects := Objects + 'Index='       + SourceNode.Text + #13#10;
+      iiKey:      Objects := Objects + 'Index='       + SourceNode.Text + #13#10;
       iiField,
       iiViewField:  Objects := Objects + 'Field='       + SourceNode.Text + #13#10;
       iiForeignKey: Objects := Objects + 'ForeignKey='  + SourceNode.Text + #13#10;
@@ -7755,7 +7755,7 @@ begin
           iiProcedure:  Objects := Objects + 'Procedure='  + TListView(Source).Items[I].Caption + #13#10;
           iiFunction:   Objects := Objects + 'Function='   + TListView(Source).Items[I].Caption + #13#10;
           iiEvent:      Objects := Objects + 'Event='      + TListView(Source).Items[I].Caption + #13#10;
-          iiIndex:      Objects := Objects + 'Index='      + TCIndex(TListView(Source).Items[I].Data).Name + #13#10;
+          iiKey:      Objects := Objects + 'Key='      + TCKey(TListView(Source).Items[I].Data).Name + #13#10;
           iiField,
           iiViewField:  Objects := Objects + 'Field='      + TListView(Source).Items[I].Caption + #13#10;
           iiForeignKey: Objects := Objects + 'ForeignKey=' + TListView(Source).Items[I].Caption + #13#10;
@@ -8111,7 +8111,7 @@ procedure TFClient.FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
         Result := giRoutines;
       iiEvent:
         Result := giEvents;
-      iiIndex:
+      iiKey:
         Result := giIndices;
       iiField,
       iiSystemViewField,
@@ -8356,7 +8356,7 @@ begin
         Expanded := Node.Expanded;
 
         if (Table is TCBaseTable) then
-          UpdateGroup(Node, giIndices, TCBaseTable(Table).Indices);
+          UpdateGroup(Node, giIndices, TCBaseTable(Table).Keys);
         UpdateGroup(Node, giFields, Table.Fields);
         if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).ForeignKeys)) then
           UpdateGroup(Node, giForeignKeys, TCBaseTable(Table).ForeignKeys);
@@ -8424,7 +8424,7 @@ begin
   MainAction('aDDeleteView').Enabled := Assigned(Node) and (Node.ImageIndex = iiView);
   MainAction('aDDeleteRoutine').Enabled := Assigned(Node) and (Node.ImageIndex in [iiProcedure, iiFunction]);
   MainAction('aDDeleteEvent').Enabled := Assigned(Node) and (Node.ImageIndex = iiEvent);
-  MainAction('aDDeleteIndex').Enabled := Assigned(Node) and (Node.ImageIndex = iiIndex);
+  MainAction('aDDeleteIndex').Enabled := Assigned(Node) and (Node.ImageIndex = iiKey);
   MainAction('aDDeleteField').Enabled := Assigned(Node) and (Node.ImageIndex = iiField) and (Client.DatabaseByName(Node.Parent.Parent.Text).TableByName(Node.Parent.Text).Fields.Count > 1);
   MainAction('aDDeleteForeignKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013);
   MainAction('aDDeleteTrigger').Enabled := Assigned(Node) and (Node.ImageIndex = iiTrigger);
@@ -8437,7 +8437,7 @@ begin
   MainAction('aDEditView').Enabled := Assigned(Node) and (Node.ImageIndex = iiView);
   MainAction('aDEditRoutine').Enabled := Assigned(Node) and (Node.ImageIndex in [iiProcedure, iiFunction]);
   MainAction('aDEditEvent').Enabled := Assigned(Node) and (Node.ImageIndex = iiEvent);
-  MainAction('aDEditIndex').Enabled := Assigned(Node) and (Node.ImageIndex = iiIndex);
+  MainAction('aDEditIndex').Enabled := Assigned(Node) and (Node.ImageIndex = iiKey);
   MainAction('aDEditField').Enabled := Assigned(Node) and (Node.ImageIndex = iiField);
   MainAction('aDEditForeignKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiForeignKey);
   MainAction('aDEditTrigger').Enabled := Assigned(Node) and (Node.ImageIndex = iiTrigger);
@@ -8466,7 +8466,7 @@ begin
       iiFunction: miNProperties.Action := MainAction('aDEditRoutine');
       iiEvent: miNProperties.Action := MainAction('aDEditEvent');
       iiTrigger: miNProperties.Action := MainAction('aDEditTrigger');
-      iiIndex: miNProperties.Action := MainAction('aDEditIndex');
+      iiKey: miNProperties.Action := MainAction('aDEditIndex');
       iiField: miNProperties.Action := MainAction('aDEditField');
       iiForeignKey: miNProperties.Action := MainAction('aDEditForeignKey');
       iiHost: miNProperties.Action := MainAction('aDEditHost');
@@ -8884,9 +8884,9 @@ begin
         if (Tables[I].Fields.Count > 0) then
         begin
           if (Tables[I] is TCBaseTable) then
-            for J := 0 to TCBaseTable(Tables[I]).Indices.Count - 1 do
-              if (not TCBaseTable(Tables[I]).Indices[J].Primary) then
-                StringList.Add(TCBaseTable(Tables[I]).Indices[J].Caption);
+            for J := 0 to TCBaseTable(Tables[I]).Keys.Count - 1 do
+              if (not TCBaseTable(Tables[I]).Keys[J].Primary) then
+                StringList.Add(TCBaseTable(Tables[I]).Keys[J].Caption);
           for J := 0 to Tables[I].Fields.Count - 1 do
             StringList.Add(Tables[I].Fields[J].Name);
           if (Tables[I] is TCBaseTable) then
@@ -9910,7 +9910,7 @@ begin
     iiProcedure: Result := Client.DatabaseByName(ObjectName).ProcedureByName(Name);
     iiFunction: Result := Client.DatabaseByName(ObjectName).FunctionByName(Name);
     iiEvent: Result := Client.DatabaseByName(ObjectName).EventByName(Name);
-    iiIndex: Result := MenuDatabase.BaseTableByName(ObjectName).IndexByCaption(Name);
+    iiKey: Result := MenuDatabase.BaseTableByName(ObjectName).KeyByCaption(Name);
     iiField,
     iiSystemViewField,
     iiViewField: Result := MenuDatabase.BaseTableByName(ObjectName).FieldByName(Name);
@@ -10121,8 +10121,8 @@ begin
     Result := iiFunction
   else if (TObject(Data) is TCEvent) then
     Result := iiEvent
-  else if (TObject(Data) is TCIndex) then
-    Result := iiIndex
+  else if (TObject(Data) is TCKey) then
+    Result := iiKey
   else if (TObject(Data) is TCTableField) then
     if (TCTableField(Data).Table is TCSystemView) then
       Result := iiSystemViewField
@@ -10974,25 +10974,25 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const List
       Item.SubItems.Add('');
       Item.SubItems.Add(TCEvent(Data).Comment);
     end
-    else if (Data is TCIndex) then
+    else if (Data is TCKey) then
     begin
       Item.GroupID := giIndices;
-      Item.ImageIndex := iiIndex;
-      Item.Caption := TCIndex(Data).Caption;
+      Item.ImageIndex := iiKey;
+      Item.Caption := TCKey(Data).Caption;
       S := '';
-      for I := 0 to TCIndex(Data).Columns.Count - 1 do
+      for I := 0 to TCKey(Data).Columns.Count - 1 do
       begin
         if (S <> '') then S := S + ',';
-        S := S + TCIndex(Data).Columns[I].Field.Name;
-        if (TCIndex(Data).Columns.Column[I].Length > 0) then
-          S := S + '(' + IntToStr(TCIndex(Data).Columns[I].Length) + ')';
+        S := S + TCKey(Data).Columns[I].Field.Name;
+        if (TCKey(Data).Columns.Column[I].Length > 0) then
+          S := S + '(' + IntToStr(TCKey(Data).Columns[I].Length) + ')';
       end;
       Item.SubItems.Add(S);
       Item.SubItems.Add('');
       Item.SubItems.Add('');
-      if (TCIndex(Data).Unique) then
+      if (TCKey(Data).Unique) then
         Item.SubItems.Add('unique')
-      else if (TCIndex(Data).Fulltext) then
+      else if (TCKey(Data).Fulltext) then
         Item.SubItems.Add('fulltext')
       else
         Item.SubItems.Add('');
@@ -11340,7 +11340,7 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const List
         giEvents:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(876), '&', '') + ' (' + IntToStr(ClientEvent.CItems.Count) + ')';
         giIndices:
-          GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(458), '&', '') + ' (' + IntToStr(TCBaseTable(ClientEvent.Sender).Indices.Count) + ')';
+          GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(458), '&', '') + ' (' + IntToStr(TCBaseTable(ClientEvent.Sender).Keys.Count) + ')';
         giFields:
           GroupByGroupID(GroupID).Header := ReplaceStr(Preferences.LoadStr(253), '&', '') + ' (' + IntToStr(TCTable(ClientEvent.Sender).Fields.Count) + ')';
         giForeignKeys:
@@ -11426,7 +11426,7 @@ begin
           Table := TCTable(ClientEvent.Sender);
 
           if (Table is TCBaseTable) then
-            UpdateGroup(Kind, giIndices, TCBaseTable(Table).Indices);
+            UpdateGroup(Kind, giIndices, TCBaseTable(Table).Keys);
           UpdateGroup(Kind, giFields, Table.Fields);
           if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).ForeignKeys)) then
             UpdateGroup(Kind, giForeignKeys, TCBaseTable(Table).ForeignKeys);
@@ -11700,12 +11700,12 @@ begin
             MainAction('aDCreateField').Enabled := (ActiveListView.SelCount = 0);
             MainAction('aDCreateForeignKey').Enabled := (ActiveListView.SelCount = 0) and Assigned(BaseTable.Engine) and BaseTable.Engine.ForeignKeyAllowed;
             MainAction('aDCreateTrigger').Enabled := (ActiveListView.SelCount = 0) and Assigned(BaseTable.Database.Triggers);
-            MainAction('aDDeleteIndex').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiIndex);
+            MainAction('aDDeleteIndex').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiKey);
             MainAction('aDDeleteField').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField) and (BaseTable.Fields.Count > ActiveListView.SelCount);
             MainAction('aDDeleteForeignKey').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013);
             MainAction('aDDeleteTrigger').Enabled := (ActiveListView.SelCount >= 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiTrigger);
             MainAction('aDEditTable').Enabled := (ActiveListView.SelCount = 0);
-            MainAction('aDEditIndex').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiIndex);
+            MainAction('aDEditIndex').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiKey);
             MainAction('aDEditField').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiField);
             MainAction('aDEditForeignKey').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiForeignKey);
             MainAction('aDEditTrigger').Enabled := (ActiveListView.SelCount = 1) and Selected and Assigned(Item) and (Item.ImageIndex = iiTrigger);
@@ -11716,10 +11716,10 @@ begin
               if (ActiveListView.Items[I].Selected) then
               begin
                 MainAction('aFExportSQL').Enabled := MainAction('aFExportSQL').Enabled and (ActiveListView.Items[I].ImageIndex in [iiTrigger]);
-                MainAction('aDDeleteIndex').Enabled := MainAction('aDDeleteIndex').Enabled and (ActiveListView.Items[I].ImageIndex in [iiIndex]);
+                MainAction('aDDeleteIndex').Enabled := MainAction('aDDeleteIndex').Enabled and (ActiveListView.Items[I].ImageIndex in [iiKey]);
                 MainAction('aDDeleteField').Enabled := MainAction('aDDeleteField').Enabled and (ActiveListView.Items[I].ImageIndex in [iiField]);
                 MainAction('aDDeleteForeignKey').Enabled := MainAction('aDDeleteForeignKey').Enabled and (ActiveListView.Items[I].ImageIndex in [iiForeignKey]);
-                MainAction('aDEditIndex').Enabled := MainAction('aDEditIndex').Enabled and (ActiveListView.Items[I].ImageIndex in [iiIndex]);
+                MainAction('aDEditIndex').Enabled := MainAction('aDEditIndex').Enabled and (ActiveListView.Items[I].ImageIndex in [iiKey]);
                 MainAction('aDEditField').Enabled := MainAction('aDEditField').Enabled and (ActiveListView.Items[I].ImageIndex in [iiField]);
                 MainAction('aDEditForeignKey').Enabled := MainAction('aDEditForeignKey').Enabled and (ActiveListView.Items[I].ImageIndex in [iiForeignKey]);
                 MainAction('aDEditTrigger').Enabled := MainAction('aDEditTrigger').Enabled and (ActiveListView.Items[I].ImageIndex in [iiTrigger]);
@@ -11732,7 +11732,7 @@ begin
               mlEProperties.Action := MainAction('aDEditTable')
             else
               case (Item.ImageIndex) of
-                iiIndex: mlEProperties.Action := MainAction('aDEditIndex');
+                iiKey: mlEProperties.Action := MainAction('aDEditIndex');
                 iiField: mlEProperties.Action := MainAction('aDEditField');
                 iiForeignKey: mlEProperties.Action := MainAction('aDEditForeignKey');
                 iiTrigger: mlEProperties.Action := MainAction('aDEditTrigger');
@@ -11968,7 +11968,7 @@ begin
     if (MenuItem.Checked) then
       MenuItem.Checked := False
     else if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView])) then
-      TCBaseTable(FNavigator.Selected.Data).Indices[MenuItem.Tag].GetSortDef(SortDef);
+      TCBaseTable(FNavigator.Selected.Data).Keys[MenuItem.Tag].GetSortDef(SortDef);
 
     TMySQLDataSet(ActiveDBGrid.DataSource.DataSet).Sort(SortDef);
     ActiveDBGrid.UpdateHeader();
@@ -11981,7 +11981,7 @@ end;
 procedure TFClient.MGridHeaderPopup(Sender: TObject);
 var
   I: Integer;
-  Index: TCIndex;
+  Key: TCKey;
   J: Integer;
   SortMenuItem: TMenuItem;
   Table: TCBaseTable;
@@ -12011,10 +12011,10 @@ begin
 
     if (Assigned(SortMenuItem) and (ActiveDBGrid.DataSource.DataSet is TCTableDataSet)) then
     begin
-      Index := Table.IndexByDataSet(TCTableDataSet(ActiveDBGrid.DataSource.DataSet));
+      Key := Table.KeyByDataSet(TCTableDataSet(ActiveDBGrid.DataSource.DataSet));
       for I := 0 to SortMenuItem.Count - 1 do
         if (SortMenuItem.Items[I].Tag >= 0) then
-          SortMenuItem.Items[I].Checked := Assigned(Index) and (Index.Index = SortMenuItem.Items[I].Tag);
+          SortMenuItem.Items[I].Checked := Assigned(Key) and (Key.Index = SortMenuItem.Items[I].Tag);
     end;
   end;
 end;
@@ -12846,7 +12846,7 @@ var
   Name: string;
   NewField: TCTableField;
   NewForeignKey: TCForeignKey;
-  NewIndex: TCIndex;
+  NewKey: TCKey;
   NewTable: TCBaseTable;
   SourceClient: TCClient;
   SourceDatabase: TCDatabase;
@@ -13088,15 +13088,15 @@ begin
                 end;
 
               for I := 1 to StringList.Count - 1 do
-                if (StringList.Names[I] = 'Index') then
+                if (StringList.Names[I] = 'Key') then
                 begin
-                  Name := CopyName(StringList.ValueFromIndex[I], NewTable.Indices);
+                  Name := CopyName(StringList.ValueFromIndex[I], NewTable.Keys);
 
-                  NewIndex := TCIndex.Create(NewTable.Indices);
-                  NewIndex.Assign(SourceTable.IndexByName(StringList.ValueFromIndex[I]));
-                  NewIndex.Name := Name;
-                  NewTable.Indices.AddIndex(NewIndex);
-                  NewIndex.Free();
+                  NewKey := TCKey.Create(NewTable.Keys);
+                  NewKey.Assign(SourceTable.KeyByName(StringList.ValueFromIndex[I]));
+                  NewKey.Name := Name;
+                  NewTable.Keys.AddKey(NewKey);
+                  NewKey.Free();
                 end
                 else if (StringList.Names[I] = 'ForeignKey') then
                 begin
@@ -13369,7 +13369,7 @@ begin
     else
       PSynMemo.Visible := False;
 
-    if ((View = vObjects) and not (SelectedImageIndex in [iiIndex, iiField, iiForeignKey]) or ((View = vBrowser) and (SelectedImageIndex = iiServer))) then
+    if ((View = vObjects) and not (SelectedImageIndex in [iiKey, iiField, iiForeignKey]) or ((View = vBrowser) and (SelectedImageIndex = iiServer))) then
     begin
       PListView.Align := alClient;
       PListView.Visible := True;
@@ -14214,8 +14214,8 @@ begin
     if (Assigned(Window.ActiveControl)) then
       if (Window.ActiveControl = ActiveSynMemo) then
         Text := IntToStr(ActiveSynMemo.CaretXY.Line) + ':' + IntToStr(ActiveSynMemo.CaretXY.Char)
-      else if ((Window.ActiveControl = ActiveListView) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiIndex)) then
-        Text := Preferences.LoadStr(377) + ': ' + IntToStr(TCIndex(ActiveListView.ItemFocused.Data).Key)
+      else if ((Window.ActiveControl = ActiveListView) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiKey)) then
+        Text := Preferences.LoadStr(377) + ': ' + IntToStr(TCKey(ActiveListView.ItemFocused.Data).Index)
       else if ((Window.ActiveControl = ActiveListView) and (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiField)) then
         Text := ReplaceStr(Preferences.LoadStr(164), '&', '') + ': ' + IntToStr(TCTableField(ActiveListView.ItemFocused.Data).Index)
       else if ((Window.ActiveControl = ActiveDBGrid) and Assigned(ActiveDBGrid.SelectedField) and (ActiveDBGrid.DataSource.DataSet.RecNo >= 0)) then
@@ -14259,7 +14259,7 @@ begin
   if ((Source = FNavigator) and (Sender is TSynMemo)) then
   begin
     case (MouseDownNode.ImageIndex) of
-      iiIndex: S := Client.DatabaseByName(MouseDownNode.Parent.Parent.Text).BaseTableByName(MouseDownNode.Parent.Text).IndexByCaption(MouseDownNode.Text).Name;
+      iiKey: S := Client.DatabaseByName(MouseDownNode.Parent.Parent.Text).BaseTableByName(MouseDownNode.Parent.Text).KeyByCaption(MouseDownNode.Text).Name;
       iiForeignKey: S := Client.DatabaseByName(MouseDownNode.Parent.Parent.Text).BaseTableByName(MouseDownNode.Parent.Text).ForeignKeyByName(MouseDownNode.Text).Name;
       else S := MouseDownNode.Text;
     end;
@@ -14306,7 +14306,7 @@ procedure TFClient.SynMemoDragOver(Sender, Source: TObject; X, Y: Integer;
   State: TDragState; var Accept: Boolean);
 begin
   if (Source = FNavigator) then
-    Accept := MouseDownNode.ImageIndex in [iiDatabase, iiSystemDatabase, iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction, iiEvent, iiTrigger, iiIndex, iiField, iiSystemViewField, iiViewField, iiForeignKey]
+    Accept := MouseDownNode.ImageIndex in [iiDatabase, iiSystemDatabase, iiBaseTable, iiSystemView, iiView, iiProcedure, iiFunction, iiEvent, iiTrigger, iiKey, iiField, iiSystemViewField, iiViewField, iiForeignKey]
   else if (Source = FSQLHistory) then
     Accept := MouseDownNode.ImageIndex in [iiStatement, iiQuery, iiClock]
   else if (Source = ActiveDBGrid) then
@@ -14500,8 +14500,8 @@ begin
     SortDef := TIndexDef.Create(nil, '', '', []);
     if (Table.DataSet.Active) then
       SortDef.Assign(Table.DataSet.SortDef)
-    else if ((Table is TCBaseTable) and (TCBaseTable(Table).Indices.Count > 0) and (TCBaseTable(Table).Indices[0].Name = '')) then
-      TCBaseTable(Table).Indices[0].GetSortDef(SortDef);
+    else if ((Table is TCBaseTable) and (TCBaseTable(Table).Keys.Count > 0) and (TCBaseTable(Table).Keys[0].Name = '')) then
+      TCBaseTable(Table).Keys[0].GetSortDef(SortDef);
 
     Table.Open(FilterSQL, QuickSearch, SortDef, Offset, Limit, Desktop(Table).DataSetOpenEvent);
 

@@ -1377,17 +1377,17 @@ var
   J: Integer;
   Selected: Boolean;
 begin
-  if (not Assigned(Table) or not Assigned(Table.Indices.Primary)) then
+  if (not Assigned(Table) or not Assigned(Table.Keys.PrimaryKey)) then
     FUpdate.Enabled := False
   else
   begin
     Selected := True;
-    for I := 0 to Table.Indices.Primary.Columns.Count - 1 do
+    for I := 0 to Table.Keys.PrimaryKey.Columns.Count - 1 do
       if (Selected) then
       begin
         Selected := False;
         for J := 0 to Length(FFields) - 1 do
-          if ((FSourceFields[J].Text <> '') and (FFields[J].ItemIndex = Table.Indices.Primary.Columns[I].Field.Index + 1)) then
+          if ((FSourceFields[J].Text <> '') and (FFields[J].ItemIndex = Table.Keys.PrimaryKey.Columns[I].Field.Index + 1)) then
             Selected := True;
       end;
     if (Selected) then

@@ -37,11 +37,11 @@ type
   TCEntities = class;
   TCObjects = class;
   TCDBObjects = class;
-  TCIndexColumns = class;
-  TCIndex = class;
+  TCKeyColumns = class;
+  TCKey = class;
   TCTableField = class;
   TCBaseTableField = class;
-  TCIndices = class;
+  TCKeys = class;
   TCTableFields = class;
   TCForeignKey = class;
   TCForeignKeys = class;
@@ -110,7 +110,7 @@ type
     procedure Clear(); override;
     constructor Create(const AClient: TCClient);
     destructor Destroy(); override;
-    function IndexByName(const Name: string): Integer; virtual;
+    function KeyByName(const Name: string): Integer; virtual;
     function NameCmp(const Name1, Name2: string): Integer; virtual;
     property Client: TCClient read FClient;
     property Count: Integer read GetCount;
@@ -219,39 +219,39 @@ type
     property Database: TCDatabase read FDatabase;
   end;
 
-  TCIndexColumn = class
+  TCKeyColumn = class
   private
-    FIndexColumns: TCIndexColumns;
+    FKeyColumns: TCKeyColumns;
   public
     Ascending: Boolean;
     Field: TCBaseTableField;
     Length: Integer;
-    procedure Assign(const Source: TCIndexColumn); virtual;
-    constructor Create(const AIndexColumns: TCIndexColumns); virtual;
-    function Equal(const Second: TCIndexColumn): Boolean; virtual;
-    property IndexColumns: TCIndexColumns read FIndexColumns;
+    procedure Assign(const Source: TCKeyColumn); virtual;
+    constructor Create(const AKeyColumns: TCKeyColumns); virtual;
+    function Equal(const Second: TCKeyColumn): Boolean; virtual;
+    property IndexColumns: TCKeyColumns read FKeyColumns;
   end;
 
-  TCIndexColumns = class(TCItems)
+  TCKeyColumns = class(TCItems)
   private
-    FIndex: TCIndex;
-    function GetColumn(Index: Integer): TCIndexColumn;
+    FKey: TCKey;
+    function GetColumn(Index: Integer): TCKeyColumn;
   public
-    procedure AddColumn(const NewColumn: TCIndexColumn); virtual;
-    constructor Create(const AIndex: TCIndex); virtual;
-    procedure DeleteColumn(const AColumn: TCIndexColumn); virtual;
-    function IndexByField(const AField: TCTableField): Integer; virtual;
-    property Column[Index: Integer]: TCIndexColumn read GetColumn; default;
+    procedure AddColumn(const NewColumn: TCKeyColumn); virtual;
+    constructor Create(const AKey: TCKey); virtual;
+    procedure DeleteColumn(const AColumn: TCKeyColumn); virtual;
+    function KeyByField(const AField: TCTableField): Integer; virtual;
+    property Column[Index: Integer]: TCKeyColumn read GetColumn; default;
     property Count: Integer read GetCount;
-    property Index: TCIndex read FIndex;
+    property Key: TCKey read FKey;
   end;
 
-  TCIndex = class(TCItem)
+  TCKey = class(TCItem)
   private
     Created: Boolean;
-    FColumns: TCIndexColumns;
+    FColumns: TCKeyColumns;
     OriginalName: string;
-    function GetIndices(): TCIndices; inline;
+    function GetKeys(): TCKeys; inline;
     function GetKey(): Integer;
     function GetTable(): TCBaseTable;
   protected
@@ -262,36 +262,36 @@ type
     IndexType: string;
     Primary: Boolean;
     Unique: Boolean;
-    procedure Assign(const Source: TCIndex); reintroduce; virtual;
+    procedure Assign(const Source: TCKey); reintroduce; virtual;
     procedure Clear(); virtual;
-    function ColumnByField(const AField: TCBaseTableField): TCIndexColumn; virtual;
-    function ColumnByFieldName(const AFieldName: string): TCIndexColumn; virtual;
-    constructor Create(const AIndices: TCIndices; const AName: string = ''); reintroduce; virtual;
+    function ColumnByField(const AField: TCBaseTableField): TCKeyColumn; virtual;
+    function ColumnByFieldName(const AFieldName: string): TCKeyColumn; virtual;
+    constructor Create(const AKeys: TCKeys; const AName: string = ''); reintroduce; virtual;
     destructor Destroy(); override;
-    function Equal(const Second: TCIndex): Boolean; reintroduce; virtual;
+    function Equal(const Second: TCKey): Boolean; reintroduce; virtual;
     procedure GetSortDef(var SortDef: TIndexDef);
-    property Columns: TCIndexColumns read FColumns;
+    property Columns: TCKeyColumns read FColumns;
     property Index: Integer read GetIndex;
-    property Indices: TCIndices read GetIndices;
+    property Keys: TCKeys read GetKeys;
     property Table: TCBaseTable read GetTable;
-    property Key: Integer read GetKey;
+    property xKey: Integer read GetKey;
   end;
 
-  TCIndices = class(TCItems)
+  TCKeys = class(TCItems)
   private
     FTable: TCBaseTable;
-    function GetIndex(Index: Integer): TCIndex; inline;
-    function GetPrimary(): TCIndex;
+    function GetKey(Index: Integer): TCKey; inline;
+    function GetPrimaryKey(): TCKey;
   protected
     function InsertIndex(const Name: string; out Index: Integer): Boolean; override;
   public
-    procedure AddIndex(const NewIndex: TCIndex); virtual;
-    procedure Assign(const Source: TCIndices); virtual;
+    procedure AddKey(const NewKey: TCKey); virtual;
+    procedure Assign(const Source: TCKeys); virtual;
     constructor Create(const ATable: TCBaseTable); reintroduce; virtual;
-    procedure DeleteIndex(const AIndex: TCIndex); virtual;
-    function IndexByName(const Name: string): Integer; override;
-    property Index[Index: Integer]: TCIndex read GetIndex; default;
-    property Primary: TCIndex read GetPrimary;
+    procedure DeleteKey(const AKey: TCKey); virtual;
+    function KeyByName(const Name: string): Integer; override;
+    property Key[Index: Integer]: TCKey read GetKey; default;
+    property PrimaryKey: TCKey read GetPrimaryKey;
     property Table: TCBaseTable read FTable;
   end;
 
@@ -384,7 +384,7 @@ type
     procedure Assign(const Source: TCTableFields); virtual;
     constructor Create(const ATable: TCTable);
     procedure DeleteField(const AField: TCTableField); virtual;
-    function IndexByName(const Name: string): Integer; override;
+    function KeyByName(const Name: string): Integer; override;
     function IndexOf(const AField: TCTableField): Integer; virtual;
     property Field[Index: Integer]: TCTableField read GetField; default;
     property Table: TCTable read FTable;
@@ -447,7 +447,7 @@ type
     procedure Clear(); override;
     constructor Create(const ATable: TCBaseTable); reintroduce; virtual;
     procedure DeleteForeignKey(const AForeignKey: TCForeignKey); virtual;
-    function IndexByName(const Name: string): Integer; override;
+    function KeyByName(const Name: string): Integer; override;
     procedure InsertForeignKey(const Index: Integer; const NewForeignKey: TCForeignKey); virtual;
     property Client: TCClient read GetClient;
     property ForeignKey[Index: Integer]: TCForeignKey read GetForeignKey; default;
@@ -563,7 +563,7 @@ type
     FEngine: TCEngine;
     FForeignKeys: TCForeignKeys;
     FIndexSize: Int64;
-    FIndices: TCIndices;
+    FKeys: TCKeys;
     FMaxDataSize: Int64;
     FPackIndices: TCPackIndices;
     FPartitions: TCPartitions;
@@ -580,9 +580,9 @@ type
     function GetEngine(): TCEngine;
     function GetForeignKeys(): TCForeignKeys;
     function GetIndexSize(): Int64;
-    function GetIndices(): TCIndices;
+    function GetKeys(): TCKeys;
     function GetPartitions(): TCPartitions;
-    function GetPrimaryIndex(): TCIndex;
+    function GetPrimaryKey(): TCKey;
     procedure SetDefaultCharset(const ADefaultCharset: string);
   protected
     FValidStatus: Boolean;
@@ -608,9 +608,9 @@ type
     function EmptyFields(const Fields: TList): Boolean; virtual;
     function Flush(): Boolean; virtual;
     function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; override;
-    function IndexByCaption(const Caption: string): TCIndex; virtual;
-    function IndexByName(const IndexName: string): TCIndex; virtual;
-    function IndexByDataSet(const DataSet: TCTableDataSet): TCIndex; virtual;
+    function KeyByCaption(const Caption: string): TCKey; virtual;
+    function KeyByName(const Name: string): TCKey; virtual;
+    function KeyByDataSet(const DataSet: TCTableDataSet): TCKey; virtual;
     procedure Invalidate(); override;
     procedure InvalidateStatus(); virtual;
     function Optimize(): Boolean; virtual;
@@ -632,11 +632,11 @@ type
     property Fields: TCBaseTableFields read GetBaseTableFields;
     property IndexSize: Int64 read GetIndexSize;
     property ForeignKeys: TCForeignKeys read GetForeignKeys;
-    property Indices: TCIndices read GetIndices;
+    property Keys: TCKeys read GetKeys;
     property MaxDataSize: Int64 read FMaxDataSize;
     property PackIndices: TCPackIndices read FPackIndices write FPackIndices;
     property Partitions: TCPartitions read GetPartitions;
-    property PrimaryIndex: TCIndex read GetPrimaryIndex;
+    property PrimaryKey: TCKey read GetPrimaryKey;
     property Rows: Int64 read FRows;
     property RowType: TMySQLRowType read FRowType write FRowType;
     property Temporary: Boolean read FTemporary write FTemporary;
@@ -1760,7 +1760,7 @@ begin
   Result := TList(Self).Count;
 end;
 
-function TCItems.IndexByName(const Name: string): Integer;
+function TCItems.KeyByName(const Name: string): Integer;
 type
   Tstrcmp = function (lpString1, lpString2: PWideChar): Integer; stdcall;
 var
@@ -2173,22 +2173,22 @@ end;
 
 { TCIndexColumn ***************************************************************}
 
-procedure TCIndexColumn.Assign(const Source: TCIndexColumn);
+procedure TCKeyColumn.Assign(const Source: TCKeyColumn);
 begin
-  Field := IndexColumns.Index.Table.FieldByName(Source.Field.Name);
+  Field := IndexColumns.Key.Table.FieldByName(Source.Field.Name);
   Length := Source.Length;
 end;
 
-constructor TCIndexColumn.Create(const AIndexColumns: TCIndexColumns);
+constructor TCKeyColumn.Create(const AKeyColumns: TCKeyColumns);
 begin
-  FIndexColumns := AIndexColumns;
+  FKeyColumns := AKeyColumns;
 
   Ascending := True;
   Field := nil;
   Length := 0;
 end;
 
-function TCIndexColumn.Equal(const Second: TCIndexColumn): Boolean;
+function TCKeyColumn.Equal(const Second: TCKeyColumn): Boolean;
 begin
   Result := Assigned(Second) and (ClassType = Second.ClassType);
 
@@ -2198,23 +2198,23 @@ end;
 
 { TCIndexColumns **************************************************************}
 
-procedure TCIndexColumns.AddColumn(const NewColumn: TCIndexColumn);
+procedure TCKeyColumns.AddColumn(const NewColumn: TCKeyColumn);
 begin
-  Add(TCIndexColumn.Create(Self));
+  Add(TCKeyColumn.Create(Self));
   Column[TList(Self).Count - 1].Assign(NewColumn);
 end;
 
-constructor TCIndexColumns.Create(const AIndex: TCIndex);
+constructor TCKeyColumns.Create(const AKey: TCKey);
 begin
-  FIndex := AIndex;
+  FKey := AKey;
 end;
 
-procedure TCIndexColumns.DeleteColumn(const AColumn: TCIndexColumn);
+procedure TCKeyColumns.DeleteColumn(const AColumn: TCKeyColumn);
 begin
   Delete(IndexOf(AColumn));
 end;
 
-function TCIndexColumns.IndexByField(const AField: TCTableField): Integer;
+function TCKeyColumns.KeyByField(const AField: TCTableField): Integer;
 var
   I: Integer;
 begin
@@ -2225,14 +2225,14 @@ begin
       Result := I;
 end;
 
-function TCIndexColumns.GetColumn(Index: Integer): TCIndexColumn;
+function TCKeyColumns.GetColumn(Index: Integer): TCKeyColumn;
 begin
-  Result := TCIndexColumn(Items[Index]);
+  Result := TCKeyColumn(Items[Index]);
 end;
 
 { TCIndex *********************************************************************}
 
-procedure TCIndex.Assign(const Source: TCIndex);
+procedure TCKey.Assign(const Source: TCKey);
 var
   I: Integer;
 begin
@@ -2249,7 +2249,7 @@ begin
   Fulltext := Source.Fulltext;
 end;
 
-function TCIndex.ColumnByField(const AField: TCBaseTableField): TCIndexColumn;
+function TCKey.ColumnByField(const AField: TCBaseTableField): TCKeyColumn;
 var
   I: Integer;
 begin
@@ -2260,7 +2260,7 @@ begin
       Result := Columns.Column[I];
 end;
 
-function TCIndex.ColumnByFieldName(const AFieldName: string): TCIndexColumn;
+function TCKey.ColumnByFieldName(const AFieldName: string): TCKeyColumn;
 var
   I: Integer;
 begin
@@ -2271,17 +2271,17 @@ begin
       Result := Columns.Column[I];
 end;
 
-constructor TCIndex.Create(const AIndices: TCIndices; const AName: string = '');
+constructor TCKey.Create(const AKeys: TCKeys; const AName: string = '');
 begin
-  inherited Create(AIndices, AName);
+  inherited Create(AKeys, AName);
 
-  FColumns := TCIndexColumns.Create(Self);
+  FColumns := TCKeyColumns.Create(Self);
   Clear();
 
   OriginalName := Name;
 end;
 
-procedure TCIndex.Clear();
+procedure TCKey.Clear();
 begin
   Created := False;
 
@@ -2292,7 +2292,7 @@ begin
   Fulltext := False;
 end;
 
-function TCIndex.GetCaption(): string;
+function TCKey.GetCaption(): string;
 begin
   if (Primary) then
     Result := ReplaceStr(Preferences.LoadStr(154), '&', '')
@@ -2300,19 +2300,19 @@ begin
     Result := Name;
 end;
 
-function TCIndex.GetIndices(): TCIndices;
+function TCKey.GetKeys(): TCKeys;
 begin
-  Assert(CItems is TCIndices);
+  Assert(CItems is TCKeys);
 
-  Result := TCIndices(CItems);
+  Result := TCKeys(CItems);
 end;
 
-function TCIndex.GetKey(): Integer;
+function TCKey.GetKey(): Integer;
 begin
   Result := Index + 1;
 end;
 
-procedure TCIndex.GetSortDef(var SortDef: TIndexDef);
+procedure TCKey.GetSortDef(var SortDef: TIndexDef);
 var
   I: Integer;
 begin
@@ -2333,12 +2333,12 @@ begin
   end;
 end;
 
-function TCIndex.GetTable(): TCBaseTable;
+function TCKey.GetTable(): TCBaseTable;
 begin
-  Result := Indices.Table;
+  Result := Keys.Table;
 end;
 
-function TCIndex.Equal(const Second: TCIndex): Boolean;
+function TCKey.Equal(const Second: TCKey): Boolean;
 var
   I: Integer;
 begin
@@ -2357,7 +2357,7 @@ begin
   Result := Result and (Fulltext = Second.Fulltext);
 end;
 
-destructor TCIndex.Destroy();
+destructor TCKey.Destroy();
 begin
   Clear();
 
@@ -2366,14 +2366,14 @@ begin
   inherited;
 end;
 
-procedure TCIndex.SetName(const AName: string);
+procedure TCKey.SetName(const AName: string);
 begin
   FName := AName;
 end;
 
 { TIndices ********************************************************************}
 
-procedure TCIndices.Assign(const Source: TCIndices);
+procedure TCKeys.Assign(const Source: TCKeys);
 var
   I: Integer;
 begin
@@ -2381,65 +2381,65 @@ begin
 
   for I := 0 to Source.Count - 1 do
   begin
-    AddIndex(Source.Index[I]);
-    Index[I].Created := False;
+    AddKey(Source.Key[I]);
+    Key[I].Created := False;
   end;
 end;
 
-procedure TCIndices.AddIndex(const NewIndex: TCIndex);
+procedure TCKeys.AddKey(const NewKey: TCKey);
 var
   Index: Integer;
 begin
-  if (NewIndex.Primary) then
+  if (NewKey.Primary) then
     Index := 0
   else
     Index := Count;
 
-  Insert(Index, TCIndex.Create(Self));
-  Self.Index[Index].Assign(NewIndex);
-  Self.Index[Index].Created := True;
+  Insert(Index, TCKey.Create(Self));
+  Self.Key[Index].Assign(NewKey);
+  Self.Key[Index].Created := True;
 end;
 
-constructor TCIndices.Create(const ATable: TCBaseTable);
+constructor TCKeys.Create(const ATable: TCBaseTable);
 begin
   inherited Create(ATable.Client);
 
   FTable := ATable;
 end;
 
-procedure TCIndices.DeleteIndex(const AIndex: TCIndex);
+procedure TCKeys.DeleteKey(const AKey: TCKey);
 var
   I: Integer;
 begin
-  if (AIndex.Primary) then
+  if (AKey.Primary) then
     for I := 0 to Table.Fields.Count - 1 do
       if (Table.Fields[I] is TCBaseTableField) then
         TCBaseTableField(Table.Fields[I]).AutoIncrement := False;
 
-  Index[IndexOf(AIndex)].Free();
+  Key[IndexOf(AKey)].Free();
 
-  Delete(IndexOf(AIndex));
+  Delete(IndexOf(AKey));
 end;
 
-function TCIndices.GetIndex(Index: Integer): TCIndex;
+function TCKeys.GetKey(Index: Integer): TCKey;
 begin
-  Result := TCIndex(Items[Index]);
+  Result := TCKey(Items[Index]);
 end;
 
-function TCIndices.InsertIndex(const Name: string; out Index: Integer): Boolean;
+function TCKeys.InsertIndex(const Name: string; out Index: Integer): Boolean;
 begin
   raise EAbstractError.Create(SAbstractError);
 end;
 
-function TCIndices.GetPrimary(): TCIndex;
+function TCKeys.GetPrimaryKey(): TCKey;
 begin
-  if ((Count >= 1) and (Index[0].Name = '')) then
-    Result := Index[0]
+  if ((Count >= 1) and (Key[0].Name = '')) then
+    Result := Key[0]
   else
     Result := nil;
 end;
 
-function TCIndices.IndexByName(const Name: string): Integer;
+function TCKeys.KeyByName(const Name: string): Integer;
 var
   I: Integer;
 begin
@@ -2872,13 +2872,13 @@ begin
   Index := IndexOf(AField);
 
   if (Assigned(Table) and (Table is TCBaseTable)) then
-    for I := TCBaseTable(Table).Indices.Count - 1 downto 0 do
+    for I := TCBaseTable(Table).Keys.Count - 1 downto 0 do
     begin
-      for J := TCBaseTable(Table).Indices[I].Columns.Count - 1 downto 0 do
-        if (TCBaseTable(Table).Indices[I].Columns[J].Field = AField) then
-          TCBaseTable(Table).Indices[I].Columns.DeleteColumn(TCBaseTable(Table).Indices[I].Columns[J]);
-      if (TCBaseTable(Table).Indices[I].Columns.Count = 0) then
-        TCBaseTable(Table).Indices.DeleteIndex(TCBaseTable(Table).Indices[I]);
+      for J := TCBaseTable(Table).Keys[I].Columns.Count - 1 downto 0 do
+        if (TCBaseTable(Table).Keys[I].Columns[J].Field = AField) then
+          TCBaseTable(Table).Keys[I].Columns.DeleteColumn(TCBaseTable(Table).Keys[I].Columns[J]);
+      if (TCBaseTable(Table).Keys[I].Columns.Count = 0) then
+        TCBaseTable(Table).Keys.DeleteKey(TCBaseTable(Table).Keys[I]);
     end;
 
   if (Index + 1 < Count) then
@@ -2895,7 +2895,7 @@ function TCTableFields.FieldByName(const FieldName: string): TCTableField;
 var
   Index: Integer;
 begin
-  Index := IndexByName(FieldName);
+  Index := KeyByName(FieldName);
   if (Index < 0) then
     Result := nil
   else
@@ -2907,7 +2907,7 @@ begin
   Result := TCTableField(Items[Index]);
 end;
 
-function TCTableFields.IndexByName(const Name: string): Integer;
+function TCTableFields.KeyByName(const Name: string): Integer;
 var
   I: Integer;
 begin
@@ -3163,7 +3163,7 @@ begin
   Result := TCForeignKey(Items[Index]);
 end;
 
-function TCForeignKeys.IndexByName(const Name: string): Integer;
+function TCForeignKeys.KeyByName(const Name: string): Integer;
 var
   I: Integer;
 begin
@@ -3693,7 +3693,7 @@ begin
 
   if (SourceParsed) then
   begin
-    FIndices.Assign(TCBaseTable(Source).Indices);
+    FKeys.Assign(TCBaseTable(Source).Keys);
 
     FForeignKeys.FValid := True; // Do not allow GetSource!
     FForeignKeys.Assign(TCBaseTable(Source).ForeignKeys);
@@ -3817,7 +3817,7 @@ end;
 
 constructor TCBaseTable.Create(const ACDBObjects: TCDBObjects; const AName: string = ''; const ASystemTable: Boolean = False);
 begin
-  FIndices := TCIndices.Create(Self);
+  FKeys := TCKeys.Create(Self);
   FForeignKeys := TCForeignKeys.Create(Self);
   if (ACDBObjects.Database.Client.ServerVersion < 50107) then
     FPartitions := nil
@@ -3864,7 +3864,7 @@ destructor TCBaseTable.Destroy();
 begin
   inherited;
 
-  FIndices.Free();
+  FKeys.Free();
   FForeignKeys.Free();
   if (Assigned(FPartitions)) then
     FPartitions.Free();
@@ -3925,7 +3925,7 @@ function TCBaseTable.ForeignKeyByName(const ForeignKeyName: string): TCForeignKe
 var
   Index: Integer;
 begin
-  Index := ForeignKeys.IndexByName(ForeignKeyName);
+  Index := ForeignKeys.KeyByName(ForeignKeyName);
   if (Index < 0) then
     Result := nil
   else
@@ -4009,12 +4009,12 @@ begin
   Result := FIndexSize;
 end;
 
-function TCBaseTable.GetIndices(): TCIndices;
+function TCBaseTable.GetKeys(): TCKeys;
 begin
   if (not SourceParsed and (Source <> '')) then
     ParseCreateTable(Source);
 
-  Result := FIndices;
+  Result := FKeys;
 end;
 
 function TCBaseTable.GetInServerCache(): Boolean;
@@ -4035,9 +4035,9 @@ begin
   Result := FPartitions;
 end;
 
-function TCBaseTable.GetPrimaryIndex(): TCIndex;
+function TCBaseTable.GetPrimaryKey(): TCKey;
 begin
-  Result := IndexByName('');
+  Result := KeyByName('');
 end;
 
 function TCBaseTable.GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string;
@@ -4088,7 +4088,7 @@ begin
     end;
 end;
 
-function TCBaseTable.IndexByCaption(const Caption: string): TCIndex;
+function TCBaseTable.KeyByCaption(const Caption: string): TCKey;
 var
   IndexName: string;
 begin
@@ -4097,28 +4097,28 @@ begin
   Delete(IndexName, Pos(' (' + Preferences.LoadStr(377), IndexName), Length(IndexName) - Pos(' (' + Preferences.LoadStr(377), IndexName) + 2);
   if (IndexName = ReplaceStr(Preferences.LoadStr(154), '&', '')) then IndexName := '';
 
-  Result := IndexByName(IndexName);
+  Result := KeyByName(IndexName);
 end;
 
-function TCBaseTable.IndexByName(const IndexName: string): TCIndex;
+function TCBaseTable.KeyByName(const Name: string): TCKey;
 var
   Index: Integer;
 begin
-  if (Indices.Count = 0) then
+  if (Keys.Count = 0) then
     Result := nil
-  else if (IndexName = 'PRIMARY') and (Indices[0].Name = '') then
-    Result := Indices[0]
+  else if (Name = 'PRIMARY') and (Keys[0].Name = '') then
+    Result := Keys[0]
   else
   begin
-    Index := Indices.IndexByName(IndexName);
+    Index := Keys.KeyByName(Name);
     if (Index < 0) then
       Result := nil
     else
-      Result := Indices[Index];
+      Result := Keys[Index];
   end;
 end;
 
-function TCBaseTable.IndexByDataSet(const DataSet: TCTableDataSet): TCIndex;
+function TCBaseTable.KeyByDataSet(const DataSet: TCTableDataSet): TCKey;
 var
   DescPos: Integer;
   FieldName: string;
@@ -4129,26 +4129,26 @@ var
 begin
   Result := nil;
 
-  for I := 0 to Indices.Count - 1 do
+  for I := 0 to Keys.Count - 1 do
     if (not Assigned(Result)) then
     begin
       Pos := 1; Found := True;
-      for J := 0 to Indices[I].Columns.Count - 1 do
+      for J := 0 to Keys[I].Columns.Count - 1 do
         if (Found) then
         begin
           FieldName := ExtractFieldName(DataSet.SortDef.Fields, Pos);
-          Found := Found and (FieldName = Indices[I].Columns[J].Field.Name);
-          if (Found and not Indices[I].Columns[J].Ascending) then
+          Found := Found and (FieldName = Keys[I].Columns[J].Field.Name);
+          if (Found and not Keys[I].Columns[J].Ascending) then
           begin
             DescPos := 1;
             repeat
               FieldName := ExtractFieldName(DataSet.SortDef.DescFields, DescPos);
-              Found := FieldName = Indices[I].Columns[J].Field.Name;
+              Found := FieldName = Keys[I].Columns[J].Field.Name;
             until (Found or (FieldName = ''));
           end;
         end;
       if (Found) then
-        Result := Indices[I];
+        Result := Keys[I];
     end;
 end;
 
@@ -4176,7 +4176,7 @@ function TCBaseTable.PartitionByName(const PartitionName: string): TCPartition;
 var
   Index: Integer;
 begin
-  Index := Partitions.IndexByName(PartitionName);
+  Index := Partitions.KeyByName(PartitionName);
   if (Index < 0) then
     Result := nil
   else
@@ -4195,8 +4195,8 @@ var
   Name: string;
   NewField: TCBaseTableField;
   NewForeignKey: TCForeignKey;
-  NewIndex: TCIndex;
-  NewIndexColumn: TCIndexColumn;
+  NewKey: TCKey;
+  NewKeyColumn: TCKeyColumn;
   NewPartition: TCPartition;
   Parse: TSQLParse;
   Primary: Boolean;
@@ -4247,9 +4247,9 @@ begin
 
       if (Index = FFields.Count) then
         Index := FFields.Add(TCBaseTableField.Create(TCBaseTableFields(FFields), Name))
-      else if (Index < FFields.IndexByName(Name)) then
+      else if (Index < FFields.KeyByName(Name)) then
       begin
-        I := FFields.IndexByName(Name);
+        I := FFields.KeyByName(Name);
         FFields[I].Free();
         FFields.Delete(I);
         FFields.Insert(Index, TCBaseTableField.Create(TCBaseTableFields(FFields), Name));
@@ -4346,59 +4346,59 @@ begin
       else
         Name := '';
 
-      if (Index = FIndices.Count) then
-        Index := FIndices.Add(TCIndex.Create(FIndices, Name))
-      else if (Index < FIndices.IndexByName(Name)) then
+      if (Index = FKeys.Count) then
+        Index := FKeys.Add(TCKey.Create(FKeys, Name))
+      else if (Index < FKeys.KeyByName(Name)) then
       begin
-        I := FIndices.IndexByName(Name);
-        FIndices[I].Free();
-        FIndices.Delete(I);
-        FIndices.Insert(Index, TCIndex.Create(FIndices, Name));
+        I := FKeys.KeyByName(Name);
+        FKeys[I].Free();
+        FKeys.Delete(I);
+        FKeys.Insert(Index, TCKey.Create(FKeys, Name));
       end
       else
       begin
-        FIndices[Index].Clear();
-        FIndices[Index].FName := Name;
+        FKeys[Index].Clear();
+        FKeys[Index].FName := Name;
       end;
-      NewIndex := FIndices[Index];
+      NewKey := FKeys[Index];
 
-      NewIndex.Primary := Primary;
-      NewIndex.Unique := Unique;
-      NewIndex.Fulltext := FullText;
+      NewKey.Primary := Primary;
+      NewKey.Unique := Unique;
+      NewKey.Fulltext := FullText;
 
       if (SQLParseKeyword(Parse, 'TYPE') or SQLParseKeyword(Parse, 'USING')) then
-        NewIndex.IndexType := SQLParseValue(Parse);
+        NewKey.IndexType := SQLParseValue(Parse);
 
       if (SQLParseChar(Parse, '(')) then
         while (not SQLParseChar(Parse, ')')) do
         begin
-          NewIndexColumn := TCIndexColumn.Create(NewIndex.Columns);
+          NewKeyColumn := TCKeyColumn.Create(NewKey.Columns);
 
-          NewIndexColumn.Field := FieldByName(SQLParseValue(Parse));
+          NewKeyColumn.Field := FieldByName(SQLParseValue(Parse));
           if (SQLParseChar(Parse, '(')) then
           begin
-            NewIndexColumn.Length := StrToInt(SQLParseValue(Parse));
+            NewKeyColumn.Length := StrToInt(SQLParseValue(Parse));
             SQLParseChar(Parse, ')')
           end;
-          NewIndex.Columns.AddColumn(NewIndexColumn);
-          FreeAndNil(NewIndexColumn);
+          NewKey.Columns.AddColumn(NewKeyColumn);
+          FreeAndNil(NewKeyColumn);
 
           SQLParseChar(Parse, ',');
         end;
 
       if (SQLParseKeyword(Parse, 'USING')) then // MySQL >= 5.01.xx
-        NewIndex.IndexType := SQLParseValue(Parse);
+        NewKey.IndexType := SQLParseValue(Parse);
 
-      NewIndex.Unique := NewIndex.Unique or NewIndex.Primary;
+      NewKey.Unique := NewKey.Unique or NewKey.Primary;
 
 
       Inc(Index);
       SQLParseChar(Parse, ',');
     end;
-    while (Index < FIndices.Count) do
+    while (Index < FKeys.Count) do
     begin
-      FIndices[Index].Free();
-      FIndices.Delete(Index);
+      FKeys[Index].Free();
+      FKeys.Delete(Index);
     end;
 
 
@@ -4417,9 +4417,9 @@ begin
 
       if (Index = FForeignKeys.Count) then
         Index := FForeignKeys.Add(TCForeignKey.Create(FForeignKeys, Name))
-      else if (Index < FForeignKeys.IndexByName(Name)) then
+      else if (Index < FForeignKeys.KeyByName(Name)) then
       begin
-        I := FForeignKeys.IndexByName(Name);
+        I := FForeignKeys.KeyByName(Name);
         FForeignKeys[I].Free();
         FForeignKeys.Delete(I);
         FForeignKeys.Insert(Index, TCForeignKey.Create(FForeignKeys, Name));
@@ -4628,16 +4628,16 @@ begin
       begin
         TCBaseTableField(FFields.Field[I]).FInPrimaryIndex := False;
         TCBaseTableField(FFields.Field[I]).FInUniqueIndex := False;
-        for J := 0 to FIndices.Count - 1 do
-          if (J = 0) or (FIndices.Index[J].Unique) then
-            for K := 0 to FIndices.Index[J].Columns.Count - 1 do
-              if (TCBaseTableField(FFields.Field[I]) = FIndices.Index[J].Columns.Column[K].Field) then
+        for J := 0 to FKeys.Count - 1 do
+          if (J = 0) or (FKeys.Key[J].Unique) then
+            for K := 0 to FKeys.Key[J].Columns.Count - 1 do
+              if (TCBaseTableField(FFields.Field[I]) = FKeys.Key[J].Columns.Column[K].Field) then
                 TCBaseTableField(FFields.Field[I]).FInUniqueIndex := True;
       end;
 
-    if ((FIndices.Count >= 1) and (FIndices[0].Primary)) then
-      for J := 0 to FIndices.Index[0].Columns.Count - 1 do
-        FIndices.Index[0].Columns.Column[J].Field.FInPrimaryIndex := True;
+    if ((FKeys.Count >= 1) and (FKeys[0].Primary)) then
+      for J := 0 to FKeys.Key[0].Columns.Count - 1 do
+        FKeys.Key[0].Columns.Column[J].Field.FInPrimaryIndex := True;
 
     FSourceParsed := True;
   end;
@@ -4976,7 +4976,7 @@ begin
       repeat
         Name := DataSet.FieldByName('Table').AsString;
 
-        Index := IndexByName(Name);
+        Index := KeyByName(Name);
         if (Index >= 0) then
           Table[Index].FInServerCache := True;
       until (not DataSet.FindNext());
@@ -5063,9 +5063,9 @@ begin
 
         if (Index = View.Fields.Count) then
           Index := View.Fields.Add(TCViewField.Create(View.Fields, Name))
-        else if (Index < View.Fields.IndexByName(Name)) then
+        else if (Index < View.Fields.KeyByName(Name)) then
         begin
-          I := View.Fields.IndexByName(Name);
+          I := View.Fields.KeyByName(Name);
           View.Fields[I].Free();
           View.Fields.Delete(I);
           View.Fields.Insert(Index, TCViewField.Create(View.Fields, Name));
@@ -6484,7 +6484,7 @@ function TCDatabase.BaseTableByName(const TableName: string): TCBaseTable;
 var
   Index: Integer;
 begin
-  Index := Tables.IndexByName(TableName);
+  Index := Tables.KeyByName(TableName);
   if ((Index < 0) or not (Tables[Index] is TCBaseTable)) then
     Result := nil
   else
@@ -6713,7 +6713,7 @@ function TCDatabase.EventByName(const EventName: string): TCEvent;
 var
   Index: Integer;
 begin
-  Index := Events.IndexByName(EventName);
+  Index := Events.KeyByName(EventName);
   if (Index < 0) then
     Result := nil
   else
@@ -7051,14 +7051,14 @@ var
   I: Integer;
   J: Integer;
   Modified: Boolean;
-  NewColumn: TCIndexColumn;
   NewField: TCBaseTableField;
   NewForeignKey: TCForeignKey;
-  NewIndex: TCIndex;
+  NewKey: TCKey;
+  NewKeyColumn: TCKeyColumn;
   NewPartition: TCPartition;
   OldField: TCBaseTableField;
   OldForeignKey: TCForeignKey;
-  OldIndex: TCIndex;
+  OldKey: TCKey;
   OldPartition: TCPartition;
   SQL: string;
   SQLPart: string;
@@ -7068,22 +7068,22 @@ begin
     if (NewTable.Fields[I].AutoIncrement) then
       AutoIncrementField := TCBaseTableField(NewTable.Fields[I]);
   Found := False;
-  for I := 0 to NewTable.Indices.Count - 1 do
-    if (NewTable.Indices[I].Primary) then
-      for J := 0 to NewTable.Indices[I].Columns.Count - 1 do
-        if (NewTable.Indices[I].Columns[J].Field = AutoIncrementField) then
+  for I := 0 to NewTable.Keys.Count - 1 do
+    if (NewTable.Keys[I].Primary) then
+      for J := 0 to NewTable.Keys[I].Columns.Count - 1 do
+        if (NewTable.Keys[I].Columns[J].Field = AutoIncrementField) then
           Found := True;
   if (not Found and Assigned(AutoIncrementField)) then
-    if (not Assigned(NewTable.PrimaryIndex)) then
+    if (not Assigned(NewTable.PrimaryKey)) then
     begin
-      NewIndex := TCIndex.Create(NewTable.Indices);
-      NewIndex.Primary := True;
-      NewColumn := TCIndexColumn.Create(NewIndex.Columns);
-      NewColumn.Field := AutoIncrementField;
-      NewIndex.Columns.AddColumn(NewColumn);
-      NewTable.Indices.AddIndex(NewIndex);
-      FreeAndNil(NewColumn);
-      FreeAndNil(NewIndex);
+      NewKey := TCKey.Create(NewTable.Keys);
+      NewKey.Primary := True;
+      NewKeyColumn := TCKeyColumn.Create(NewKey.Columns);
+      NewKeyColumn.Field := AutoIncrementField;
+      NewKey.Columns.AddColumn(NewKeyColumn);
+      NewTable.Keys.AddKey(NewKey);
+      FreeAndNil(NewKeyColumn);
+      FreeAndNil(NewKey);
     end
     else
       AutoIncrementField.AutoIncrement := False;
@@ -7135,37 +7135,37 @@ begin
       end;
     end;
 
-  for I := 0 to NewTable.Indices.Count - 1 do
+  for I := 0 to NewTable.Keys.Count - 1 do
   begin
     Modified := False;
     if (Assigned(Table)) then
-      for J := 0 to Table.Indices.Count - 1 do
-        if (not NewTable.Indices[I].Created and (lstrcmpi(PChar(NewTable.Indices[I].OriginalName), PChar(Table.Indices[J].OriginalName)) = 0)) then
-          Modified := not NewTable.Indices[I].Equal(Table.Indices[J]);
+      for J := 0 to Table.Keys.Count - 1 do
+        if (not NewTable.Keys[I].Created and (lstrcmpi(PChar(NewTable.Keys[I].OriginalName), PChar(Table.Keys[J].OriginalName)) = 0)) then
+          Modified := not NewTable.Keys[I].Equal(Table.Keys[J]);
 
-    if (not Assigned(Table) or Modified or NewTable.Indices[I].Created) then
+    if (not Assigned(Table) or Modified or NewTable.Keys[I].Created) then
     begin
-      NewIndex := NewTable.Indices[I];
+      NewKey := NewTable.Keys[I];
 
       SQLPart := '';
       SQLPart := SQLPart + '  ';
       if (Table <> nil) then SQLPart := SQLPart + 'ADD ';
-      if (NewIndex.Primary) then
+      if (NewKey.Primary) then
         SQLPart := SQLPart + 'PRIMARY KEY'
-      else if (NewIndex.Unique) then
+      else if (NewKey.Unique) then
         SQLPart := SQLPart + 'UNIQUE INDEX'
-      else if (NewIndex.Fulltext) then
+      else if (NewKey.Fulltext) then
         SQLPart := SQLPart + 'FULLTEXT INDEX'
       else
         SQLPart := SQLPart + 'INDEX';
-      if (NewIndex.Name <> '') then SQLPart := SQLPart + ' ' + Client.EscapeIdentifier(NewIndex.Name);
+      if (NewKey.Name <> '') then SQLPart := SQLPart + ' ' + Client.EscapeIdentifier(NewKey.Name);
       FieldNames := '';
-      for J := 0 to NewIndex.Columns.Count - 1 do
+      for J := 0 to NewKey.Columns.Count - 1 do
       begin
         if (FieldNames <> '') then FieldNames := FieldNames + ',';
-        FieldNames := FieldNames + Client.EscapeIdentifier(NewIndex.Columns.Column[J].Field.Name);
-        if ((NewIndex.Columns.Column[J].Field.FieldType in [mfChar, mfVarChar, mfTinyText, mfText, mfMediumText, mfLongText]) and (NewIndex.Columns.Column[J].Length > 0)) then
-          FieldNames := FieldNames + '(' + IntToStr(NewIndex.Columns.Column[J].Length) + ')';
+        FieldNames := FieldNames + Client.EscapeIdentifier(NewKey.Columns.Column[J].Field.Name);
+        if ((NewKey.Columns.Column[J].Field.FieldType in [mfChar, mfVarChar, mfTinyText, mfText, mfMediumText, mfLongText]) and (NewKey.Columns.Column[J].Length > 0)) then
+          FieldNames := FieldNames + '(' + IntToStr(NewKey.Columns.Column[J].Length) + ')';
       end;
       SQLPart := SQLPart + ' (' + FieldNames + ')';
 
@@ -7248,20 +7248,20 @@ begin
     end;
 
   if (Assigned(Table)) then
-    for I := 0 to Table.Indices.Count - 1 do
+    for I := 0 to Table.Keys.Count - 1 do
     begin
-      OldIndex := Table.Indices[I];
+      OldKey := Table.Keys[I];
       Modified := False;
-      for J := 0 to NewTable.Indices.Count - 1 do
-        if (not NewTable.Indices[J].Created and (lstrcmpi(PChar(NewTable.Indices[J].OriginalName), PChar(OldIndex.Name)) = 0)) then
-          Modified := NewTable.Indices[J].Equal(OldIndex);
+      for J := 0 to NewTable.Keys.Count - 1 do
+        if (not NewTable.Keys[J].Created and (lstrcmpi(PChar(NewTable.Keys[J].OriginalName), PChar(OldKey.Name)) = 0)) then
+          Modified := NewTable.Keys[J].Equal(OldKey);
       if (not Modified) then
       begin
         if (SQL <> '') then SQL := SQL + ',' + #13#10;
-        if (OldIndex.Name = '') then
+        if (OldKey.Name = '') then
           SQL := SQL + '  DROP PRIMARY KEY'
         else
-          SQL := SQL + '  DROP INDEX ' + Client.EscapeIdentifier(OldIndex.Name);
+          SQL := SQL + '  DROP INDEX ' + Client.EscapeIdentifier(OldKey.Name);
       end;
     end;
 
@@ -7495,7 +7495,7 @@ function TCDatabase.TableByName(const TableName: string): TCTable;
 var
   Index: Integer;
 begin
-  Index := Tables.IndexByName(TableName);
+  Index := Tables.KeyByName(TableName);
   if (Index < 0) then
     Result := nil
   else
@@ -7506,7 +7506,7 @@ function TCDatabase.TriggerByName(const TriggerName: string): TCTrigger;
 var
   Index: Integer;
 begin
-  Index := Triggers.IndexByName(TriggerName);
+  Index := Triggers.KeyByName(TriggerName);
   if (Index < 0) then
     Result := nil
   else
@@ -7804,7 +7804,7 @@ function TCDatabase.ViewByName(const TableName: string): TCView;
 var
   Index: Integer;
 begin
-  Index := Tables.IndexByName(TableName);
+  Index := Tables.KeyByName(TableName);
   if ((Index < 0) or not (Tables[Index] is TCView)) then
     Result := nil
   else
@@ -9651,7 +9651,7 @@ function TCHost.DatabaseByName(const DatabaseName: string): TCHostDatabase;
 var
   Index: Integer;
 begin
-  Index := Databases.IndexByName(DatabaseName);
+  Index := Databases.KeyByName(DatabaseName);
   if (Index < 0) then
     Result := nil
   else
@@ -10019,7 +10019,7 @@ function TCClient.CharsetByName(const CharsetName: string): TCCharset;
 var
   Index: Integer;
 begin
-  Index := Charsets.IndexByName(CharsetName);
+  Index := Charsets.KeyByName(CharsetName);
   if (Index < 0) then
     Result := nil
   else
@@ -10325,7 +10325,7 @@ function TCClient.CollationByName(const CollationName: string): TCCollation;
 var
   Index: Integer;
 begin
-  Index := Collations.IndexByName(CollationName);
+  Index := Collations.KeyByName(CollationName);
   if (Index < 0) then
     Result := nil
   else
@@ -10408,7 +10408,7 @@ function TCClient.DatabaseByName(const DatabaseName: string): TCDatabase;
 var
   Index: Integer;
 begin
-  Index := Databases.IndexByName(DatabaseName);
+  Index := Databases.KeyByName(DatabaseName);
   if (Index < 0) then
     Result := nil
   else
@@ -10669,7 +10669,7 @@ function TCClient.EngineByName(const EngineName: string): TCEngine;
 var
   Index: Integer;
 begin
-  Index := Engines.IndexByName(EngineName);
+  Index := Engines.KeyByName(EngineName);
   if (Index < 0) then
     Result := nil
   else
@@ -11467,7 +11467,7 @@ function TCClient.PluginByName(const PluginName: string): TCPlugin;
 var
   Index: Integer;
 begin
-  Index := Plugins.IndexByName(PluginName);
+  Index := Plugins.KeyByName(PluginName);
   if (Index < 0) then
     Result := nil
   else
@@ -11520,7 +11520,7 @@ var
 begin
   if (AAutoCommit <> AutoCommit) then
   begin
-    Index := Variables.IndexByName('autocommit');
+    Index := Variables.KeyByName('autocommit');
     if (Index >= 0) then
     begin
       if (AAutoCommit) then
@@ -11575,7 +11575,7 @@ function TCClient.StatusByName(const StatusName: string): TCStatus;
 var
   Index: Integer;
 begin
-  Index := Stati.IndexByName(StatusName);
+  Index := Stati.KeyByName(StatusName);
   if (Index < 0) then
     Result := nil
   else
@@ -11981,33 +11981,33 @@ begin
     if (Assigned(Table)) then
     begin
       IndexDefs.Clear();
-      for I := 0 to Table.Indices.Count - 1 do
+      for I := 0 to Table.Keys.Count - 1 do
       begin
         Found := True;
-        for J := 0 to Table.Indices[I].Columns.Count - 1 do
+        for J := 0 to Table.Keys[I].Columns.Count - 1 do
           if (Found) then
           begin
             Found := False;
             for K := 0 to DataSet.FieldCount - 1 do
-              if (GetFieldInfo(DataSet.Fields[K].Origin, FieldInfo) and (FieldInfo.OriginalFieldName = Table.Indices[I].Columns[J].Field.Name)) then
+              if (GetFieldInfo(DataSet.Fields[K].Origin, FieldInfo) and (FieldInfo.OriginalFieldName = Table.Keys[I].Columns[J].Field.Name)) then
                 Found := True;
           end;
         if (Found) then
         begin
           IndexDef := IndexDefs.AddIndexDef();
-          IndexDef.Name := Table.Indices[I].Name;
-          if (Table.Indices[I].Primary) then
+          IndexDef.Name := Table.Keys[I].Name;
+          if (Table.Keys[I].Primary) then
             IndexDef.Options := [ixPrimary, ixUnique]
-          else if (Table.Indices[I].Unique) then
+          else if (Table.Keys[I].Unique) then
             IndexDef.Options := [ixUnique];
-          for J := 0 to Table.Indices[I].Columns.Count - 1 do
+          for J := 0 to Table.Keys[I].Columns.Count - 1 do
           begin
             if (IndexDef.Fields <> '') then IndexDef.Fields := IndexDef.Fields + ';';
             for K := 0 to DataSet.FieldCount - 1 do
-              if (GetFieldInfo(DataSet.Fields[K].Origin, FieldInfo) and (FieldInfo.OriginalFieldName = Table.Indices[I].Columns[J].Field.Name)) then
+              if (GetFieldInfo(DataSet.Fields[K].Origin, FieldInfo) and (FieldInfo.OriginalFieldName = Table.Keys[I].Columns[J].Field.Name)) then
               begin
                 IndexDef.Fields := IndexDef.Fields + DataSet.Fields[K].FieldName;
-                if (not Table.Indices[I].Columns[J].Ascending) then
+                if (not Table.Keys[I].Columns[J].Ascending) then
                 begin
                   if (IndexDef.DescFields <> '') then IndexDef.DescFields := IndexDef.DescFields + ';';
                   IndexDef.Fields := IndexDef.Fields + DataSet.Fields[K].FieldName;
@@ -12275,7 +12275,7 @@ function TCClient.UserByName(const UserName: string): TCUser;
 var
   Index: Integer;
 begin
-  Index := Users.IndexByName(UserName);
+  Index := Users.KeyByName(UserName);
   if (Index < 0) then
     Result := nil
   else
@@ -12286,7 +12286,7 @@ function TCClient.VariableByName(const VariableName: string): TCVariable;
 var
   Index: Integer;
 begin
-  Index := Variables.IndexByName(VariableName);
+  Index := Variables.KeyByName(VariableName);
   if (Index < 0) then
     Result := nil
   else

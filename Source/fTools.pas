@@ -2672,11 +2672,11 @@ var
   DecimalDigits: SQLSMALLINT;
   Found: Boolean;
   I: Integer;
-  Index: TCIndex;
+  Key: TCKey;
   IndexName: array [0 .. STR_LEN] of SQLTCHAR;
   IndexType: SQLSMALLINT;
   J: Integer;
-  NewColumn: TCIndexColumn;
+  NewKeyColumn: TCKeyColumn;
   NewField: TCBaseTableField;
   NewTable: TCBaseTable;
   NonUnique: SQLSMALLINT;
@@ -2811,76 +2811,76 @@ begin
     while (SQL_SUCCEEDED(ODBCException(Stmt, SQLFetch(Stmt)))) do
       if ((IndexType in [SQL_INDEX_CLUSTERED, SQL_INDEX_HASHED, SQL_INDEX_OTHER])) then
       begin
-        Index := NewTable.IndexByName(IndexName);
+        Key := NewTable.KeyByName(IndexName);
 
-        if (not Assigned(Index)) then
+        if (not Assigned(Key)) then
         begin
-          Index := TCIndex.Create(NewTable.Indices);
-          Index.Name := IndexName;
-          Index.Unique := NonUnique = SQL_FALSE;
-          NewTable.Indices.AddIndex(Index);
-          Index.Free();
+          Key := TCKey.Create(NewTable.Keys);
+          Key.Name := IndexName;
+          Key.Unique := NonUnique = SQL_FALSE;
+          NewTable.Keys.AddKey(Key);
+          Key.Free();
 
-          Index := NewTable.IndexByName(IndexName);
+          Key := NewTable.KeyByName(IndexName);
         end;
 
-        NewColumn := TCIndexColumn.Create(Index.Columns);
-        NewColumn.Field := NewTable.FieldByName(ColumnName);
-        NewColumn.Ascending := AscOrDesc[0] = 'A';
-        Index.Columns.AddColumn(NewColumn);
-        FreeAndNil(NewColumn);
+        NewKeyColumn := TCKeyColumn.Create(Key.Columns);
+        NewKeyColumn.Field := NewTable.FieldByName(ColumnName);
+        NewKeyColumn.Ascending := AscOrDesc[0] = 'A';
+        Key.Columns.AddColumn(NewKeyColumn);
+        FreeAndNil(NewKeyColumn);
       end;
 
     SQLFreeHandle(SQL_HANDLE_STMT, Stmt);
 
 
-    if ((NewTable.Indices.Count > 0) and not Assigned(NewTable.IndexByName(''))) then
+    if ((NewTable.Keys.Count > 0) and not Assigned(NewTable.KeyByName(''))) then
     begin
-      Index := nil;
-      for I := NewTable.Indices.Count - 1 downto 0 do
-        if ((UpperCase(NewTable.Indices[I].Name) = 'PRIMARYKEY') and NewTable.Indices[0].Unique) then
-          Index := NewTable.Indices[I];
-      if (Assigned(Index)) then
+      Key := nil;
+      for I := NewTable.Keys.Count - 1 downto 0 do
+        if ((UpperCase(NewTable.Keys[I].Name) = 'PRIMARYKEY') and NewTable.Keys[0].Unique) then
+          Key := NewTable.Keys[I];
+      if (Assigned(Key)) then
       begin
-        Index.Primary := True;
-        Index.Name := '';
+        Key.Primary := True;
+        Key.Name := '';
       end;
     end;
 
-    if ((NewTable.Indices.Count > 0) and not NewTable.Indices[0].Primary and NewTable.Indices[0].Unique) then
+    if ((NewTable.Keys.Count > 0) and not NewTable.Keys[0].Primary and NewTable.Keys[0].Unique) then
     begin
-      NewTable.Indices[0].Primary := True;
-      NewTable.Indices[0].Name := '';
+      NewTable.Keys[0].Primary := True;
+      NewTable.Keys[0].Name := '';
     end;
 
     for I := 0 to NewTable.Fields.Count -1 do
-      if ((NewTable.Indices.Count = 0) and NewTable.Fields[I].AutoIncrement) then
+      if ((NewTable.Keys.Count = 0) and NewTable.Fields[I].AutoIncrement) then
       begin
-        Index := TCIndex.Create(NewTable.Indices);
-        Index.Primary := True;
-        NewTable.Indices.AddIndex(Index);
-        Index.Free();
+        Key := TCKey.Create(NewTable.Keys);
+        Key.Primary := True;
+        NewTable.Keys.AddKey(Key);
+        Key.Free();
 
-        Index := NewTable.Indices[0];
+        Key := NewTable.Keys[0];
 
-        NewColumn := TCIndexColumn.Create(Index.Columns);
-        NewColumn.Field := TCBaseTableField(NewTable.Fields[I]);
-        Index.Columns.AddColumn(NewColumn);
-        FreeAndNil(NewColumn);
+        NewKeyColumn := TCKeyColumn.Create(Key.Columns);
+        NewKeyColumn.Field := TCBaseTableField(NewTable.Fields[I]);
+        Key.Columns.AddColumn(NewKeyColumn);
+        FreeAndNil(NewKeyColumn);
       end;
 
-    for I := NewTable.Indices.Count - 1 downto 1 do
+    for I := NewTable.Keys.Count - 1 downto 1 do
       for J := I - 1 downto 0 do
         if (I <> J) then
-          if (NewTable.Indices[J].Equal(NewTable.Indices[I])) then
-            NewTable.Indices.DeleteIndex(NewTable.Indices[J])
-          else if (UpperCase(NewTable.Indices[I].Name) = UpperCase(NewTable.Indices[J].Name)) then
-            NewTable.Indices[I].Name := 'Index_' + IntToStr(I);
+          if (NewTable.Keys[J].Equal(NewTable.Keys[I])) then
+            NewTable.Keys.DeleteKey(NewTable.Keys[J])
+          else if (UpperCase(NewTable.Keys[I].Name) = UpperCase(NewTable.Keys[J].Name)) then
+            NewTable.Keys[I].Name := 'Index_' + IntToStr(I);
 
     Found := False;
     for I := 0 to NewTable.Fields.Count - 1 do
     begin
-      NewTable.Fields[I].AutoIncrement := not Found and NewTable.Fields[I].AutoIncrement and (NewTable.Indices.Count > 0) and (NewTable.Indices[0].Name = '') and (NewTable.Indices[0].Columns.IndexByField(NewTable.Fields[I]) >= 0);
+      NewTable.Fields[I].AutoIncrement := not Found and NewTable.Fields[I].AutoIncrement and (NewTable.Keys.Count > 0) and (NewTable.Keys[0].Name = '') and (NewTable.Keys[0].Columns.KeyByField(NewTable.Fields[I]) >= 0);
       Found := Found or NewTable.Fields[I].AutoIncrement;
       if (NewTable.Fields[I].AutoIncrement) then
         NewTable.Fields[I].Default := '';
@@ -3056,9 +3056,9 @@ procedure TTImportSQLite.ExecuteStructure(var Item: TTImport.TItem);
 var
   I: Integer;
   Name: string;
-  NewColumn: TCIndexColumn;
   NewField: TCBaseTableField;
-  NewIndex: TCIndex;
+  NewKey: TCKey;
+  NewKeyColumn: TCKeyColumn;
   NewTable: TCBaseTable;
   Parse: TSQLParse;
   ParseSQL: string;
@@ -3141,15 +3141,15 @@ begin
 
       if (Primary) then
       begin
-        NewIndex := TCIndex.Create(NewTable.Indices);
-        NewIndex.Primary := True;
-        NewColumn := TCIndexColumn.Create(NewIndex.Columns);
-        NewColumn.Field := TCBaseTableField(NewTable.Fields[NewTable.Fields.Count - 1]);
-        NewColumn.Ascending := True;
-        NewIndex.Columns.AddColumn(NewColumn);
-        NewColumn.Free();
-        NewTable.Indices.AddIndex(NewIndex);
-        NewIndex.Free();
+        NewKey := TCKey.Create(NewTable.Keys);
+        NewKey.Primary := True;
+        NewKeyColumn := TCKeyColumn.Create(NewKey.Columns);
+        NewKeyColumn.Field := TCBaseTableField(NewTable.Fields[NewTable.Fields.Count - 1]);
+        NewKeyColumn.Ascending := True;
+        NewKey.Columns.AddColumn(NewKeyColumn);
+        NewKeyColumn.Free();
+        NewTable.Keys.AddKey(NewKey);
+        NewKey.Free();
       end;
     until (not SQLParseChar(Parse, ',') and SQLParseChar(Parse, ')'));
   end;
@@ -3175,20 +3175,20 @@ begin
 
       if (SQLParseValue(Parse) = NewTable.Name) then
       begin
-        NewIndex := TCIndex.Create(NewTable.Indices);
-        NewIndex.Name := Name;
-        NewIndex.Unique := Unique;
+        NewKey := TCKey.Create(NewTable.Keys);
+        NewKey.Name := Name;
+        NewKey.Unique := Unique;
 
-        NewColumn := TCIndexColumn.Create(NewIndex.Columns);
-        NewColumn.Field := NewTable.FieldByName(SQLParseValue(Parse));
+        NewKeyColumn := TCKeyColumn.Create(NewKey.Columns);
+        NewKeyColumn.Field := NewTable.FieldByName(SQLParseValue(Parse));
         if (SQLParseKeyword(Parse, 'COLLATE')) then
           SQLParseValue(Parse);
-        NewColumn.Ascending := SQLParseKeyword(Parse, 'ASC') or not SQLParseKeyword(Parse, 'DESC');
-        NewIndex.Columns.AddColumn(NewColumn);
-        NewColumn.Free();
+        NewKeyColumn.Ascending := SQLParseKeyword(Parse, 'ASC') or not SQLParseKeyword(Parse, 'DESC');
+        NewKey.Columns.AddColumn(NewKeyColumn);
+        NewKeyColumn.Free();
 
-        NewTable.Indices.AddIndex(NewIndex);
-        NewIndex.Free();
+        NewTable.Keys.AddKey(NewKey);
+        NewKey.Free();
       end;
     end;
     SQLiteException(Handle, sqlite3_finalize(Stmt));
@@ -3691,13 +3691,13 @@ begin
     end;
 
     SQL := 'SELECT ' + SQL + ' FROM ' + Table.Database.Client.EscapeIdentifier(Table.Database.Name) + '.' + Table.Database.Client.EscapeIdentifier(Table.Name);
-    if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).PrimaryIndex)) then
+    if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).PrimaryKey)) then
     begin
       SQL := SQL + ' ORDER BY ';
-      for I := 0 to TCBaseTable(Table).PrimaryIndex.Columns.Count - 1 do
+      for I := 0 to TCBaseTable(Table).PrimaryKey.Columns.Count - 1 do
       begin
         if (I > 0) then SQL := SQL + ',';
-        SQL := SQL + Table.Database.Client.EscapeIdentifier(TCBaseTable(Table).PrimaryIndex.Columns[I].Field.Name);
+        SQL := SQL + Table.Database.Client.EscapeIdentifier(TCBaseTable(Table).PrimaryKey.Columns[I].Field.Name);
       end;
     end;
 
@@ -4642,7 +4642,7 @@ begin
 
   if (Assigned(Table) and (Table is TCBaseTable) and Structure) then
   begin
-    if (TCBaseTable(Table).Indices.Count > 0) then
+    if (TCBaseTable(Table).Keys.Count > 0) then
     begin
       Content := Content + '<h3>' + Preferences.LoadStr(458) + ':</h3>' + #13#10;
 
@@ -4651,22 +4651,22 @@ begin
       Content := Content + '<th class="ObjectHeader">' + Escape(ReplaceStr(Preferences.LoadStr(35), '&', '')) + '</th>';
       Content := Content + '<th class="ObjectHeader">' + Escape(Preferences.LoadStr(69)) + '</th>';
       Content := Content + '</tr>' + #13#10;
-      for I := 0 to TCBaseTable(Table).Indices.Count - 1 do
+      for I := 0 to TCBaseTable(Table).Keys.Count - 1 do
       begin
-        if (TCBaseTable(Table).Indices[I].Primary) then
+        if (TCBaseTable(Table).Keys[I].Primary) then
           ClassAttr := ' class="ObjectOfPrimaryKey"'
-        else if (TCBaseTable(Table).Indices[I].Unique) then
+        else if (TCBaseTable(Table).Keys[I].Unique) then
           ClassAttr := ' class="ObjectOfUniqueKey"'
         else
           ClassAttr := ' class="Object"';
 
         Content := Content + #9 + '<tr class="TableHeader">';
-        Content := Content + '<th ' + ClassAttr + '>' + Escape(TCBaseTable(Table).Indices[I].Caption) + '</th>';
+        Content := Content + '<th ' + ClassAttr + '>' + Escape(TCBaseTable(Table).Keys[I].Caption) + '</th>';
         S := '';
-        for J := 0 to TCBaseTable(Table).Indices[I].Columns.Count - 1 do
+        for J := 0 to TCBaseTable(Table).Keys[I].Columns.Count - 1 do
           begin
             if (S <> '') then S := S + ', ';
-            S := S + TCBaseTable(Table).Indices[I].Columns[J].Field.Name;
+            S := S + TCBaseTable(Table).Keys[I].Columns[J].Field.Name;
           end;
         Content := Content + '<td' + ClassAttr + '>' + Escape(S) + '</td>';
         Content := Content + '</tr>' + #13#10;
@@ -4767,8 +4767,8 @@ begin
       if (FieldOfPrimaryIndex[I]) then
         CSS[I] := 'DataOfPrimaryKey'
       else if ((Table is TCBaseTable) and GetFieldInfo(Fields[I].Origin, FieldInfo)) then
-        for J := 0 to TCBaseTable(Table).Indices.Count - 1 do
-          if (Assigned(TCBaseTable(Table).Indices[J].ColumnByFieldName(FieldInfo.OriginalFieldName))) then
+        for J := 0 to TCBaseTable(Table).Keys.Count - 1 do
+          if (Assigned(TCBaseTable(Table).Keys[J].ColumnByFieldName(FieldInfo.OriginalFieldName))) then
             CSS[I] := 'DataOfUniqueKey';
 
       if (Fields[I].Alignment = taRightJustify) then
@@ -5234,13 +5234,13 @@ begin
       if (not Table.Fields[I].NullAllowed) then
         SQL := SQL + ' NOT NULL';
     end;
-    if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).PrimaryIndex)) then
+    if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).PrimaryKey)) then
     begin
       SQL := SQL + ',PRIMARY KEY (';
-      for I := 0 to TCBaseTable(Table).PrimaryIndex.Columns.Count - 1 do
+      for I := 0 to TCBaseTable(Table).PrimaryKey.Columns.Count - 1 do
       begin
         if (I > 0) then SQL := SQL + ',';
-        SQL := SQL + '"' + TCBaseTable(Table).PrimaryIndex.Columns[I].Field.Name + '"';
+        SQL := SQL + '"' + TCBaseTable(Table).PrimaryKey.Columns[I].Field.Name + '"';
       end;
       SQL := SQL + ')';
     end;
@@ -5254,19 +5254,19 @@ begin
     end;
 
     if (Table is TCBaseTable) then
-      for I := 0 to TCBaseTable(Table).Indices.Count - 1 do
-        if (not TCBaseTable(Table).Indices[I].Primary) then
+      for I := 0 to TCBaseTable(Table).Keys.Count - 1 do
+        if (not TCBaseTable(Table).Keys[I].Primary) then
         begin
           SQL := 'CREATE';
-          if (TCBaseTable(Table).Indices[I].Unique) then
+          if (TCBaseTable(Table).Keys[I].Unique) then
             SQL := SQL + ' UNIQUE';
-          SQL := SQL + ' INDEX "' + TCBaseTable(Table).Indices[I].Name + '"';
+          SQL := SQL + ' INDEX "' + TCBaseTable(Table).Keys[I].Name + '"';
           SQL := SQL + ' ON "' + Table.Name + '"';
           SQL := SQL + ' (';
-          for J := 0 to TCBaseTable(Table).Indices[I].Columns.Count - 1 do
+          for J := 0 to TCBaseTable(Table).Keys[I].Columns.Count - 1 do
           begin
             if (J > 0) then SQL := SQL + ',';
-            SQL := SQL + '"' + TCBaseTable(Table).Indices[I].Columns[J].Field.Name + '"';
+            SQL := SQL + '"' + TCBaseTable(Table).Keys[I].Columns[J].Field.Name + '"';
           end;
           SQL := SQL + ');';
 
@@ -5743,9 +5743,9 @@ begin
         begin
           SQL := SQL + 'INTEGER';
           if ((Table is TCBaseTable)
-            and Assigned(TCBaseTable(Table).PrimaryIndex)
-            and (TCBaseTable(Table).PrimaryIndex.Columns.Count = 1)
-            and (TCBaseTable(Table).PrimaryIndex.Columns[0].Field = Table.Fields[I])) then
+            and Assigned(TCBaseTable(Table).PrimaryKey)
+            and (TCBaseTable(Table).PrimaryKey.Columns.Count = 1)
+            and (TCBaseTable(Table).PrimaryKey.Columns[0].Field = Table.Fields[I])) then
             SQL := SQL + ' PRIMARY KEY';
         end;
       mfFloat, mfDouble, mfDecimal:
@@ -7138,16 +7138,16 @@ begin
         Modified := True;
       end;
 
-    for I := 0 to SourceTable.Indices.Count - 1 do
-      if (not Assigned(NewTargetTable.IndexByName(SourceTable.Indices[I].Name))) then
+    for I := 0 to SourceTable.Keys.Count - 1 do
+      if (not Assigned(NewTargetTable.KeyByName(SourceTable.Keys[I].Name))) then
       begin
-        NewTargetTable.Indices.AddIndex(SourceTable.Indices[I]);
+        NewTargetTable.Keys.AddKey(SourceTable.Keys[I]);
 
         Modified := True;
       end
-      else if (UpdateStructure and not SourceTable.Indices[I].Equal(NewTargetTable.IndexByName(SourceTable.Indices[I].Name))) then
+      else if (UpdateStructure and not SourceTable.Keys[I].Equal(NewTargetTable.KeyByName(SourceTable.Keys[I].Name))) then
       begin
-        NewTargetTable.IndexByName(SourceTable.Indices[I].Name).Assign(SourceTable.Indices[I]);
+        NewTargetTable.KeyByName(SourceTable.Keys[I].Name).Assign(SourceTable.Keys[I]);
 
         Modified := True;
       end;

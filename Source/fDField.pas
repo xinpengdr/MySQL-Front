@@ -335,16 +335,16 @@ begin
   FRDefault.Enabled := FDefault.Enabled;
   FRDefaultInsertTime.Enabled := FDefault.Enabled;
   FRDefaultAutoIncrement.Enabled := FDefault.Enabled;
-  for I := 0 to Table.Indices.Count - 1 do
-    if (Table.Indices[I].Unique) then
-      for J := 0 to Table.Indices[I].Columns.Count - 1 do
-        if (Assigned(Field) and (Table.Indices[I].Columns[J].Field.Name = Field.Name)) then
+  for I := 0 to Table.Keys.Count - 1 do
+    if (Table.Keys[I].Unique) then
+      for J := 0 to Table.Keys[I].Columns.Count - 1 do
+        if (Assigned(Field) and (Table.Keys[I].Columns[J].Field.Name = Field.Name)) then
           FRDefaultAutoIncrement.Enabled := True;
   for I := 0 to Table.Fields.Count - 1 do
     if (not Assigned(Field) or (Table.Fields[I].Name <> Field.Name)) then
       if (Table.Fields[I].AutoIncrement) then
         FRDefaultAutoIncrement.Enabled := False;
-  if (Assigned(Table.PrimaryIndex) and (not Assigned(Field) or not Assigned(Table.PrimaryIndex.ColumnByField(Field)))) then
+  if (Assigned(Table.PrimaryKey) and (not Assigned(Field) or not Assigned(Table.PrimaryKey.ColumnByField(Field)))) then
     FRDefaultAutoIncrement.Enabled := False;
 
   FUpdateTime.Enabled := FDefault.Enabled; FLUpdateTime.Enabled := FUpdateTime.Enabled;

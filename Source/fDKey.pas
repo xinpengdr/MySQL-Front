@@ -1,4 +1,4 @@
-unit fDIndex;
+unit fDKey;
 
 interface {********************************************************************}
 
@@ -75,7 +75,7 @@ type
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
     Database: TCDatabase;
-    Index: TCIndex;
+    Key: TCKey;
     Table: TCBaseTable;
     function Execute(): Boolean;
   end;
@@ -107,7 +107,7 @@ end;
 
 procedure TDIndex.CMChangePreferences(var Message: TMessage);
 begin
-  Preferences.SmallImages.GetIcon(iiIndex, Icon);
+  Preferences.SmallImages.GetIcon(iiKey, Icon);
 
   PSQLWait.Caption := Preferences.LoadStr(882);
 
@@ -171,12 +171,12 @@ begin
   FBOk.Enabled := (FIndexedFields.Items.Count > 0)
     and (not FLength.Enabled or (FLengthUD.Position > 0));
 
-  if (not Assigned(Index) and Visible) then
+  if (not Assigned(Key) and Visible) then
     if (FPrimary.Checked or (FName.Text = 'PRIMARY')) then
-      FBOk.Enabled := FBOk.Enabled and ((Table.Indices.Count = 0) or Table.Indices[0].Primary)
+      FBOk.Enabled := FBOk.Enabled and ((Table.Keys.Count = 0) or Table.Keys[0].Primary)
     else
-      for I := 0 to Table.Indices.Count - 1 do
-        if (not Table.Indices[I].Primary and (lstrcmpi(PChar(Table.Indices[I].Name), PChar(FName.Text)) = 0)) then
+      for I := 0 to Table.Keys.Count - 1 do
+        if (not Table.Keys[I].Primary and (lstrcmpi(PChar(Table.Keys[I].Name), PChar(FName.Text)) = 0)) then
           FBOk.Enabled := False;
 end;
 
@@ -287,41 +287,41 @@ end;
 procedure TDIndex.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   I: Integer;
-  NewColumn: TCIndexColumn;
-  NewIndex: TCIndex;
+  NewKey: TCKey;
+  NewKeyColumn: TCKeyColumn;
   NewTable: TCBaseTable;
 begin
   FLengthExit(Sender);
 
   if ((ModalResult = mrOk) and GBasics.Visible) then
   begin
-    NewIndex := TCIndex.Create(Table.Indices);
-    if (Assigned(Index)) then
-      NewIndex.Assign(Index);
+    NewKey := TCKey.Create(Table.Keys);
+    if (Assigned(Key)) then
+      NewKey.Assign(Key);
 
-    NewIndex.Primary := FPrimary.Checked;
-    if (not NewIndex.Primary) then
-      NewIndex.Name := Trim(FName.Text);
+    NewKey.Primary := FPrimary.Checked;
+    if (not NewKey.Primary) then
+      NewKey.Name := Trim(FName.Text);
 
-    NewIndex.Columns.Clear();
+    NewKey.Columns.Clear();
     for I := 0 to FIndexedFields.Items.Count - 1 do
     begin
-      NewColumn := TCIndexColumn.Create(NewIndex.Columns);
-      NewColumn.Field := Table.FieldByName(FIndexedFields.Items[I].Caption);
-      NewColumn.Length := Lengths[Table.Fields.IndexOf(NewColumn.Field)];
-      NewIndex.Columns.AddColumn(NewColumn);
-      FreeAndNil(NewColumn);
+      NewKeyColumn := TCKeyColumn.Create(NewKey.Columns);
+      NewKeyColumn.Field := Table.FieldByName(FIndexedFields.Items[I].Caption);
+      NewKeyColumn.Length := Lengths[Table.Fields.IndexOf(NewKeyColumn.Field)];
+      NewKey.Columns.AddColumn(NewKeyColumn);
+      FreeAndNil(NewKeyColumn);
     end;
 
-    NewIndex.Unique := FUnique.Checked;
-    NewIndex.Fulltext := FFulltext.Checked;
+    NewKey.Unique := FUnique.Checked;
+    NewKey.Fulltext := FFulltext.Checked;
 
     if (not Assigned(Database)) then
     begin
-      if (not Assigned(Index)) then
-        Table.Indices.AddIndex(NewIndex)
+      if (not Assigned(Key)) then
+        Table.Keys.AddKey(NewKey)
       else
-        Table.Indices[Index.Index].Assign(NewIndex);
+        Table.Keys[Key.Index].Assign(NewKey);
 
       GBasics.Visible := True;
       GAttributes.Visible := GBasics.Visible;
@@ -332,10 +332,10 @@ begin
       NewTable := TCBaseTable.Create(Database.Tables);
       NewTable.Assign(Table);
 
-      if (not Assigned(Index)) then
-        NewTable.Indices.AddIndex(NewIndex)
+      if (not Assigned(Key)) then
+        NewTable.Keys.AddKey(NewKey)
       else
-        NewTable.Indices[Index.Index].Assign(NewIndex);
+        NewTable.Keys[Key.Index].Assign(NewKey);
 
       CanClose := Database.UpdateTable(Table, NewTable);
 
@@ -350,7 +350,7 @@ begin
       FBOk.Enabled := False;
     end;
 
-    NewIndex.Free();
+    NewKey.Free();
   end;
 end;
 
@@ -413,14 +413,14 @@ var
 begin
   Table.Client.RegisterEventProc(FormClientEvent);
 
-  if (not Assigned(Index)) then
+  if (not Assigned(Key)) then
   begin
     Caption := Preferences.LoadStr(160);
     HelpContext := 1046;
   end
   else
   begin
-    Caption := Preferences.LoadStr(842, Index.Caption);
+    Caption := Preferences.LoadStr(842, Key.Caption);
     HelpContext := 1055;
   end;
 
@@ -435,9 +435,9 @@ begin
     else
       Lengths[I] := 0;
 
-  if (not Assigned(Index)) then
+  if (not Assigned(Key)) then
   begin
-    FPrimary.Enabled := (Table.Indices.Count = 0) or not Table.Indices.Index[0].Primary;
+    FPrimary.Enabled := (Table.Keys.Count = 0) or not Table.Keys.Key[0].Primary;
     FPrimary.Checked := FPrimary.Enabled;
     FOther.Checked := not FPrimary.Checked;
 
@@ -449,32 +449,32 @@ begin
   end
   else
   begin
-    FPrimary.Enabled := Index.Primary or (Table.Indices.Count = 0) or not Table.Indices.Index[0].Primary;
-    FPrimary.Checked := Index.Primary;
+    FPrimary.Enabled := Key.Primary or (Table.Keys.Count = 0) or not Table.Keys.Key[0].Primary;
+    FPrimary.Checked := Key.Primary;
     FOther.Checked := not FPrimary.Checked;
-    if (FOther.Checked) then FName.Text := Index.Name else FName.Text := '';
+    if (FOther.Checked) then FName.Text := Key.Name else FName.Text := '';
 
-    for I := 0 to Index.Columns.Count - 1 do
-      if (Index.Columns.Column[I].Length > 0) then
-        Lengths[Table.Fields.IndexOf(Index.Columns.Column[I].Field)] := Index.Columns.Column[I].Length
-      else if (Index.Columns.Column[I].Field.FieldType in [mfChar, mfVarChar]) then
-        Lengths[Table.Fields.IndexOf(Index.Columns.Column[I].Field)] := Index.Columns.Column[I].Field.Size;
+    for I := 0 to Key.Columns.Count - 1 do
+      if (Key.Columns.Column[I].Length > 0) then
+        Lengths[Table.Fields.IndexOf(Key.Columns.Column[I].Field)] := Key.Columns.Column[I].Length
+      else if (Key.Columns.Column[I].Field.FieldType in [mfChar, mfVarChar]) then
+        Lengths[Table.Fields.IndexOf(Key.Columns.Column[I].Field)] := Key.Columns.Column[I].Field.Size;
 
-    for I := 0 to Index.Columns.Count - 1 do
-      FIndexedFields.Items.Add().Caption := Index.Columns.Column[I].Field.Name;
+    for I := 0 to Key.Columns.Count - 1 do
+      FIndexedFields.Items.Add().Caption := Key.Columns.Column[I].Field.Name;
     FIndexedFields.Selected := FIndexedFields.Items[0];
 
-    FUnique.Checked := Index.Unique;
-    FFulltext.Checked := Index.Fulltext;
+    FUnique.Checked := Key.Unique;
+    FFulltext.Checked := Key.Fulltext;
   end;
 
   FAvailableFields.Items.Clear();
   for I := 0 to Table.Fields.Count - 1 do
   begin
     Found := False;
-    if (Assigned(Index)) then
-      for J := 0 to Index.Columns.Count - 1 do
-        if (Index.Columns.Column[J].Field = Table.Fields.Field[I]) then
+    if (Assigned(Key)) then
+      for J := 0 to Key.Columns.Count - 1 do
+        if (Key.Columns.Column[J].Field = Table.Fields.Field[I]) then
           Found := True;
     if (not Found) then
       FAvailableFields.Items.Add().Caption := Table.Fields.Field[I].Name;
