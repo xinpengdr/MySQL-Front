@@ -415,7 +415,6 @@ function EncodeVersion(const AMajor, AMinor, APatch, ABuild: Integer): Integer;
 function XMLNode(const XML: IXMLNode; const Path: string; const NodeAutoCreate: Boolean = False): IXMLNode; overload;
 
 function IsConnectedToInternet(): Boolean;
-function IsWine(): Boolean;
 function VersionStrToVersion(VersionStr: string): Integer;
 function CopyDir(const fromDir, toDir: string): Boolean;
 
@@ -447,20 +446,6 @@ var
 begin
   ConnectionTypes := INTERNET_CONNECTION_MODEM or INTERNET_CONNECTION_LAN or INTERNET_CONNECTION_PROXY or INTERNET_CONNECTION_CONFIGURED;
   Result := InternetGetConnectedState(@ConnectionTypes, 0);
-end;
-
-function IsWine(): Boolean;
-var
-  Handle: THandle;
-begin
-  Handle := LoadLibrary(PChar('Kernel32.dll'));
-  if (Handle = 0) then
-    Result := False
-  else
-  begin
-    Result := Assigned(GetProcAddress(Handle, 'wine_get_unix_file_name'));
-    FreeLibrary(Handle);
-  end;
 end;
 
 function CopyDir(const fromDir, toDir: string): Boolean;

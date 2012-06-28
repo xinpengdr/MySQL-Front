@@ -15,7 +15,6 @@ object WForeignKeySelect: TWForeignKeySelect
   Font.Style = []
   OldCreateOrder = False
   OnCreate = FormCreate
-  OnDestroy = FormDestroy
   OnDeactivate = FormDeactivate
   OnShow = FormShow
   PixelsPerInch = 106

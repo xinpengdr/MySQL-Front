@@ -18,19 +18,6 @@ uses
   fCWorkbench;
 
 const
-  CM_ACTIVATEFGRID = WM_USER + 500;
-  CM_ACTIVATEFTEXT = WM_USER + 501;
-  CM_POSTSCROLL = WM_USER + 502;
-  CM_ACTIVATEFRAME = WM_USER + 503;
-  CM_DEACTIVATEFRAME = WM_USER + 504;
-  CM_EXECUTE = WM_USER + 505;
-  CM_UPDATETOOLBAR = WM_USER + 506;
-  CM_BOOKMARKCHANGED = WM_USER + 507;
-  CM_POST_BUILDER_QUERY_CHANGE = WM_USER + 508;
-  CM_POST_MONITOR = WM_USER + 509;
-  CM_REMOVE_WFOREIGENKEY = WM_USER + 510;
-  CM_WANTED_SYNCHRONIZE = WM_USER + 511;
-
   sbMessage = 0;
   sbItem = 1;
   sbSummarize = 2;
@@ -847,6 +834,14 @@ type
       property Nothing: Boolean read GetNothing;
     end;
 
+  const
+    CM_ACTIVATE_DBGRID = WM_USER + 500;
+    CM_ACTIVATEFTEXT = WM_USER + 501;
+    CM_POSTSCROLL = WM_USER + 502;
+    CM_POST_BUILDER_QUERY_CHANGE = WM_USER + 503;
+    CM_POST_MONITOR = WM_USER + 504;
+    CM_REMOVE_WFOREIGENKEY = WM_USER + 505;
+    CM_WANTED_SYNCHRONIZE = WM_USER + 506;
   private
     ActiveControlOnDeactivate: TWinControl;
     ActiveIDEInputDataSet: TDataSet;
@@ -1037,7 +1032,7 @@ type
     procedure TableOpen(Sender: TObject);
     procedure TSymMemoGotoExecute(Sender: TObject);
     function UpdateAfterAddressChanged(): Boolean; virtual;
-    procedure CMActivateFGrid(var Message: TMessage); message CM_ACTIVATEFGRID;
+    procedure CMActivateDBGrid(var Message: TMessage); message CM_ACTIVATE_DBGRID;
     procedure CMActivateFText(var Message: TMessage); message CM_ACTIVATEFTEXT;
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMCloseTabQuery(var Message: TMessage); message CM_CLOSE_TAB_QUERY;
@@ -2319,19 +2314,19 @@ begin
     Msg := Preferences.LoadStr(413)
   else if (CItems.Count = 1) then
   begin
-    if (TCItem(CItems[0]) is TCDatabase) then Msg := Preferences.LoadStr(146, TCItem(CItems[0]).Name)
-    else if (TCItem(CItems[0]) is TCBaseTable) then Msg := Preferences.LoadStr(113, TCItem(CItems[0]).Name)
-    else if (TCItem(CItems[0]) is TCView) then Msg := Preferences.LoadStr(748, TCItem(CItems[0]).Name)
-    else if (TCItem(CItems[0]) is TCProcedure) then Msg := Preferences.LoadStr(772, TCItem(CItems[0]).Name)
-    else if (TCItem(CItems[0]) is TCFunction) then Msg := Preferences.LoadStr(773, TCItem(CItems[0]).Name)
-    else if (TCItem(CItems[0]) is TCEvent) then Msg := Preferences.LoadStr(813, TCItem(CItems[0]).Name)
-    else if (TCItem(CItems[0]) is TCTrigger) then Msg := Preferences.LoadStr(787, TCItem(CItems[0]).Name)
-    else if (TCItem(CItems[0]) is TCKey) then Msg := Preferences.LoadStr(162, TCItem(CItems[0]).Name)
-    else if (TCItem(CItems[0]) is TCField) then Msg := Preferences.LoadStr(100, TCItem(CItems[0]).Name)
-    else if (TCItem(CItems[0]) is TCForeignKey) then Msg := Preferences.LoadStr(692, TCItem(CItems[0]).Name)
-    else if (TCItem(CItems[0]) is TCHost) then Msg := Preferences.LoadStr(429, TCItem(CItems[0]).Name)
-    else if (TCItem(CItems[0]) is TCUser) then Msg := Preferences.LoadStr(428, TCItem(CItems[0]).Name)
-    else if (TCItem(CItems[0]) is TCProcess) then Msg := Preferences.LoadStr(534, TCItem(CItems[0]).Name);
+    if (TCItem(CItems[0]) is TCDatabase) then Msg := Preferences.LoadStr(146, TCItem(CItems[0]).Caption)
+    else if (TCItem(CItems[0]) is TCBaseTable) then Msg := Preferences.LoadStr(113, TCItem(CItems[0]).Caption)
+    else if (TCItem(CItems[0]) is TCView) then Msg := Preferences.LoadStr(748, TCItem(CItems[0]).Caption)
+    else if (TCItem(CItems[0]) is TCProcedure) then Msg := Preferences.LoadStr(772, TCItem(CItems[0]).Caption)
+    else if (TCItem(CItems[0]) is TCFunction) then Msg := Preferences.LoadStr(773, TCItem(CItems[0]).Caption)
+    else if (TCItem(CItems[0]) is TCEvent) then Msg := Preferences.LoadStr(813, TCItem(CItems[0]).Caption)
+    else if (TCItem(CItems[0]) is TCTrigger) then Msg := Preferences.LoadStr(787, TCItem(CItems[0]).Caption)
+    else if (TCItem(CItems[0]) is TCKey) then Msg := Preferences.LoadStr(162, TCItem(CItems[0]).Caption)
+    else if (TCItem(CItems[0]) is TCField) then Msg := Preferences.LoadStr(100, TCItem(CItems[0]).Caption)
+    else if (TCItem(CItems[0]) is TCForeignKey) then Msg := Preferences.LoadStr(692, TCItem(CItems[0]).Caption)
+    else if (TCItem(CItems[0]) is TCHost) then Msg := Preferences.LoadStr(429, TCItem(CItems[0]).Caption)
+    else if (TCItem(CItems[0]) is TCUser) then Msg := Preferences.LoadStr(428, TCItem(CItems[0]).Caption)
+    else if (TCItem(CItems[0]) is TCProcess) then Msg := Preferences.LoadStr(534, TCItem(CItems[0]).Caption);
   end
   else
     Msg := '';
@@ -4384,6 +4379,8 @@ begin
 end;
 
 procedure TFClient.aVRefreshExecute(Sender: TObject);
+var
+  AllowRefresh: Boolean;
 begin
   if (GetKeyState(VK_SHIFT) < 0) then
     aVRefreshAllExecute(Sender)
@@ -4424,19 +4421,26 @@ begin
       vEditor:
         if ((PResult.Visible or (View = vBrowser)) and (ActiveDBGrid.DataSource.DataSet is TMySQLDataSet) and (TMySQLDataSet(ActiveDBGrid.DataSource.DataSet).CommandText <> '')) then
         begin
+          AllowRefresh := True;
+
           if (ActiveDBGrid.DataSource.DataSet.Active) then
           begin
             ActiveDBGrid.EditorMode := False;
-            ActiveDBGrid.DataSource.DataSet.CheckBrowseMode();
+            try
+              ActiveDBGrid.DataSource.DataSet.CheckBrowseMode();
+            except
+              AllowRefresh := False;
+            end;
           end;
 
-          if ((View = vBrowser) and (FNavigator.Selected.ImageIndex in [iiBaseTable, iiSystemView, iiView]) and not TCTable(FNavigator.Selected.Data).Valid) then
-          begin
-            ActiveDBGrid.DataSource.DataSet.Close();
-            Client.Update();
-          end
-          else
-            ActiveDBGrid.DataSource.DataSet.Refresh();
+          if (AllowRefresh) then
+            if ((View = vBrowser) and (FNavigator.Selected.ImageIndex in [iiBaseTable, iiSystemView, iiView]) and not TCTable(FNavigator.Selected.Data).Valid) then
+            begin
+              ActiveDBGrid.DataSource.DataSet.Close();
+              Client.Update();
+            end
+            else
+              ActiveDBGrid.DataSource.DataSet.Refresh();
         end;
     end;
   end;
@@ -4468,6 +4472,8 @@ begin
   end
   else
     PSideBar.Visible := False;
+  PSideBarHeader.Visible := PSideBar.Visible; PSideBarResize(Sender);
+
 
   PSideBar.EnableAlign();
 
@@ -4681,9 +4687,9 @@ begin
     Wanted.Update := Client.Update;
 end;
 
-procedure TFClient.CMActivateFGrid(var Message: TMessage);
+procedure TFClient.CMActivateDBGrid(var Message: TMessage);
 begin
-  Window.ActiveControl := ActiveDBGrid;
+  Window.ActiveControl := TWinControl(Message.LParam);
   ActiveDBGrid.EditorMode := False;
 end;
 
@@ -6632,42 +6638,53 @@ end;
 
 procedure TFClient.DBGridExit(Sender: TObject);
 var
+  Cancel: Boolean;
   DBGrid: TMySQLDBGrid;
 begin
   if (Sender is TMySQLDBGrid) then
   begin
     DBGrid := TMySQLDBGrid(Sender);
 
-    DBGridColExit(Sender);
-    DBGrid.Repaint();
+    try
+      DBGrid.DataSource.DataSet.CheckBrowseMode();
+      Cancel := False;
+    except
+      Cancel := True;
+    end;
 
-    MainAction('aFExportSQL').Enabled := False;
-    MainAction('aFExportText').Enabled := False;
-    MainAction('aFExportExcel').Enabled := False;
-    MainAction('aFExportXML').Enabled := False;
-    MainAction('aFExportHTML').Enabled := False;
-    MainAction('aFImportText').Enabled := False;
-    MainAction('aFImportExcel').Enabled := False;
-    MainAction('aFImportAccess').Enabled := False;
-    MainAction('aFImportSQLite').Enabled := False;
-    MainAction('aFImportODBC').Enabled := False;
-    MainAction('aFImportXML').Enabled := False;
-    MainAction('aFPrint').Enabled := False;
-    MainAction('aECopyToFile').Enabled := False;
-    MainAction('aEPasteFromFile').Enabled := False;
-    MainAction('aSGoto').Enabled := False;
-    MainAction('aVDetails').Enabled := False;
-    MainAction('aDInsertRecord').Enabled := False;
-    MainAction('aDDeleteRecord').Enabled := False;
-    MainAction('aDEditRecord').Enabled := False;
-    MainAction('aDPostObject').Enabled := False;
-    MainAction('aDEmpty').Enabled := False;
+    if (not Cancel) then
+    begin
+      DBGridColExit(Sender);
+      DBGrid.Repaint();
 
-    MainAction('aDEditRecord').ShortCut := 0;
+      MainAction('aFExportSQL').Enabled := False;
+      MainAction('aFExportText').Enabled := False;
+      MainAction('aFExportExcel').Enabled := False;
+      MainAction('aFExportXML').Enabled := False;
+      MainAction('aFExportHTML').Enabled := False;
+      MainAction('aFImportText').Enabled := False;
+      MainAction('aFImportExcel').Enabled := False;
+      MainAction('aFImportAccess').Enabled := False;
+      MainAction('aFImportSQLite').Enabled := False;
+      MainAction('aFImportODBC').Enabled := False;
+      MainAction('aFImportXML').Enabled := False;
+      MainAction('aFPrint').Enabled := False;
+      MainAction('aECopyToFile').Enabled := False;
+      MainAction('aEPasteFromFile').Enabled := False;
+      MainAction('aSGoto').Enabled := False;
+      MainAction('aVDetails').Enabled := False;
+      MainAction('aDInsertRecord').Enabled := False;
+      MainAction('aDDeleteRecord').Enabled := False;
+      MainAction('aDEditRecord').Enabled := False;
+      MainAction('aDPostObject').Enabled := False;
+      MainAction('aDEmpty').Enabled := False;
 
-    MainAction('aERename').ShortCut := VK_F2;
+      MainAction('aDEditRecord').ShortCut := 0;
 
-    WForeignKeySelect.ForeignKey := nil;
+      MainAction('aERename').ShortCut := VK_F2;
+
+      WForeignKeySelect.ForeignKey := nil;
+    end;
   end;
 end;
 
@@ -6942,6 +6959,29 @@ var
 begin
   FNavigatorChanging(nil, nil, TempB);
 
+  Window.ActiveControl := nil;
+
+  FNavigator.Items.BeginUpdate();
+  FNavigator.Items.Clear();
+  FNavigator.Items.EndUpdate();
+
+  if (Assigned(ShellLink)) then ShellLink.Free();
+  if (Assigned(FFolders)) then FFolders.Free();
+  if (Assigned(FFiles)) then FFiles.Free();
+
+  FServerListView.OnChanging := nil;
+  FServerListView.Items.BeginUpdate();
+  FServerListView.Items.Clear();
+  FServerListView.Items.EndUpdate();
+  if (Assigned(HostsListView)) then FreeListView(HostsListView);
+  if (Assigned(ProcessesListView)) then FreeListView(ProcessesListView);
+  if (Assigned(StatiListView)) then FreeListView(StatiListView);
+  if (Assigned(UsersListView)) then FreeListView(UsersListView);
+  if (Assigned(VariablesListView)) then FreeListView(VariablesListView);
+
+  if (Assigned(SQLEditor)) then SQLEditor.Free();
+
+
   if ((SQLEditor.Filename <> '') and not FSQLEditorSynMemo.Modified) then
     Client.Account.Desktop.EditorContent := ''
   else
@@ -6972,27 +7012,6 @@ begin
 
   Client.UnRegisterEventProc(FormClientEvent);
   Client.Free();
-
-  FNavigator.Items.BeginUpdate();
-  FNavigator.Items.Clear();
-  FNavigator.Items.EndUpdate();
-
-  if (Assigned(ShellLink)) then ShellLink.Free();
-  if (Assigned(FFolders)) then FFolders.Free();
-  if (Assigned(FFiles)) then FFiles.Free();
-
-  FServerListView.OnChanging := nil;
-  FServerListView.Items.BeginUpdate();
-  FServerListView.Items.Clear();
-  FServerListView.Items.EndUpdate();
-  if (Assigned(HostsListView)) then FreeListView(HostsListView);
-  if (Assigned(ProcessesListView)) then FreeListView(ProcessesListView);
-  if (Assigned(StatiListView)) then FreeListView(StatiListView);
-  if (Assigned(UsersListView)) then FreeListView(UsersListView);
-  if (Assigned(VariablesListView)) then FreeListView(VariablesListView);
-
-  if (Assigned(SQLEditor)) then SQLEditor.Free();
-
 
   FreeAndNil(JPEGImage);
   FreeAndNil(PNGImage);
@@ -14100,7 +14119,7 @@ begin
   Flags := MB_CANCELTRYCONTINUE + MB_ICONERROR;
   case (MsgBox(Msg, Preferences.LoadStr(45), Flags, Handle)) of
     IDCANCEL,
-    IDABORT: begin Action := daAbort; PostMessage(Handle, CM_ACTIVATEFGRID, 0, 0); end;
+    IDABORT: begin Action := daAbort; PostMessage(Handle, CM_ACTIVATE_DBGRID, 0, LPARAM(ActiveDBGrid)); end;
     IDRETRY,
     IDTRYAGAIN: Action := daRetry;
     IDCONTINUE,
@@ -14203,7 +14222,7 @@ begin
       if (Window.ActiveControl = ActiveSynMemo) then
         Text := IntToStr(ActiveSynMemo.CaretXY.Line) + ':' + IntToStr(ActiveSynMemo.CaretXY.Char)
       else if ((Window.ActiveControl = ActiveListView) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiKey)) then
-        Text := Preferences.LoadStr(377) + ': ' + IntToStr(TCKey(ActiveListView.ItemFocused.Data).Key)
+        Text := Preferences.LoadStr(377) + ': ' + IntToStr(TCKey(ActiveListView.ItemFocused.Data).Index + 1)
       else if ((Window.ActiveControl = ActiveListView) and (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiField)) then
         Text := ReplaceStr(Preferences.LoadStr(164), '&', '') + ': ' + IntToStr(TCTableField(ActiveListView.ItemFocused.Data).Index)
       else if ((Window.ActiveControl = ActiveDBGrid) and Assigned(ActiveDBGrid.SelectedField) and (ActiveDBGrid.DataSource.DataSet.RecNo >= 0)) then

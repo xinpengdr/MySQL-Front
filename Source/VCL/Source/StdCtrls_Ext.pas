@@ -24,8 +24,9 @@ type
     FInsertMode: Boolean;
   protected
     procedure KeyPress(var Key: Char); override;
-  published
+  public
     constructor Create(AOwner: TComponent); override;
+  published
     property InsertMode: Boolean read FInsertMode write FInsertMode default True;
   end;
 

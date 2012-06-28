@@ -65,7 +65,7 @@ function SQLStmtLength(const SQL: string; const Index: Integer = 1; const Comple
 function SQLStmtToCaption(const SQL: string; const Len: Integer = 50): string;
 function SQLTrimStmt(const SQL: string): string; overload;
 function SQLTrimStmt(const SQL: string; const Index, Length: Integer; var StartingCommentLength, EndingCommentLength: Integer): Integer; overload;
-function SQLUnescape(const Value: RawByteString): RawByteString; overload;
+function SQLUnescape(const Value: PAnsiChar): RawByteString; overload;
 function SQLUnescape(const Value: string): string; overload;
 function SQLWrapStmt(const SQL: string; const WrapStrs: array of string; const Indent: Integer): string;
 function SQLUnwrapStmt(const SQL: string): string;
@@ -2320,14 +2320,14 @@ begin
   end;
 end;
 
-function SQLUnescape(const Value: RawByteString): RawByteString;
+function SQLUnescape(const Value: PAnsiChar): RawByteString;
 label
   StringL, StringL2;
 var
-  Len: Cardinal;
+  Len: Integer;
   S: string;
 begin
-  Len := Length(Value);
+  Len := StrLen(Value);
 
   if (Len = 0) then
     Result := ''
@@ -2343,7 +2343,7 @@ begin
         POP ES
         CLD                              // string operations uses forward direction
 
-        MOV ESI,PChar(Value)             // Copy characters from Value
+        MOV ESI,Value                    // Copy characters from Value
         MOV EDI,S                        //   to Result
 
         MOV ECX,Len

@@ -15,18 +15,18 @@ type
     ParentDataSet: TMySQLDataSet;
     procedure FormCreate(Sender: TObject);
     procedure FormDeactivate(Sender: TObject);
-    procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FParentGridDblClick(Sender: TObject);
     procedure FParentGridKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure ParentDataSetAfterOpen(DataSet: TDataSet);
     procedure ParentDataSetAfterReceivingRecords(DataSet: TDataSet);
+  const
+    CM_AFTER_RECEIVING_DATASET = WM_USER + 700;
   private
     Client: TCClient;
-    DataSets: array of TMySQLQuery;
     FForeignKey: TCForeignKey;
-    function SendSQLEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+    function ClientEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
     procedure SetForeignKey(const AForeignKey: TCForeignKey);
     procedure CMAfterReceivingDataSet(var Message: TMessage); message CM_AFTER_RECEIVING_DATASET;
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
@@ -77,7 +77,7 @@ var
   KeyFields: string;
   KeyValues: array of Variant;
 begin
-  if (not ParentDataSet.IsEmpty and ((Message.LParam = 1) or (ParentDataSet.RecNo = 0))) then
+  if (not ParentDataSet.IsEmpty and (ParentDataSet.RecNo = 0)) then
   begin
     KeyFields := '';
     for I := 0 to Length(FForeignKey.Parent.FieldNames) - 1 do
@@ -130,6 +130,10 @@ begin
     begin
       ParentDatabase := Client.DatabaseByName(FForeignKey.Parent.DatabaseName);
       ParentTable := ParentDatabase.BaseTableByName(FForeignKey.Parent.TableName);
+      Client.BeginSynchro();
+      ParentTable.Update();
+      Client.EndSynchro();
+
       SQL := '';
       for I := 0 to ParentTable.Fields.Count - 1 do
       begin
@@ -150,25 +154,17 @@ begin
         SQL := SQL + Client.EscapeIdentifier(ParentTable.Fields[I].Name);
       end;
       SQL := 'SELECT ' + SQL + ' FROM ' + Client.EscapeIdentifier(ParentDatabase.Name) + '.' + Client.EscapeIdentifier(ParentTable.Name);
-      if ((ParentTable.Keys.Count > 0) and (ParentTable.Keys[0].Name = '')) then
+      if ((ParentTable.Keys.Count > 0) and Assigned(ParentTable.PrimaryKey)) then
       begin
         SQL := SQL + ' ORDER BY ';
-        for I := 0 to ParentTable.Keys[0].Columns.Count - 1 do
+        for I := 0 to ParentTable.PrimaryKey.Columns.Count - 1 do
         begin
           if (I > 0) then SQL := SQL + ',';
-          SQL := SQL + Client.EscapeIdentifier(ParentTable.Keys[0].Columns[I].Field.Name);
+          SQL := SQL + Client.EscapeIdentifier(ParentTable.PrimaryKey.Columns[I].Field.Name);
         end;
       end;
 
-      Client.SendSQL(SQL, SendSQLEvent);
-
-      if (not Client.Asynchron) then
-        SendMessage(Handle, CM_AFTER_RECEIVING_DATASET, WParam(ParentDataSet), 1);
-    end
-    else
-    begin
-      ParentDataSetAfterOpen(ParentDataSet);
-      SendMessage(Handle, CM_AFTER_RECEIVING_DATASET, WParam(ParentDataSet), 1);
+      Client.SendSQL(SQL, ClientEvent);
     end;
 end;
 
@@ -194,15 +190,12 @@ begin
   Hide();
 end;
 
-procedure TWForeignKeySelect.FormDestroy(Sender: TObject);
-begin
-  SetLength(DataSets, 0);
-end;
-
 procedure TWForeignKeySelect.FormShow(Sender: TObject);
 var
   I: Integer;
+  HeaderRect: TRect;
   L: Integer;
+  T: Integer;
 begin
   if (Assigned(ChildGrid)) then
   begin
@@ -213,6 +206,13 @@ begin
       else
         Inc(L, ChildGrid.Columns[I].Width);
     Left := ChildGrid.ClientToScreen(Point(0, 0)).X - GetSystemMetrics(SM_CXEDGE) + L - 1;
+
+    GetWindowRect(ChildGrid.Header, HeaderRect);
+    if (dgRowLines in ChildGrid.Options) then
+      T := (ChildGrid.Row - ChildGrid.TopRow + 1) * (ChildGrid.DefaultRowHeight + 1)
+    else
+      T := (ChildGrid.Row - ChildGrid.TopRow + 1) * ChildGrid.DefaultRowHeight;
+    Top := ChildGrid.ClientToScreen(Point(0, 0)).Y - GetSystemMetrics(SM_CYEDGE) + HeaderRect.Bottom - HeaderRect.Top + T;
 
     FParentGrid.DefaultDrawing := not Assigned(ChildGrid.OnDrawColumnCell);
     if (not FParentGrid.DefaultDrawing) then
@@ -338,9 +338,13 @@ begin
   PostMessage(Handle, CM_AFTER_RECEIVING_DATASET, WParam(DataSet), 0);
 end;
 
-function TWForeignKeySelect.SendSQLEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+function TWForeignKeySelect.ClientEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
 begin
-  ParentDataSet.Open();
+  if (Connection.ErrorCode = 0) then
+  begin
+    ParentDataSet.Connection := Connection;
+    ParentDataSet.Open();
+  end;
 
   Result := False;
 end;
@@ -352,7 +356,10 @@ begin
     if (Assigned(ParentDataSet)) then
       ParentDataSet.Close();
 
-    Client := AForeignKey.Table.Database.Client;
+    if (not Assigned(AForeignKey)) then
+      Client := nil
+    else
+      Client := AForeignKey.Table.Database.Client;
     FForeignKey := AForeignKey;
   end;
 end;

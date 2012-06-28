@@ -1226,9 +1226,9 @@ object FClient: TFClient
       end
     end
     object PToolBar: TPanel_Ext
-      Left = 126
+      Left = 120
       Top = 0
-      Width = 465
+      Width = 471
       Height = 27
       BevelOuter = bvNone
       DoubleBuffered = False

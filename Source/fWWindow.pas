@@ -17,10 +17,6 @@ uses
 const
   cWindowClassName = 'MySQL-Front.Application';
 
-  CM_ACTIVATETAB = WM_USER + 600;
-  CM_UPDATEAVAILABLE = WM_USER + 601;
-  CM_MYSQLCONNECTION_SYNCHRONIZE = WM_USER + 602;
-
 type
   TCMAddTab = packed record
     Msg: Cardinal;
@@ -453,6 +449,10 @@ type
       var DragObject: TDragObject);
     procedure TBAddressBarResize(Sender: TObject);
     procedure tbPropertiesClick(Sender: TObject);
+  const
+    CM_ACTIVATETAB = WM_USER + 600;
+    CM_UPDATEAVAILABLE = WM_USER + 601;
+    CM_MYSQLCONNECTION_SYNCHRONIZE = WM_USER + 602;
   private
     CaptureTabIndex: Integer;
     CloseButton: TPicture;

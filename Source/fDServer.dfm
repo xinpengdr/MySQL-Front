@@ -74,33 +74,23 @@ object DServer: TDServer
           Height = 13
           Caption = 'FLComment'
         end
-        object FComment: TEdit
-          Left = 120
-          Top = 44
-          Width = 169
-          Height = 13
-          TabStop = False
-          Anchors = [akLeft, akTop, akRight]
-          AutoSize = False
-          BorderStyle = bsNone
-          Color = clBtnFace
-          ReadOnly = True
-          TabOrder = 1
-          Text = 'FComment'
-        end
-        object FVersion: TEdit
+        object FVersion: TLabel
           Left = 120
           Top = 20
           Width = 169
           Height = 13
-          TabStop = False
           Anchors = [akLeft, akTop, akRight]
           AutoSize = False
-          BorderStyle = bsNone
-          Color = clBtnFace
-          ReadOnly = True
-          TabOrder = 0
-          Text = 'FVersion'
+          Caption = 'FVersion'
+        end
+        object FComment: TLabel
+          Left = 120
+          Top = 44
+          Width = 169
+          Height = 13
+          Anchors = [akLeft, akTop, akRight]
+          AutoSize = False
+          Caption = 'FComment'
         end
       end
       object GConnection: TGroupBox_Ext
@@ -142,67 +132,51 @@ object DServer: TDServer
           Height = 13
           Caption = 'FLCharacterSet'
         end
-        object FUser: TEdit
+        object FUser: TLabel
           Left = 120
           Top = 68
           Width = 169
           Height = 13
-          TabStop = False
           Anchors = [akLeft, akTop, akRight]
           AutoSize = False
-          BorderStyle = bsNone
-          Color = clBtnFace
-          ReadOnly = True
-          TabOrder = 3
-          Text = 'FUser'
+          Caption = 'FUser'
         end
-        object FLibVersion: TEdit
+        object FLibVersion: TLabel
           Left = 120
           Top = 44
           Width = 169
           Height = 13
-          TabStop = False
           Anchors = [akLeft, akTop, akRight]
           AutoSize = False
-          BorderStyle = bsNone
-          Color = clBtnFace
-          ReadOnly = True
-          TabOrder = 2
-          Text = 'FLibVersion'
+          Caption = 'FLibVersion'
         end
-        object FHost: TEdit
+        object FHost: TLabel
           Left = 120
           Top = 20
           Width = 169
           Height = 13
-          TabStop = False
           Anchors = [akLeft, akTop, akRight]
           AutoSize = False
-          BorderStyle = bsNone
-          Color = clBtnFace
-          ReadOnly = True
-          TabOrder = 1
-          Text = 'FHost'
+          Caption = 'FHost'
         end
-        object FCharacterSet: TEdit
+        object FCharacterSet: TLabel
           Left = 120
           Top = 92
           Width = 169
           Height = 13
-          TabStop = False
           Anchors = [akLeft, akTop, akRight]
           AutoSize = False
-          BorderStyle = bsNone
-          Color = clBtnFace
-          ReadOnly = True
-          TabOrder = 0
-          Text = 'FCharacterSet'
+          Caption = 'FCharacterSet'
         end
       end
     end
     object TSProcesses: TTabSheet
       Caption = 'TSProcesses'
       OnShow = TSProcessesShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -252,6 +226,10 @@ object DServer: TDServer
     object TSSQLLog: TTabSheet
       Caption = 'TSSQLLog'
       OnShow = TSSQLLogShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -285,6 +263,10 @@ object DServer: TDServer
     object TSSlowSQLLog: TTabSheet
       Caption = 'TSSlowSQLLog'
       OnShow = TSSlowSQLLogShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -318,6 +300,10 @@ object DServer: TDServer
     object TSStati: TTabSheet
       Caption = 'TSStati'
       OnShow = TSStatiShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -348,6 +334,10 @@ object DServer: TDServer
     object TSVariables: TTabSheet
       Caption = 'TSVariables'
       OnShow = TSVariablesShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -381,6 +371,10 @@ object DServer: TDServer
     object TSUsers: TTabSheet
       Caption = 'TSUsers'
       OnShow = TSUsersShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -410,6 +404,10 @@ object DServer: TDServer
     object TSHosts: TTabSheet
       Caption = 'TSHosts'
       OnShow = TSHostsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -437,6 +435,10 @@ object DServer: TDServer
     object TSStartup: TTabSheet
       Caption = 'TSStartup'
       OnShow = TSStartupShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -474,6 +476,10 @@ object DServer: TDServer
     object TSPlugins: TTabSheet
       Caption = 'TSPlugins'
       OnShow = TSPluginsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         257)
@@ -500,6 +506,10 @@ object DServer: TDServer
     object TSExtras: TTabSheet
       Caption = 'TSExtras'
       OnShow = TSExtrasShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         257)

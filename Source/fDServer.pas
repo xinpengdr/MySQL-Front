@@ -15,14 +15,14 @@ type
     FBFlushHosts: TButton;
     FBHelp: TButton;
     FBShutdown: TButton;
-    FCharacterSet: TEdit;
-    FComment: TEdit;
-    FHost: TEdit;
+    FCharacterSet: TLabel;
+    FComment: TLabel;
+    FHost: TLabel;
     FHosts: TListView;
     FLCharacterSet: TLabel;
     FLComment: TLabel;
     FLHost: TLabel;
-    FLibVersion: TEdit;
+    FLibVersion: TLabel;
     FLLibVersion: TLabel;
     FLUptime: TLabel;
     FLUser: TLabel;
@@ -34,10 +34,10 @@ type
     FStartup: TSynMemo;
     FStati: TListView;
     FUptime: TLabel;
-    FUser: TEdit;
+    FUser: TLabel;
     FUsers: TListView;
     FVariables: TListView;
-    FVersion: TEdit;
+    FVersion: TLabel;
     GConnection: TGroupBox_Ext;
     GServer: TGroupBox_Ext;
     GServiceHosts: TGroupBox_Ext;
@@ -367,21 +367,21 @@ procedure TDServer.FormShow(Sender: TObject);
 begin
   Caption := Preferences.LoadStr(842, Client.Caption);
 
-  FHost.Text := Client.HostInfo;
-  FVersion.Text := Client.ServerVersionStr;
+  FHost.Caption := Client.HostInfo;
+  FVersion.Caption := Client.ServerVersionStr;
   FComment.Visible := Assigned(Client.VariableByName('version_comment'));
   FLComment.Visible := FComment.Visible;
   if (FComment.Visible) then
-    FComment.Text := Client.VariableByName('version_comment').Value;
+    FComment.Caption := Client.VariableByName('version_comment').Value;
   if (Client.LibraryType = ltDLL) then
-    FLibVersion.Text := Client.Lib.VersionStr
+    FLibVersion.Caption := Client.Lib.VersionStr
   else
-    FLibVersion.Text := Preferences.LoadStr(649);
+    FLibVersion.Caption := Preferences.LoadStr(649);
   if (Client.CurrentUser = '') then
-    FUser.Text := '???'
+    FUser.Caption := '???'
   else
-    FUser.Text := Client.CurrentUser;
-  FCharacterSet.Text := Client.Charset;
+    FUser.Caption := Client.CurrentUser;
+  FCharacterSet.Caption := Client.Charset;
   FUptime.Caption := '???';
 
   FStartup.Lines.Clear();

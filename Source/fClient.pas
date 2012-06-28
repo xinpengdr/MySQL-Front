@@ -252,7 +252,6 @@ type
     FColumns: TCKeyColumns;
     OriginalName: string;
     function GetKeys(): TCKeys; inline;
-    function GetKey(): Integer;
     function GetTable(): TCBaseTable;
   protected
     function GetCaption(): string; override;
@@ -274,7 +273,6 @@ type
     property Index: Integer read GetIndex;
     property Keys: TCKeys read GetKeys;
     property Table: TCBaseTable read GetTable;
-    property Key: Integer read GetKey;
   end;
 
   TCKeys = class(TCItems)
@@ -471,7 +469,6 @@ type
   private
     FFields: TCTableFields;
     FOnResult: TMySQLConnection.TResultEvent;
-    procedure AfterReceivingRecords(DataSet: TDataSet);
     function GetDataSet(): TCTableDataSet;
     function GetTables(): TCTables; inline;
     function GetValidDataSet(): Boolean;
@@ -1349,7 +1346,7 @@ type
 
   TCClient = class(TMySQLConnection)
   type
-    TEventType = (ceItemsValid, ceItemValid, ceItemCreated, ceItemDroped, ceItemAltered, ceBeforeExecuteSQL, ceAfterReceivingRecords, ceAfterExecuteSQL, ceMonitor, ceError);
+    TEventType = (ceItemsValid, ceItemValid, ceItemCreated, ceItemDroped, ceItemAltered, ceBeforeExecuteSQL, ceAfterExecuteSQL, ceMonitor, ceError);
     TUpdate = function (): Boolean of object;
     TEvent = class
     public
@@ -2305,11 +2302,6 @@ begin
   Assert(CItems is TCKeys);
 
   Result := TCKeys(CItems);
-end;
-
-function TCKey.GetKey(): Integer;
-begin
-  Result := Index + 1;
 end;
 
 procedure TCKey.GetSortDef(var SortDef: TIndexDef);
@@ -3270,11 +3262,6 @@ end;
 
 { TCTable *********************************************************************}
 
-procedure TCTable.AfterReceivingRecords(DataSet: TDataSet);
-begin
-  Client.ExecuteEvent(ceAfterReceivingRecords, Self);
-end;
-
 procedure TCTable.Assign(const Source: TCTable);
 var
   I: Integer;
@@ -3386,8 +3373,6 @@ begin
     FDataSet.AutomaticLoadNextRecords := True;
     FDataSet.FDatabaseName := Database.Name;
     FDataSet.CommandText := Name;
-
-    FDataSet.AfterReceivingRecords := AfterReceivingRecords;
   end;
 
   Result := FDataSet;

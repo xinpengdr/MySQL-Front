@@ -12,15 +12,17 @@ type
   type
     TSearchNotFoundEvent = procedure(Sender: TObject; FindText: string) of object;
     TFilterChange = procedure(Sender: TObject; Index: Integer) of object;
-    TDBMySQLInplaceEdit = class(TInplaceEdit) // ToDo: TInplaceListEdit
+    TDBMySQLInplaceEdit = class(TInplaceEditList) // ToDo: TInplaceEditList
+    private
+      Test: Integer; // Why is this needed??? Without this, there is Access Violation while freeing TMySQLDBGrid, if the InplaceEditor has been used
     protected
-//      procedure CloseUp(Accept: Boolean); override;
-//      procedure DoEditButtonClick(); override;
-//      procedure DropDown(); override;
+      procedure CloseUp(Accept: Boolean); override;
+      procedure DoEditButtonClick(); override;
+      procedure DropDown(); override;
       procedure KeyPress(var Key: Char); override;
     public
-      property Font;
       constructor Create(Owner: TComponent); override;
+      property Font;
     end;
   const
     tiShowHint = 1;
@@ -110,8 +112,7 @@ type
   published
     property OnCanEditShow: TNotifyEvent read FOnCanEditShow write FOnCanEditShow;
     property OnFilterChange: TFilterChange read FOnFilterChange write FOnFilterChange;
-    property OnSearchNotFound: TSearchNotFoundEvent
-      read FSearchNotFound write FSearchNotFound;
+    property OnSearchNotFound: TSearchNotFoundEvent read FSearchNotFound write FSearchNotFound;
     property OnSelect: TNotifyEvent read FOnSelect write FOnSelect;
   end;
 
@@ -124,42 +125,44 @@ uses
 
 { TDBMySQLGrid.TDBMySQLInplaceEdit ********************************************}
 
-//procedure TMySQLDBGrid.TDBMySQLInplaceEdit.CloseUp(Accept: Boolean);
-//begin
-//  inherited;
-//
-//  if (Accept and Modified) then
-//    TMySQLDBGrid(Grid).DataLink.Modified();
-//end;
+procedure TMySQLDBGrid.TDBMySQLInplaceEdit.CloseUp(Accept: Boolean);
+begin
+  inherited;
+
+  if (Accept and Modified) then
+    TMySQLDBGrid(Grid).DataLink.Modified();
+end;
 
 constructor TMySQLDBGrid.TDBMySQLInplaceEdit.Create(Owner: TComponent);
 begin
-  inherited Create(Owner);
+  inherited;
+
+  Test := 0; // This avoids compiler warning only
 end;
 
-//procedure TMySQLDBGrid.TDBMySQLInplaceEdit.DoEditButtonClick();
-//begin
-//  inherited;
-//
-//  TMySQLDBGrid(Grid).EditButtonClick();
-//end;
+procedure TMySQLDBGrid.TDBMySQLInplaceEdit.DoEditButtonClick();
+begin
+  inherited;
 
-//procedure TMySQLDBGrid.TDBMySQLInplaceEdit.DropDown();
-//var
-//  Column: TColumn;
-//begin
-//  if (not ListVisible) then
-//  begin
-//    Column := TMySQLDBGrid(Grid).Columns[TMySQLDBGrid(Grid).SelectedIndex];
-//    if (ActiveList = PickList) then
-//    begin
-//      PickList.Items.Assign(Column.PickList);
-//      DropDownRows := Column.DropDownRows;
-//    end;
-//  end;
-//
-//  inherited;
-//end;
+  TMySQLDBGrid(Grid).EditButtonClick();
+end;
+
+procedure TMySQLDBGrid.TDBMySQLInplaceEdit.DropDown();
+var
+  Column: TColumn;
+begin
+  if (not ListVisible) then
+  begin
+    Column := TMySQLDBGrid(Grid).Columns[TMySQLDBGrid(Grid).SelectedIndex];
+    if (ActiveList = PickList) then
+    begin
+      PickList.Items.Assign(Column.PickList);
+      DropDownRows := Column.DropDownRows;
+    end;
+  end;
+
+  inherited;
+end;
 
 procedure TMySQLDBGrid.TDBMySQLInplaceEdit.KeyPress(var Key: Char);
 begin

@@ -2147,10 +2147,7 @@ end;
 
 function TMySQLConnection.ErrorMsg(const AHandle: MySQLConsts.MYSQL): string;
 begin
-//  if (ServerVersion < 50000) then
-    Result := LibDecode(my_char(SQLUnescape(RawByteString(Lib.mysql_error(AHandle)))))
-//  else
-//    Result := LibDecode(Lib.mysql_error(AHandle));
+  Result := LibDecode(my_char(SQLUnescape(Lib.mysql_error(AHandle))));
 end;
 
 function TMySQLConnection.GetAutoCommit(): Boolean;

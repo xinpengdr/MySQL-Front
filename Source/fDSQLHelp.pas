@@ -6,6 +6,7 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ComCtrls, ToolWin, ExtCtrls, Menus,
   Forms_Ext, ExtCtrls_Ext,
+  MySQLDB,
   fClient,
   fBase;
 
@@ -16,11 +17,14 @@ type
     FBManual: TButton;
     FDescription: TRichEdit;
     FExample: TRichEdit;
+    FQuickSearch: TEdit;
+    FQuickSearchEnabled: TToolButton;
     msCopy: TMenuItem;
     MSource: TPopupMenu;
     msSelectAll: TMenuItem;
     N1: TMenuItem;
     Panel: TPanel_Ext;
+    TBQuickSearchEnabled: TToolBar;
     procedure FBDescriptionClick(Sender: TObject);
     procedure FBExampleClick(Sender: TObject);
     procedure FBManualClick(Sender: TObject);
@@ -28,13 +32,15 @@ type
     procedure FormHide(Sender: TObject);
     procedure FormKeyPress(Sender: TObject; var Key: Char);
     procedure FormShow(Sender: TObject);
+    procedure FQuickSearchKeyPress(Sender: TObject; var Key: Char);
+    procedure FQuickSearchEnabledClick(Sender: TObject);
+  const
+    CM_SEND_SQL = WM_USER + 300;
   private
-    Description: string;
-    Example: string;
     ManualURL: string;
-    Title: string;
+    function ClientResult(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
-    procedure CMPostShow(var Message: TMessage); message CM_POSTSHOW;
+    procedure CMSendSQL(var Message: TMessage); message CM_SEND_SQL;
     procedure CMSysFontChanged(var Message: TMessage); message CM_SYSFONTCHANGED;
     procedure WMNotify(var Message: TWMNotify); message WM_NOTIFY;
   public
@@ -50,9 +56,9 @@ implementation {***************************************************************}
 {$R *.dfm}
 
 uses
-  ShellAPI, RichEdit,
+  ShellAPI, RichEdit, CommCtrl,
   StrUtils,
-  MySQLDB, SQLUtils,
+  SQLUtils,
   fPreferences, fDSelection;
 
 var
@@ -71,6 +77,71 @@ end;
 
 { TDSQLHelp *******************************************************************}
 
+function TDSQLHelp.ClientResult(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+var
+  DataSet: TMySQLQuery;
+begin
+  if (Connection.ErrorCode = 0) then
+  begin
+    DataSet := TMySQLQuery.Create(Owner);
+    DataSet.Connection := Connection;
+    DataSet.Open();
+
+    if (Assigned(DataSet.FindField('description')) and not DataSet.IsEmpty()) then
+    begin
+      ManualURL := Client.Account.ManualURL;
+
+      Caption := ReplaceStr(Preferences.LoadStr(883), '&', '') + ': ' + DataSet.FieldByName('name').AsString;
+
+      FDescription.Lines.Text := Trim(DataSet.FieldByName('description').AsString);
+      FBDescription.Enabled := True;
+
+      FExample.Lines.Text := Trim(DataSet.FieldByName('example').AsString);
+      FBExample.Enabled := Trim(DataSet.FieldByName('example').AsString) <> '';
+
+      if (Pos('URL: ', FDescription.Lines[FDescription.Lines.Count - 1]) <> 1) then
+        ManualURL := Client.Account.ManualURL
+      else
+      begin
+        ManualURL := FDescription.Lines[FDescription.Lines.Count - 1];
+        Delete(ManualURL, 1, Length('URL: '));
+        ManualURL := Trim(ManualURL);
+        FBManual.Enabled := ManualURL <> '';
+        FDescription.Lines.Delete(FDescription.Lines.Count - 1);
+        while ((FDescription.Lines.Count > 0) and (Trim(FDescription.Lines[FDescription.Lines.Count - 1]) = '')) do
+          FDescription.Lines.Delete(FDescription.Lines.Count - 1);
+      end;
+      FBManual.Enabled := ManualURL <> '';
+
+      FBDescription.Click();
+    end
+    else if (Assigned(DataSet.FindField('name')) and not DataSet.IsEmpty()) then
+    begin
+      repeat
+        SetLength(DSelection.Values, Length(DSelection.Values) + 1);
+        DSelection.Values[Length(DSelection.Values) - 1] := DataSet.FieldByName('name').AsString;
+      until (not DataSet.FindNext());
+      if (DSelection.Execute()) then
+      begin
+        Keyword := DSelection.Selected;
+        PostMessage(Handle, CM_SEND_SQL, 0, 0);
+      end
+      else if (FDescription.Lines.Count < 1) then
+        Hide();
+    end
+    else
+    begin
+      MsgBox(Preferences.LoadStr(533, Keyword), Preferences.LoadStr(43), MB_OK + MB_ICONINFORMATION);
+      if (FDescription.Lines.Count < 1) then
+        Hide();
+    end;
+
+    DataSet.Free();
+  end;
+
+  Result := False;
+end;
+
 procedure TDSQLHelp.CMChangePreferences(var Message: TMessage);
 begin
   Preferences.SmallImages.GetIcon(14, Icon);
@@ -81,11 +152,16 @@ begin
   FBDescription.Caption := '&' + Preferences.LoadStr(85);
   FBExample.Caption := Preferences.LoadStr(849);
   FBManual.Caption := Preferences.LoadStr(573);
+  FQuickSearch.Hint := ReplaceStr(Preferences.LoadStr(424), '&', '');
+  if (CheckWin32Version(6)) then
+    SendMessage(FQuickSearch.Handle, EM_SETCUEBANNER, 0, LParam(PChar(ReplaceStr(Preferences.LoadStr(424), '&', ''))));
+  FQuickSearchEnabled.Hint := ReplaceStr(Preferences.LoadStr(424), '&', '');
 
   FDescription.Font.Name := Preferences.SQLFontName;
   FDescription.Font.Style := Preferences.SQLFontStyle;
   FDescription.Font.Size := Preferences.SQLFontSize;
   FDescription.Font.Charset := Preferences.SQLFontCharset;
+  FQuickSearch.Font := FDescription.Font;
 
   FExample.Font.Name := Preferences.SQLFontName;
   FExample.Font.Style := Preferences.SQLFontStyle;
@@ -95,10 +171,9 @@ begin
   Perform(CM_SYSFONTCHANGED, 0, 0);
 end;
 
-procedure TDSQLHelp.CMPostShow(var Message: TMessage);
+procedure TDSQLHelp.CMSendSQL(var Message: TMessage);
 begin
-  ActiveControl := nil;
-  BringToFront();
+  Client.SendSQL('HELP ' + SQLEscape(Keyword), ClientResult);
 end;
 
 procedure TDSQLHelp.CMSysFontChanged(var Message: TMessage);
@@ -108,74 +183,33 @@ begin
   FBManual.Width := Canvas.TextWidth(FBManual.Caption) + FBManual.Height - Canvas.TextHeight(FBManual.Caption);
   FBExample.Left := FBDescription.Left + FBDescription.Width;
   FBManual.Left := FBExample.Left + FBExample.Width;
+
+  Constraints.MinWidth := 2 * GetSystemMetrics(SM_CXFRAME) + 2 * Panel.BevelWidth + FBDescription.Width + FBExample.Width + FBManual.Width + FQuickSearch.Width + TBQuickSearchEnabled.Width + 50;
 end;
 
 function TDSQLHelp.Execute(): Boolean;
-var
-  Cancel: Boolean;
-  DataSet: TMySQLQuery;
 begin
+  Show();
+
+  Keyword := Trim(SQLUnwrapStmt(Keyword));
+  if (Keyword = '') then
+    Keyword := 'Contents';
+  Perform(CM_SEND_SQL, 0, 0);
+
   Result := False;
-
-  DataSet := TMySQLQuery.Create(Self);
-  DataSet.Connection := Client;
-  if (Trim(Keyword) = '') then
-    DataSet.CommandText := 'HELP ' + SQLEscape('Contents')
-  else
-    DataSet.CommandText := 'HELP ' + SQLEscape(SQLUnwrapStmt(Keyword));
-  DataSet.Open();
-
-  if (not DataSet.Active or DataSet.IsEmpty() or not Assigned(DataSet.FindField('name'))) then
-    MessageBeep(MB_ICONERROR)
-  else
-  begin
-    Cancel := False;
-    while (not Cancel and not Assigned(DataSet.FindField('description')) and not DataSet.IsEmpty()) do
-    begin
-      Hide();
-
-      repeat
-        SetLength(DSelection.Values, Length(DSelection.Values) + 1);
-        DSelection.Values[Length(DSelection.Values) - 1] := DataSet.FieldByName('name').AsString;
-      until (not DataSet.FindNext());
-      Cancel := not DSelection.Execute();
-      if (not Cancel) then
-      begin
-        DataSet.Close();
-        DataSet.CommandText := 'HELP ' + SQLEscape(DSelection.Selected);
-        DataSet.Open();
-      end;
-    end;
-
-    if (not Cancel and Assigned(DataSet.FindField('description'))) then
-    begin
-      Title := DataSet.FieldByName('name').AsString;
-      Description := Trim(DataSet.FieldByName('description').AsString);
-      Example := Trim(DataSet.FieldByName('example').AsString);
-      ManualURL := Client.Account.ManualURL;
-
-      Result := True;
-    end;
-  end;
-
-  DataSet.Free();
-
-  if (Result) then
-    if (Visible) then
-      FormShow(nil)
-    else
-      Show();
 end;
 
 procedure TDSQLHelp.FBDescriptionClick(Sender: TObject);
 begin
-  FDescription.BringToFront();
+  FDescription.Visible := True;
+  FExample.Visible := False;
   ActiveControl := nil;
 end;
 
 procedure TDSQLHelp.FBExampleClick(Sender: TObject);
 begin
-  FExample.BringToFront();
+  FDescription.Visible := False;
+  FExample.Visible := True;
   ActiveControl := nil;
 end;
 
@@ -188,10 +222,9 @@ end;
 
 procedure TDSQLHelp.FormCreate(Sender: TObject);
 begin
-  Constraints.MinWidth := Width;
-  Constraints.MinHeight := Height;
+  ShowGripper := False;
 
-  BorderStyle := bsSizeable;
+  TBQuickSearchEnabled.Images := Preferences.SmallImages;
 
   if ((Preferences.SQLHelp.Width >= Width) and (Preferences.SQLHelp.Height >= Height)) then
   begin
@@ -232,31 +265,41 @@ begin
 end;
 
 procedure TDSQLHelp.FormShow(Sender: TObject);
-var
-  URL: string;
 begin
-  Caption := ReplaceStr(Preferences.LoadStr(883), '&', '') + ': ' + Title;
+  Caption := ReplaceStr(Preferences.LoadStr(883), '&', '');
 
-  FDescription.Text := Description;
-  if (Pos('URL: ', FDescription.Lines[FDescription.Lines.Count - 1]) = 1) then
+  FDescription.Lines.Clear();
+  FDescription.Visible := False;
+  FBDescription.Enabled := False;
+  FExample.Visible := False;
+  FBExample.Enabled := False;
+  FBManual.Enabled := False;
+
+  FDescription.BringToFront();
+end;
+
+procedure TDSQLHelp.FQuickSearchEnabledClick(Sender: TObject);
+begin
+  Keyword := FQuickSearch.Text;
+  Perform(CM_SEND_SQL, 0, 0);
+end;
+
+procedure TDSQLHelp.FQuickSearchKeyPress(Sender: TObject; var Key: Char);
+begin
+  if (Key = Chr(VK_ESCAPE)) then
   begin
-    URL := FDescription.Lines[FDescription.Lines.Count - 1];
-    Delete(URL, 1, Length('URL: '));
-    URL := Trim(URL);
-    ManualURL := URL;
-    FDescription.Lines.Delete(FDescription.Lines.Count - 1);
-    while ((FDescription.Lines.Count > 0) and (Trim(FDescription.Lines[FDescription.Lines.Count - 1]) = '')) do
-      FDescription.Lines.Delete(FDescription.Lines.Count - 1);
+    FQuickSearch.Text := '';
+
+    Key := #0;
+  end
+  else if ((Key = Chr(VK_RETURN)) and not FQuickSearchEnabled.Down) then
+  begin
+    FQuickSearchEnabled.Click();
+
+    FQuickSearch.SelStart := 0;
+    FQuickSearch.SelLength := Length(FQuickSearch.Text);
+    Key := #0;
   end;
-
-  FExample.Lines.Text := Example;
-
-  FBExample.Enabled := Example <> '';
-  FBManual.Enabled := ManualURL <> '';
-
-  FBDescription.Click();
-
-  PostMessage(Handle, CM_POSTSHOW, 0, 0);
 end;
 
 procedure TDSQLHelp.WMNotify(var Message: TWMNotify);

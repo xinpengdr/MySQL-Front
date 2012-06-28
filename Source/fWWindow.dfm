@@ -34,8 +34,6 @@ object WWindow: TWWindow
     Color = clAppWorkSpace
     ParentBackground = False
     TabOrder = 5
-    ExplicitTop = 116
-    ExplicitHeight = 323
   end
   object TabControl: TTabControl
     Left = 0
@@ -80,6 +78,7 @@ object WWindow: TWWindow
       Left = 0
       Top = 0
       Width = 691
+      Height = 29
       AutoSize = True
       BorderWidth = 2
       EdgeBorders = [ebBottom]
@@ -532,6 +531,7 @@ object WWindow: TWWindow
       Enabled = False
       HelpContext = 1135
       HelpType = htContext
+      ImageIndex = 14
     end
     object aVDataBrowser: TAction
       Category = 'View'

@@ -76,7 +76,7 @@ object DVariable: TDVariable
       Height = 13
       Caption = 'FLModify'
     end
-    object FGlobal: TCheckBox
+    object FGlobal: TRadioButton
       Left = 64
       Top = 64
       Width = 73
@@ -85,7 +85,7 @@ object DVariable: TDVariable
       TabOrder = 1
       OnClick = FGlobalClick
     end
-    object FSession: TCheckBox
+    object FSession: TRadioButton
       Left = 144
       Top = 64
       Width = 81

@@ -2,11 +2,11 @@ object DSQLHelp: TDSQLHelp
   Left = 603
   Top = 315
   BorderIcons = [biSystemMenu]
-  BorderStyle = bsDialog
   Caption = 'DSQLHelp'
-  ClientHeight = 569
-  ClientWidth = 425
-  Color = clBtnFace
+  ClientHeight = 567
+  ClientWidth = 500
+  Color = clWindow
+  Constraints.MinHeight = 300
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -12
@@ -22,12 +22,16 @@ object DSQLHelp: TDSQLHelp
   object Panel: TPanel_Ext
     Left = 0
     Top = 0
-    Width = 425
+    Width = 500
     Height = 25
     Align = alTop
     BevelOuter = bvLowered
     ParentBackground = False
     TabOrder = 0
+    ExplicitWidth = 423
+    DesignSize = (
+      500
+      25)
     object FBDescription: TButton
       Left = 1
       Top = 1
@@ -56,12 +60,42 @@ object DSQLHelp: TDSQLHelp
       TabOrder = 2
       OnClick = FBManualClick
     end
+    object FQuickSearch: TEdit
+      Left = 339
+      Top = 1
+      Width = 136
+      Height = 21
+      Anchors = [akTop, akRight]
+      AutoSize = False
+      Ctl3D = True
+      ParentCtl3D = False
+      TabOrder = 3
+      OnKeyPress = FQuickSearchKeyPress
+    end
+    object TBQuickSearchEnabled: TToolBar
+      Left = 475
+      Top = 1
+      Width = 23
+      Height = 22
+      Align = alNone
+      Anchors = [akTop, akRight]
+      AutoSize = True
+      TabOrder = 4
+      Transparent = False
+      object FQuickSearchEnabled: TToolButton
+        Left = 0
+        Top = 0
+        Caption = ' '
+        ImageIndex = 89
+        OnClick = FQuickSearchEnabledClick
+      end
+    end
   end
   object FDescription: TRichEdit
     Left = 0
     Top = 25
-    Width = 425
-    Height = 544
+    Width = 500
+    Height = 542
     TabStop = False
     Align = alClient
     Font.Charset = ANSI_CHARSET
@@ -82,8 +116,8 @@ object DSQLHelp: TDSQLHelp
   object FExample: TRichEdit
     Left = 0
     Top = 25
-    Width = 425
-    Height = 544
+    Width = 500
+    Height = 542
     TabStop = False
     Align = alClient
     BorderStyle = bsNone

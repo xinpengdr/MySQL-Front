@@ -12,10 +12,10 @@ type
   TDVariable = class (TForm_Ext)
     FBCancel: TButton;
     FBOk: TButton;
-    FGlobal: TCheckBox;
+    FGlobal: TRadioButton;
     FLModify: TLabel;
     FLValue: TLabel;
-    FSession: TCheckBox;
+    FSession: TRadioButton;
     FValue: TEdit;
     GroupBox: TGroupBox_Ext;
     PSQLWait: TPanel;
@@ -143,7 +143,10 @@ begin
 
   FValue.Text := Variable.Value;
   FGlobal.Checked := False;
-  FSession.Checked := False;
+  FSession.Checked := True;
+
+  FGlobal.Visible := Client.ServerVersion >= 40003;
+  FSession.Visible := Client.ServerVersion >= 40003;
 
   FGlobal.Enabled := not Assigned(Client.UserRights) or Client.UserRights.RSuper;
 

@@ -8,6 +8,7 @@ uses
 type
   TForm_Ext = class(TForm)
   private
+    FShowGripper: Boolean;
     MouseDownPoint: TPoint;
     MouseDownSize: TPoint;
     MouseMovePoint: TPoint;
@@ -27,8 +28,11 @@ type
     procedure ApplyWinAPIUpdates(const Control: TWinControl; const StatusFont: TLogFont); virtual;
     constructor Create(AOwner: TComponent); override;
     procedure Deactivate(); override;
+  published
+    property ShowGripper: Boolean read FShowGripper write FShowGripper default True;
   end;
 
+function IsWine(): Boolean;
 procedure Register();
 procedure SetFontByLogFont(const Font: TFont; const LogFont: TLogFont);
 
@@ -40,6 +44,14 @@ uses
   CommCtrl_Ext;
 
 const tiMouseMove = 1;
+
+var
+  Wine: Boolean;
+
+function IsWine(): Boolean;
+begin
+  Result := Wine;
+end;
 
 procedure Register();
 begin
@@ -135,6 +147,7 @@ begin
 
   DoubleBuffered := True;
   MouseDownPoint := Point(-1, -1);
+  FShowGripper := not IsWine();
 end;
 
 procedure TForm_Ext.CreateWindowHandle(const Params: TCreateParams);
@@ -218,7 +231,7 @@ end;
 
 procedure TForm_Ext.Paint();
 begin
-  if (BorderStyle = bsSizeable) then
+  if ((BorderStyle = bsSizeable) and ShowGripper) then
     if (not StyleServices.Enabled) then
       DrawFrameControl(Canvas.Handle, Rect(ClientWidth - GetSystemMetrics(SM_CXVSCROLL), ClientHeight - GetSystemMetrics(SM_CYHSCROLL), ClientWidth, ClientHeight), DFC_SCROLL, DFCS_SCROLLSIZEGRIP)
     else
@@ -278,5 +291,18 @@ begin
     InvalidateControls(Self);
 end;
 
+{******************************************************************************}
+
+var
+  Handle: THandle;
+begin
+  Handle := LoadLibrary(PChar('Kernel32.dll'));
+  if (Handle = 0) then
+    Wine := False
+  else
+  begin
+    Wine := Assigned(GetProcAddress(Handle, 'wine_get_unix_file_name'));
+    FreeLibrary(Handle);
+  end;
 end.
 
