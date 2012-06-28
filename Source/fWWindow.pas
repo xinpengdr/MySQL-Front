@@ -1380,7 +1380,7 @@ begin
 
   if (Assigned(Tab) and (Tab = ActiveTab)) then
   begin
-    Caption := Application.Title + ' - ' + Tab.ToolBarData.Caption;
+    Caption := Tab.ToolBarData.Caption + ' - ' + Application.Title;
 
     tbProperties.Action := Tab.ToolBarData.tbPropertiesAction;
     tbProperties.Caption := Preferences.LoadStr(97) + '...';

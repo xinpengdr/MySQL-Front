@@ -234,6 +234,8 @@ type
     property DBLogin: TDBLogin read FDBLogin;
   end;
 
+function HostIsLocalhost(const Host: string): Boolean;
+
 var
   Accounts: TAAccounts;
 
@@ -285,6 +287,49 @@ begin
     1: Result := vsSmallIcon;
     2: Result := vsList;
     3: Result := vsReport;
+  end;
+end;
+
+function HostIsLocalhost(const Host: string): Boolean;
+type
+  PPInAddr = ^PInAddr;
+var
+  HostEnt: PHostEnt;
+  HostName: array[0..255] of AnsiChar;
+  Addr: PPInAddr;
+  Addresses: TStringList;
+begin
+  Result := (lstrcmpi(PChar(Host), PChar(LOCAL_HOST)) = 0) or (Host = LOCAL_HOST_NAMEDPIPE) or (Host = '127.0.0.1');
+
+  if (not Result and (GetHostName(HostName, SizeOf(HostName)) = 0)) then
+  begin
+    Addresses := TStringList.Create();
+
+    HostEnt := GetHostByName(PAnsiChar(AnsiString(Host)));
+
+    if (Assigned(HostEnt)) then
+    begin
+      Addr := Pointer(HostEnt^.h_addr_list);
+      while (Assigned(Addr^)) do
+      begin
+        Addresses.Add(string(inet_ntoa(Addr^^)));
+        Result := Result or (inet_ntoa(Addr^^) = '127.0.0.1');
+        Inc(Addr);
+      end;
+
+      HostEnt := GetHostByName(HostName);
+      if (Assigned(HostEnt)) then
+      begin
+        Addr := Pointer(HostEnt^.h_addr_list);
+        while (Assigned(Addr^)) do
+        begin
+          Result := Result or (Addresses.IndexOf(string(inet_ntoa(Addr^^))) >= 0);
+          Inc(Addr);
+        end;
+      end;
+    end;
+
+    Addresses.Free();
   end;
 end;
 
@@ -915,25 +960,9 @@ function TAAccount.ExtractPath(const AAddress: string): string;
 var
   URI: TUURI;
 begin
-  Result := AAddress;
-
-  try
-    URI := TUURI.Create(Result);
-
-    if (URI.Scheme = 'mysql') then
-      Delete(Result, 1, Length('mysql') + 1);
-    if (((URI.Host = LowerCase(Connection.Host)) or (URI.Host = LOCAL_HOST)) and ((URI.Port = 0) or (URI.Port = Connection.Port))) then
-    begin
-      Delete(Result, 1, 2);
-      if (Pos('/', Result) = 0) then
-        Result := ''
-      else
-        Delete(Result, 1, Pos('/', Result) - 1);
-    end;
-
-    URI.Free();
-  except
-  end;
+  URI := TUURI.Create(AAddress);
+  Result := URI.Path + URI.ExtraInfos;
+  URI.Free();
 end;
 
 function TAAccount.Frame(): Pointer;
@@ -1152,7 +1181,7 @@ function TAAccount.GetImageIndex(): Integer;
 begin
   if (FImageIndex >= 0) then
     Result := FImageIndex
-  else if (Connection.Host = LOCAL_HOST) then
+  else if (HostIsLocalhost(Connection.Host)) then
     Result := 13
   else
     Result := 23;

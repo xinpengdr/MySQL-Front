@@ -3928,7 +3928,7 @@ begin
               PRecordBufferData(Source^)^.LibRow^[Field.FieldNo - 1], PRecordBufferData(Source^)^.LibLengths^[Field.FieldNo - 1],
               PChar(Dest), Field.DataSize)
           else if (GetLastError() <> 0) then
-            DatabaseErrorFmt(SysErrorMessage(GetLastError()), [Field.DisplayName]);
+            DatabaseErrorFmt(SysErrorMessage(GetLastError()) + ' (%s: %s > %s)', [Field.DisplayName, IntToStr(Len), IntToStr(Field.DataSize)]);
         end;
         PChar(Dest)[Len] := #0;
       end;

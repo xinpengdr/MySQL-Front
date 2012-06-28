@@ -1357,14 +1357,14 @@ begin
 
     if (not Assigned(PDBGrid)) then
       PDBGrid := FClient.CreatePDBGrid();
-    if (not Assigned(FDBGrid)) then
-      FDBGrid := FClient.CreateDBGrid(PDBGrid, DataSource);
     if (not Assigned(DataSource)) then
     begin
       DataSource := TDataSource.Create(FClient.Owner);
       DataSource.Enabled := False;
     end;
     DataSource.DataSet := DataSet;
+    if (not Assigned(FDBGrid)) then
+      FDBGrid := FClient.CreateDBGrid(PDBGrid, DataSource);
 
     FClient.ActiveDBGrid := FDBGrid;
     DataSet.Open();
@@ -8260,17 +8260,13 @@ procedure TFClient.FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
 
     if (Index = Node.Count) then
     begin
-      NavigatorElapse := 1;
       Child := FNavigator.Items.AddChild(Node, Text);
       Added := True;
-      NavigatorElapse := 0;
     end
     else if (Node.Item[Index].Data <> Data) then
     begin
-      NavigatorElapse := 1;
       Child := FNavigator.Items.Insert(Node.Item[Index], Text);
       Added := True;
-      NavigatorElapse := 0;
     end
     else
     begin
@@ -8339,13 +8335,20 @@ procedure TFClient.FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
   end;
 
 var
+  ChangeEvent: TTVChangedEvent;
+  ChangingEvent: TTVChangingEvent;
   Database: TCDatabase;
   Expanded: Boolean;
   ExpandingEvent: TTVExpandingEvent;
   I: Integer;
   Node: TTreeNode;
+  OldSelected: TTreeNode;
   Table: TCTable;
 begin
+  OldSelected := FNavigator.Selected;
+
+  ChangingEvent := FNavigator.OnChanging; FNavigator.OnChanging := nil;
+  ChangeEvent := FNavigator.OnChange; FNavigator.OnChange := nil;
   FNavigator.Items.BeginUpdate();
 
   if (ClientEvent.Sender is TCClient) then
@@ -8425,6 +8428,11 @@ begin
   end;
 
   FNavigator.Items.EndUpdate();
+  FNavigator.OnChanging := ChangingEvent;
+  FNavigator.OnChange := ChangeEvent;
+
+  if (FNavigator.Selected <> OldSelected) then
+    SetTimer(Self.Handle, tiNavigator, 1, nil);
 
   if (Assigned(FNavigatorNodeToExpand) and (FNavigatorNodeToExpand.Count > 0)) then
   begin
@@ -10949,7 +10957,7 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const List
         Item.SubItems.Add(ReplaceStr(Preferences.LoadStr(738), '&', ''))
       else
         Item.SubItems.Add('');
-      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).Valid) then
+      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ValidStatus) then
         Item.SubItems.Add('')
       else if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(TCTable(Data)).Rows < 0)) then
         Item.SubItems.Add('')
@@ -10959,7 +10967,7 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const List
         Item.SubItems.Add(FormatFloat('#,##0', TCBaseTable(TCTable(Data)).Rows, LocaleFormatSettings))
       else
         Item.SubItems.Add('');
-      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).Valid) then
+      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ValidStatus) then
         Item.SubItems.Add('')
       else if (TCTable(Data) is TCBaseTable) then
         if ((TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize < 0)) then
@@ -10968,7 +10976,7 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const List
           Item.SubItems.Add(SizeToStr(TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize + 1))
       else
         Item.SubItems.Add(SizeToStr(Length(TCView(TCTable(Data)).Source)));
-      if (not (TCTable(Data) is TCBaseTable) or not TCBaseTable(TCTable(Data)).Valid or (TCBaseTable(TCTable(Data)).Updated <= 0)) then
+      if (not (TCTable(Data) is TCBaseTable) or not TCBaseTable(TCTable(Data)).ValidStatus or (TCBaseTable(TCTable(Data)).Updated <= 0)) then
         Item.SubItems.Add('')
       else
         Item.SubItems.Add(SysUtils.DateTimeToStr(TCBaseTable(TCTable(Data)).Updated, LocaleFormatSettings));

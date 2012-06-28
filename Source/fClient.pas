@@ -591,7 +591,6 @@ type
     procedure ParseCreateTable(const SQL: string); virtual;
     procedure SetSource(const ADataSet: TMySQLQuery); overload; override;
     function SQLGetSource(): string; override;
-    property ValidStatus: Boolean read FValidStatus;
   public
     procedure Assign(const Source: TCTable); override;
     function Check(): Boolean; virtual;
@@ -639,6 +638,7 @@ type
     property Temporary: Boolean read FTemporary write FTemporary;
     property UnusedSize: Int64 read FUnusedSize write FUnusedSize;
     property Updated: TDateTime read FUpdated;
+    property ValidStatus: Boolean read FValidStatus;
   end;
 
   TCSystemView = class(TCBaseTable)
@@ -5007,7 +5007,10 @@ begin
       until (not DataSet.FindNext());
 
     if (not Filtered) then
+    begin
       Client.ExecuteEvent(ceItemsValid, Client, Client.Databases);
+      Client.ExecuteEvent(ceItemsValid, Database, Self);
+    end;
 
     Result := False;
   end;
@@ -9883,7 +9886,7 @@ begin
     if (not Assigned(FStati)) then FStati := TCStati.Create(Self);
     if (not Assigned(FUsers)) then FUsers := TCUsers.Create(Self);
 
-    if (Assigned(Account) and not Account.IconFetched and not FileExists(Account.IconFilename) and (Host <> LOCAL_HOST)) then
+    if (Assigned(Account) and not Account.IconFetched and not FileExists(Account.IconFilename) and not HostIsLocalhost(Host)) then
     begin
       Internet := InternetOpen(PChar(PChar(Preferences.InternetAgent)), INTERNET_OPEN_TYPE_PRECONFIG, nil, nil, 0);
 

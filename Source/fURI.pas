@@ -10,7 +10,7 @@ type
   TUURI = class
   private
     FDatabase: string;
-    FParams: string;
+    FExtraInfos: string;
     FPath: TFileName;
     FScheme: string;
     FTable: string;
@@ -28,17 +28,18 @@ type
     Username: string;
     Password: string;
     Port: INTERNET_PORT;
+    procedure Clear(); virtual;
+    constructor Create(const AAddress: string = ''); virtual;
+    function ParamDecode(const AParam: string): string;
+    function ParamEncode(const AParam: string): string;
     property Address: string read GetAddress write SetAddress;
     property Database: string read FDatabase write SetDatabase;
+    property ExtraInfos: string read FExtraInfos;
     property Param[Name: string]: Variant read GetParam write SetParam;
     property ParamCount: Integer read GetParamCount;
     property Path: TFileName read FPath write SetPath;
     property Scheme: string read FScheme write SetScheme;
     property Table: string read FTable write SetTable;
-    procedure Clear(); virtual;
-    constructor Create(const AAddress: string = ''); virtual;
-    function ParamDecode(const AParam: string): string;
-    function ParamEncode(const AParam: string): string;
   end;
 
 function PathToURI(const APath: TFileName): string;
@@ -121,7 +122,7 @@ begin
   Host := '';
   Port := 0;
   FPath := '/';
-  FParams := '';
+  FExtraInfos := '';
 end;
 
 constructor TUURI.Create(const AAddress: string = '');
@@ -158,7 +159,7 @@ begin
   end;
   URLComponents.lpszUrlPath := PChar(ParamEncode(Path));
   URLComponents.dwUrlPathLength := StrLen(URLComponents.lpszUrlPath);
-  URLComponents.lpszExtraInfo := PChar(Copy(FParams, 1, 1) + ParamEncode(Copy(FParams, 2, Length(FParams) - 1)));
+  URLComponents.lpszExtraInfo := PChar(Copy(FExtraInfos, 1, 1) + ParamEncode(Copy(FExtraInfos, 2, Length(FExtraInfos) - 1)));
   URLComponents.dwExtraInfoLength := StrLen(URLComponents.lpszExtraInfo);
 
   Size := SizeOf(Buffer);
@@ -173,12 +174,12 @@ var
   I: Integer;
   Items: TStringList;
 begin
-  if (Length(FParams) <= 1) then
+  if (Length(FExtraInfos) <= 1) then
     Result := Null
   else
   begin
     Items := TStringList.Create();
-    Items.Text := ReplaceStr(Copy(FParams, 2, Length(FParams) - 1), '&', #13#10);
+    Items.Text := ReplaceStr(Copy(FExtraInfos, 2, Length(FExtraInfos) - 1), '&', #13#10);
 
     Result := Items.Values[AName];
 
@@ -198,12 +199,12 @@ function TUURI.GetParamCount(): Integer;
 var
   Items: TStringList;
 begin
-  if (Length(FParams) < 1) then
+  if (Length(FExtraInfos) < 1) then
     Result := 0
   else
   begin
     Items := TStringList.Create();
-    Items.Text := ReplaceStr(Copy(FParams, 2, Length(FParams) - 1), '&', #13#10);
+    Items.Text := ReplaceStr(Copy(FExtraInfos, 2, Length(FExtraInfos) - 1), '&', #13#10);
 
     Result := Items.Count;
 
@@ -297,9 +298,9 @@ begin
         Port := URLComponents.nPort;
       Path := ParamDecode(URLComponents.lpszUrlPath);
       if (URLComponents.dwExtraInfoLength = 0) then
-        FParams := ''
+        FExtraInfos := ''
       else
-        FParams := Copy(URLComponents.lpszExtraInfo, 1, 1) + ParamDecode(Copy(URLComponents.lpszExtraInfo, 2, URLComponents.dwExtraInfoLength - 1));
+        FExtraInfos := Copy(URLComponents.lpszExtraInfo, 1, 1) + ParamDecode(Copy(URLComponents.lpszExtraInfo, 2, URLComponents.dwExtraInfoLength - 1));
     finally
       FreeMem(URLComponents.lpszScheme);
       FreeMem(URLComponents.lpszHostName);
@@ -333,18 +334,18 @@ var
   Items: TStringList;
 begin
   Items := TStringList.Create();
-  if (Length(FParams) > 1) then
-    Items.Text := ReplaceStr(Copy(FParams, 2, Length(FParams) - 1), '&', #13#10);
+  if (Length(FExtraInfos) > 1) then
+    Items.Text := ReplaceStr(Copy(FExtraInfos, 2, Length(FExtraInfos) - 1), '&', #13#10);
 
   if (Value = Null) then
     Items.Values[AName] := ''
   else
     Items.Values[AName] := Value;
 
-  FParams := ReplaceStr(Trim(Items.Text), #13#10, '&');
+  FExtraInfos := ReplaceStr(Trim(Items.Text), #13#10, '&');
 
-  if (FParams <> '') then
-    FParams := '?' + FParams;
+  if (FExtraInfos <> '') then
+    FExtraInfos := '?' + FExtraInfos;
 
   Items.Free();
 end;
