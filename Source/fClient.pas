@@ -11108,7 +11108,10 @@ begin
       if (DDLStmt.ObjectType = otDatabase) then
         case (DDLStmt.DefinitionType) of
           dtCreate:
-            Databases.Add(TCDatabase.Create(Self, DDLStmt.ObjectName), True);
+            if (Assigned(DatabaseByName(DDLStmt.ObjectName))) then
+              ExecuteEvent(ceItemAltered, Self, Databases, DatabaseByName(DDLStmt.ObjectName))
+            else
+              Databases.Add(TCDatabase.Create(Self, DDLStmt.ObjectName), True);
           dtRename,
           dtAlter:
             begin
@@ -11138,7 +11141,9 @@ begin
             otView:
               case (DDLStmt.DefinitionType) of
                 dtCreate:
-                  if (DDLStmt.ObjectType = otTable) then
+                  if (Assigned(Database.TableByName(DDLStmt.ObjectName))) then
+                    ExecuteEvent(ceItemAltered, Database, Database.Tables, Database.TableByName(DDLStmt.ObjectName))
+                  else if (DDLStmt.ObjectType = otTable) then
                     Database.Tables.Add(TCBaseTable.Create(Database.Tables, DDLStmt.ObjectName), True)
                   else
                     Database.Tables.Add(TCView.Create(Database.Tables, DDLStmt.ObjectName), True);
@@ -11259,6 +11264,9 @@ begin
             otTrigger:
               case (DDLStmt.DefinitionType) of
                 dtCreate:
+                  if (Assigned(Database.TriggerByName(DDLStmt.ObjectName))) then
+                    ExecuteEvent(ceItemAltered, Database, Database.Triggers, Database.TriggerByName(DDLStmt.ObjectName))
+                  else
                   begin
                     Trigger := TCTrigger.Create(Database.Triggers, DDLStmt.ObjectName);
                     if (SQLParseKeyword(Parse, 'CREATE')) then
@@ -11290,7 +11298,10 @@ begin
             otEvent:
               case (DDLStmt.DefinitionType) of
                 dtCreate:
-                  Database.Events.Add(TCEvent.Create(Database.Events, DDLStmt.ObjectName), True);
+                  if (Assigned(Database.EventByName(DDLStmt.ObjectName))) then
+                    ExecuteEvent(ceItemAltered, Database, Database.Events, Database.EventByName(DDLStmt.ObjectName))
+                  else
+                    Database.Events.Add(TCEvent.Create(Database.Events, DDLStmt.ObjectName), True);
                 dtAlter,
                 dtAlterRename:
                   begin
