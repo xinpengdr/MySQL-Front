@@ -3922,13 +3922,16 @@ begin
             PRecordBufferData(Source^)^.LibRow^[Field.FieldNo - 1], PRecordBufferData(Source^)^.LibLengths^[Field.FieldNo - 1],
             nil, 0);
           if (Len > Field.DataSize) then
-            DatabaseErrorFmt(SInvalidFieldSize + ' (%s: %s > %s)', [Field.DisplayName, IntToStr(Len), IntToStr(Field.DataSize)])
+            DatabaseErrorFmt(SInvalidFieldSize + ' (%s)', [Field.DisplayName])
           else if (Len > 0) then
             MultiByteToWideChar(Connection.CodePage, 0,
               PRecordBufferData(Source^)^.LibRow^[Field.FieldNo - 1], PRecordBufferData(Source^)^.LibLengths^[Field.FieldNo - 1],
               PChar(Dest), Field.DataSize)
           else if (GetLastError() <> 0) then
-            DatabaseErrorFmt(SysErrorMessage(GetLastError()) + ' (%s: %s > %s)', [Field.DisplayName, IntToStr(Len), IntToStr(Field.DataSize)]);
+          begin
+            S := SQLEscape(PRecordBufferData(Source^)^.LibRow^[Field.FieldNo - 1], PRecordBufferData(Source^)^.LibLengths^[Field.FieldNo - 1], False);
+            DatabaseErrorFmt(SysErrorMessage(GetLastError()) + ' (%s - %s)', [IntToStr(Connection.CodePage), S]);
+          end;
         end;
         PChar(Dest)[Len] := #0;
       end;
