@@ -2723,10 +2723,7 @@ begin
     begin
       Database := Client.DatabaseByName(URI.Database);
       if (not Assigned(Database)) then
-      begin
-        NotFound := True;
-        MsgBox('Debug 4: Can''t find address "' + NewAddress + '"', 'Debug', MB_OK + MB_ICONERROR);
-      end
+        NotFound := True
       else if (not Database.Update((URI.Table = '') and (URI.Param['object'] = Null) and (URI.Param['view'] = NULL)) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
         AllowChange := False
       else if ((URI.Table <> '') or (URI.Param['object'] <> Null)) then
@@ -2745,17 +2742,11 @@ begin
           DBObject := nil;
 
         if (not Assigned(DBObject)) then
-        begin
-          NotFound := True;
-          MsgBox('Debug 1: Can''t find address "' + NewAddress + '"', 'Debug', MB_OK + MB_ICONERROR);
-        end
+          NotFound := True
         else if (not DBObject.Update()) then
           AllowChange := False
         else if ((URI.Param['objecttype'] = 'trigger') and (URI.Param['object'] <> Null) and not Assigned(Database.TriggerByName(URI.Param['object']))) then
-        begin
-          NotFound := True;
-          MsgBox('Debug 3: Can''t find address "' + NewAddress + '"', 'Debug', MB_OK + MB_ICONERROR);
-        end
+          NotFound := True
       end;
     end;
 
@@ -13983,7 +13974,6 @@ begin
   AddressChanging(nil, NewAddress, AllowChange);
   if (not AllowChange and Wanted.Nothing) then
   begin
-    MsgBox('Debug 2: Can''t open address "' + NewAddress + '"', 'Debug', MB_OK + MB_ICONERROR);
     NewAddress := Client.Account.FullAddress('/');
     AllowChange := True;
     AddressChanging(nil, NewAddress, AllowChange);
