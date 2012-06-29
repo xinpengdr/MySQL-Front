@@ -27,6 +27,15 @@
 		<Target Name="TPerlRegEx_160:Make">
 			<MSBuild Projects="TPerlRegEx\Packages\TPerlRegEx_160.dproj" Targets="Make"/>
 		</Target>
+		<Target Name="EurekaLog_160">
+			<MSBuild Projects="EurekaLog\Packages\EurekaLog_160.dproj"/>
+		</Target>
+		<Target Name="EurekaLog_160:Clean">
+			<MSBuild Projects="EurekaLog\Packages\EurekaLog_160.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="EurekaLog_160:Make">
+			<MSBuild Projects="EurekaLog\Packages\EurekaLog_160.dproj" Targets="Make"/>
+		</Target>
 		<Target Name="DISQLite3_160">
 			<MSBuild Projects="DISQLite3\Packages\DISQLite3_160.dproj"/>
 		</Target>
@@ -118,13 +127,13 @@
 			<MSBuild Projects="MySQLFront.dproj" Targets="Make"/>
 		</Target>
 		<Target Name="Build">
-			<CallTarget Targets="FastMM_160;TPerlRegEx_160;DISQLite3_160;MPHexEditor_160;SynEdit_160;acQueryBuilder_160;acQueryBuilderDsgn_160;ShellBrowser_160;Win32_Ext_160;VCL_Ext_160;MySQL_160;MySQLFront"/>
+			<CallTarget Targets="FastMM_160;TPerlRegEx_160;EurekaLog_160;DISQLite3_160;MPHexEditor_160;SynEdit_160;acQueryBuilder_160;acQueryBuilderDsgn_160;ShellBrowser_160;Win32_Ext_160;VCL_Ext_160;MySQL_160;MySQLFront"/>
 		</Target>
 		<Target Name="Clean">
-			<CallTarget Targets="FastMM_160:Clean;TPerlRegEx_160:Clean;DISQLite3_160:Clean;MPHexEditor_160:Clean;SynEdit_160:Clean;acQueryBuilder_160:Clean;acQueryBuilderDsgn_160:Clean;ShellBrowser_160:Clean;Win32_Ext_160:Clean;VCL_Ext_160:Clean;MySQL_160:Clean;MySQLFront:Clean"/>
+			<CallTarget Targets="FastMM_160:Clean;TPerlRegEx_160:Clean;EurekaLog_160:Clean;DISQLite3_160:Clean;MPHexEditor_160:Clean;SynEdit_160:Clean;acQueryBuilder_160:Clean;acQueryBuilderDsgn_160:Clean;ShellBrowser_160:Clean;Win32_Ext_160:Clean;VCL_Ext_160:Clean;MySQL_160:Clean;MySQLFront:Clean"/>
 		</Target>
 		<Target Name="Make">
-			<CallTarget Targets="FastMM_160:Make;TPerlRegEx_160:Make;DISQLite3_160:Make;MPHexEditor_160:Make;SynEdit_160:Make;acQueryBuilder_160:Make;acQueryBuilderDsgn_160:Make;ShellBrowser_160:Make;Win32_Ext_160:Make;VCL_Ext_160:Make;MySQL_160:Make;MySQLFront:Make"/>
+			<CallTarget Targets="FastMM_160:Make;TPerlRegEx_160:Make;EurekaLog_160:Make;DISQLite3_160:Make;MPHexEditor_160:Make;SynEdit_160:Make;acQueryBuilder_160:Make;acQueryBuilderDsgn_160:Make;ShellBrowser_160:Make;Win32_Ext_160:Make;VCL_Ext_160:Make;MySQL_160:Make;MySQLFront:Make"/>
 		</Target>
 		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
 	</Project>

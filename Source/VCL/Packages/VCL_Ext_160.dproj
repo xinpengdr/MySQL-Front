@@ -3,11 +3,11 @@
 			<ProjectGuid>{39126B1C-4A7C-41E2-8E2C-8B863333D738}</ProjectGuid>
 			<MainSource>VCL_Ext_160.dpk</MainSource>
 			<ProjectVersion>13.4</ProjectVersion>
-			<FrameworkType>None</FrameworkType>
-			<AppType>Package</AppType>
-			<TargetedPlatforms>1</TargetedPlatforms>
-			<Platform Condition="'$(Platform)'==''">Win32</Platform>
+			<FrameworkType>VCL</FrameworkType>
 			<Config Condition="'$(Config)'==''">Base</Config>
+			<Platform Condition="'$(Platform)'==''">Win32</Platform>
+			<TargetedPlatforms>1</TargetedPlatforms>
+			<AppType>Package</AppType>
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<SkipResGeneration>true</SkipResGeneration>
 			<Base>True</Base>
@@ -15,50 +15,9 @@
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
 			<Base>true</Base>
 		</PropertyGroup>
-		<PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Base)'=='true') or '$(Base_Win64)'!=''">
-			<Base_Win64>true</Base_Win64>
-			<CfgParent>Base</CfgParent>
-			<Base>true</Base>
-		</PropertyGroup>
-		<PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
-			<Base_Win32>true</Base_Win32>
-			<CfgParent>Base</CfgParent>
-			<Base>true</Base>
-		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
-			<DCC_UsePackage>rtl;$(DCC_UsePackage)</DCC_UsePackage>
-			<GenDll>true</GenDll>
 			<GenPackage>true</GenPackage>
-			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
-			<Manifest_File>None</Manifest_File>
-			<DCC_UNIT_PLATFORM>false</DCC_UNIT_PLATFORM>
-			<DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Winapi;Bde;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
-			<DCC_SYMBOL_PLATFORM>false</DCC_SYMBOL_PLATFORM>
-			<DCC_DependencyCheckOutputName>c:\program files (x86)\embarcadero\rad studio\7.0\Projects\Bpl\VCL_Extensions.bpl</DCC_DependencyCheckOutputName>
-			<DCC_UnitSearchPath>..\Source;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-			<DCC_IOChecking>false</DCC_IOChecking>
-			<DCC_ImageBase>00400000</DCC_ImageBase>
-			<DCC_TypedAtParameter>true</DCC_TypedAtParameter>
-			<DCC_BplOutput>$(Delphi)\Projects\Bpl</DCC_BplOutput>
-			<DCC_Description>VCL Extensions</DCC_Description>
-			<DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
-			<DCC_Platform>x86</DCC_Platform>
-			<DCC_N>true</DCC_N>
-			<DCC_K>false</DCC_K>
-			<DCC_F>false</DCC_F>
-			<DCC_DcpOutput>..\Bin</DCC_DcpOutput>
-			<DCC_S>false</DCC_S>
-			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
-			<DCC_DebugInformation>false</DCC_DebugInformation>
-			<DCC_E>false</DCC_E>
-			<DCC_AssertionsAtRuntime>false</DCC_AssertionsAtRuntime>
-			<DCC_DcuOutput>..\Bin</DCC_DcuOutput>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Base_Win64)'!=''">
-			<DCC_UsePackage>vcl;$(DCC_UsePackage)</DCC_UsePackage>
-		</PropertyGroup>
-		<PropertyGroup Condition="'$(Base_Win32)'!=''">
-			<DCC_UsePackage>vcl;$(DCC_UsePackage)</DCC_UsePackage>
+			<GenDll>true</GenDll>
 		</PropertyGroup>
 		<ItemGroup>
 			<DelphiCompile Include="$(MainSource)">
@@ -82,6 +41,9 @@
 			<Borland.ProjectType>Package</Borland.ProjectType>
 			<BorlandProject>
 				<Delphi.Personality>
+					<Source>
+						<Source Name="MainSource">VCL_Ext_160.dpk</Source>
+					</Source>
 					<VersionInfo>
 						<VersionInfo Name="IncludeVerInfo">False</VersionInfo>
 						<VersionInfo Name="AutoIncBuild">False</VersionInfo>
@@ -109,9 +71,6 @@
 						<VersionInfoKeys Name="ProductVersion">1.0.0.0</VersionInfoKeys>
 						<VersionInfoKeys Name="Comments"/>
 					</VersionInfoKeys>
-					<Source>
-						<Source Name="MainSource">VCL_Ext_160.dpk</Source>
-					</Source>
 				</Delphi.Personality>
 				<Platforms>
 					<Platform value="Win64">False</Platform>

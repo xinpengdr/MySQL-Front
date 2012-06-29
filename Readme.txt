@@ -18,7 +18,7 @@ DISQLite3:
 http://www.yunqa.de/delphi/doku.php/products/sqlite3/
 
 Unicode SynEdit:
-http://mh-nexus.de/en/unisynedit.php
+http://synedit.svn.sourceforge.net/viewvc/synedit/
 
 Active Query Builder VCL Edition:
 http://www.activequerybuilder.com/

@@ -3,11 +3,11 @@
 			<ProjectGuid>{8CD4B70A-3A70-4F92-A6D0-249E1FE16894}</ProjectGuid>
 			<MainSource>Win32_Ext_160.dpk</MainSource>
 			<ProjectVersion>13.4</ProjectVersion>
-			<FrameworkType>None</FrameworkType>
-			<AppType>Package</AppType>
-			<TargetedPlatforms>1</TargetedPlatforms>
+			<FrameworkType>VCL</FrameworkType>
+			<Config Condition="'$(Config)'==''">Debug</Config>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
-			<Config Condition="'$(Config)'==''">Base</Config>
+			<TargetedPlatforms>1</TargetedPlatforms>
+			<AppType>Package</AppType>
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<SkipResGeneration>true</SkipResGeneration>
 		</PropertyGroup>

@@ -3,14 +3,13 @@
 			<ProjectGuid>{FF234411-F330-4D89-A945-F2627A7D48D2}</ProjectGuid>
 			<MainSource>MPHexEditor_160.dpk</MainSource>
 			<ProjectVersion>13.4</ProjectVersion>
-			<FrameworkType>None</FrameworkType>
-			<AppType>Package</AppType>
-			<TargetedPlatforms>1</TargetedPlatforms>
+			<FrameworkType>VCL</FrameworkType>
+			<Config Condition="'$(Config)'==''">Debug</Config>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
-			<Config Condition="'$(Config)'==''">Base</Config>
+			<TargetedPlatforms>1</TargetedPlatforms>
+			<AppType>Package</AppType>
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<SkipResGeneration>true</SkipResGeneration>
-			<Base>True</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
 			<Base>true</Base>

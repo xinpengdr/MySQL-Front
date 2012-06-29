@@ -3,11 +3,11 @@
 			<ProjectGuid>{0141547A-1387-459E-8E0E-FD6F0FB2EB63}</ProjectGuid>
 			<MainSource>FastMM_160.dpk</MainSource>
 			<ProjectVersion>13.4</ProjectVersion>
-			<FrameworkType>None</FrameworkType>
-			<AppType>Package</AppType>
-			<TargetedPlatforms>1</TargetedPlatforms>
+			<FrameworkType>VCL</FrameworkType>
+			<Config Condition="'$(Config)'==''">Debug</Config>
 			<Platform Condition="'$(Platform)'==''">Win32</Platform>
-			<Config Condition="'$(Config)'==''">Base</Config>
+			<TargetedPlatforms>1</TargetedPlatforms>
+			<AppType>Package</AppType>
 			<VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
 			<SkipResGeneration>true</SkipResGeneration>
 		</PropertyGroup>
