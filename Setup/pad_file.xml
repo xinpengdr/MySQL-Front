@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="iso-8859-1"?>
+<?xml version="1.0" encoding="utf-8"?>
 <XML_DIZ_INFO>
 	<MASTER_PAD_VERSION_INFO>
 		<MASTER_PAD_VERSION>1.00</MASTER_PAD_VERSION>
@@ -18,12 +18,6 @@
 		<Program_Release_Month>{BuildVerMonth}</Program_Release_Month>
 		<Program_Release_Day>{BuildVerDay}</Program_Release_Day>
 		<Program_Type>Freeware</Program_Type>
-		<Program_Specific_Categories>Development Tools</Program_Specific_Categories>
-		<Program_Category_Class>Development::Other</Program_Category_Class>
-		<Program_Categories>Database Tools</Program_Categories>
-		<Program_Language>Arabic,Bulgarian,Catalan,ChineseSimplified,ChineseTraditional,Croatian,Czech,Danish,Dutch,English,French,German,Greek,Hungarian,Indonesian,Italian,Japanese,Korean,Lithuanian,Norwegian,Polish,Portuguese,Romanian,Russian,Serbian,Slovak,Spanish,Swedish,Thai,Turkish,Ukrainian</Program_Language>
-		<Program_OS_Support>WinXP,Windows2003,Windows Vista Starter,Windows Vista Home Basic,Windows Vista Home Premium,Windows Vista Business,Windows Vista Enterprise,Windows Vista Ultimate,Windows Vista Home Basic x64,Windows Vista Home Premium x64,Windows Vista Business x64,Windows Vista Enterprise x64,Windows Vista Ultimate x64</Program_OS_Support>
-		<Program_Install_Support>Install and Uninstall</Program_Install_Support>
 		<File_Info>
 			<Filename_Long>{BuildName}_Setup.exe</Filename_Long>
 			<File_Size_Bytes>{BuildPADFileSizeB}</File_Size_Bytes>
@@ -33,12 +27,7 @@
 	</Program_Info>
 	<Program_Descriptions>
 		<English>
-			<Keywords>mysql, mysql GUI, mysql frontend, mysql front end, mysql GUI frontend, mysql administrator, php, mysql windows, database frontend, mysql database, mysql GUI tool</Keywords>
-			<Char_Desc_45>{BuildName} MySQL GUI front end administrator</Char_Desc_45>
-			<Char_Desc_80>{BuildName} MySQL GUI for database changes, data editing, SQL queries and more</Char_Desc_80>
-			<Char_Desc_250>{BuildName} is a GUI frontend for MySQL. Full database admin features and an advanced SQL editor gives contol of database structure and data. Other features: Import or Export data in other formats, image viewer for Blobs, PHP tunnel access and more.</Char_Desc_250>
-			<Char_Desc_450>{BuildName} is a GUI frontend for MySQL. Full database admin features with an advanced SQL editor lets users contol the data, structure and host/server features of their MySQL database.  PHP tunnel feature allows access to ISP restricted databases. Other features are data import/Export to or from various formats, Blob Hex editor &amp; image viewer, logging &amp; display of SQL scripts, search &amp; edit data functions, and more.</Char_Desc_450>
-			<Char_Desc_2000>{BuildName} is a GUI frontend that offers a complete solution to your MySQL projects.  Full database administration features with an advanced SQL editor lets users contol the data, structure and host/server features of their MySQL databases. The great features of {BuildName} make even the most complicated data manipulation easy. Code completetion, display and logging of SQL scripts, syntax highlighting, table/database synchonization, and advanced search and edit functions give users complete data control. Data import functions allow users to gather data from various sources such as any ODBC source, SQL files, CSV format text files and MS access files. Data can then be transformed into other formats with the export features which will create SQL files, CSV format text files, HTML, XML, and other mysql databases.  Blob hex editor and image viewer give added control to this data type. Database structure can be modified to fit users needs by adding or deleting databases, tables, fields and more.  Administrative duties such as modicication of user rights, server variables and security settings can be quickly performed through the System Tools window. ISP restricted databases can be accessed through the PHP tunnel feature. {BuildName}'s intuitive interface makes it easy to learn.  The custom options can make the interface even more user friendly by allowing different skins, fonts, and SQL syntax color.  Users also have the choice of over 25 different languages to choose from.</Char_Desc_2000>
+			<Char_Desc_450>{BuildName} is a Windows front-end for the MySQL database server. The database structure and data can be handled via dialogs or SQL commands. Import or Export data in several formats are supported. Access to the MySQL server directly or via HTTP tunneling is possible.</Char_Desc_450>
 		</English>
 	</Program_Descriptions>
 	<Web_Info>

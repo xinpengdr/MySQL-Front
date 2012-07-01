@@ -273,7 +273,6 @@ type
     procedure SetZOrder(TopMost: Boolean); override;
   public
     constructor Create(const AWorkbench: TWWorkbench; const ACoord: TPoint); reintroduce; virtual;
-  published
     property Caption: TCaption read GetCaption write SetCaption;
     property Color: TColor read FColor write FColor;
   end;
@@ -345,7 +344,6 @@ type
     procedure UpdateControl(const Control: TWControl); virtual;
     procedure ValidateControl(const Sender: TComponent; const Control: TWControl); virtual;
   public
-    CaseSensetiveTablenames: Boolean;
     constructor Create(AOwner: TComponent); overload; override;
     constructor Create(const AOwner: TComponent; const ADatabase: TCDatabase); reintroduce; overload; virtual;
     destructor Destroy(); override;
@@ -368,23 +366,20 @@ type
     function TableByCaption(const Caption: string): TWTable; virtual;
     procedure TableCreated(const ATable: TCBaseTable; const APoint: TPoint); virtual;
     function UpdateAction(Action: TBasicAction): Boolean; override;
+    property Database: TCDatabase read GetDatabase;
     property ForeignKeys: TWForeignKeys read FForeignKeys;
+    property HideSelection: Boolean read FHideSelection write FHideSelection default False;
     property Modified: Boolean read FModified;
+    property MultiSelect: Boolean read FMultiSelect write SetMultiSelect default False;
+    property OnChange: TWWorkbenchChangeEvent read FOnChange write FOnChange;
+    property OnCursorMove: TWWorkbenchCursorMoveEvent read FOnCursorMove write FOnCursorMove;
+    property OnValidateControl: TWWorkbenchValidateControlEvent read FOnValidateControl write FOnValidateControl;
     property Sections: TWSections read FSections;
     property SelCount: Integer read GetSelCount;
     property Selected: TWControl read FSelected write SetSelected;
     property TableFocused: TWTable read FTableFocused write SetTableFocused;
     property Tables: TWTables read FTables;
-  published
-    property Database: TCDatabase read GetDatabase;
-    property HideSelection: Boolean read FHideSelection write FHideSelection default False;
-    property MultiSelect: Boolean read FMultiSelect write SetMultiSelect default False;
-    property OnChange: TWWorkbenchChangeEvent read FOnChange write FOnChange;
-    property OnCursorMove: TWWorkbenchCursorMoveEvent read FOnCursorMove write FOnCursorMove;
-    property OnValidateControl: TWWorkbenchValidateControlEvent read FOnValidateControl write FOnValidateControl;
   end;
-
-procedure Register();
 
 implementation {***************************************************************}
 
@@ -397,11 +392,6 @@ const
   ConnectorSize = LineWidth + 6; // nur gerade Werte
   PointSize = LineWidth + 2; // nur gerade Werte
   Padding = 2;
-
-procedure Register();
-begin
-  RegisterComponents('Modulator', [TWWorkbench]);
-end;
 
 function XMLNode(const Parent: IXMLNode; const Key: string; const NodeAutoCreate: Boolean = False): IXMLNode;
 var
@@ -3335,7 +3325,6 @@ begin
   inherited;
 
   AutoScroll := False;
-  CaseSensetiveTablenames := False;
   CreatedTable.BaseTable := nil;
   FDatabaseName := '';
   FOnChange := nil;
@@ -3756,7 +3745,7 @@ begin
   Result := nil;
 
   for I := 0 to Tables.Count - 1 do
-    if (CaseSensetiveTablenames and (Tables[I].Caption = Caption) or (lstrcmpi(PChar(Tables[I].Caption), PChar(Caption)) = 0)) then
+    if (Database.Tables.NameCmp(Tables[I].Caption, Caption) = 0) then
       Result := Tables[I];
 end;
 

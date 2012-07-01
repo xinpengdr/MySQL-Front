@@ -5843,6 +5843,8 @@ begin
 
   Result.DataSource := DataSource;
 
+  Result.Parent := PDBGrid;
+
   Result.Perform(CM_PARENTCOLORCHANGED, 0, 0);
   Result.Perform(CM_PARENTFONTCHANGED, 0, 0);
   Result.Perform(CM_PARENTSHOWHINTCHANGED, 0, 0);
@@ -5853,8 +5855,6 @@ begin
   NonClientMetrics.cbSize := SizeOf(NonClientMetrics);
   if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, SizeOf(NonClientMetrics), @NonClientMetrics, 0)) then
     Window.ApplyWinAPIUpdates(Result, NonClientMetrics.lfStatusFont);
-
-  Result.Parent := PDBGrid;
 end;
 
 function TFClient.CreateListView(const Data: TCustomData): TListView;
@@ -5898,6 +5898,8 @@ begin
 
   SetWindowLong(ListView_GetHeader(Result.Handle), GWL_STYLE, GetWindowLong(ListView_GetHeader(FServerListView.Handle), GWL_STYLE) or HDS_DRAGDROP);
 
+  Result.Parent := PListView;
+
   Result.Perform(CM_PARENTCOLORCHANGED, 0, 0);
   Result.Perform(CM_PARENTFONTCHANGED, 0, 0);
   Result.Perform(CM_PARENTSHOWHINTCHANGED, 0, 0);
@@ -5908,8 +5910,6 @@ begin
   NonClientMetrics.cbSize := SizeOf(NonClientMetrics);
   if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, SizeOf(NonClientMetrics), @NonClientMetrics, 0)) then
     Window.ApplyWinAPIUpdates(Result, NonClientMetrics.lfStatusFont);
-
-  Result.Parent := PListView;
 
   ListViewInitialize(Result);
 end;
@@ -5932,6 +5932,8 @@ begin
   Result.ParentBackground := PDBGrid.ParentBackground;
   Result.OnResize := PDBGrid.OnResize;
 
+  Result.Parent := PDBGrid.Parent;
+
   Result.Perform(CM_PARENTCOLORCHANGED, 0, 0);
   Result.Perform(CM_PARENTFONTCHANGED, 0, 0);
   Result.Perform(CM_PARENTSHOWHINTCHANGED, 0, 0);
@@ -5942,8 +5944,6 @@ begin
   NonClientMetrics.cbSize := SizeOf(NonClientMetrics);
   if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, SizeOf(NonClientMetrics), @NonClientMetrics, 0)) then
     Window.ApplyWinAPIUpdates(Result, NonClientMetrics.lfStatusFont);
-
-  Result.Parent := PDBGrid.Parent;
 end;
 
 function TFClient.CreateSynMemo(): TSynMemo;
@@ -5981,6 +5981,8 @@ begin
 
   SynMemoApllyPreferences(Result);
 
+  Result.Parent := PSynMemo;
+
   Result.Perform(CM_PARENTCOLORCHANGED, 0, 0);
   Result.Perform(CM_PARENTFONTCHANGED, 0, 0);
   Result.Perform(CM_PARENTSHOWHINTCHANGED, 0, 0);
@@ -5991,8 +5993,6 @@ begin
   NonClientMetrics.cbSize := SizeOf(NonClientMetrics);
   if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, SizeOf(NonClientMetrics), @NonClientMetrics, 0)) then
     Window.ApplyWinAPIUpdates(Result, NonClientMetrics.lfStatusFont);
-
-  Result.Parent := PSynMemo;
 end;
 
 function TFClient.CreateTCResult(const PDBGrid: TPanel_Ext): TTabControl;
@@ -6011,6 +6011,8 @@ begin
   Result.TabHeight := 23;
   Result.TabOrder := 0;
 
+  Result.Parent := PDBGrid;
+
   Result.Perform(CM_PARENTCOLORCHANGED, 0, 0);
   Result.Perform(CM_PARENTFONTCHANGED, 0, 0);
   Result.Perform(CM_PARENTSHOWHINTCHANGED, 0, 0);
@@ -6021,8 +6023,6 @@ begin
   NonClientMetrics.cbSize := SizeOf(NonClientMetrics);
   if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, SizeOf(NonClientMetrics), @NonClientMetrics, 0)) then
     Window.ApplyWinAPIUpdates(Result, NonClientMetrics.lfStatusFont);
-
-  Result.Parent := PDBGrid;
 end;
 
 function TFClient.CreateWorkbench(const ADatabase: TCDatabase): TWWorkbench;
@@ -6053,6 +6053,13 @@ begin
   Result.VertScrollBar.Tracking := True;
 
   Result.Parent := PWorkbench;
+
+  Result.Perform(CM_PARENTCOLORCHANGED, 0, 0);
+  Result.Perform(CM_PARENTFONTCHANGED, 0, 0);
+  Result.Perform(CM_PARENTSHOWHINTCHANGED, 0, 0);
+  Result.Perform(CM_PARENTBIDIMODECHANGED, 0, 0);
+  Result.Perform(CM_PARENTDOUBLEBUFFEREDCHANGED, 0, 0);
+  Result.Perform(CM_PARENTTABLETOPTIONSCHANGED, 0, 0);
 end;
 
 function TFClient.Desktop(const Database: TCDatabase): TDatabaseDesktop;

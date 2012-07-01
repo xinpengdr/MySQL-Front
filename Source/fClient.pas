@@ -11818,7 +11818,8 @@ begin
     end;
 
   Tables.Free();
-  InvalidObjects.Clear();
+  if (Assigned(InvalidObjects)) then
+    InvalidObjects.Clear();
 
   Result := (SQL = '') or SendSQL(SQL, ClientResult);
 end;
