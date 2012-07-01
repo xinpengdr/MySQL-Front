@@ -639,6 +639,7 @@ object WWindow: TWWindow
     object aVAddress: TAction
       Category = 'View'
       Caption = 'aVAddress'
+      ShortCut = 16460
       OnExecute = aVAddressExecute
     end
     object aVRefresh: TAction

@@ -2811,7 +2811,7 @@ begin
     while (SQL_SUCCEEDED(ODBCException(Stmt, SQLFetch(Stmt)))) do
       if ((IndexType in [SQL_INDEX_CLUSTERED, SQL_INDEX_HASHED, SQL_INDEX_OTHER])) then
       begin
-        Key := NewTable.KeyByName(IndexName);
+        Key := NewTable.IndexByName(IndexName);
 
         if (not Assigned(Key)) then
         begin
@@ -2821,7 +2821,7 @@ begin
           NewTable.Keys.AddKey(Key);
           Key.Free();
 
-          Key := NewTable.KeyByName(IndexName);
+          Key := NewTable.IndexByName(IndexName);
         end;
 
         NewKeyColumn := TCKeyColumn.Create(Key.Columns);
@@ -2834,7 +2834,7 @@ begin
     SQLFreeHandle(SQL_HANDLE_STMT, Stmt);
 
 
-    if ((NewTable.Keys.Count > 0) and not Assigned(NewTable.KeyByName(''))) then
+    if ((NewTable.Keys.Count > 0) and not Assigned(NewTable.IndexByName(''))) then
     begin
       Key := nil;
       for I := NewTable.Keys.Count - 1 downto 0 do
@@ -7139,15 +7139,15 @@ begin
       end;
 
     for I := 0 to SourceTable.Keys.Count - 1 do
-      if (not Assigned(NewTargetTable.KeyByName(SourceTable.Keys[I].Name))) then
+      if (not Assigned(NewTargetTable.IndexByName(SourceTable.Keys[I].Name))) then
       begin
         NewTargetTable.Keys.AddKey(SourceTable.Keys[I]);
 
         Modified := True;
       end
-      else if (UpdateStructure and not SourceTable.Keys[I].Equal(NewTargetTable.KeyByName(SourceTable.Keys[I].Name))) then
+      else if (UpdateStructure and not SourceTable.Keys[I].Equal(NewTargetTable.IndexByName(SourceTable.Keys[I].Name))) then
       begin
-        NewTargetTable.KeyByName(SourceTable.Keys[I].Name).Assign(SourceTable.Keys[I]);
+        NewTargetTable.IndexByName(SourceTable.Keys[I].Name).Assign(SourceTable.Keys[I]);
 
         Modified := True;
       end;

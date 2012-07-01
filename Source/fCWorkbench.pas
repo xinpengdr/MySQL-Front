@@ -76,7 +76,6 @@ type
   protected
     procedure ApplyCoord(); override;
     procedure ChangeSize(const Sender: TWControl; const Shift: TShiftState; X, Y: Integer); virtual;
-    function GetSize(): TSize; virtual;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     property MouseDownSize: TSize read FMouseDownSize;
@@ -84,7 +83,7 @@ type
   public
     constructor Create(const AWorkbench: TWWorkbench); override;
     property Area: TRect read GetArea;
-    property Size: TSize read GetSize;
+    property Size: TSize read FSize;
   end;
 
   TWPointMoveState = (msNormal, msFixed, msAutomatic);
@@ -142,22 +141,18 @@ type
 
   TWTable = class(TWArea)
   private
+    FBaseTable: TCBaseTable;
     FData: TCustomData;
     FFocused: Boolean;
     FForeignKeyPoints: array of TWForeignKeyPoint;
-    FTable: TCBaseTable;
-    function GetCaption(): string;
+    function GetCaption(): TCaption;
     function GetForeignKeyPoint(AIndex: Integer): TWForeignKeyPoint;
     function GetForeignKeyPointCount(): Integer;
     function GetIndex(): Integer;
-    function GetTable: TCBaseTable;
-    procedure SetCaption(const ACaption: string);
     procedure SetFocused(AFocused: Boolean);
   protected
     procedure ApplyCoord(); override;
     function CanAutoSize(var NewWidth, NewHeight: Integer): Boolean; override;
-    procedure ClearCache(); virtual;
-    function GetSize(): TSize; override;
     procedure LoadFromXML(const XML: IXMLNode); override;
     procedure MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TPoint); override;
     procedure Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TPoint); override;
@@ -168,15 +163,15 @@ type
     procedure ReleaseForeignKeyPoint(const AForeignKeyPoint: TWForeignKeyPoint); virtual;
     property ForeignKeyPoint[Index: Integer]: TWForeignKeyPoint read GetForeignKeyPoint;
     property ForeignKeyPointCount: Integer read GetForeignKeyPointCount;
-    property Table: TCBaseTable read GetTable;
   public
-    constructor Create(const ATables: TWTables); reintroduce; virtual;
+    constructor Create(const ATables: TWTables; const ABaseTable: TCBaseTable); reintroduce; virtual;
     destructor Destroy(); override;
+    procedure Invalidate(); override;
+    property BaseTable: TCBaseTable read FBaseTable;
+    property Caption: TCaption read GetCaption;
     property Data: TCustomData read FData write FData;
     property Focused: Boolean read FFocused write SetFocused;
     property Index: Integer read GetIndex;
-  published
-    property Caption: string read GetCaption write SetCaption;
   end;
 
   TWTables = class(TWObjects)
@@ -184,8 +179,6 @@ type
     function GetSelCount(): Integer;
     function GetTable(Index: Integer): TWTable;
   protected
-    procedure ClearCache(); virtual;
-    procedure LoadFromXML(const XML: IXMLNode); virtual;
     procedure SaveToXML(const XML: IXMLNode); virtual;
   public
     property SelCount: Integer read GetSelCount;
@@ -225,14 +218,15 @@ type
 
   TWForeignKey = class(TWForeignKeyPoint)
   private
-    FCaption: string;
-    FData: TCustomData;
+    FCaption: TCaption;
+    FBaseForeignKey: TCForeignKey;
+    function GetCaption(): TCaption;
     function GetForeignKeySelected(): Boolean;
     function GetIsLine(): Boolean;
     function GetPoint(Index: Integer): TWForeignKeyPoint;
     function GetPointCount(): Integer;
     function GetTable(Index: Integer): TWTable;
-    procedure SetCaption(ACaption: string);
+    procedure SetCaption(const ACaption: TCaption);
     procedure SetForeignKeySelected(AForeignKeySelected: Boolean);
     procedure SetTable(Index: Integer; ATable: TWTable);
   protected
@@ -241,10 +235,11 @@ type
     procedure SaveToXML(const XML: IXMLNode); override;
     property Points[Index: Integer]: TWForeignKeyPoint read GetPoint;
   public
+    constructor Create(const AWorkbench: TWWorkbench; const ACoord: TPoint; const PreviousPoint: TWPoint = nil); override;
     destructor Destroy(); override;
-    property Caption: string read FCaption write SetCaption;
+    property Caption: TCaption read GetCaption write SetCaption;
     property ChildTable: TWTable index 0 read GetTable write SetTable;
-    property Data: TCustomData read FData write FData;
+    property BaseForeignKey: TCForeignKey read FBaseForeignKey write FBaseForeignKey;
     property ForeignKeySelected: Boolean read GetForeignKeySelected write SetForeignKeySelected;
     property IsLine: Boolean read GetIsLine;
     property ParentTable: TWTable index 1 read GetTable write SetTable;
@@ -256,7 +251,6 @@ type
     function GetForeignKey(Index: Integer): TWForeignKey;
     function GetSelCount(): Integer;
   protected
-    procedure LoadFromXML(const XML: IXMLNode); virtual;
     procedure SaveToXML(const XML: IXMLNode); virtual;
   public
     property ForeignKey[Index: Integer]: TWForeignKey read GetForeignKey; default;
@@ -265,9 +259,9 @@ type
 
   TWSection = class(TWArea)
   private
-    FCaption: string;
     FColor: TColor;
-    procedure SetCaption(const ACaption: string);
+    function GetCaption(): TCaption;
+    procedure SetCaption(const ACaption: TCaption);
   protected
     procedure LoadFromXML(const XML: IXMLNode); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -280,7 +274,7 @@ type
   public
     constructor Create(const AWorkbench: TWWorkbench; const ACoord: TPoint); reintroduce; virtual;
   published
-    property Caption: string read FCaption write SetCaption;
+    property Caption: TCaption read GetCaption write SetCaption;
     property Color: TColor read FColor write FColor;
   end;
 
@@ -309,10 +303,10 @@ type
   TWWorkbenchChangeEvent = procedure(Sender: TObject; Control: TWControl) of object;
   TWWorkbenchCursorMoveEvent = procedure(Sender: TObject; X, Y: Integer) of object;
   TWWorkbenchValidateControlEvent = procedure (Sender: TObject; Control: TWControl) of Object;
-  TWWorkbenchValidateForeignKeysEvent = function (Sender: TObject; Table: TWTable): Boolean of Object;
 
   TWWorkbench = class(TScrollBox)
   private
+    CreatedTable: record BaseTable: TCBaseTable; Point: TPoint; end;
     FClient: TCClient;
     FDatabase: TCDatabase;
     FDatabaseName: string;
@@ -322,7 +316,6 @@ type
     FOnChange: TWWorkbenchChangeEvent;
     FOnCursorMove: TWWorkbenchCursorMoveEvent;
     FOnValidateControl: TWWorkbenchValidateControlEvent;
-    FOnValidateForeignKeys: TWWorkbenchValidateForeignKeysEvent;
     FSections: TWSections;
     FSelected: TWControl;
     FTableFocused: TWTable;
@@ -331,6 +324,8 @@ type
     LastScrollTickCount: DWord;
     PendingUpdateControls: TList;
     UpdateCount: Integer;
+    XML: IXMLNode;
+    XMLDocument: IXMLDocument;
     function GetDatabase(): TCDatabase;
     function GetSelCount(): Integer;
     procedure SetMultiSelect(AMultiSelect: Boolean);
@@ -349,8 +344,6 @@ type
     procedure ReleaseControl(const Control: TWControl); virtual;
     procedure UpdateControl(const Control: TWControl); virtual;
     procedure ValidateControl(const Sender: TComponent; const Control: TWControl); virtual;
-    function ValidateForeignKeys(const Table: TWTable): Boolean; virtual;
-    property Database: TCDatabase read GetDatabase;
   public
     CaseSensetiveTablenames: Boolean;
     constructor Create(AOwner: TComponent); overload; override;
@@ -359,7 +352,7 @@ type
     procedure BeginUpdate(); virtual;
     procedure CalcRange(const Reset: Boolean); virtual;
     procedure Clear(); virtual;
-    procedure ClearCache(); virtual;
+    procedure ClientUpdate(const Event: TCClient.TEvent);
     procedure EndUpdate(); virtual;
     function ExecuteAction(Action: TBasicAction): Boolean; override;
     function ForeignKeyByCaption(const Caption: string): TWForeignKey; virtual;
@@ -368,11 +361,12 @@ type
     procedure KeyPress(var Key: Char); override;
     procedure LoadFromFile(const FileName: string); virtual;
     procedure Print(const Title: string); virtual;
-    procedure Refresh(const TableCaption: string = ''); virtual;
     procedure SaveToBMP(const FileName: string); virtual;
     procedure SaveToFile(const FileName: string); virtual;
     function TableAtCoord(const Coord: TPoint): TWTable;
+    function TableByBaseTable(const ATable: TCBaseTable): TWTable; virtual;
     function TableByCaption(const Caption: string): TWTable; virtual;
+    procedure TableCreated(const ATable: TCBaseTable; const APoint: TPoint); virtual;
     function UpdateAction(Action: TBasicAction): Boolean; override;
     property ForeignKeys: TWForeignKeys read FForeignKeys;
     property Modified: Boolean read FModified;
@@ -382,12 +376,12 @@ type
     property TableFocused: TWTable read FTableFocused write SetTableFocused;
     property Tables: TWTables read FTables;
   published
+    property Database: TCDatabase read GetDatabase;
     property HideSelection: Boolean read FHideSelection write FHideSelection default False;
     property MultiSelect: Boolean read FMultiSelect write SetMultiSelect default False;
     property OnChange: TWWorkbenchChangeEvent read FOnChange write FOnChange;
     property OnCursorMove: TWWorkbenchCursorMoveEvent read FOnCursorMove write FOnCursorMove;
     property OnValidateControl: TWWorkbenchValidateControlEvent read FOnValidateControl write FOnValidateControl;
-    property OnValidateForeignKeys: TWWorkbenchValidateForeignKeysEvent read FOnValidateForeignKeys write FOnValidateForeignKeys;
   end;
 
 procedure Register();
@@ -402,7 +396,7 @@ const
   LineWidth = 1; // nur ungerade Werte
   ConnectorSize = LineWidth + 6; // nur gerade Werte
   PointSize = LineWidth + 2; // nur gerade Werte
-  Padding = 1;
+  Padding = 2;
 
 procedure Register();
 begin
@@ -649,6 +643,7 @@ begin
     MouseDownCoord := Coord;
 
   inherited;
+  Workbench.SetFocus();
 
   if ((Button in [mbLeft, mbRight]) and (not (ssCtrl in Shift) and (not Selected or (Workbench.SelCount <= 1)) or (not Workbench.MultiSelect or (not (ssCtrl in Shift) and (Workbench.SelCount <= 1))))) then
   begin
@@ -955,16 +950,12 @@ end;
 { TWArea **********************************************************************}
 
 procedure TWArea.ApplyCoord();
-var
-  NewSize: TSize;
 begin
-  NewSize := Size; // Cache TWTable.GetSize
-
   SetBounds(
     Coord.X - Workbench.HorzScrollBar.Position,
     Coord.Y - Workbench.VertScrollBar.Position,
-    NewSize.cx,
-    NewSize.cy
+    Size.cx,
+    Size.cy
   );
 end;
 
@@ -982,11 +973,6 @@ begin
   Result.Top := FCoord.Y;
   Result.Right := Result.Left + Size.cx;
   Result.Bottom := Result.Top + Size.cy;
-end;
-
-function TWArea.GetSize(): TSize;
-begin
-  Result := FSize;
 end;
 
 procedure TWArea.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -1148,8 +1134,6 @@ begin
   inherited Create(AWorkbench);
   Parent := AWorkbench;
 
-  FCoord := ACoord;
-
   ControlA := nil;
   ControlB := nil;
   MoveState := msNormal;
@@ -1159,6 +1143,8 @@ begin
 
   if (Assigned(PreviousPoint)) then
     FSelected := PreviousPoint.Selected;
+
+  MoveTo(nil, [], ACoord);
 
   Workbench.UpdateControl(Self);
 end;
@@ -1327,14 +1313,14 @@ var
   OrgNewCoord: TPoint;
   TempOrientation: TWLineOrientation;
 begin
-  if ((NewCoord.X <> Coord.X) or (NewCoord.Y <> Coord.Y)) then
+  if (NewCoord <> Coord) then
   begin
     NewPoint := nil;
     if ((Sender <> Self) and (MoveState <> msFixed)) then
     begin
       OrgNewCoord := NewCoord;
       Moving(Sender, Shift, NewCoord);
-      if ((NewCoord.X <> OrgNewCoord.X) or (NewCoord.Y <> OrgNewCoord.Y)) then
+      if (NewCoord <> OrgNewCoord) then
         NewPoint := CreateSegment(Sender, OrgNewCoord, Self, Assigned(LineA) and ((Sender = LineA) or (Sender = LineA.PointA)));
     end;
 
@@ -1731,34 +1717,34 @@ function TWTable.CanAutoSize(var NewWidth, NewHeight: Integer): Boolean;
 var
   I: Integer;
 begin
-  Canvas.Font.Style := [fsBold];
-  NewWidth := Canvas.TextWidth(Caption);
+  Result := Assigned(BaseTable);
 
-  Canvas.Font.Style := [];
-  for I := 0 to Table.Fields.Count - 1 do
+  if (Result) then
   begin
-    if (not Table.Fields[I].InPrimaryIndex) then
-      Canvas.Font.Style := Canvas.Font.Style - [fsBold]
-    else
-      Canvas.Font.Style := Canvas.Font.Style + [fsBold];
-    NewWidth := Max(NewWidth, Canvas.TextWidth(Table.Fields[I].Name));
+    Canvas.Font.Style := [fsBold];
+    NewWidth := Canvas.TextWidth(Caption);
+
+    Canvas.Font.Style := [];
+    for I := 0 to BaseTable.Fields.Count - 1 do
+    begin
+      if (not BaseTable.Fields[I].InPrimaryIndex) then
+        Canvas.Font.Style := Canvas.Font.Style - [fsBold]
+      else
+        Canvas.Font.Style := Canvas.Font.Style + [fsBold];
+      NewWidth := Max(NewWidth, Canvas.TextWidth(BaseTable.Fields[I].Name));
+    end;
+
+    Inc(NewWidth, 2 * BorderSize + 2 * (Width - ClientWidth + Padding));
+
+    NewHeight := 3 * BorderSize + (1 + BaseTable.Fields.Count) * -Canvas.Font.Height + (4 + BaseTable.Fields.Count) * Padding;
   end;
-
-  Inc(NewWidth, 2 * BorderSize + 2 * (Width - ClientWidth + Padding));
-
-  NewHeight := 3 * BorderSize + (1 + Table.Fields.Count) * -Canvas.Font.Height + (4 + Table.Fields.Count) * Padding;
-
-  Result := True;
 end;
 
-procedure TWTable.ClearCache();
-begin
-  FTable := nil;
-end;
-
-constructor TWTable.Create(const ATables: TWTables);
+constructor TWTable.Create(const ATables: TWTables; const ABaseTable: TCBaseTable);
 begin
   inherited Create(ATables.Workbench);
+
+  FBaseTable := ABaseTable;
 
   SetLength(FForeignKeyPoints, 0);
 
@@ -1774,9 +1760,9 @@ begin
   inherited;
 end;
 
-function TWTable.GetCaption(): string;
+function TWTable.GetCaption(): TCaption;
 begin
-  Result := Text;
+  Result := BaseTable.Name;
 end;
 
 function TWTable.GetForeignKeyPoint(AIndex: Integer): TWForeignKeyPoint;
@@ -1794,34 +1780,15 @@ begin
   Result := Workbench.Tables.IndexOf(Self);
 end;
 
-function TWTable.GetSize(): TSize;
-var
-  TempHeight: Integer;
-  TempWidth: Integer;
+procedure TWTable.Invalidate();
 begin
-  if ((Width = 0) or (Height = 0)) then
-  begin
-    CanAutoSize(TempWidth, TempHeight);
-    Width := TempWidth;
-    Height := TempHeight;
-  end;
-
-  Result.cx := Width;
-  Result.cy := Height;
-end;
-
-function TWTable.GetTable(): TCBaseTable;
-begin
-  if (not Assigned(FTable)) then
-    FTable := Workbench.Database.BaseTableByName(Caption);
-
-  Result := FTable;
+  if (CanAutoSize(FSize.cx, FSize.cy)) then
+    ApplyCoord();
+  inherited;
 end;
 
 procedure TWTable.LoadFromXML(const XML: IXMLNode);
 begin
-  Caption := XML.Attributes['name'];
-
   inherited;
 
   Workbench.UpdateControl(Self);
@@ -1968,14 +1935,14 @@ begin
 
   Flags := DrawTextBiDiModeFlags(0);
 
-  for I := 0 to Table.Fields.Count - 1 do
+  for I := 0 to BaseTable.Fields.Count - 1 do
   begin
-    if (not Table.Fields[I].InPrimaryIndex) then
+    if (not BaseTable.Fields[I].InPrimaryIndex) then
       Canvas.Font.Style := Canvas.Font.Style - [fsBold]
     else
       Canvas.Font.Style := Canvas.Font.Style + [fsBold];
     Rect.Top := Y + 2 * BorderSize - 2 + (1 + I) * (-Canvas.Font.Height + Padding) + 3 * Padding;
-    DrawText(Canvas.Handle, PChar(Table.Fields[I].Name), -1, Rect, Flags);
+    DrawText(Canvas.Handle, PChar(BaseTable.Fields[I].Name), -1, Rect, Flags);
   end;
 end;
 
@@ -2014,13 +1981,6 @@ begin
   end;
 end;
 
-procedure TWTable.SetCaption(const ACaption: string);
-begin
-  Text := ACaption;
-
-  Workbench.UpdateControl(Self);
-end;
-
 procedure TWTable.SetFocused(AFocused: Boolean);
 begin
   FFocused := AFocused;
@@ -2029,14 +1989,6 @@ begin
 end;
 
 { TWTables ********************************************************************}
-
-procedure TWTables.ClearCache();
-var
-  I: Integer;
-begin
-  for I := 0 to Count - 1 do
-    TWTable(Items[I]).ClearCache();
-end;
 
 function TWTables.GetSelCount(): Integer;
 var
@@ -2051,26 +2003,6 @@ end;
 function TWTables.GetTable(Index: Integer): TWTable;
 begin
   Result := TWTable(Items[Index]);
-end;
-
-procedure TWTables.LoadFromXML(const XML: IXMLNode);
-var
-  I: Integer;
-  Objects: array of TCDBObject;
-  Table: TWTable;
-begin
-  for I := 0 to XML.ChildNodes.Count - 1 do
-    if ((XML.ChildNodes.Nodes[I].NodeName = 'table') and Assigned(Workbench.Database.BaseTableByName(XML.ChildNodes.Nodes[I].Attributes['name']))) then
-    begin
-      Table := TWTable.Create(Self);
-      Table.LoadFromXML(XML.ChildNodes.Nodes[I]);
-      Add(Table);
-
-      SetLength(Objects, Length(Objects) + 1);
-      Objects[Length(Objects) - 1] := Table.Table;
-    end;
-
-  Workbench.Database.Update();
 end;
 
 procedure TWTables.SaveToXML(const XML: IXMLNode);
@@ -2169,7 +2101,7 @@ end;
 
 constructor TWForeignKeyPoint.Create(const AWorkbench: TWWorkbench; const ACoord: TPoint; const PreviousPoint: TWPoint = nil);
 begin
-  inherited Create(AWorkbench, ACoord, nil);
+  inherited Create(AWorkbench, ACoord);
 
   if (PreviousPoint is TWForeignKeyPoint) then
     LineA := TWForeignKeyLine.Create(Workbench, TWForeignKeyPoint(PreviousPoint), Self);
@@ -2589,6 +2521,14 @@ begin
     raise Exception.Create('Unknown ForeignKey');
 end;
 
+constructor TWForeignKey.Create(const AWorkbench: TWWorkbench; const ACoord: TPoint; const PreviousPoint: TWPoint = nil);
+begin
+  inherited;
+
+  FCaption := '';
+  FBaseForeignKey := nil;
+end;
+
 destructor TWForeignKey.Destroy();
 var
   Point: TWPoint;
@@ -2601,6 +2541,14 @@ begin
   end;
 
   inherited;
+end;
+
+function TWForeignKey.GetCaption(): TCaption;
+begin
+  if (not Assigned(BaseForeignKey)) then
+    Result := FCaption
+  else
+    Result := BaseForeignKey.Name;
 end;
 
 function TWForeignKey.GetForeignKeySelected(): Boolean;
@@ -2700,8 +2648,9 @@ var
   Position: Integer;
   Table: TWTable;
 begin
-  if (Assigned(XMLNode(XML, 'caption'))) then
-    Caption := XMLNode(XML, 'caption').Text;
+  Workbench.State := wsLoading;
+
+  Caption := XML.Attributes['name'];
 
   if (Assigned(XMLNode(XML, 'tables/child')) and (XMLNode(XML, 'tables/child').Attributes['name'] <> Null)
     and Assigned(XMLNode(XML, 'tables/parent')) and (XMLNode(XML, 'tables/parent').Attributes['name'] <> Null)) then
@@ -2711,20 +2660,15 @@ begin
 
     if (Assigned(TableA) and Assigned(Table)) then
     begin
-      if (Assigned(XMLNode(XML, 'tables/child/align'))) then
-      begin
-        TryStrToAlign(XMLNode(XML, 'tables/child/align').Text, Align);
-        Position := ConnectorSize;
-        if (Assigned(XMLNode(XML, 'tables/child/position'))) then
-          TryStrToInt(XMLNode(XML, 'tables/child/position').Text, Position);
+      if (Assigned(XMLNode(XML, 'tables/child/align'))
+        and TryStrToAlign(XMLNode(XML, 'tables/child/align').Text, Align)
+        and Assigned(XMLNode(XML, 'tables/child/position'))
+        and TryStrToInt(XMLNode(XML, 'tables/child/position').Text, Position)) then
         MoveTo(Self, [], ConnectorCoord(TableA, Align, Position));
-      end;
 
+      I := 0;
       PointsNode := XMLNode(XML, 'points');
-
       if (Assigned(PointsNode)) then
-      begin
-        I := 0;
         repeat
           for J := 0 to PointsNode.ChildNodes.Count - 1 do
             if ((PointsNode.ChildNodes[J].NodeName = 'point') and (TryStrToInt(PointsNode.ChildNodes[J].Attributes['index'], Index) and (Index = I))) then
@@ -2734,23 +2678,23 @@ begin
             end;
           Inc(I);
         until (PointCount < I);
-      end;
 
-      Align := alNone;
-      Position := 0;
-      if (Assigned(XMLNode(XML, 'tables/parent/align'))) then
-      begin
-        TryStrToAlign(XMLNode(XML, 'tables/parent/align').Text, Align);
-        Position := ConnectorSize;
-        if (Assigned(XMLNode(XML, 'tables/parent/position'))) then
-          TryStrToInt(XMLNode(XML, 'tables/parent/position').Text, Position);
-      end;
-      Point := TWForeignKeyPoint.Create(Workbench, ConnectorCoord(Table, Align, Position), LastPoint);
+      Point := TWForeignKeyPoint.Create(Workbench, Types.Point(-1, -1), LastPoint);
       Point.TableB := Table;
+      if (Assigned(XMLNode(XML, 'tables/parent/align'))
+        and TryStrToAlign(XMLNode(XML, 'tables/parent/align').Text, Align)
+        and Assigned(XMLNode(XML, 'tables/parent/position'))
+        and TryStrToInt(XMLNode(XML, 'tables/parent/position').Text, Position)) then
+        Point.MoveTo(nil, [], ConnectorCoord(Table, Align, Position));
 
       Cleanup(Self);
     end;
+
+    if (Assigned(ChildTable)) then
+      BaseForeignKey := ChildTable.BaseTable.ForeignKeyByName(Caption);
   end;
+
+  Workbench.State := wsNormal;
 end;
 
 procedure TWForeignKey.SaveToXML(const XML: IXMLNode);
@@ -2761,8 +2705,6 @@ var
   Node: IXMLNode;
   PointsNode: IXMLNode;
 begin
-  XMLNode(XML, 'caption').Text := Caption;
-
   XMLNode(XML, 'tables/child').Attributes['name'] := ChildTable.Caption;
   XMLNode(XML, 'tables/child/align').Text := AlignToStr(InvertAlign(ControlAlign(TableA)));
   case (InvertAlign(ControlAlign(TableA))) of
@@ -2803,11 +2745,12 @@ begin
   end;
 end;
 
-procedure TWForeignKey.SetCaption(ACaption: string);
+procedure TWForeignKey.SetCaption(const ACaption: TCaption);
 begin
   FCaption := ACaption;
 
-  Workbench.FModified := True;
+  if (not Assigned(BaseForeignKey)) then
+    Workbench.FModified := True;
 end;
 
 procedure TWForeignKey.SetForeignKeySelected(AForeignKeySelected: Boolean);
@@ -2889,23 +2832,6 @@ begin
   end;
 end;
 
-procedure TWForeignKeys.LoadFromXML(const XML: IXMLNode);
-var
-  ForeignKey: TWForeignKey;
-  I: Integer;
-begin
-  for I := 0 to XML.ChildNodes.Count - 1 do
-    if (XML.ChildNodes.Nodes[I].NodeName = 'foreignkey') then
-    begin
-      ForeignKey := TWForeignKey.Create(Workbench, Point(-1, -1));
-      ForeignKey.LoadFromXML(XML.ChildNodes.Nodes[I]);
-      if (not Assigned(ForeignKey.ChildTable) or not Assigned(ForeignKey.ParentTable)) then
-        ForeignKey.Free()
-      else
-        Add(ForeignKey);
-    end;
-end;
-
 procedure TWForeignKeys.SaveToXML(const XML: IXMLNode);
 var
   I: Integer;
@@ -2939,7 +2865,6 @@ constructor TWSection.Create(const AWorkbench: TWWorkbench; const ACoord: TPoint
 begin
   inherited Create(AWorkbench);
 
-  FCaption := '';
   FColor := clGreen;
 
   Canvas.Font := Workbench.Font;
@@ -2949,11 +2874,16 @@ begin
   MoveTo(Self, [], ACoord);
 end;
 
+function TWSection.GetCaption(): TCaption;
+begin
+  Result := inherited Caption;
+end;
+
 procedure TWSection.LoadFromXML(const XML: IXMLNode);
 begin
   if (Assigned(XMLNode(XML, 'size/x'))) then TryStrToInt(XMLNode(XML, 'size/x').Text, FSize.cx);
   if (Assigned(XMLNode(XML, 'size/y'))) then TryStrToInt(XMLNode(XML, 'size/y').Text, FSize.cy);
-  if (Assigned(XMLNode(XML, 'caption'))) then FCaption := XMLNode(XML, 'caption').Text;
+  if (Assigned(XMLNode(XML, 'caption'))) then Caption := XMLNode(XML, 'caption').Text;
   if (Assigned(XMLNode(XML, 'color'))) then FColor := StringToColor(XMLNode(XML, 'color').Text);
 
   inherited;
@@ -2987,7 +2917,11 @@ begin
   if ((Shift = [ssLeft]) and (ResizeMode = rmNone) and not Selected) then
     Workbench.MouseDown(Button, Shift, Left + X, Top + Y)
   else
+  begin
+    if (Assigned(Workbench.OnMouseDown)) then
+      Workbench.OnMouseDown(Workbench, Button, Shift, Left + X, Top + Y);
     inherited;
+  end;
 end;
 
 procedure TWSection.MouseMove(Shift: TShiftState; X, Y: Integer);
@@ -3079,17 +3013,19 @@ begin
   XMLNode(XML, 'color').Text := ColorToString(Color);
 end;
 
-procedure TWSection.SetCaption(const ACaption: string);
-begin
-  FCaption := ACaption;
-
-  Workbench.UpdateControl(Self);
-end;
-
 procedure TWSection.SetSelected(ASelected: Boolean);
 begin
   if (ResizeMode <> rmCreate) then
     inherited;
+end;
+
+procedure TWSection.SetCaption(const ACaption: TCaption);
+begin
+  inherited Caption := ACaption;
+
+  Workbench.UpdateControl(Self);
+
+  Workbench.FModified := True;
 end;
 
 procedure TWSection.SetZOrder(TopMost: Boolean);
@@ -3287,10 +3223,106 @@ begin
   EndUpdate();
 end;
 
-procedure TWWorkbench.ClearCache();
+procedure TWWorkbench.ClientUpdate(const Event: TCClient.TEvent);
+var
+  BaseTable: TCBaseTable;
+  ForeignKey: TWForeignKey;
+  I: Integer;
+  J: Integer;
+  OldModified: Boolean;
+  Table: TWTable;
 begin
-  FDatabase := nil;
-  Tables.ClearCache();
+  if ((Event.EventType = ceItemsValid) and (Event.Sender = Database) and (Event.CItems is TCTables)) then
+  begin
+    for I := Tables.Count - 1 downto 0 do
+      if (Database.Tables.IndexOf(Tables[I].BaseTable) < 0) then
+        Tables.Delete(I);
+  end
+  else if ((Event.EventType = ceItemValid) and (Event.Sender = Database) and (Event.CItem is TCBaseTable)) then
+  begin
+    BaseTable := TCBaseTable(Event.CItem);
+
+    for I := ForeignKeys.Count - 1 downto 0 do
+      if ((ForeignKeys[I].ChildTable.BaseTable = BaseTable)
+        and not Assigned(ForeignKeys[I].ChildTable.BaseTable.ForeignKeyByName(ForeignKeys[I].Caption))) then
+        ForeignKeys.Delete(I);
+
+    if (BaseTable = CreatedTable.BaseTable) then
+    begin
+      BeginUpdate();
+      Table := TWTable.Create(Tables, CreatedTable.BaseTable);
+      Table.Move(nil, [], CreatedTable.Point);
+      Tables.Add(Table);
+      Selected := Table;
+      EndUpdate();
+
+      CreatedTable.BaseTable := nil;
+    end
+    else if (Assigned(TableByBaseTable(BaseTable))) then
+    begin
+      Table := TableByBaseTable(BaseTable);
+      if (Assigned(Table)) then
+        Table.Invalidate();
+    end
+    else if (Assigned(XML)) then
+    begin
+      OldModified := FModified;
+
+      for I := 0 to XML.ChildNodes.Count - 1 do
+        if ((XML.ChildNodes.Nodes[I].NodeName = 'table') and (Database.Tables.NameCmp(XML.ChildNodes.Nodes[I].Attributes['name'], BaseTable.Name) = 0)) then
+        begin
+          Table := TWTable.Create(Tables, BaseTable);
+          Table.LoadFromXML(XML.ChildNodes.Nodes[I]);
+          Tables.Add(Table);
+
+          for J := 0 to XML.ChildNodes.Count - 1 do
+            if ((XML.ChildNodes.Nodes[J].NodeName = 'foreignkey')
+              and Assigned(XMLNode(XML.ChildNodes.Nodes[J], 'tables/child'))
+              and (XMLNode(XML.ChildNodes.Nodes[J], 'tables/child').Attributes['name'] <> Null)
+              and ((Database.Tables.NameCmp(XMLNode(XML.ChildNodes.Nodes[J], 'tables/child').Attributes['name'], BaseTable.Name) = 0)
+                or (Database.Tables.NameCmp(XMLNode(XML.ChildNodes.Nodes[J], 'tables/parent').Attributes['name'], BaseTable.Name) = 0))) then
+            begin
+              ForeignKey := TWForeignKey.Create(Self, Point(-1, -1));
+              ForeignKey.LoadFromXML(XML.ChildNodes.Nodes[J]);
+              if (not Assigned(ForeignKey.ChildTable) or not Assigned(ForeignKey.ParentTable) or not Assigned(ForeignKey.BaseForeignKey)) then
+                ForeignKey.Free()
+              else
+                ForeignKeys.Add(ForeignKey);
+            end;
+        end;
+
+      FModified := OldModified;
+    end;
+
+    for J := 0 to BaseTable.ForeignKeys.Count - 1 do
+      if (not Assigned(ForeignKeyByCaption(BaseTable.ForeignKeys[J].Name))
+        and Assigned(TableByCaption(BaseTable.ForeignKeys[J].Parent.TableName))) then
+        begin
+          ForeignKey := TWForeignKey.Create(Self, Point(-1, -1));
+          ForeignKey.Caption := BaseTable.ForeignKeys[J].Name;
+          ForeignKey.ChildTable := TableByBaseTable(BaseTable);
+          ForeignKey.ParentTable := TableByCaption(BaseTable.ForeignKeys[J].Parent.TableName);
+          ForeignKeys.Add(ForeignKey);
+        end;
+
+    for I := 0 to Tables.Count - 1 do
+      for J := 0 to Tables[I].BaseTable.ForeignKeys.Count - 1 do
+        if ((Database.Tables.NameCmp(Tables[I].BaseTable.ForeignKeys[J].Parent.TableName, BaseTable.Name) = 0)
+          and not Assigned(ForeignKeyByCaption(Tables[I].BaseTable.ForeignKeys[J].Name))) then
+        begin
+          ForeignKey := TWForeignKey.Create(Self, Point(-1, -1));
+          ForeignKey.Caption := Tables[I].BaseTable.ForeignKeys[J].Name;
+          ForeignKey.ChildTable := Tables[I];
+          ForeignKey.ParentTable := TableByBaseTable(BaseTable);
+          ForeignKeys.Add(ForeignKey);
+        end;
+  end
+  else if ((Event.EventType = ceItemDropped) and (Event.Sender = Database) and (Event.CItem is TCBaseTable)) then
+  begin
+    for I := Tables.Count - 1 downto 0 do
+      if (Tables[I].BaseTable = Event.CItem) then
+        Tables.Delete(I);
+  end;
 end;
 
 procedure TWWorkbench.CMEndLasso(var Message: TMessage);
@@ -3304,11 +3336,11 @@ begin
 
   AutoScroll := False;
   CaseSensetiveTablenames := False;
+  CreatedTable.BaseTable := nil;
   FDatabaseName := '';
   FOnChange := nil;
   FOnCursorMove := nil;
   FOnValidateControl := nil;
-  FOnValidateForeignKeys := nil;
   FForeignKeys := TWForeignKeys.Create(Self);
   FHideSelection := False;
   FModified := False;
@@ -3320,6 +3352,8 @@ begin
   State := wsNormal;
   PendingUpdateControls := TList.Create();
   UpdateCount := 0;
+  XML := nil;
+  XMLDocument := nil;
 
   ShowHint := True;
 
@@ -3472,29 +3506,32 @@ end;
 
 procedure TWWorkbench.LoadFromFile(const FileName: string);
 var
-  XML: IXMLNode;
-  XMLDocument: IXMLDocument;
+  BaseTable: TCBaseTable;
+  I: Integer;
+  List: TList;
 begin
-  State := wsLoading;
-
   XMLDocument := LoadXMLDocument(FileName);
-  XML := XMLDocument.ChildNodes.FindNode('workbench');
+  XML := XMLDocument.DocumentElement;
 
   Clear();
 
-  BeginUpdate();
-
-  Tables.LoadFromXML(XML);
-  ForeignKeys.LoadFromXML(XML);
   Sections.LoadFromXML(XML);
 
-  Refresh();
-  CalcRange(True);
-
-  EndUpdate();
+  List := TList.Create();
+  for I := 0 to XML.ChildNodes.Count - 1 do
+    if (XML.ChildNodes.Nodes[I].NodeName = 'table') then
+    begin
+      BaseTable := Database.BaseTableByName(XML.ChildNodes.Nodes[I].Attributes['name']);
+      if (Assigned(BaseTable)) then
+        if (BaseTable.Valid) then
+          BaseTable.PushBuildEvent()
+        else
+          List.Add(BaseTable);
+    end;
+  Database.Client.Update(List);
+  List.Free();
 
   FModified := False;
-  State := wsNormal;
 end;
 
 procedure TWWorkbench.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -3570,45 +3607,6 @@ begin
     Bitmap.Free();
 
     Printer().EndDoc();
-  end;
-end;
-
-procedure TWWorkbench.Refresh(const TableCaption: string = '');
-var
-  I: Integer;
-  Table: TWTable;
-begin
-  Table := TableByCaption(TableCaption);
-  if (Assigned(Table)) then
-    if (not Assigned(Table.Table)) then
-      Tables.Delete(Table.Index)
-    else
-    begin
-      if (not ValidateForeignKeys(Table)) then
-        while (Table.ForeignKeyPointCount > 0) do
-          Table.ForeignKeyPoint[0].ForeignKey.Free();
-    end
-  else
-  begin
-    ClearCache();
-    for I := Tables.Count - 1 downto 0 do
-      if (not Assigned(Tables[I].Table)) then
-        Tables.Delete(I)
-      else
-        UpdateControl(Tables[I]);
-
-    for I := ForeignKeys.Count - 1 downto 0 do
-      if (not Assigned(ForeignKeys[I].ChildTable) or not Assigned(ForeignKeys[I].ParentTable)) then
-        ForeignKeys.Delete(I)
-      else
-        UpdateControl(ForeignKeys[I]);
-
-    for I := Tables.Count - 1 downto 0 do
-      if (not ValidateForeignKeys(Tables[I])) then
-        while (Tables[I].ForeignKeyPointCount > 0) do
-          Tables[I].ForeignKeyPoint[0].ForeignKey.Free();
-
-    Invalidate();
   end;
 end;
 
@@ -3741,6 +3739,16 @@ begin
       Result := TWTable(Controls[I]);
 end;
 
+function TWWorkbench.TableByBaseTable(const ATable: TCBaseTable): TWTable;
+var
+  I: Integer;
+begin
+  Result := nil;
+  for I := 0 to Tables.Count - 1 do
+    if (Tables[I].BaseTable = ATable) then
+      Result := Tables[I];
+end;
+
 function TWWorkbench.TableByCaption(const Caption: string): TWTable;
 var
   I: Integer;
@@ -3750,6 +3758,12 @@ begin
   for I := 0 to Tables.Count - 1 do
     if (CaseSensetiveTablenames and (Tables[I].Caption = Caption) or (lstrcmpi(PChar(Tables[I].Caption), PChar(Caption)) = 0)) then
       Result := Tables[I];
+end;
+
+procedure TWWorkbench.TableCreated(const ATable: TCBaseTable; const APoint: TPoint);
+begin
+  CreatedTable.BaseTable := ATable;
+  CreatedTable.Point := APoint;
 end;
 
 function TWWorkbench.UpdateAction(Action: TBasicAction): Boolean;
@@ -3804,14 +3818,6 @@ begin
   end
   else if ((Control is TWForeignKey) and (TWForeignKey(Control).Caption = '')) then
     TWForeignKey(Control).Caption := InputBox('Name', 'How should the Foreign Key named?', 'ForeignKey_' + IntToStr(ForeignKeys.Count));
-end;
-
-function TWWorkbench.ValidateForeignKeys(const Table: TWTable): Boolean;
-begin
-  if (Assigned(FOnValidateForeignKeys)) then
-    Result := FOnValidateForeignKeys(Self, Table)
-  else
-    Result := True;
 end;
 
 end.

@@ -413,6 +413,10 @@ begin
   FOnDelete.Enabled := not Assigned(ForeignKey) or (Table.Database.Client.ServerVersion >= 40013); FLOnDelete.Enabled := FOnDelete.Enabled;
   FOnUpdate.Enabled := not Assigned(ForeignKey) or (Table.Database.Client.ServerVersion >= 40013); FLOnUpdate.Enabled := FOnUpdate.Enabled;
 
+  GBasics.Visible := True;
+  GAttributes.Visible := GBasics.Visible;
+  PSQLWait.Visible := not GBasics.Visible;
+
   FBOk.Visible := not Assigned(ForeignKey) or (Table.Database.Client.ServerVersion >= 40013);
   if (FBOk.Visible) then
     FBCancel.Caption := Preferences.LoadStr(30)

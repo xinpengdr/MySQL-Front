@@ -322,9 +322,19 @@ begin
 end;
 
 procedure TDAccount.FHostExit(Sender: TObject);
+var
+  Index: Integer;
 begin
   if (FName.Text = '') then
-    FName.Text := FHost.Text;
+    if (not Assigned(Accounts.AccountByName(FHost.Text))) then
+      FName.Text := FHost.Text
+    else
+    begin
+      Index := 2;
+      while (Assigned(Accounts.AccountByName(FHost.Text + ' (' + IntToStr(Index) + ')'))) do
+        Inc(Index);
+      FName.Text := FHost.Text + ' (' + IntToStr(Index) + ')';
+    end;
 end;
 
 procedure TDAccount.FHTTPTunnelURIChange(Sender: TObject);

@@ -110,7 +110,7 @@ type
     procedure Clear(); override;
     constructor Create(const AClient: TCClient);
     destructor Destroy(); override;
-    function KeyByName(const Name: string): Integer; virtual;
+    function IndexByName(const Name: string): Integer; virtual;
     function NameCmp(const Name1, Name2: string): Integer; virtual;
     property Client: TCClient read FClient;
     property Count: Integer read GetCount;
@@ -287,7 +287,7 @@ type
     procedure Assign(const Source: TCKeys); virtual;
     constructor Create(const ATable: TCBaseTable); reintroduce; virtual;
     procedure DeleteKey(const AKey: TCKey); virtual;
-    function KeyByName(const Name: string): Integer; override;
+    function IndexByName(const Name: string): Integer; override;
     property Key[Index: Integer]: TCKey read GetKey; default;
     property PrimaryKey: TCKey read GetPrimaryKey;
     property Table: TCBaseTable read FTable;
@@ -382,7 +382,7 @@ type
     procedure Assign(const Source: TCTableFields); virtual;
     constructor Create(const ATable: TCTable);
     procedure DeleteField(const AField: TCTableField); virtual;
-    function KeyByName(const Name: string): Integer; override;
+    function IndexByName(const Name: string): Integer; override;
     function IndexOf(const AField: TCTableField): Integer; virtual;
     property Field[Index: Integer]: TCTableField read GetField; default;
     property Table: TCTable read FTable;
@@ -445,7 +445,7 @@ type
     procedure Clear(); override;
     constructor Create(const ATable: TCBaseTable); reintroduce; virtual;
     procedure DeleteForeignKey(const AForeignKey: TCForeignKey); virtual;
-    function KeyByName(const Name: string): Integer; override;
+    function IndexByName(const Name: string): Integer; override;
     procedure InsertForeignKey(const Index: Integer; const NewForeignKey: TCForeignKey); virtual;
     property Client: TCClient read GetClient;
     property ForeignKey[Index: Integer]: TCForeignKey read GetForeignKey; default;
@@ -605,7 +605,7 @@ type
     function Flush(): Boolean; virtual;
     function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; override;
     function KeyByCaption(const Caption: string): TCKey; virtual;
-    function KeyByName(const Name: string): TCKey; virtual;
+    function IndexByName(const Name: string): TCKey; virtual;
     function KeyByDataSet(const DataSet: TCTableDataSet): TCKey; virtual;
     procedure Invalidate(); override;
     procedure InvalidateStatus(); virtual;
@@ -723,7 +723,6 @@ type
     FRoutineType: TRoutineType;
     FSecurity: TCSecurity;
     FSourceParsed: Boolean;
-    OldSource: string;
     function GetInputDataSet(): TMySQLDataSet;
     function GetParameter(Index: Integer): TCRoutineParameter;
     function GetParameterCount(): Integer;
@@ -788,7 +787,6 @@ type
     TTiming = (ttBefore, ttAfter);
   private
     FInputDataSet: TMySQLDataSet;
-    OldSource: string;
     function GetInputDataSet(): TMySQLDataSet;
     function GetTable(): TCBaseTable; inline;
     function GetTriggers(): TCTriggers; inline;
@@ -1340,13 +1338,12 @@ type
     function GetValid(): Boolean; override;
     function SQLGetItems(const Name: string = ''): string; override;
   public
-
     property Host[Index: Integer]: TCHost read GetHost; default;
   end;
 
   TCClient = class(TMySQLConnection)
   type
-    TEventType = (ceItemsValid, ceItemValid, ceItemCreated, ceItemDroped, ceItemAltered, ceBeforeExecuteSQL, ceAfterExecuteSQL, ceMonitor, ceError);
+    TEventType = (ceItemsValid, ceItemValid, ceItemCreated, ceItemDropped, ceItemAltered, ceBeforeExecuteSQL, ceAfterExecuteSQL, ceMonitor, ceError);
     TUpdate = function (): Boolean of object;
     TEvent = class
     public
@@ -1709,11 +1706,11 @@ var
 begin
   if (AName <> FName) then
   begin
-    if (not CItems.InsertIndex(AName, NewIndex)) then
+    if (CItems.InsertIndex(AName, NewIndex) and (Index >= 0)) then
     begin
-      if (NewIndex > CItems.IndexOf(Self)) then
+      if (NewIndex > Index) then
         Dec(NewIndex);
-      CItems.Move(CItems.IndexOf(Self), NewIndex);
+      CItems.Move(Index, NewIndex);
     end;
     FName := AName;
   end;
@@ -1757,7 +1754,7 @@ begin
   Result := TList(Self).Count;
 end;
 
-function TCItems.KeyByName(const Name: string): Integer;
+function TCItems.IndexByName(const Name: string): Integer;
 type
   Tstrcmp = function (lpString1, lpString2: PWideChar): Integer; stdcall;
 var
@@ -2045,7 +2042,7 @@ begin
   begin
     TList(Self).Delete(Index);
 
-    Client.ExecuteEvent(ceItemDroped, Client, Self, AEntity);
+    Client.ExecuteEvent(ceItemDropped, Client, Self, AEntity);
 
     AEntity.Free();
   end;
@@ -2162,7 +2159,7 @@ begin
   begin
     TList(Self).Delete(Index);
 
-    Client.ExecuteEvent(ceItemDroped, Database, Self, AEntity);
+    Client.ExecuteEvent(ceItemDropped, Database, Self, AEntity);
 
     AEntity.Free();
   end;
@@ -2431,7 +2428,7 @@ begin
     Result := nil;
 end;
 
-function TCKeys.KeyByName(const Name: string): Integer;
+function TCKeys.IndexByName(const Name: string): Integer;
 var
   I: Integer;
 begin
@@ -2887,7 +2884,7 @@ function TCTableFields.FieldByName(const FieldName: string): TCTableField;
 var
   Index: Integer;
 begin
-  Index := KeyByName(FieldName);
+  Index := IndexByName(FieldName);
   if (Index < 0) then
     Result := nil
   else
@@ -2899,7 +2896,7 @@ begin
   Result := TCTableField(Items[Index]);
 end;
 
-function TCTableFields.KeyByName(const Name: string): Integer;
+function TCTableFields.IndexByName(const Name: string): Integer;
 var
   I: Integer;
 begin
@@ -3155,7 +3152,7 @@ begin
   Result := TCForeignKey(Items[Index]);
 end;
 
-function TCForeignKeys.KeyByName(const Name: string): Integer;
+function TCForeignKeys.IndexByName(const Name: string): Integer;
 var
   I: Integer;
 begin
@@ -3910,7 +3907,7 @@ function TCBaseTable.ForeignKeyByName(const ForeignKeyName: string): TCForeignKe
 var
   Index: Integer;
 begin
-  Index := ForeignKeys.KeyByName(ForeignKeyName);
+  Index := ForeignKeys.IndexByName(ForeignKeyName);
   if (Index < 0) then
     Result := nil
   else
@@ -4022,7 +4019,7 @@ end;
 
 function TCBaseTable.GetPrimaryKey(): TCKey;
 begin
-  Result := KeyByName('');
+  Result := IndexByName('');
 end;
 
 function TCBaseTable.GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string;
@@ -4082,10 +4079,10 @@ begin
   Delete(IndexName, Pos(' (' + Preferences.LoadStr(377), IndexName), Length(IndexName) - Pos(' (' + Preferences.LoadStr(377), IndexName) + 2);
   if (IndexName = ReplaceStr(Preferences.LoadStr(154), '&', '')) then IndexName := '';
 
-  Result := KeyByName(IndexName);
+  Result := IndexByName(IndexName);
 end;
 
-function TCBaseTable.KeyByName(const Name: string): TCKey;
+function TCBaseTable.IndexByName(const Name: string): TCKey;
 var
   Index: Integer;
 begin
@@ -4095,7 +4092,7 @@ begin
     Result := Keys[0]
   else
   begin
-    Index := Keys.KeyByName(Name);
+    Index := Keys.IndexByName(Name);
     if (Index < 0) then
       Result := nil
     else
@@ -4146,10 +4143,10 @@ end;
 
 procedure TCBaseTable.InvalidateStatus();
 begin
-  FValidStatus := False;
-
-  if (Client.InvalidObjects.IndexOf(Self) < 0) then
+  if (ValidStatus and (Client.InvalidObjects.IndexOf(Self) < 0)) then
     Client.InvalidObjects.Add(Self);
+
+  FValidStatus := False;
 end;
 
 function TCBaseTable.Optimize(): Boolean;
@@ -4161,7 +4158,7 @@ function TCBaseTable.PartitionByName(const PartitionName: string): TCPartition;
 var
   Index: Integer;
 begin
-  Index := Partitions.KeyByName(PartitionName);
+  Index := Partitions.IndexByName(PartitionName);
   if (Index < 0) then
     Result := nil
   else
@@ -4232,9 +4229,9 @@ begin
 
       if (Index = FFields.Count) then
         Index := FFields.Add(TCBaseTableField.Create(TCBaseTableFields(FFields), Name))
-      else if (Index < FFields.KeyByName(Name)) then
+      else if (Index < FFields.IndexByName(Name)) then
       begin
-        I := FFields.KeyByName(Name);
+        I := FFields.IndexByName(Name);
         FFields[I].Free();
         FFields.Delete(I);
         FFields.Insert(Index, TCBaseTableField.Create(TCBaseTableFields(FFields), Name));
@@ -4333,9 +4330,9 @@ begin
 
       if (Index = FKeys.Count) then
         Index := FKeys.Add(TCKey.Create(FKeys, Name))
-      else if (Index < FKeys.KeyByName(Name)) then
+      else if (Index < FKeys.IndexByName(Name)) then
       begin
-        I := FKeys.KeyByName(Name);
+        I := FKeys.IndexByName(Name);
         FKeys[I].Free();
         FKeys.Delete(I);
         FKeys.Insert(Index, TCKey.Create(FKeys, Name));
@@ -4402,9 +4399,9 @@ begin
 
       if (Index = FForeignKeys.Count) then
         Index := FForeignKeys.Add(TCForeignKey.Create(FForeignKeys, Name))
-      else if (Index < FForeignKeys.KeyByName(Name)) then
+      else if (Index < FForeignKeys.IndexByName(Name)) then
       begin
-        I := FForeignKeys.KeyByName(Name);
+        I := FForeignKeys.IndexByName(Name);
         FForeignKeys[I].Free();
         FForeignKeys.Delete(I);
         FForeignKeys.Insert(Index, TCForeignKey.Create(FForeignKeys, Name));
@@ -4961,7 +4958,7 @@ begin
       repeat
         Name := DataSet.FieldByName('Table').AsString;
 
-        Index := KeyByName(Name);
+        Index := IndexByName(Name);
         if (Index >= 0) then
           Table[Index].FInServerCache := True;
       until (not DataSet.FindNext());
@@ -5051,9 +5048,9 @@ begin
 
         if (Index = View.Fields.Count) then
           Index := View.Fields.Add(TCViewField.Create(View.Fields, Name))
-        else if (Index < View.Fields.KeyByName(Name)) then
+        else if (Index < View.Fields.IndexByName(Name)) then
         begin
-          I := View.Fields.KeyByName(Name);
+          I := View.Fields.IndexByName(Name);
           View.Fields[I].Free();
           View.Fields.Delete(I);
           View.Fields.Insert(Index, TCViewField.Create(View.Fields, Name));
@@ -5265,7 +5262,6 @@ begin
   end;
   FRoutineType := Source.RoutineType;
   FSecurity := Source.Security;
-  OldSource := Source.OldSource;
   FSourceParsed := Source.SourceParsed;
   FValidSource := Source.ValidSource;
 end;
@@ -5282,7 +5278,6 @@ begin
   FRoutineType := rtUnknown;
   FSecurity := seDefiner;
   SetLength(FParameters, 0);
-  OldSource := '';
   FValidSource := False;
 end;
 
@@ -5575,8 +5570,6 @@ procedure TCRoutine.SetSource(const ADataSet: TMySQLQuery);
 begin
   SetSource(ADataSet.FieldByName('Create Table'));
 
-  OldSource := FSource;
-
   if (Valid) then
   begin
     Client.ExecuteEvent(ceItemsValid, Client, Client.Databases);
@@ -5853,7 +5846,6 @@ begin
   FDatabase := Source.Database;
   FDefiner := Source.Definer;
   FStmt := Source.Stmt;
-  OldSource := Source.OldSource;
   FTableName := Source.FTableName;
   FTiming := Source.Timing;
 end;
@@ -5865,7 +5857,6 @@ begin
   FEvent := teInsert;
   FCreated := 0;
   FDefiner := '';
-  OldSource := '';
   FStmt := '';
   FTiming := ttAfter;
   FValid := False;
@@ -6019,6 +6010,7 @@ begin
   if (ExecuteEvent) then
   begin
     TCTrigger(AEntity).Invalidate();
+    Client.InvalidObjects.Add(AEntity);
     Client.ExecuteEvent(ceItemCreated, Database, Self, AEntity);
   end;
 end;
@@ -6128,7 +6120,7 @@ begin
   begin
     TList(Self).Delete(Index);
 
-    Client.ExecuteEvent(ceItemDroped, Database, Self, AEntity);
+    Client.ExecuteEvent(ceItemDropped, Database, Self, AEntity);
 
     AEntity.Free();
   end;
@@ -6472,7 +6464,7 @@ function TCDatabase.BaseTableByName(const TableName: string): TCBaseTable;
 var
   Index: Integer;
 begin
-  Index := Tables.KeyByName(TableName);
+  Index := Tables.IndexByName(TableName);
   if ((Index < 0) or not (Tables[Index] is TCBaseTable)) then
     Result := nil
   else
@@ -6701,7 +6693,7 @@ function TCDatabase.EventByName(const EventName: string): TCEvent;
 var
   Index: Integer;
 begin
-  Index := Events.KeyByName(EventName);
+  Index := Events.IndexByName(EventName);
   if (Index < 0) then
     Result := nil
   else
@@ -7483,7 +7475,7 @@ function TCDatabase.TableByName(const TableName: string): TCTable;
 var
   Index: Integer;
 begin
-  Index := Tables.KeyByName(TableName);
+  Index := Tables.IndexByName(TableName);
   if (Index < 0) then
     Result := nil
   else
@@ -7494,7 +7486,7 @@ function TCDatabase.TriggerByName(const TriggerName: string): TCTrigger;
 var
   Index: Integer;
 begin
-  Index := Triggers.KeyByName(TriggerName);
+  Index := Triggers.IndexByName(TriggerName);
   if (Index < 0) then
     Result := nil
   else
@@ -7733,9 +7725,7 @@ begin
   if (Client.Connected and Client.MultiStatements and Assigned(Client.Lib.mysql_set_server_option)) then
     Client.Lib.mysql_set_server_option(Client.Handle, MYSQL_OPTION_MULTI_STATEMENTS_ON);
 
-  if (Assigned(Trigger)) then
-
-  if (not Result) then
+  if (Assigned(Trigger) and not Result) then
     Client.ExecuteSQL(Trigger.Source);
 end;
 
@@ -7792,7 +7782,7 @@ function TCDatabase.ViewByName(const TableName: string): TCView;
 var
   Index: Integer;
 begin
-  Index := Tables.KeyByName(TableName);
+  Index := Tables.IndexByName(TableName);
   if ((Index < 0) or not (Tables[Index] is TCView)) then
     Result := nil
   else
@@ -7939,7 +7929,7 @@ begin
   if (Index >= 0) then
     Delete(Index);
 
-  Client.ExecuteEvent(ceItemDroped, Client, Self, AEntity);
+  Client.ExecuteEvent(ceItemDropped, Client, Self, AEntity);
 
   AEntity.Free();
 end;
@@ -9639,7 +9629,7 @@ function TCHost.DatabaseByName(const DatabaseName: string): TCHostDatabase;
 var
   Index: Integer;
 begin
-  Index := Databases.KeyByName(DatabaseName);
+  Index := Databases.IndexByName(DatabaseName);
   if (Index < 0) then
     Result := nil
   else
@@ -10007,7 +9997,7 @@ function TCClient.CharsetByName(const CharsetName: string): TCCharset;
 var
   Index: Integer;
 begin
-  Index := Charsets.KeyByName(CharsetName);
+  Index := Charsets.IndexByName(CharsetName);
   if (Index < 0) then
     Result := nil
   else
@@ -10313,7 +10303,7 @@ function TCClient.CollationByName(const CollationName: string): TCCollation;
 var
   Index: Integer;
 begin
-  Index := Collations.KeyByName(CollationName);
+  Index := Collations.IndexByName(CollationName);
   if (Index < 0) then
     Result := nil
   else
@@ -10396,7 +10386,7 @@ function TCClient.DatabaseByName(const DatabaseName: string): TCDatabase;
 var
   Index: Integer;
 begin
-  Index := Databases.KeyByName(DatabaseName);
+  Index := Databases.IndexByName(DatabaseName);
   if (Index < 0) then
     Result := nil
   else
@@ -10657,7 +10647,7 @@ function TCClient.EngineByName(const EngineName: string): TCEngine;
 var
   Index: Integer;
 begin
-  Index := Engines.KeyByName(EngineName);
+  Index := Engines.IndexByName(EngineName);
   if (Index < 0) then
     Result := nil
   else
@@ -11162,11 +11152,11 @@ begin
                         if (Assigned(Table)) then
                         begin
                           if (DDLStmt.NewDatabaseName <> DatabaseName) then
-                            ExecuteEvent(ceItemDroped, Table.Database, Table.Tables, Table);
+                            ExecuteEvent(ceItemDropped, Table.Database, Table.Tables, Table);
                           Table.SetDatabase(DatabaseByName(DDLStmt.NewDatabaseName));
                           Table.Name := DDLStmt.NewObjectName;
                           if (DDLStmt.NewDatabaseName <> DatabaseName) then
-                            ExecuteEvent(ceItemDroped, Table.Database, Table.Tables, Table)
+                            ExecuteEvent(ceItemDropped, Table.Database, Table.Tables, Table)
                           else
                             ExecuteEvent(ceItemAltered, Database, Database.Tables, Table);
                         end;
@@ -11182,11 +11172,11 @@ begin
                       if (DDLStmt.DefinitionType = dtAlterRename) then
                       begin
                         if (Databases.NameCmp(DDLStmt.NewDatabaseName, Database.Name) <> 0) then
-                          ExecuteEvent(ceItemDroped, Table.Database, Table.Tables, Table);
+                          ExecuteEvent(ceItemDropped, Table.Database, Table.Tables, Table);
                         Table.SetDatabase(DatabaseByName(DDLStmt.NewDatabaseName));
                         Table.Name := DDLStmt.NewObjectName;
                         if (Databases.NameCmp(DDLStmt.NewDatabaseName, Database.Name) <> 0) then
-                          ExecuteEvent(ceItemDroped, Table.Database, Table.Tables, Table)
+                          ExecuteEvent(ceItemDropped, Table.Database, Table.Tables, Table)
                         else
                           ExecuteEvent(ceItemAltered, Database, Database.Tables, Table);
                       end;
@@ -11293,7 +11283,16 @@ begin
                     Database.Triggers.Add(Trigger, True);
                   end;
                 dtDrop:
-                  Database.Triggers.Delete(Database.TriggerByName(DDLStmt.ObjectName));
+                  begin
+                    NextSQL := NextCommandText();
+                    if (SQLParseDDLStmt(NextDDLStmt, PChar(NextSQL), Length(NextSQL), ServerVersion)
+                      and (NextDDLStmt.ObjectType = DDLStmt.ObjectType)
+                      and ((NextDDLStmt.DatabaseName = DDLStmt.DatabaseName) or (NextDDLStmt.DatabaseName = ''))
+                      and (NextDDLStmt.ObjectName = DDLStmt.ObjectName)) then
+                      // will be handled as ceItemAltered within the next Stmt
+                    else
+                      Database.Triggers.Delete(Database.TriggerByName(DDLStmt.ObjectName));
+                  end;
               end;
             otEvent:
               case (DDLStmt.DefinitionType) of
@@ -11309,11 +11308,11 @@ begin
                     if (DDLStmt.DefinitionType = dtAlterRename) then
                     begin
                       if (Databases.NameCmp(DDLStmt.NewDatabaseName, Database.Name) <> 0) then
-                        ExecuteEvent(ceItemDroped, Event.Database, Event.Events, Event);
+                        ExecuteEvent(ceItemDropped, Event.Database, Event.Events, Event);
                       Event.SetDatabase(DatabaseByName(DDLStmt.NewDatabaseName));
                       Event.Name := DDLStmt.NewObjectName;
                       if (Databases.NameCmp(DDLStmt.NewDatabaseName, Database.Name) <> 0) then
-                        ExecuteEvent(ceItemDroped, Event.Database, Event.Events, Event)
+                        ExecuteEvent(ceItemDropped, Event.Database, Event.Events, Event)
                       else
                         ExecuteEvent(ceItemAltered, Database, Database.Events, Event);
                     end;
@@ -11466,7 +11465,7 @@ function TCClient.PluginByName(const PluginName: string): TCPlugin;
 var
   Index: Integer;
 begin
-  Index := Plugins.KeyByName(PluginName);
+  Index := Plugins.IndexByName(PluginName);
   if (Index < 0) then
     Result := nil
   else
@@ -11519,7 +11518,7 @@ var
 begin
   if (AAutoCommit <> AutoCommit) then
   begin
-    Index := Variables.KeyByName('autocommit');
+    Index := Variables.IndexByName('autocommit');
     if (Index >= 0) then
     begin
       if (AAutoCommit) then
@@ -11574,7 +11573,7 @@ function TCClient.StatusByName(const StatusName: string): TCStatus;
 var
   Index: Integer;
 begin
-  Index := Stati.KeyByName(StatusName);
+  Index := Stati.IndexByName(StatusName);
   if (Index < 0) then
     Result := nil
   else
@@ -11819,6 +11818,7 @@ begin
     end;
 
   Tables.Free();
+  InvalidObjects.Clear();
 
   Result := (SQL = '') or SendSQL(SQL, ClientResult);
 end;
@@ -12274,7 +12274,7 @@ function TCClient.UserByName(const UserName: string): TCUser;
 var
   Index: Integer;
 begin
-  Index := Users.KeyByName(UserName);
+  Index := Users.IndexByName(UserName);
   if (Index < 0) then
     Result := nil
   else
@@ -12285,7 +12285,7 @@ function TCClient.VariableByName(const VariableName: string): TCVariable;
 var
   Index: Integer;
 begin
-  Index := Variables.KeyByName(VariableName);
+  Index := Variables.IndexByName(VariableName);
   if (Index < 0) then
     Result := nil
   else

@@ -791,6 +791,7 @@ end;
 procedure TDOptions.TSHighlighterShow(Sender: TObject);
 begin
   FPreview.Font := PEditorFont.Font;
+  FPreview.Gutter.Font := FPreview.Font;
 
   FStyles.Selected := FStyles.Items.Item[0];
   FStyles.ItemFocused := FStyles.Selected;

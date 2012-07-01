@@ -3891,10 +3891,7 @@ begin
               PRecordBufferData(Source)^.LibRow^[Field.FieldNo - 1], PRecordBufferData(Source)^.LibLengths^[Field.FieldNo - 1],
               TMemoryStream(Dest).Memory, Len)
           else if (GetLastError() <> 0) then
-          begin
-            S := SQLEscape(PAnsiChar(@(PRecordBufferData(Source)^.LibRow^[Field.FieldNo - 1])), PRecordBufferData(Source)^.LibLengths^[Field.FieldNo - 1], False);
-            DatabaseErrorFmt(SysErrorMessage(GetLastError()) + '(%s: %s - %s)', [Field.DisplayName, S, Connection.Charset]);
-          end;
+            DatabaseErrorFmt(SysErrorMessage(GetLastError()) + ' (Field: %s)', [Field.Origin]);
         end;
       end;
     ftWideString:

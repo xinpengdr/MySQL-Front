@@ -453,6 +453,7 @@ type
     CM_ACTIVATETAB = WM_USER + 600;
     CM_UPDATEAVAILABLE = WM_USER + 601;
     CM_MYSQLCONNECTION_SYNCHRONIZE = WM_USER + 602;
+    tiDeactivate = 1;
   private
     CaptureTabIndex: Integer;
     CloseButton: TPicture;
@@ -471,9 +472,12 @@ type
     Tabs: TList;
     UniqueTabNameCounter: Integer;
     UpdateAvailable: Boolean;
+    procedure ApplicationActivate(Sender: TObject);
+    procedure ApplicationDeactivate(Sender: TObject);
     procedure ApplicationMessage(var Msg: TMsg; var Handled: Boolean);
     procedure ApplicationModalBegin(Sender: TObject);
     procedure ApplicationModalEnd(Sender: TObject);
+    procedure EmptyWorkingMem();
     {$IFDEF EurekaLog}
     procedure EurekaLogCustomDataRequest(
       EurekaExceptionRecord: TEurekaExceptionRecord; DataFields: TStrings);
@@ -501,9 +505,10 @@ type
     procedure CMSysFontChanged(var Message: TMessage); message CM_SYSFONTCHANGED;
     procedure CMUpdateAvailable(var Message: TMessage); message CM_UPDATEAVAILABLE;
     procedure CMUpdateToolbar(var Message: TCMUpdateToolBar); message CM_UPDATETOOLBAR;
-    procedure WMCopyData(var Msg: TWMCopyData); message WM_COPYDATA;
+    procedure WMCopyData(var Message: TWMCopyData); message WM_COPYDATA;
     procedure WMDrawItem(var Message: TWMDrawItem); message WM_DRAWITEM;
     procedure WMHelp(var Message: TWMHelp); message WM_HELP;
+    procedure WMTimer(var Message: TWMTimer); message WM_TIMER;
     property ActiveTab: TFClient read GetActiveTab write SetActiveTab;
   protected
     procedure ApplicationException(Sender: TObject; E: Exception);
@@ -641,11 +646,21 @@ begin
   end;
 end;
 
+procedure TWWindow.ApplicationActivate(Sender: TObject);
+begin
+  KillTimer(Handle, tiDeactivate);
+end;
+
 procedure TWWindow.aOAccountsExecute(Sender: TObject);
 begin
   DAccounts.Account := nil;
   DAccounts.Open := False;
   DAccounts.Execute();
+end;
+
+procedure TWWindow.ApplicationDeactivate(Sender: TObject);
+begin
+  SetTimer(Handle, tiDeactivate, 60000, nil);
 end;
 
 procedure TWWindow.ApplicationException(Sender: TObject; E: Exception);
@@ -1475,18 +1490,49 @@ begin
   inherited;
 end;
 
+procedure TWWindow.EmptyWorkingMem();
+var
+  Process: THandle;
+begin
+  Process := OpenProcess(PROCESS_ALL_ACCESS, FALSE, GetCurrentProcessId());
+  if (Process <> 0) then
+  begin
+    SetProcessWorkingSetSize(Process, Size_T(-1), Size_T(-1));
+    CloseHandle(Process);
+  end;
+end;
+
 {$IFDEF EurekaLog}
 procedure TWWindow.EurekaLogCustomDataRequest(
   EurekaExceptionRecord: TEurekaExceptionRecord; DataFields: TStrings);
 var
   I: Integer;
+  Log: TStringList;
 begin
   if (IsWine()) then
     DataFields.Add('Wine=Yes');
 
-  for I := 0 to Clients.Count - 1 do
-    if (Clients[I].Connected) then
-      DataFields.Add('MySQL Version=' + Clients[I].ServerVersionStr);
+  if (Assigned(ActiveTab)) then
+  begin
+    for I := 0 to Clients.Count - 1 do
+    begin
+      if (Clients[I].Connected) then
+        DataFields.Add('MySQL Version=' + Clients[I].ServerVersionStr);
+    end;
+  end
+  else
+  begin
+    DataFields.Add('MySQL_Version=' + ActiveTab.Client.ServerVersionStr);
+    Log := TStringList.Create();
+    Log.Text := ActiveTab.Client.Log;
+    while (Log.Count > 10) do Log.Delete(0);
+    while (Log.Count > 0) do
+    begin
+      DataFields.Add('SQL Log ' + IntToStr(Log.Count + 1) + '=' + Log[0]);
+      Log.Delete(0);
+    end;
+    Log.Free();
+  end;
 end;
 
 procedure TWWindow.EurekaLogExceptionNotify(
@@ -1585,6 +1631,8 @@ begin
   Application.OnMessage := ApplicationMessage;
   Application.OnModalBegin := ApplicationModalBegin;
   Application.OnModalEnd := ApplicationModalEnd;
+  Application.OnActivate := ApplicationActivate;
+  Application.OnDeactivate := ApplicationDeactivate;
 
   {$IFDEF EurekaLog}
     EurekaLog := TEurekaLog.Create(Self);
@@ -2315,7 +2363,7 @@ begin
     ActiveTab.ToolBarData.tbPropertiesAction.Execute();
 end;
 
-procedure TWWindow.WMCopyData(var Msg: TWMCopyData);
+procedure TWWindow.WMCopyData(var Message: TWMCopyData);
 begin
   SetForegroundWindow(Application.Handle);
   if IsIconic(Application.Handle) then
@@ -2330,7 +2378,7 @@ begin
     MessageBeep(MB_ICONERROR);
   end
   else
-    HandleParam(PChar(Msg.CopyDataStruct^.lpData));
+    HandleParam(PChar(Message.CopyDataStruct^.lpData));
 end;
 
 procedure TWWindow.WMDrawItem(var Message: TWMDrawItem);
@@ -2349,6 +2397,14 @@ procedure TWWindow.WMHelp(var Message: TWMHelp);
 begin
   if (Message.HelpInfo.iContextType = HELPINFO_MENUITEM) then
     inherited;
+end;
+
+procedure TWWindow.WMTimer(var Message: TWMTimer);
+begin
+  case (Message.TimerID) of
+    tiDeactivate:
+      EmptyWorkingMem();
+  end;
 end;
 
 end.

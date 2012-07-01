@@ -45,17 +45,13 @@ object DAccount: TDAccount
     Top = 8
     Width = 313
     Height = 277
-    ActivePage = TSBasics
+    ActivePage = TSConnection
     HotTrack = True
     MultiLine = True
     TabOrder = 0
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
       OnShow = TSBasicsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GBasics: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -116,10 +112,6 @@ object DAccount: TDAccount
     end
     object TSConnection: TTabSheet
       Caption = 'TSConnection'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GServer: TGroupBox_Ext
         Left = 4
         Top = 4
@@ -321,10 +313,6 @@ object DAccount: TDAccount
     end
     object TSDebug: TTabSheet
       Caption = 'TSDebug'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GDebug: TGroupBox_Ext
         Left = 4
         Top = 4

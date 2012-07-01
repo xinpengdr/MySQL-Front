@@ -973,7 +973,7 @@ procedure TDTable.FEngineChange(Sender: TObject);
 begin
   NewTable.Engine := Database.Client.EngineByName(Trim(FEngine.Text));
 
-  TSForeignKeys.TabVisible := not Assigned(Tables) and Assigned(Database.Client.EngineByName(FEngine.Text)) and Database.Client.EngineByName(FEngine.Text).ForeignKeyAllowed;
+  TSForeignKeys.TabVisible := Assigned(Table) and Assigned(Database.Client.EngineByName(FEngine.Text)) and Database.Client.EngineByName(FEngine.Text).ForeignKeyAllowed;
 
   FBOkCheckEnabled(Sender);
 end;
