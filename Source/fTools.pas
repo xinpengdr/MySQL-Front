@@ -1364,7 +1364,7 @@ begin
 
     if ((ImportType <> itUpdate) and Client.LoadDataFile) then
     begin
-      Pipename := '\\.\pipe\' + Application.Title;
+      Pipename := '\\.\pipe\' + LoadStr(1000);
       Pipe := CreateNamedPipe(PChar(Pipename),
                               PIPE_ACCESS_OUTBOUND, PIPE_TYPE_MESSAGE or PIPE_READMODE_BYTE or PIPE_WAIT,
                               1, 2 * NET_BUFFER_LENGTH, 0, NMPWAIT_USE_DEFAULT_WAIT, nil);
@@ -3995,7 +3995,7 @@ begin
     Content := Content + ':' + IntToStr(Client.Port);
   Content := Content + '  (Version: ' + Client.ServerVersionStr + ')' + #13#10;
   Content := Content + '# Date: ' + MySQLDB.DateTimeToStr(Now(), Client.FormatSettings) + #13#10;
-  Content := Content + '# Generator: ' + Application.Title + ' ' + Preferences.VersionStr + #13#10;
+  Content := Content + '# Generator: ' + LoadStr(1000) + ' ' + Preferences.VersionStr + #13#10;
   Content := Content + #13#10;
 
   if ((CodePage <> CP_UNICODE) and (Client.CodePageToCharset(CodePage) <> '') and (Client.ServerVersion >= 40101)) then
@@ -4566,7 +4566,7 @@ begin
   if (UMLEncoding(CodePage) <> '') then
     Content := Content + #9 + '<meta http-equiv="Content-Type" content="text/html; charset=' + UMLEncoding(CodePage) + '">' + #13#10;
   Content := Content + #9 + '<meta name="date" content="' + GetUTCDateTime(Now()) + '">' + #13#10;
-  Content := Content + #9 + '<meta name="generator" content="' + Application.Title + ' ' + Preferences.VersionStr + '">' + #13#10;
+  Content := Content + #9 + '<meta name="generator" content="' + LoadStr(1000) + ' ' + Preferences.VersionStr + '">' + #13#10;
   Content := Content + #9 + '<style type="text/css"><!--' + #13#10;
   Content := Content + #9#9 + 'body {font-family: Arial,Helvetica,sans-serif; font-size: ' + IntToStr(-Font.Height) + 'px;}' + #13#10;
   Content := Content + #9#9 + 'h1 {font-size: ' + IntToStr(-Font.Height + 6) + 'px; text-decoration: bold;}' + #13#10;
@@ -6811,7 +6811,7 @@ begin
 
         if (TargetDatabase.Client.LoadDataFile and not Assigned(TargetExistingDataSet)) then
         begin
-          Pipename := '\\.\pipe\' + Application.Title;
+          Pipename := '\\.\pipe\' + LoadStr(1000);
           Pipe := CreateNamedPipe(PChar(Pipename),
                                   PIPE_ACCESS_OUTBOUND, PIPE_TYPE_MESSAGE or PIPE_READMODE_BYTE or PIPE_WAIT,
                                   1, 2 * NET_BUFFER_LENGTH, 0, NMPWAIT_USE_DEFAULT_WAIT, nil);

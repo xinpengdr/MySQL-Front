@@ -514,6 +514,7 @@ type
     procedure ApplicationException(Sender: TObject; E: Exception);
     procedure CreateParams(var Params: TCreateParams); override;
   public
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy(); override;
     function DBLogin(const Account: Pointer): Boolean;
   end;
@@ -980,7 +981,7 @@ begin
 
   TabControl.Canvas.Font := Font;
 
-  Caption := Application.Title;
+  Caption := LoadStr(1000);
 
   miFile.Caption := Preferences.LoadStr(3);
   aFOpenAccount.Caption := Preferences.LoadStr(1) + '...';
@@ -1247,7 +1248,7 @@ begin
 
     TabControl.TabIndex := -1;
 
-    Caption := Application.Title;
+    Caption := LoadStr(1000);
 
     aFClose.Enabled := False;
 
@@ -1395,7 +1396,11 @@ begin
 
   if (Assigned(Tab) and (Tab = ActiveTab)) then
   begin
-    Caption := Tab.ToolBarData.Caption + ' - ' + Application.Title;
+    if (Tab.ToolBarData.Caption = '') then
+      Caption := Tab.Client.Account.Name
+    else
+      Caption := Tab.Client.Account.Name + ' - ' + Tab.ToolBarData.Caption;
+    Application.Title := Tab.Client.Account.Name;
 
     tbProperties.Action := Tab.ToolBarData.tbPropertiesAction;
     tbProperties.Caption := Preferences.LoadStr(97) + '...';
@@ -1460,6 +1465,64 @@ begin
     Found := Found or ToolBar.Buttons[I].Visible and (ToolBar.Buttons[I].ImageIndex >= 0) and (ToolBar.Buttons[I].Width <> ToolBar.ButtonWidth);
   if (Found) then
     Toolbar.ButtonWidth := 0; // Without this, the Buttons are too small. Why??? A Delphi bug?
+end;
+
+constructor TWWindow.Create(AOwner: TComponent);
+var
+  WindowPlacement: TWindowPlacement;
+  Wnd: HWND;
+begin
+  Wnd := FindWindow(PChar(cWindowClassName), nil);
+
+  inherited;
+
+  WindowPlacement.length := SizeOf(WindowPlacement);
+  if ((Wnd > 0) and GetWindowPlacement(Wnd, @WindowPlacement)) then
+  begin
+    Inc(WindowPlacement.rcNormalPosition.Left, 2 * GetSystemMetrics(SM_CXBORDER) + GetSystemMetrics(SM_CYCAPTION));
+    Inc(WindowPlacement.rcNormalPosition.Top, 2 * GetSystemMetrics(SM_CYBORDER) + GetSystemMetrics(SM_CYCAPTION));
+    Inc(WindowPlacement.rcNormalPosition.Right, 2 * GetSystemMetrics(SM_CXBORDER) + GetSystemMetrics(SM_CYCAPTION));
+    Inc(WindowPlacement.rcNormalPosition.Bottom, 2 * GetSystemMetrics(SM_CYBORDER) + GetSystemMetrics(SM_CYCAPTION));
+
+    if (WindowPlacement.rcNormalPosition.Right > Screen.WorkAreaRect.Right) then
+    begin
+      Dec(WindowPlacement.rcNormalPosition.Right, WindowPlacement.rcNormalPosition.Left);
+      WindowPlacement.rcNormalPosition.Left := 0;
+      Dec(WindowPlacement.rcNormalPosition.Bottom, WindowPlacement.rcNormalPosition.Top);
+      WindowPlacement.rcNormalPosition.Top := 0;
+    end
+    else if (WindowPlacement.rcNormalPosition.Bottom > Screen.WorkAreaRect.Bottom) then
+    begin
+      Dec(WindowPlacement.rcNormalPosition.Bottom, WindowPlacement.rcNormalPosition.Top);
+      WindowPlacement.rcNormalPosition.Top := 0;
+    end;
+
+    Left := WindowPlacement.rcNormalPosition.Left;
+    Top := WindowPlacement.rcNormalPosition.Top;
+    Width := WindowPlacement.rcNormalPosition.Right - WindowPlacement.rcNormalPosition.Left;
+    Height := WindowPlacement.rcNormalPosition.Bottom - WindowPlacement.rcNormalPosition.Top;
+  end
+  else if (((Preferences.Height > 0) and (Preferences.Width > 0))) then
+  begin
+    Left := Preferences.Left;
+    Top := Preferences.Top;
+    Width := Preferences.Width;
+    Height := Preferences.Height;
+    WindowState := Preferences.WindowState;
+
+    if (WindowState = wsNormal) then
+    begin
+      if (Width > Screen.WorkAreaRect.Right - Screen.WorkAreaRect.Left) then
+        Left := 0
+      else if (Left + Width > Screen.WorkAreaRect.Right) then
+        Left := Screen.WorkAreaRect.Right - Width;
+
+      if (Height > Screen.WorkAreaRect.Bottom - Screen.WorkAreaRect.Top) then
+        Top := 0
+      else if (Top + Height > Screen.WorkAreaRect.Bottom) then
+        Top := Screen.WorkAreaRect.Bottom - Height;
+    end;
+  end;
 end;
 
 procedure TWWindow.CreateParams(var Params: TCreateParams);
@@ -1612,10 +1675,7 @@ end;
 
 procedure TWWindow.FormCreate(Sender: TObject);
 var
-  ClassName: array [0..MAX_PATH] of Char;
   I: Integer;
-  WindowPlacement: TWindowPlacement;
-  Wnd: HWND;
 begin
   DiableApplicationActivate := False;
   FirstOpen := True;
@@ -1647,56 +1707,6 @@ begin
   MainActionList := ActionList;
   MainHighlighter := Highlighter;
 
-  GetClassName(Handle, @ClassName, Length(ClassName) - 1);
-  Wnd := FindWindow(@ClassName, PChar(Application.Title));
-  WindowPlacement.length := SizeOf(WindowPlacement);
-  if ((Wnd > 0) and GetWindowPlacement(Wnd, @WindowPlacement)) then
-  begin
-    Inc(WindowPlacement.rcNormalPosition.Left, 2 * GetSystemMetrics(SM_CYBORDER) + GetSystemMetrics(SM_CYCAPTION));
-    Inc(WindowPlacement.rcNormalPosition.Top, 2 * GetSystemMetrics(SM_CYBORDER) + GetSystemMetrics(SM_CYCAPTION));
-    Inc(WindowPlacement.rcNormalPosition.Right, 2 * GetSystemMetrics(SM_CYBORDER) + GetSystemMetrics(SM_CYCAPTION));
-    Inc(WindowPlacement.rcNormalPosition.Bottom, 2 * GetSystemMetrics(SM_CYBORDER) + GetSystemMetrics(SM_CYCAPTION));
-
-    if (WindowPlacement.rcNormalPosition.Right > Screen.WorkAreaRect.Right) then
-    begin
-      Dec(WindowPlacement.rcNormalPosition.Right, WindowPlacement.rcNormalPosition.Left);
-      WindowPlacement.rcNormalPosition.Left := 0;
-      Dec(WindowPlacement.rcNormalPosition.Bottom, WindowPlacement.rcNormalPosition.Top);
-      WindowPlacement.rcNormalPosition.Top := 0;
-    end
-    else if (WindowPlacement.rcNormalPosition.Bottom > Screen.WorkAreaRect.Bottom) then
-    begin
-      Dec(WindowPlacement.rcNormalPosition.Bottom, WindowPlacement.rcNormalPosition.Top);
-      WindowPlacement.rcNormalPosition.Top := 0;
-    end;
-
-    WindowPlacement.showCmd := SW_HIDE;
-    SetWindowPlacement(Handle, @WindowPlacement);
-
-    if (GetWindowPlacement(Wnd, @WindowPlacement) and (WindowPlacement.showCmd = SW_MAXIMIZE)) then
-      WindowState := wsMaximized;
-  end
-  else if (((Preferences.Height > 0) and (Preferences.Width > 0))) then
-  begin
-    Left := Preferences.Left;
-    Top := Preferences.Top;
-    Height := Preferences.Height;
-    Width := Preferences.Width;
-    WindowState := Preferences.WindowState;
-
-    if (WindowState = wsNormal) then
-    begin
-      if (Width > Screen.WorkAreaRect.Right - Screen.WorkAreaRect.Left) then
-        Left := 0
-      else if (Left + Width > Screen.WorkAreaRect.Right) then
-        Left := Screen.WorkAreaRect.Right - Width;
-
-      if (Height > Screen.WorkAreaRect.Bottom - Screen.WorkAreaRect.Top) then
-        Top := 0
-      else if (Top + Height > Screen.WorkAreaRect.Bottom) then
-        Top := Screen.WorkAreaRect.Bottom - Height;
-    end;
-  end;
 
   TBAddressBar.Images := Preferences.SmallImages;
   TabControl.Images := Preferences.SmallImages;

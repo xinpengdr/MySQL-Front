@@ -152,7 +152,6 @@ type
     function GetHistoryFilename(): TFileName;
     function GetHistoryXML(): IXMLNode;
     function GetIconFilename(): TFileName;
-    function GetImageIndex(): Integer;
     function GetName(): string;
     function GetXML(): IXMLNode;
     procedure SetLastLogin(const ALastLogin: TDateTime);
@@ -193,7 +192,7 @@ type
     property DesktopXML: IXMLNode read GetDesktopXML;
     property HistoryXML: IXMLNode read GetHistoryXML;
     property IconFilename: TFileName read GetIconFilename;
-    property ImageIndex: Integer read GetImageIndex write FImageIndex;
+    property ImageIndex: Integer read FImageIndex write FImageIndex;
     property Index: Integer read GetIndex;
     property LastLogin: TDateTime read FLastLogin write SetLastLogin;
     property Name: string read GetName write SetName;
@@ -291,46 +290,8 @@ begin
 end;
 
 function HostIsLocalhost(const Host: string): Boolean;
-type
-  PPInAddr = ^PInAddr;
-var
-  HostEnt: PHostEnt;
-  HostName: array[0..255] of AnsiChar;
-  Addr: PPInAddr;
-  Addresses: TStringList;
 begin
-  Result := (lstrcmpi(PChar(Host), PChar(LOCAL_HOST)) = 0) or (Host = LOCAL_HOST_NAMEDPIPE) or (Host = '127.0.0.1');
-
-  if (not Result and (GetHostName(HostName, SizeOf(HostName)) = 0)) then
-  begin
-    Addresses := TStringList.Create();
-
-    HostEnt := GetHostByName(PAnsiChar(AnsiString(Host)));
-
-    if (Assigned(HostEnt)) then
-    begin
-      Addr := Pointer(HostEnt^.h_addr_list);
-      while (Assigned(Addr^)) do
-      begin
-        Addresses.Add(string(inet_ntoa(Addr^^)));
-        Result := Result or (inet_ntoa(Addr^^) = '127.0.0.1');
-        Inc(Addr);
-      end;
-
-      HostEnt := GetHostByName(HostName);
-      if (Assigned(HostEnt)) then
-      begin
-        Addr := Pointer(HostEnt^.h_addr_list);
-        while (Assigned(Addr^)) do
-        begin
-          Result := Result or (Addresses.IndexOf(string(inet_ntoa(Addr^^))) >= 0);
-          Inc(Addr);
-        end;
-      end;
-    end;
-
-    Addresses.Free();
-  end;
+  Result := (lstrcmpi(PChar(Host), PChar(LOCAL_HOST)) = 0) or (Host = '127.0.0.1') or (Host = '::1');
 end;
 
 { TABookmark ******************************************************************}
@@ -1177,16 +1138,6 @@ begin
     Result := DataPath + 'favicon.ico';
 end;
 
-function TAAccount.GetImageIndex(): Integer;
-begin
-  if (FImageIndex >= 0) then
-    Result := FImageIndex
-  else if (HostIsLocalhost(Connection.Host)) then
-    Result := 13
-  else
-    Result := 23;
-end;
-
 function TAAccount.GetIndex(): Integer;
 begin
   Result := Accounts.IndexOf(Self);
@@ -1368,10 +1319,12 @@ begin
             Account[I].ImageIndex := AImageList.Count;
             ImageList_AddIcon(AImageList.Handle, Icon.Handle);
           except
-            Account[I].ImageIndex := -1;
+            Account[I].ImageIndex := 23;
           end
+        else if (HostIsLocalHost(Account[I].Connection.Host)) then
+          Account[I].ImageIndex := 13
         else
-          Account[I].ImageIndex := -1;
+          Account[I].ImageIndex := 23;
 
     Icon.Free();
   end;

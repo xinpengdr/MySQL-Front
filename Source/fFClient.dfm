@@ -82,7 +82,7 @@ object FClient: TFClient
         Left = 2
         Top = 106
         Width = 116
-        Height = 514
+        Height = 468
         Align = alClient
         BevelOuter = bvNone
         Color = clWindow
@@ -162,7 +162,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 618
+        Height = 572
         HelpContext = 1082
         Align = alClient
         BorderStyle = bsNone
@@ -2270,23 +2270,24 @@ object FClient: TFClient
     object mwDCreate: TMenuItem
       Caption = 'mwDCreate'
       object mwDCreateTable: TMenuItem
-        Caption = 'aDCreateTable'
+        Caption = 'mwDCreateTable'
+        OnClick = mwDCreateTableClick
       end
       object mwDCreateField: TMenuItem
-        Caption = 'aDCreateField'
+        Caption = 'mwDCreateField'
       end
       object mwDCreateForeignKey: TMenuItem
-        Caption = 'aDCreateForeignKey'
+        Caption = 'mwDCreateForeignKey'
       end
       object mwCreateSection: TMenuItem
         Caption = 'mwCreateSection'
         Enabled = False
         OnClick = mwCreateSectionClick
       end
-      object mwCreateLine: TMenuItem
-        Caption = 'mwCreateLine'
+      object mwCreateLink: TMenuItem
+        Caption = 'mwCreateLink'
         Enabled = False
-        OnClick = mwCreateLineExecute
+        OnClick = mwCreateLinkExecute
       end
     end
     object mwDDelete: TMenuItem

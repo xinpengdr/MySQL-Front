@@ -133,7 +133,7 @@ constructor MYSQL.Create();
 begin
   inherited;
 
-  Agent := Application.Title;
+  Agent := LoadStr(1000);
   Connection := nil;
   Handle := nil;
   LastRequest := 0;

@@ -15,11 +15,14 @@ type
   TWLine = class;
   TWTable = class;
   TWTables = class;
-  TWForeignKeyPoint = class;
+  TWLinkPoint = class;
+  TWLink = class;
   TWForeignKey = class;
-  TWForeignKeys = class;
+  TWLinks = class;
   TWSection = class;
   TWWorkbench = class;
+
+  TCoord = TPoint;
 
   TWObjects = class(TList)
   private
@@ -36,11 +39,11 @@ type
   private
     FWorkbench: TWWorkbench;
     MouseMoveAlign: TAlign;
-    MouseDownCoord: TPoint;
+    MouseDownCoord: TCoord;
     MouseDownPoint: TPoint;
     procedure CMCursorChanged(var Message: TMessage); message CM_CURSORCHANGED;
   protected
-    FCoord: TPoint;
+    FCoord: TCoord;
     FSelected: Boolean;
     procedure ApplyCoord(); virtual; abstract;
     procedure DblClick(); override;
@@ -49,18 +52,18 @@ type
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    procedure MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TPoint); virtual;
-    procedure Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TPoint); virtual;
+    procedure MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TCoord); virtual;
+    procedure Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TCoord); virtual;
     procedure Paint(); override;
     procedure PaintTo(const Canvas: TCanvas; const X, Y: Integer); virtual; abstract;
     procedure SaveToXML(const XML: IXMLNode); virtual;
     procedure SetSelected(ASelected: Boolean); virtual;
   public
-    constructor Create(const AWorkbench: TWWorkbench); reintroduce; virtual;
+    constructor Create(const AWorkbench: TWWorkbench; const ACoord: TCoord); reintroduce; virtual;
     destructor Destroy(); override;
     procedure DragDrop(Source: TObject; X, Y: Integer); override;
-    procedure Move(const Sender: TWControl; const Shift: TShiftState; NewCoord: TPoint); virtual;
-    property Coord: TPoint read FCoord;
+    procedure Move(const Sender: TWControl; const Shift: TShiftState; NewCoord: TCoord); virtual;
+    property Coord: TCoord read FCoord;
     property Selected: Boolean read FSelected write SetSelected;
     property Workbench: TWWorkbench read FWorkbench;
   end;
@@ -81,7 +84,7 @@ type
     property MouseDownSize: TSize read FMouseDownSize;
     property ResizeMode: TWAreaResizeMode read FResizeMode;
   public
-    constructor Create(const AWorkbench: TWWorkbench); override;
+    constructor Create(const AWorkbench: TWWorkbench; const ACoord: TCoord); override;
     property Area: TRect read GetArea;
     property Size: TSize read FSize;
   end;
@@ -103,14 +106,14 @@ type
     procedure ApplyCoord(); override;
     function ControlAlign(const Control: TWControl): TAlign; virtual;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
-    procedure MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TPoint); override;
+    procedure MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TCoord); override;
     procedure PaintTo(const Canvas: TCanvas; const X, Y: Integer); override;
     procedure SetSelected(ASelected: Boolean); override;
     property LastPoint: TWPoint read GetLastPoint;
     property LineA: TWLine read GetLineA write SetLineA;
     property LineB: TWLine read GetLineB write SetLineB;
   public
-    constructor Create(const AWorkbench: TWWorkbench; const ACoord: TPoint; const PreviousPoint: TWPoint = nil); reintroduce; virtual;
+    constructor Create(const AWorkbench: TWWorkbench; const ACoord: TCoord; const PreviousPoint: TWPoint = nil); reintroduce; virtual;
     destructor Destroy(); override;
   end;
 
@@ -141,30 +144,30 @@ type
 
   TWTable = class(TWArea)
   private
-    FBaseTable: TCBaseTable;
     FData: TCustomData;
     FFocused: Boolean;
-    FForeignKeyPoints: array of TWForeignKeyPoint;
+    FLinkPoints: array of TWLinkPoint;
     function GetCaption(): TCaption;
-    function GetForeignKeyPoint(AIndex: Integer): TWForeignKeyPoint;
-    function GetForeignKeyPointCount(): Integer;
+    function GetLinkPoint(AIndex: Integer): TWLinkPoint;
+    function GetLinkPointCount(): Integer;
     function GetIndex(): Integer;
     procedure SetFocused(AFocused: Boolean);
   protected
+    FBaseTable: TCBaseTable;
     procedure ApplyCoord(); override;
     function CanAutoSize(var NewWidth, NewHeight: Integer): Boolean; override;
     procedure LoadFromXML(const XML: IXMLNode); override;
-    procedure MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TPoint); override;
-    procedure Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TPoint); override;
+    procedure MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TCoord); override;
+    procedure Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TCoord); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure PaintTo(const Canvas: TCanvas; const X, Y: Integer); override;
-    procedure RegisterForeignKeyPoint(const AForeignKeyPoint: TWForeignKeyPoint); virtual;
-    procedure ReleaseForeignKeyPoint(const AForeignKeyPoint: TWForeignKeyPoint); virtual;
-    property ForeignKeyPoint[Index: Integer]: TWForeignKeyPoint read GetForeignKeyPoint;
-    property ForeignKeyPointCount: Integer read GetForeignKeyPointCount;
+    procedure RegisterLinkPoint(const ALinkPoint: TWLinkPoint); virtual;
+    procedure ReleaseLinkPoint(const ALinkPoint: TWLinkPoint); virtual;
+    property LinkPoint[Index: Integer]: TWLinkPoint read GetLinkPoint;
+    property LinkPointCount: Integer read GetLinkPointCount;
   public
-    constructor Create(const ATables: TWTables; const ABaseTable: TCBaseTable); reintroduce; virtual;
+    constructor Create(const ATables: TWTables; const ACoord: TCoord; const ABaseTable: TCBaseTable = nil); reintroduce; virtual;
     destructor Destroy(); override;
     procedure Invalidate(); override;
     property BaseTable: TCBaseTable read FBaseTable;
@@ -185,10 +188,10 @@ type
     property Table[Index: Integer]: TWTable read GetTable; default;
   end;
 
-  TWForeignKeyPoint = class(TWPoint)
+  TWLinkPoint = class(TWPoint)
   private
     function GetIndex(): Integer;
-    function GetForeignKey(): TWForeignKey;
+    function GetLink(): TWLink;
     function GetTableA(): TWTable;
     function GetTableB(): TWTable;
     procedure SetTableA(ATableA: TWTable);
@@ -196,64 +199,71 @@ type
   protected
     procedure ApplyCoord(); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    procedure Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TPoint); override;
+    procedure Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TCoord); override;
     procedure PaintTo(const Canvas: TCanvas; const X, Y: Integer); override;
     property Index: Integer read GetIndex;
     property TableA: TWTable read GetTableA write SetTableA;
     property TableB: TWTable read GetTableB write SetTableB;
   public
-    constructor Create(const AWorkbench: TWWorkbench; const ACoord: TPoint; const PreviousPoint: TWPoint = nil); reintroduce; virtual;
+    constructor Create(const AWorkbench: TWWorkbench; const ACoord: TCoord; const PreviousPoint: TWPoint = nil); reintroduce; virtual;
     destructor Destroy(); override;
-    property ForeignKey: TWForeignKey read GetForeignKey;
+    property Link: TWLink read GetLink;
   end;
 
-  TWForeignKeyLine = class(TWLine)
+  TWLinkLine = class(TWLine)
   private
-    function GetForeignKey(): TWForeignKey;
+    function GetLink(): TWLink;
   protected
     procedure ApplyCoord(); override;
   public
-    property ForeignKey: TWForeignKey read GetForeignKey;
+    property Link: TWLink read GetLink;
   end;
 
-  TWForeignKey = class(TWForeignKeyPoint)
+  TWLink = class(TWLinkPoint)
   private
     FCaption: TCaption;
-    FBaseForeignKey: TCForeignKey;
-    function GetCaption(): TCaption;
-    function GetForeignKeySelected(): Boolean;
-    function GetIsLine(): Boolean;
-    function GetPoint(Index: Integer): TWForeignKeyPoint;
+    function GetLinkSelected(): Boolean;
+    function GetPoint(Index: Integer): TWLinkPoint;
     function GetPointCount(): Integer;
     function GetTable(Index: Integer): TWTable;
-    procedure SetCaption(const ACaption: TCaption);
-    procedure SetForeignKeySelected(AForeignKeySelected: Boolean);
+    procedure SetLinkSelected(const ALinkSelected: Boolean);
     procedure SetTable(Index: Integer; ATable: TWTable);
   protected
     procedure Cleanup(const Sender: TWControl); virtual;
+    function GetCaption(): TCaption; virtual;
     procedure LoadFromXML(const XML: IXMLNode); override;
     procedure SaveToXML(const XML: IXMLNode); override;
-    property Points[Index: Integer]: TWForeignKeyPoint read GetPoint;
+    procedure SetCaption(const ACaption: TCaption); virtual;
+    property Points[Index: Integer]: TWLinkPoint read GetPoint;
   public
-    constructor Create(const AWorkbench: TWWorkbench; const ACoord: TPoint; const PreviousPoint: TWPoint = nil); override;
+    constructor Create(const AWorkbench: TWWorkbench; const ACoord: TCoord; const PreviousPoint: TWPoint = nil); override;
     destructor Destroy(); override;
     property Caption: TCaption read GetCaption write SetCaption;
     property ChildTable: TWTable index 0 read GetTable write SetTable;
-    property BaseForeignKey: TCForeignKey read FBaseForeignKey write FBaseForeignKey;
-    property ForeignKeySelected: Boolean read GetForeignKeySelected write SetForeignKeySelected;
-    property IsLine: Boolean read GetIsLine;
+    property LinkSelected: Boolean read GetLinkSelected write SetLinkSelected;
     property ParentTable: TWTable index 1 read GetTable write SetTable;
     property PointCount: Integer read GetPointCount;
   end;
 
-  TWForeignKeys = class(TWObjects)
+  TWForeignKey = class(TWLink)
   private
-    function GetForeignKey(Index: Integer): TWForeignKey;
+    FBaseForeignKey: TCForeignKey;
+  protected
+    function GetCaption(): TCaption; override;
+    procedure SetCaption(const ACaption: TCaption); override;
+  public
+    constructor Create(const AWorkbench: TWWorkbench; const ACoord: TCoord; const PreviousPoint: TWPoint = nil); override;
+    property BaseForeignKey: TCForeignKey read FBaseForeignKey write FBaseForeignKey;
+  end;
+
+  TWLinks = class(TWObjects)
+  private
+    function GetLink(Index: Integer): TWLink;
     function GetSelCount(): Integer;
   protected
     procedure SaveToXML(const XML: IXMLNode); virtual;
   public
-    property ForeignKey[Index: Integer]: TWForeignKey read GetForeignKey; default;
+    property Link[Index: Integer]: TWLink read GetLink; default;
     property SelCount: Integer read GetSelCount;
   end;
 
@@ -272,7 +282,7 @@ type
     procedure SetSelected(ASelected: Boolean); override;
     procedure SetZOrder(TopMost: Boolean); override;
   public
-    constructor Create(const AWorkbench: TWWorkbench; const ACoord: TPoint); reintroduce; virtual;
+    constructor Create(const AWorkbench: TWWorkbench; const ACoord: TCoord); reintroduce; virtual;
     property Caption: TCaption read GetCaption write SetCaption;
     property Color: TColor read FColor write FColor;
   end;
@@ -294,23 +304,24 @@ type
     procedure PaintTo(const Canvas: TCanvas; const X, Y: Integer); override;
     procedure SetSelected(ASelected: Boolean); override;
   public
-    constructor Create(const AWorkbench: TWWorkbench; const X, Y: Integer); reintroduce; virtual;
+    constructor Create(const AWorkbench: TWWorkbench; const ACoord: TCoord); reintroduce; virtual;
   end;
 
-  TMWorkbenchState = (wsNormal, wsInsertForeignKey, wsInsertSection, wsLoading, wsAutoCreate);
+  TMWorkbenchState = (wsNormal, wsCreateLink, wsCreateForeignKey, wsCreateSection, wsCreateTable, wsLoading, wsAutoCreate);
 
   TWWorkbenchChangeEvent = procedure(Sender: TObject; Control: TWControl) of object;
   TWWorkbenchCursorMoveEvent = procedure(Sender: TObject; X, Y: Integer) of object;
-  TWWorkbenchValidateControlEvent = procedure (Sender: TObject; Control: TWControl) of Object;
+  TWWorkbenchValidateControlEvent = function(Sender: TObject; Control: TWControl): Boolean of Object;
 
   TWWorkbench = class(TScrollBox)
   private
-    CreatedTable: record BaseTable: TCBaseTable; Point: TPoint; end;
+    CreatedLink: TWLink;
+    CreatedTable: TWTable;
     FClient: TCClient;
     FDatabase: TCDatabase;
     FDatabaseName: string;
-    FForeignKeys: TWForeignKeys;
     FHideSelection: Boolean;
+    FLinks: TWLinks;
     FMultiSelect: Boolean;
     FOnChange: TWWorkbenchChangeEvent;
     FOnCursorMove: TWWorkbenchCursorMoveEvent;
@@ -335,15 +346,15 @@ type
     FModified: Boolean;
     State: TMWorkbenchState;
     procedure Change(); virtual;
-    procedure CursorMove(const Coord: TPoint); virtual;
+    procedure CursorMove(const Coord: TCoord); virtual;
     procedure DoEnter(); override;
     procedure DoExit(); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure ReleaseControl(const Control: TWControl); virtual;
     procedure UpdateControl(const Control: TWControl); virtual;
-    procedure ValidateControl(const Sender: TComponent; const Control: TWControl); virtual;
   public
+    procedure AddExistingTable(const X, Y: Integer; const ABaseTable: TCBaseTable); virtual;
     constructor Create(AOwner: TComponent); overload; override;
     constructor Create(const AOwner: TComponent; const ADatabase: TCDatabase); reintroduce; overload; virtual;
     destructor Destroy(); override;
@@ -353,22 +364,25 @@ type
     procedure ClientUpdate(const Event: TCClient.TEvent);
     procedure EndUpdate(); virtual;
     function ExecuteAction(Action: TBasicAction): Boolean; override;
-    function ForeignKeyByCaption(const Caption: string): TWForeignKey; virtual;
-    procedure InsertForeignKey(const X, Y: Integer); virtual;
-    procedure InsertSection(const X, Y: Integer); virtual;
+    function ForeignKeyByBaseForeignKey(const BaseForeignKey: TCForeignKey): TWForeignKey; virtual;
+    procedure CreateNewForeignKey(const X, Y: Integer); virtual;
+    procedure CreateNewLink(const X, Y: Integer); virtual;
+    procedure CreateNewSection(const X, Y: Integer); virtual;
+    procedure CreateNewTable(const X, Y: Integer); virtual;
     procedure KeyPress(var Key: Char); override;
+    function LinkByCaption(const Caption: string): TWLink; virtual;
     procedure LoadFromFile(const FileName: string); virtual;
+    function PointToCoord(const X, Y: Integer): TPoint; virtual;
     procedure Print(const Title: string); virtual;
     procedure SaveToBMP(const FileName: string); virtual;
     procedure SaveToFile(const FileName: string); virtual;
-    function TableAtCoord(const Coord: TPoint): TWTable;
+    function TableAtCoord(const Coord: TCoord): TWTable;
     function TableByBaseTable(const ATable: TCBaseTable): TWTable; virtual;
     function TableByCaption(const Caption: string): TWTable; virtual;
-    procedure TableCreated(const ATable: TCBaseTable; const APoint: TPoint); virtual;
     function UpdateAction(Action: TBasicAction): Boolean; override;
     property Database: TCDatabase read GetDatabase;
-    property ForeignKeys: TWForeignKeys read FForeignKeys;
     property HideSelection: Boolean read FHideSelection write FHideSelection default False;
+    property Links: TWLinks read FLinks;
     property Modified: Boolean read FModified;
     property MultiSelect: Boolean read FMultiSelect write SetMultiSelect default False;
     property OnChange: TWWorkbenchChangeEvent read FOnChange write FOnChange;
@@ -456,7 +470,7 @@ begin
   end;
 end;
 
-function CreateSegment(const Sender: TWControl; const ACoord: TPoint; const Point: TWPoint; const CreateBefore: Boolean = True): TWPoint;
+function CreateSegment(const Sender: TWControl; const ACoord: TCoord; const Point: TWPoint; const CreateBefore: Boolean = True): TWPoint;
 var
   Line: TWLine;
   OldMoveState: TWPointMoveState;
@@ -467,13 +481,13 @@ begin
 
   if (CreateBefore) then
   begin
-    if (Point is TWForeignKeyPoint) then
-      Result := TWForeignKeyPoint.Create(Point.Workbench, Point.Coord, nil)
+    if (Point is TWLinkPoint) then
+      Result := TWLinkPoint.Create(Point.Workbench, Point.Coord, nil)
     else
       Result := TWPoint.Create(Point.Workbench, Point.Coord, nil);
     Result.LineA := Point.LineA;
 
-    TWForeignKeyLine.Create(Point.Workbench, Result, Point);
+    TWLinkLine.Create(Point.Workbench, Result, Point);
   end
   else
   begin
@@ -482,8 +496,8 @@ begin
     if (Assigned(Line)) then
       Line.PointA := nil;
 
-    if (Point is TWForeignKeyPoint) then
-      Result := TWForeignKeyPoint.Create(Point.Workbench, Point.Coord, Point)
+    if (Point is TWLinkPoint) then
+      Result := TWLinkPoint.Create(Point.Workbench, Point.Coord, Point)
     else
       Result := TWPoint.Create(Point.Workbench, Point.Coord, Point);
     Result.LineB := Line;
@@ -574,16 +588,16 @@ begin
   inherited;
 end;
 
-constructor TWControl.Create(const AWorkbench: TWWorkbench);
+constructor TWControl.Create(const AWorkbench: TWWorkbench; const ACoord: TCoord);
 begin
   inherited Create(AWorkbench);
   Parent := AWorkbench;
 
   FWorkbench := AWorkbench;
+  FCoord := ACoord;
 
-  FCoord := Point(-1, -1);
   FSelected := False;
-  MouseDownCoord := Point(-1, -1);
+  MouseDownCoord.X := -1; MouseDownCoord.Y := -1;
   MouseDownPoint := Point(-1, -1);
 end;
 
@@ -617,7 +631,7 @@ end;
 
 procedure TWControl.LoadFromXML(const XML: IXMLNode);
 var
-  NewCoord: TPoint;
+  NewCoord: TCoord;
 begin
   NewCoord := Coord;
   if (Assigned(XMLNode(XML, 'coord/x'))) then TryStrToInt(XMLNode(XML, 'coord/x').Text, NewCoord.X);
@@ -627,8 +641,8 @@ end;
 
 procedure TWControl.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
-  if (Self is TWForeignKeyLine) then
-    MouseDownCoord := TWForeignKeyLine(Self).PointA.Coord
+  if (Self is TWLinkLine) then
+    MouseDownCoord := TWLinkLine(Self).PointA.Coord
   else
     MouseDownCoord := Coord;
 
@@ -638,10 +652,10 @@ begin
   if ((Button in [mbLeft, mbRight]) and (not (ssCtrl in Shift) and (not Selected or (Workbench.SelCount <= 1)) or (not Workbench.MultiSelect or (not (ssCtrl in Shift) and (Workbench.SelCount <= 1))))) then
   begin
     Workbench.Selected := Self;
-    if (Self is TWForeignKeyPoint) then
-      TWForeignKeyPoint(Self).ForeignKey.ForeignKeySelected := not TWForeignKeyPoint(Self).ForeignKey.ForeignKeySelected
-    else if (Self is TWForeignKeyLine) then
-      TWForeignKeyLine(Self).ForeignKey.ForeignKeySelected := not TWForeignKeyLine(Self).ForeignKey.ForeignKeySelected;
+    if (Self is TWLinkPoint) then
+      TWLinkPoint(Self).Link.LinkSelected := not TWLinkPoint(Self).Link.LinkSelected
+    else if (Self is TWLinkLine) then
+      TWLinkLine(Self).Link.LinkSelected := not TWLinkLine(Self).Link.LinkSelected;
 
     if (Self is TWTable) then
       Workbench.TableFocused := TWTable(Self)
@@ -663,7 +677,7 @@ var
   DeltaX: Integer;
   DeltaY: Integer;
   Msg: TMsg;
-  NewCoord: TPoint;
+  NewCoord: TCoord;
 begin
   if (not (PeekMessage(Msg, 0, 0, 0, PM_NOREMOVE) and (Msg.Message = WM_MOUSEMOVE) and (Msg.wParam = MK_LBUTTON))) then
   begin
@@ -793,7 +807,7 @@ begin
       NewCoord.X := MouseDownCoord.X + X - MouseDownPoint.X;
       NewCoord.Y := MouseDownCoord.Y + Y - MouseDownPoint.Y;
       Moving(Self, Shift, NewCoord);
-      if ((Self is TWForeignKeyPoint) and not Assigned(TWForeignKeyPoint(Self).ForeignKey.ParentTable)) then
+      if ((Self is TWLinkPoint) and not Assigned(TWLinkPoint(Self).Link.ParentTable)) then
         MoveTo(Self, Shift, NewCoord)
       else if (ssLeft in Shift) then
         Move(Self, Shift, NewCoord);
@@ -814,10 +828,10 @@ begin
     else
     begin
       Workbench.Selected := Self;
-      if (Self is TWForeignKeyPoint) then
-        TWForeignKeyPoint(Self).ForeignKey.ForeignKeySelected := True
-      else if (Self is TWForeignKeyLine) then
-        TWForeignKeyLine(Self).ForeignKey.ForeignKeySelected := True;
+      if (Self is TWLinkPoint) then
+        TWLinkPoint(Self).Link.LinkSelected := True
+      else if (Self is TWLinkLine) then
+        TWLinkLine(Self).Link.LinkSelected := True;
     end;
 
     if (Self is TWTable) then
@@ -831,28 +845,28 @@ begin
   inherited;
 
   Workbench.CalcRange(True);
+  MouseDownCoord.X := -1; MouseDownCoord.Y := -1;
   MouseDownPoint := Point(-1, -1);
-  MouseDownCoord := Point(-1, -1);
 
-  if (Self is TWForeignKeyPoint) then
-    TWForeignKeyPoint(Self).ForeignKey.Cleanup(Self)
-  else if (Self is TWForeignKeyLine) then
-    TWForeignKeyLine(Self).ForeignKey.Cleanup(Self)
+  if (Self is TWLinkPoint) then
+    TWLinkPoint(Self).Link.Cleanup(Self)
+  else if (Self is TWLinkLine) then
+    TWLinkLine(Self).Link.Cleanup(Self)
   else if (Self is TWTable) then
-    for I := 0 to TWTable(Self).ForeignKeyPointCount - 1 do
-      TWTable(Self).ForeignKeyPoint[I].ForeignKey.Cleanup(Self);
+    for I := 0 to TWTable(Self).LinkPointCount - 1 do
+      TWTable(Self).LinkPoint[I].Link.Cleanup(Self);
 end;
 
-procedure TWControl.Move(const Sender: TWControl; const Shift: TShiftState; NewCoord: TPoint);
+procedure TWControl.Move(const Sender: TWControl; const Shift: TShiftState; NewCoord: TCoord);
 var
   Controls: array of TWControl;
   I: Integer;
-  NewControlCoord: TPoint;
-  WantedNewCoord: TPoint;
+  NewControlCoord: TCoord;
+  WantedNewCoord: TCoord;
 begin
   if ((NewCoord.X <> Coord.X) or (NewCoord.Y <> Coord.Y)) then
   begin
-    if ((Workbench.SelCount = 1) or (Self is TWForeignKeyPoint) and TWForeignKeyPoint(Self).ForeignKey.ForeignKeySelected and (Workbench.SelCount = TWForeignKeyPoint(Self).ForeignKey.PointCount * 2 - 1)) then
+    if ((Workbench.SelCount = 1) or (Self is TWLinkPoint) and TWLinkPoint(Self).Link.LinkSelected and (Workbench.SelCount = TWLinkPoint(Self).Link.PointCount * 2 - 1)) then
     begin
       Moving(Self, Shift, NewCoord);
       MoveTo(Self, Shift, NewCoord);
@@ -896,7 +910,7 @@ begin
   end;
 end;
 
-procedure TWControl.MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TPoint);
+procedure TWControl.MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TCoord);
 begin
   FCoord := NewCoord;
 
@@ -905,7 +919,7 @@ begin
   Workbench.FModified := True;
 end;
 
-procedure TWControl.Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TPoint);
+procedure TWControl.Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TCoord);
 begin
   if (NewCoord.X < 0) then
     NewCoord.X := 0;
@@ -949,9 +963,9 @@ begin
   );
 end;
 
-constructor TWArea.Create(const AWorkbench: TWWorkbench);
+constructor TWArea.Create(const AWorkbench: TWWorkbench; const ACoord: TCoord);
 begin
-  inherited Create(AWorkbench);
+  inherited;
 
   FSize.cx := 0;
   FSize.cy := 0;
@@ -984,7 +998,7 @@ end;
 
 procedure TWArea.ChangeSize(const Sender: TWControl; const Shift: TShiftState; X, Y: Integer);
 var
-  NewCoord: TPoint;
+  NewCoord: TCoord;
 begin
   case (ResizeMode) of
     rmCreate:
@@ -1071,12 +1085,13 @@ begin
     PointSize,
     PointSize);
 
-  Center := Point((PointSize - 1) div 2, (PointSize - 1) div 2);
+  Center.X := (PointSize - 1) div 2;
+  Center.Y := (PointSize - 1) div 2;
 end;
 
 function TWPoint.ControlAlign(const Control: TWControl): TAlign;
 var
-  ControlCoord: TPoint;
+  ControlCoord: TCoord;
 begin
   if (not Assigned(Control)) then
     Result := alNone
@@ -1102,7 +1117,7 @@ begin
     else if ((Control is TWLine) and Assigned(TWLine(Control).PointB) and (TWLine(Control).PointB <> Self)) then
       ControlCoord := TWLine(Control).PointB.Coord
     else
-      ControlCoord := Point(-1, -1);
+      begin ControlCoord.X := -1; ControlCoord.Y := -1; end;
 
     if ((ControlCoord.X < 0) or (ControlCoord.Y < 0)) then
       Result := alNone
@@ -1119,9 +1134,9 @@ begin
   end;
 end;
 
-constructor TWPoint.Create(const AWorkbench: TWWorkbench; const ACoord: TPoint; const PreviousPoint: TWPoint = nil);
+constructor TWPoint.Create(const AWorkbench: TWWorkbench; const ACoord: TCoord; const PreviousPoint: TWPoint = nil);
 begin
-  inherited Create(AWorkbench);
+  inherited Create(AWorkbench, ACoord);
   Parent := AWorkbench;
 
   ControlA := nil;
@@ -1172,7 +1187,7 @@ end;
 
 procedure TWPoint.MouseMove(Shift: TShiftState; X, Y: Integer);
 begin
-  if (Workbench.State in [wsInsertForeignKey, wsInsertSection]) then
+  if (Workbench.State in [wsCreateLink, wsCreateForeignKey, wsCreateSection]) then
     Cursor := crDefault
   else if ((ssLeft in Shift) or not Assigned(ControlA) or not Assigned(ControlB)) then
     Cursor := crCross
@@ -1202,9 +1217,9 @@ begin
   inherited;
 end;
 
-procedure TWPoint.MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TPoint);
+procedure TWPoint.MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TCoord);
 
-  procedure MovePointTo(const Point: TWForeignKeyPoint);
+  procedure MovePointTo(const Point: TWLinkPoint);
   var
     Control, AntiControl: TWControl;
     Line, NextLine, AntiLine: TWLine;
@@ -1282,16 +1297,16 @@ procedure TWPoint.MoveTo(const Sender: TWControl; const Shift: TShiftState; NewC
       Point.MoveTo(Self, Shift, NewCoord)
 
     // adjust other end of a line
-    else if ((Sender <> Point) and (Self is TWForeignKeyPoint) and Assigned(TWForeignKeyPoint(Self).ForeignKey.ParentTable) and (Point.MoveState = msNormal)
+    else if ((Sender <> Point) and (Self is TWLinkPoint) and Assigned(TWLinkPoint(Self).Link.ParentTable) and (Point.MoveState = msNormal)
       and ((ControlAlign(Line) in [alLeft, alRight]) or (Point.ControlAlign(NextLine) in [alTop, alBottom]) and (Point.Coord.Y = Coord.Y) and (Point.Coord.X = Coord.X))) then
       Point.MoveTo(Self, Shift, Types.Point(Point.Coord.X, NewCoord.Y))
-    else if ((Sender <> Point) and (Self is TWForeignKeyPoint) and Assigned(TWForeignKeyPoint(Self).ForeignKey.ParentTable) and (Point.MoveState = msNormal)
+    else if ((Sender <> Point) and (Self is TWLinkPoint) and Assigned(TWLinkPoint(Self).Link.ParentTable) and (Point.MoveState = msNormal)
       and ((ControlAlign(Line) in [alTop, alBottom]) or (Point.ControlAlign(NextLine) in [alLeft, alRight]) and (Point.Coord.X = Coord.X) and (Point.Coord.Y = Coord.Y))) then
       Point.MoveTo(Self, Shift, Types.Point(NewCoord.X, Point.Coord.Y));
 
     // remove a crushed line
     if ((Sender <> Self)
-      and (Self is TWForeignKeyPoint) and Assigned(TWForeignKeyPoint(Self).ForeignKey.ParentTable)
+      and (Self is TWLinkPoint) and Assigned(TWLinkPoint(Self).Link.ParentTable)
       and Assigned(NextPoint) and (Point.Coord.X = NextPoint.Coord.X) and (Point.Coord.Y = NextPoint.Coord.Y)
       and (MoveState <> msAutomatic)) then
       FreeSegment(Point, NextLine);
@@ -1300,7 +1315,7 @@ procedure TWPoint.MoveTo(const Sender: TWControl; const Shift: TShiftState; NewC
 var
   NewPoint: TWPoint;
   NewPoint2: TWPoint;
-  OrgNewCoord: TPoint;
+  OrgNewCoord: TCoord;
   TempOrientation: TWLineOrientation;
 begin
   if (NewCoord <> Coord) then
@@ -1350,22 +1365,22 @@ begin
     end
 
     // build new point while creating a Foreign Key / or while inserting new point manually
-    else if ((Sender = Self) and (Self is TWForeignKeyPoint) and (Workbench.State <> wsLoading)
+    else if ((Sender = Self) and (Self is TWLinkPoint) and (Workbench.State <> wsLoading)
       and ((MoveState = msFixed)
       or (MoveState = msNormal) and (ssShift in Shift)
       or (MoveState = msAutomatic) and (Sender = Self) and (ControlAlign(LineA) in [alLeft, alRight]) and ((ControlAlign(LineA) in [alLeft, alTop]) and (NewCoord.X <> Coord.X) or (ControlAlign(LineA) in [alTop, alBottom]) and (NewCoord.X <> Coord.X)))) then
     begin
       if (Abs(NewCoord.X - Coord.X) >= Abs(NewCoord.Y - Coord.Y)) then
-        NewPoint := CreateSegment(Self, Point(NewCoord.X, Coord.Y), Self, Assigned(TWForeignKeyPoint(Self).ForeignKey.ParentTable) and Assigned(LineA) and not Assigned(LineB))
+        NewPoint := CreateSegment(Self, Point(NewCoord.X, Coord.Y), Self, Assigned(TWLinkPoint(Self).Link.ParentTable) and Assigned(LineA) and not Assigned(LineB))
       else
-        NewPoint := CreateSegment(Self, Point(Coord.X, NewCoord.Y), Self, Assigned(TWForeignKeyPoint(Self).ForeignKey.ParentTable) and Assigned(LineA) and not Assigned(LineB));
+        NewPoint := CreateSegment(Self, Point(Coord.X, NewCoord.Y), Self, Assigned(TWLinkPoint(Self).Link.ParentTable) and Assigned(LineA) and not Assigned(LineB));
       NewPoint.MouseDown(mbLeft, [], (PointSize - 1) div 2, (PointSize - 1) div 2);
       NewPoint.MoveState := msAutomatic;
 
-      if ((not Assigned(TWForeignKeyPoint(Self).ForeignKey.ParentTable) or Assigned(LineB))
+      if ((not Assigned(TWLinkPoint(Self).Link.ParentTable) or Assigned(LineB))
         and ((NewCoord.X <> NewPoint.Coord.X) or (NewCoord.Y <> NewPoint.Coord.Y))) then
       begin
-        NewPoint2 := CreateSegment(Self, NewCoord, NewPoint, Assigned(TWForeignKeyPoint(Self).ForeignKey.ParentTable) and Assigned(LineA) and not Assigned(LineB));
+        NewPoint2 := CreateSegment(Self, NewCoord, NewPoint, Assigned(TWLinkPoint(Self).Link.ParentTable) and Assigned(LineA) and not Assigned(LineB));
         NewPoint2.MouseDown(mbLeft, [], (PointSize - 1) div 2, (PointSize - 1) div 2);
         NewCoord := Coord;
       end
@@ -1388,10 +1403,10 @@ begin
     end
 
     else if (Assigned(LineA) and (Sender <> LineA.PointA) and (Assigned(Sender) or not LineA.PointA.Selected)) then
-      MovePointTo(TWForeignKeyPoint(LineA.PointA));
+      MovePointTo(TWLinkPoint(LineA.PointA));
 
     if (Assigned(LineB) and (Sender <> LineB.PointB) and (Assigned(Sender) or not LineB.PointB.Selected)) then
-      MovePointTo(TWForeignKeyPoint(LineB.PointB));
+      MovePointTo(TWLinkPoint(LineB.PointB));
 
     if (Assigned(NewPoint) and (NewPoint.MoveState = msFixed)) then
       NewPoint.MoveState := msNormal;
@@ -1446,7 +1461,7 @@ begin
 
   if (Selected) then
     Canvas.Pen.Color := clHighlightText
-  else if ((Self is TWForeignKeyPoint) and Assigned(TWForeignKeyPoint(Self).ForeignKey) and TWForeignKeyPoint(Self).ForeignKey.IsLine) then
+  else if ((Self is TWLinkPoint) and Assigned(TWLinkPoint(Self).Link) and not (TWLinkPoint(Self).Link is TWForeignKey)) then
     Canvas.Pen.Color := clGrayText
   else
     Canvas.Pen.Color := clWindowText;
@@ -1468,7 +1483,7 @@ begin
   if (Assigned(LineA)) then
   begin
     LineA.PointB := Self;
-    if ((Workbench.SelCount = 1) or (Self is TWForeignKeyPoint) and TWForeignKeyPoint(Self).ForeignKey.ForeignKeySelected and (Workbench.SelCount = TWForeignKeyPoint(Self).ForeignKey.PointCount * 2 - 1)) then
+    if ((Workbench.SelCount = 1) or (Self is TWLinkPoint) and TWLinkPoint(Self).Link.LinkSelected and (Workbench.SelCount = TWLinkPoint(Self).Link.PointCount * 2 - 1)) then
       Selected := LineA.PointA.Selected;
     Workbench.UpdateControl(LineA);
   end;
@@ -1520,7 +1535,7 @@ end;
 
 constructor TWLine.Create(const AWorkbench: TWWorkbench; const APointA, APointB: TWPoint);
 begin
-  inherited Create(AWorkbench);
+  inherited Create(AWorkbench, APointA.Coord);
   Parent := AWorkbench;
 
   FWorkbench := AWorkbench;
@@ -1570,11 +1585,11 @@ end;
 
 procedure TWLine.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  NewCoord: TPoint;
+  NewCoord: TCoord;
   NewPoint: TWPoint;
-  PointANewCoord: TPoint;
+  PointANewCoord: TCoord;
 begin
-  if (Workbench.State in [wsInsertForeignKey, wsInsertSection]) then
+  if (Workbench.State in [wsCreateLink, wsCreateForeignKey, wsCreateSection]) then
     Cursor := crNo
   else if (Orientation = foHorizontal) then
     Cursor := crSizeNS
@@ -1593,7 +1608,7 @@ begin
     
   if (not (ssLeft in Shift)) then
     inherited
-  else if ((ssShift in Shift) and (Self is TWForeignKeyLine) and (PointA is TWForeignKeyPoint)) then
+  else if ((ssShift in Shift) and (Self is TWLinkLine) and (PointA is TWLinkPoint)) then
   begin
     if ((Orientation = foHorizontal) and (PointANewCoord.Y <> PointA.Coord.Y)
       or (Orientation = foVertical) and (PointANewCoord.X <> PointA.Coord.X)) then
@@ -1602,7 +1617,7 @@ begin
 
       NewCoord := Point(Left + X, Top + Y);
 
-      TWForeignKeyPoint(PointA).MoveState := msFixed;
+      TWLinkPoint(PointA).MoveState := msFixed;
       if (Orientation = foHorizontal) then
         NewPoint := CreateSegment(Self, Point(NewCoord.X, PointA.Coord.Y), PointA, False)
       else
@@ -1612,7 +1627,7 @@ begin
       NewPoint.MouseDown(mbLeft, [], (PointSize - 1) div 2, (PointSize - 1) div 2);
     end;
   end
-  else if ((Self is TWForeignKeyLine) and (Workbench.SelCount <> TWForeignKeyLine(Self).ForeignKey.PointCount * 2 - 1) and (Workbench.ForeignKeys.SelCount <> 1)) then
+  else if ((Self is TWLinkLine) and (Workbench.SelCount <> TWLinkLine(Self).Link.PointCount * 2 - 1) and (Workbench.Links.SelCount <> 1)) then
     PointA.Move(Self, Shift, PointANewCoord)
   else
     case (Orientation) of
@@ -1637,7 +1652,7 @@ begin
     OffsetRect(Rect, X, Y);
     Canvas.FillRect(Rect);
   end
-  else if ((Self is TWForeignKeyLine) and TWForeignKeyLine(Self).ForeignKey.IsLine) then
+  else if ((Self is TWLinkLine) and not (TWLinkLine(Self).Link is TWForeignKey)) then
     Canvas.Pen.Color := clGrayText
   else
     Canvas.Pen.Color := clWindowText;
@@ -1730,13 +1745,13 @@ begin
   end;
 end;
 
-constructor TWTable.Create(const ATables: TWTables; const ABaseTable: TCBaseTable);
+constructor TWTable.Create(const ATables: TWTables; const ACoord: TCoord; const ABaseTable: TCBaseTable = nil);
 begin
-  inherited Create(ATables.Workbench);
+  inherited Create(ATables.Workbench, ACoord);
 
   FBaseTable := ABaseTable;
 
-  SetLength(FForeignKeyPoints, 0);
+  SetLength(FLinkPoints, 0);
 
   Canvas.Font := Font;
   Canvas.Font.Color := Font.Color;
@@ -1744,8 +1759,8 @@ end;
 
 destructor TWTable.Destroy();
 begin
-  while (Length(FForeignKeyPoints) > 0) do
-    Workbench.ForeignKeys.Delete(Workbench.ForeignKeys.IndexOf(FForeignKeyPoints[0].ForeignKey));
+  while (Length(FLinkPoints) > 0) do
+    Workbench.Links.Delete(Workbench.Links.IndexOf(FLinkPoints[0].Link));
 
   inherited;
 end;
@@ -1755,14 +1770,14 @@ begin
   Result := BaseTable.Name;
 end;
 
-function TWTable.GetForeignKeyPoint(AIndex: Integer): TWForeignKeyPoint;
+function TWTable.GetLinkPoint(AIndex: Integer): TWLinkPoint;
 begin
-  Result := FForeignKeyPoints[AIndex];
+  Result := FLinkPoints[AIndex];
 end;
 
-function TWTable.GetForeignKeyPointCount(): Integer;
+function TWTable.GetLinkPointCount(): Integer;
 begin
-  Result := Length(FForeignKeyPoints);
+  Result := Length(FLinkPoints);
 end;
 
 function TWTable.GetIndex(): Integer;
@@ -1786,15 +1801,18 @@ end;
 
 procedure TWTable.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  ForeignKey: TWForeignKey;
+  Link: TWLink;
 begin
-  if (Workbench.State = wsInsertForeignKey) then
+  if (Workbench.State in [wsCreateLink, wsCreateForeignKey]) then
   begin
-    ForeignKey := TWForeignKey.Create(Workbench, Point(Workbench.HorzScrollBar.Position + Left + X, Workbench.VertScrollBar.Position + Top + Y));
-    ForeignKey.TableA := Self;
-    ForeignKey.MoveState := msFixed;
-    ForeignKey.MouseDown(Button, Shift, Workbench.HorzScrollBar.Position + Left + X - ForeignKey.Left, Workbench.VertScrollBar.Position + Top + Y - ForeignKey.Top);
-    Workbench.ForeignKeys.Add(ForeignKey);
+    if (Workbench.State = wsCreateLink) then
+      Link := TWLink.Create(Workbench, Point(Workbench.HorzScrollBar.Position + Left + X, Workbench.VertScrollBar.Position + Top + Y))
+    else
+      Link := TWForeignKey.Create(Workbench, Point(Workbench.HorzScrollBar.Position + Left + X, Workbench.VertScrollBar.Position + Top + Y));
+    Link.TableA := Self;
+    Link.MoveState := msFixed;
+    Link.MouseDown(Button, Shift, Workbench.HorzScrollBar.Position + Left + X - Link.Left, Workbench.VertScrollBar.Position + Top + Y - Link.Top);
+    Workbench.Links.Add(Link);
 
     Workbench.State := wsNormal;
   end
@@ -1804,9 +1822,9 @@ end;
 
 procedure TWTable.MouseMove(Shift: TShiftState; X, Y: Integer);
 begin
-  if (Workbench.State = wsInsertForeignKey) then
+  if (Workbench.State in [wsCreateLink, wsCreateForeignKey]) then
     Cursor := crCross
-  else if (Workbench.State = wsInsertSection) then
+  else if (Workbench.State = wsCreateSection) then
     Cursor := crNo
   else
     Cursor := crDefault;
@@ -1814,29 +1832,29 @@ begin
   inherited;
 end;
 
-procedure TWTable.MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TPoint);
+procedure TWTable.MoveTo(const Sender: TWControl; const Shift: TShiftState; NewCoord: TCoord);
 var
   I: Integer;
 begin
-  for I := 0 to Length(FForeignKeyPoints) - 1 do
-    if (not FForeignKeyPoints[I].Selected) then
-      FForeignKeyPoints[I].MoveTo(Self, Shift, Point(FForeignKeyPoints[I].Coord.X + NewCoord.X - Coord.X, FForeignKeyPoints[I].Coord.Y + NewCoord.Y - Coord.Y));
+  for I := 0 to Length(FLinkPoints) - 1 do
+    if (not FLinkPoints[I].Selected) then
+      FLinkPoints[I].MoveTo(Self, Shift, Point(FLinkPoints[I].Coord.X + NewCoord.X - Coord.X, FLinkPoints[I].Coord.Y + NewCoord.Y - Coord.Y));
 
   inherited;
 end;
 
-procedure TWTable.Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TPoint);
+procedure TWTable.Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TCoord);
 var
   I: Integer;
-  TempCoord: TPoint;
+  TempCoord: TCoord;
 begin
   inherited;
 
-  for I := 0 to Length(FForeignKeyPoints) - 1 do
+  for I := 0 to Length(FLinkPoints) - 1 do
   begin
-    TempCoord := Point(FForeignKeyPoints[I].Coord.X + (NewCoord.X - Coord.X), FForeignKeyPoints[I].Coord.Y + (NewCoord.Y - Coord.Y));
-    FForeignKeyPoints[I].Moving(Self, Shift, TempCoord);
-    NewCoord := Point(Coord.X + TempCoord.X - FForeignKeyPoints[I].Coord.X, Coord.Y + TempCoord.Y - FForeignKeyPoints[I].Coord.Y);
+    TempCoord := Point(FLinkPoints[I].Coord.X + (NewCoord.X - Coord.X), FLinkPoints[I].Coord.Y + (NewCoord.Y - Coord.Y));
+    FLinkPoints[I].Moving(Self, Shift, TempCoord);
+    NewCoord := Point(Coord.X + TempCoord.X - FLinkPoints[I].Coord.X, Coord.Y + TempCoord.Y - FLinkPoints[I].Coord.Y);
   end;
 end;
 
@@ -1936,38 +1954,38 @@ begin
   end;
 end;
 
-procedure TWTable.RegisterForeignKeyPoint(const AForeignKeyPoint: TWForeignKeyPoint);
+procedure TWTable.RegisterLinkPoint(const ALinkPoint: TWLinkPoint);
 var
   Found: Boolean;
   I: Integer;
 begin
   Found := False;
-  for I := 0 to Length(FForeignKeyPoints) - 1 do
-    Found := Found or (FForeignKeyPoints[I] = AForeignKeyPoint);
+  for I := 0 to Length(FLinkPoints) - 1 do
+    Found := Found or (FLinkPoints[I] = ALinkPoint);
 
   if (not Found) then
   begin
-    SetLength(FForeignKeyPoints, Length(FForeignKeyPoints) + 1);
-    FForeignKeyPoints[Length(FForeignKeyPoints) - 1] := AForeignKeyPoint;
+    SetLength(FLinkPoints, Length(FLinkPoints) + 1);
+    FLinkPoints[Length(FLinkPoints) - 1] := ALinkPoint;
   end;
 end;
 
-procedure TWTable.ReleaseForeignKeyPoint(const AForeignKeyPoint: TWForeignKeyPoint);
+procedure TWTable.ReleaseLinkPoint(const ALinkPoint: TWLinkPoint);
 var
   I: Integer;
   Index: Integer;
 begin
   Index := -1;
-  for I := 0 to Length(FForeignKeyPoints) - 1 do
-    if (FForeignKeyPoints[I] = AForeignKeyPoint) then
+  for I := 0 to Length(FLinkPoints) - 1 do
+    if (FLinkPoints[I] = ALinkPoint) then
       Index := I;
 
   if (Index >= 0) then
   begin
-    for I := Index to Length(FForeignKeyPoints) - 2 do
-      FForeignKeyPoints[I] := FForeignKeyPoints[I + 1];
+    for I := Index to Length(FLinkPoints) - 2 do
+      FLinkPoints[I] := FLinkPoints[I + 1];
 
-    SetLength(FForeignKeyPoints, Length(FForeignKeyPoints) - 1);
+    SetLength(FLinkPoints, Length(FLinkPoints) - 1);
   end;
 end;
 
@@ -2021,9 +2039,9 @@ begin
   end;
 end;
 
-{ TWForeignKeyPoint ***********************************************************}
+{ TWLinkPoint ***********************************************************}
 
-procedure TWForeignKeyPoint.ApplyCoord();
+procedure TWLinkPoint.ApplyCoord();
 var
   TempBottom: Integer;
   TempLeft: Integer;
@@ -2089,17 +2107,17 @@ begin
   );
 end;
 
-constructor TWForeignKeyPoint.Create(const AWorkbench: TWWorkbench; const ACoord: TPoint; const PreviousPoint: TWPoint = nil);
+constructor TWLinkPoint.Create(const AWorkbench: TWWorkbench; const ACoord: TCoord; const PreviousPoint: TWPoint = nil);
 begin
   inherited Create(AWorkbench, ACoord);
 
-  if (PreviousPoint is TWForeignKeyPoint) then
-    LineA := TWForeignKeyLine.Create(Workbench, TWForeignKeyPoint(PreviousPoint), Self);
+  if (PreviousPoint is TWLinkPoint) then
+    LineA := TWLinkLine.Create(Workbench, TWLinkPoint(PreviousPoint), Self);
 
   Workbench.UpdateControl(Self);
 end;
 
-destructor TWForeignKeyPoint.Destroy();
+destructor TWLinkPoint.Destroy();
 begin
   TableA := nil;
   TableB := nil;
@@ -2107,34 +2125,34 @@ begin
   inherited;
 end;
 
-function TWForeignKeyPoint.GetForeignKey(): TWForeignKey;
+function TWLinkPoint.GetLink(): TWLink;
 var
-  Point: TWForeignKeyPoint;
+  Point: TWLinkPoint;
 begin
   Point := Self;
-  while (Assigned(Point.LineA) and (Point.LineA.PointA is TWForeignKeyPoint)) do
-    Point := TWForeignKeyPoint(Point.LineA.PointA);
+  while (Assigned(Point.LineA) and (Point.LineA.PointA is TWLinkPoint)) do
+    Point := TWLinkPoint(Point.LineA.PointA);
 
   if (not Assigned(Point)) then
     raise Exception.Create('Point is not assigned')
-  else if (not (Point is TWForeignKey)) then
-    raise Exception.Create('Point is not TWForeignKey')
+  else if (not (Point is TWLink)) then
+    raise Exception.Create('Point is not TWLink')
   else
-    Result := TWForeignKey(Point);
+    Result := TWLink(Point);
 end;
 
-function TWForeignKeyPoint.GetIndex(): Integer;
+function TWLinkPoint.GetIndex(): Integer;
 var
   I: Integer;
 begin
   Result := -1;
 
-  for I := 0 to ForeignKey.PointCount - 1 do
-    if (Self = ForeignKey.Points[I]) then
+  for I := 0 to Link.PointCount - 1 do
+    if (Self = Link.Points[I]) then
       Result := I;
 end;
 
-function TWForeignKeyPoint.GetTableA(): TWTable;
+function TWLinkPoint.GetTableA(): TWTable;
 begin
   if (not (ControlA is TWTable)) then
     Result := nil
@@ -2142,7 +2160,7 @@ begin
     Result := TWTable(ControlA);
 end;
 
-function TWForeignKeyPoint.GetTableB(): TWTable;
+function TWLinkPoint.GetTableB(): TWTable;
 begin
   if (not (ControlB is TWTable)) then
     Result := nil
@@ -2150,9 +2168,9 @@ begin
     Result := TWTable(ControlB);
 end;
 
-procedure TWForeignKeyPoint.Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TPoint);
+procedure TWLinkPoint.Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TCoord);
 
-  procedure MovingConnector(const Sender: TWControl; const Shift: TShiftState; const Table: TWTable; var NewCoord: TPoint);
+  procedure MovingConnector(const Sender: TWControl; const Shift: TShiftState; const Table: TWTable; var NewCoord: TCoord);
   var
     TempAlign: TAlign;
   begin
@@ -2194,7 +2212,7 @@ procedure TWForeignKeyPoint.Moving(const Sender: TWControl; const Shift: TShiftS
 begin
   inherited;
 
-  if ((Sender <> Self) and Assigned(LineA) and Assigned(LineB) and Assigned(ForeignKey.ParentTable)) then
+  if ((Sender <> Self) and Assigned(LineA) and Assigned(LineB) and Assigned(Link.ParentTable)) then
     if ((ControlAlign(LineA) <> alNone) and (ControlAlign(LineA) = ControlAlign(LineB))) then
       NewCoord := Coord
     else if ((ControlAlign(LineA) = alLeft) and (ControlAlign(LineB) = alRight)
@@ -2210,35 +2228,35 @@ begin
     MovingConnector(Sender, Shift, TableB, NewCoord);
 end;
 
-procedure TWForeignKeyPoint.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TWLinkPoint.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
-  if (not Assigned(ForeignKey.ParentTable) and (ForeignKey.PointCount > 1)) then
+  if (not Assigned(Link.ParentTable) and (Link.PointCount > 1)) then
     TableB := Workbench.TableAtCoord(Point(Coord.X, Coord.Y));
 
   inherited;
 
-  if (not Assigned(ForeignKey.ParentTable)) then
+  if (not Assigned(Link.ParentTable)) then
   begin
     MouseDown(Button, Shift, X, Y);
     MoveState := msFixed;
-    if ((ForeignKey.PointCount = 2) and not Assigned(ForeignKey.ParentTable) and Assigned(LineA)
-      and (Workbench.TableAtCoord(Coord) = ForeignKey.ChildTable)) then
+    if ((Link.PointCount = 2) and not Assigned(Link.ParentTable) and Assigned(LineA)
+      and (Workbench.TableAtCoord(Coord) = Link.ChildTable)) then
     begin
       LineA.PointA.MoveState := msFixed;
       MoveState := msAutomatic;
     end;
   end
-  else if (ForeignKey.Caption = '') then
+  else if (Link.Caption = '') then
   begin
-    Workbench.ValidateControl(Workbench, ForeignKey);
+    Workbench.OnValidateControl(Workbench, Link);
   end;
 end;
 
-procedure TWForeignKeyPoint.PaintTo(const Canvas: TCanvas; const X, Y: Integer);
+procedure TWLinkPoint.PaintTo(const Canvas: TCanvas; const X, Y: Integer);
 begin
   inherited;
 
-  if (Assigned(TableA) and ((MoveState <> msFixed) or Assigned(ForeignKey.ParentTable))) then
+  if (Assigned(TableA) and ((MoveState <> msFixed) or Assigned(Link.ParentTable))) then
     case (ControlAlign(TableA)) of
       alLeft:
         begin
@@ -2295,31 +2313,31 @@ begin
     end;
 end;
 
-procedure TWForeignKeyPoint.SetTableA(ATableA: TWTable);
+procedure TWLinkPoint.SetTableA(ATableA: TWTable);
 begin
   if (ControlA is TWTable) then
-    TWTable(ControlA).ReleaseForeignKeyPoint(Self);
+    TWTable(ControlA).ReleaseLinkPoint(Self);
 
   ControlA := ATableA;
 
   if (Assigned(TableA)) then
-    TableA.RegisterForeignKeyPoint(Self);
+    TableA.RegisterLinkPoint(Self);
 end;
 
-procedure TWForeignKeyPoint.SetTableB(ATableB: TWTable);
+procedure TWLinkPoint.SetTableB(ATableB: TWTable);
 begin
   if (Assigned(TableB)) then
-    TableB.ReleaseForeignKeyPoint(Self);
+    TableB.ReleaseLinkPoint(Self);
 
   ControlB := ATableB;
 
   if (Assigned(TableB)) then
-    TableB.RegisterForeignKeyPoint(Self);
+    TableB.RegisterLinkPoint(Self);
 end;
 
-{ TWForeignKeyLine ************************************************************}
+{ TWLinkLine ************************************************************}
 
-procedure TWForeignKeyLine.ApplyCoord();
+procedure TWLinkLine.ApplyCoord();
 begin
   if (Assigned(Workbench) and Assigned(PointA) and Assigned(PointB)) then
     case (Orientation) of
@@ -2340,19 +2358,19 @@ begin
     end;
 end;
 
-function TWForeignKeyLine.GetForeignKey(): TWForeignKey;
+function TWLinkLine.GetLink(): TWLink;
 begin
-  if (not (PointA is TWForeignKeyPoint)) then
+  if (not (PointA is TWLinkPoint)) then
     raise Exception.Create('No PointA')
   else
-    Result := TWForeignKeyPoint(PointA).ForeignKey;
+    Result := TWLinkPoint(PointA).Link;
 end;
 
-{ TWForeignKey ****************************************************************}
+{ TWLink ****************************************************************}
 
-procedure TWForeignKey.Cleanup(const Sender: TWControl);
+procedure TWLink.Cleanup(const Sender: TWControl);
 
-  function PointAlign(const TestCoord: TPoint; Area: TRect): TAlign;
+  function PointAlign(const TestCoord: TCoord; Area: TRect): TAlign;
   begin
     if (TestCoord.X < Area.Left) then
       Result := alLeft
@@ -2366,11 +2384,11 @@ procedure TWForeignKey.Cleanup(const Sender: TWControl);
       Result := alNone;
   end;
 
-  procedure FixPointAlign(const Point: TWForeignKeyPoint; const Table: TWTable);
+  procedure FixPointAlign(const Point: TWLinkPoint; const Table: TWTable);
   var
     Line: TWLine;
     LinePoint: TWPoint;
-    NewCoord: TPoint;
+    NewCoord: TCoord;
   begin
     if (Table = Point.TableA) then
     begin
@@ -2398,8 +2416,8 @@ procedure TWForeignKey.Cleanup(const Sender: TWControl);
 
 var
   I: Integer;
-  NextPoint: TWForeignKeyPoint;
-  Point: TWForeignKeyPoint;
+  NextPoint: TWLinkPoint;
+  Point: TWLinkPoint;
   TempTable: TWTable;
 begin
   for I := 0 to PointCount - 1 do
@@ -2409,10 +2427,10 @@ begin
     Points[I].MouseDownPoint := Types.Point(-1, -1);
   end;
 
-  Point := TWForeignKeyPoint(LastPoint);
+  Point := TWLinkPoint(LastPoint);
   while (Assigned(Point) and (Point <> Self)) do
   begin
-    NextPoint := TWForeignKeyPoint(Point.LineA.PointA);
+    NextPoint := TWLinkPoint(Point.LineA.PointA);
 
     if ((Workbench.TableAtCoord(NextPoint.Coord) = ParentTable)
       and (Assigned(ParentTable) and (ParentTable <> ChildTable))) then
@@ -2428,16 +2446,16 @@ begin
         FreeSegment(Point.LineA.PointA, Point.LineA);
     end;
 
-    if (not Assigned(Point.LineA) or not (Point.LineA.PointA is TWForeignKeyPoint)) then
+    if (not Assigned(Point.LineA) or not (Point.LineA.PointA is TWLinkPoint)) then
       Point := nil
     else
-      Point := TWForeignKeyPoint(Point.LineA.PointA);
+      Point := TWLinkPoint(Point.LineA.PointA);
   end;
 
   Point := Self;
   while (Assigned(Point) and (Point <> LastPoint)) do
   begin
-    NextPoint := TWForeignKeyPoint(Point.LineB.PointB);
+    NextPoint := TWLinkPoint(Point.LineB.PointB);
 
     if ((Workbench.TableAtCoord(NextPoint.Coord) = ChildTable)
       and (Assigned(ParentTable) and (ParentTable <> ChildTable) or (Point.Index > 2))) then
@@ -2455,17 +2473,17 @@ begin
         FreeSegment(Point.LineB.PointB, Point.LineB);
     end;
 
-    if (not Assigned(Point.LineB) or not (Point.LineB.PointB is TWForeignKeyPoint)) then
+    if (not Assigned(Point.LineB) or not (Point.LineB.PointB is TWLinkPoint)) then
       Point := nil
     else
-      Point := TWForeignKeyPoint(Point.LineB.PointB);
+      Point := TWLinkPoint(Point.LineB.PointB);
   end;
 
   Point := Self;
   repeat
-    if (Assigned(Point.LineB) and (Point.LineB.PointB is TWForeignKeyPoint)) then
+    if (Assigned(Point.LineB) and (Point.LineB.PointB is TWLinkPoint)) then
     begin
-      NextPoint := TWForeignKeyPoint(Point.LineB.PointB);
+      NextPoint := TWLinkPoint(Point.LineB.PointB);
 
       if ((NextPoint.ControlAlign(NextPoint.LineA) = InvertAlign(NextPoint.ControlAlign(NextPoint.LineB)))
         or (NextPoint.Coord.X = Point.Coord.X) and (NextPoint.Coord.Y = Point.Coord.Y)
@@ -2484,16 +2502,16 @@ begin
       end;
     end;
 
-    if (not Assigned(Point.LineB) or not (Point.LineB.PointB is TWForeignKeyPoint)) then
+    if (not Assigned(Point.LineB) or not (Point.LineB.PointB is TWLinkPoint)) then
       Point := nil
     else
-      Point := TWForeignKeyPoint(Point.LineB.PointB);
+      Point := TWLinkPoint(Point.LineB.PointB);
   until (not Assigned(Point));
 
   if (Assigned(Self.TableA) and Assigned(Self.LineB)) then
     FixPointAlign(Self, Self.TableA);
-  if ((LastPoint is TWForeignKeyPoint) and Assigned(TWForeignKeyPoint(LastPoint).TableB) and Assigned(LastPoint.LineA)) then
-    FixPointAlign(TWForeignKeyPoint(LastPoint), TWForeignKeyPoint(LastPoint).TableB);
+  if ((LastPoint is TWLinkPoint) and Assigned(TWLinkPoint(LastPoint).TableB) and Assigned(LastPoint.LineA)) then
+    FixPointAlign(TWLinkPoint(LastPoint), TWLinkPoint(LastPoint).TableB);
 
   for I := 1 to PointCount - 1 do
   begin
@@ -2507,19 +2525,18 @@ begin
     Points[I].Hint := Caption;
   end;
 
-  if ((LastPoint is TWForeignKeyPoint) and not Assigned(TWForeignKeyPoint(LastPoint).ForeignKey)) then
-    raise Exception.Create('Unknown ForeignKey');
+  if ((LastPoint is TWLinkPoint) and not Assigned(TWLinkPoint(LastPoint).Link)) then
+    raise Exception.Create('Unknown Link');
 end;
 
-constructor TWForeignKey.Create(const AWorkbench: TWWorkbench; const ACoord: TPoint; const PreviousPoint: TWPoint = nil);
+constructor TWLink.Create(const AWorkbench: TWWorkbench; const ACoord: TCoord; const PreviousPoint: TWPoint = nil);
 begin
   inherited;
 
   FCaption := '';
-  FBaseForeignKey := nil;
 end;
 
-destructor TWForeignKey.Destroy();
+destructor TWLink.Destroy();
 var
   Point: TWPoint;
 begin
@@ -2533,15 +2550,12 @@ begin
   inherited;
 end;
 
-function TWForeignKey.GetCaption(): TCaption;
+function TWLink.GetCaption(): TCaption;
 begin
-  if (not Assigned(BaseForeignKey)) then
-    Result := FCaption
-  else
-    Result := BaseForeignKey.Name;
+  Result := FCaption;
 end;
 
-function TWForeignKey.GetForeignKeySelected(): Boolean;
+function TWLink.GetLinkSelected(): Boolean;
 var
   I: Integer;
 begin
@@ -2551,25 +2565,20 @@ begin
     Result := Result and Points[I].LineA.Selected and Points[I].Selected;
 end;
 
-function TWForeignKey.GetIsLine(): Boolean;
-begin
-  Result := Copy(Caption, 1, 7) = '__Line_';
-end;
-
-function TWForeignKey.GetPoint(Index: Integer): TWForeignKeyPoint;
+function TWLink.GetPoint(Index: Integer): TWLinkPoint;
 var
   I: Integer;
 begin
   Result := Self;
   for I := 0 to Index - 1 do
     if (Assigned(Result)) then
-      if (not Assigned(Result.LineB) or not (Result.LineB.PointB is TWForeignKeyPoint)) then
+      if (not Assigned(Result.LineB) or not (Result.LineB.PointB is TWLinkPoint)) then
         Result := nil
       else
-        Result := TWForeignKeyPoint(Result.LineB.PointB);
+        Result := TWLinkPoint(Result.LineB.PointB);
 end;
 
-function TWForeignKey.GetPointCount(): Integer;
+function TWLink.GetPointCount(): Integer;
 var
   Point: TWPoint;
 begin
@@ -2584,20 +2593,20 @@ begin
   end;
 end;
 
-function TWForeignKey.GetTable(Index: Integer): TWTable;
+function TWLink.GetTable(Index: Integer): TWTable;
 begin
   case (Index) of
     0: Result := TableA;
     1:
-      if (LastPoint is TWForeignKeyPoint) then
-        Result := TWForeignKeyPoint(LastPoint).TableB
+      if (LastPoint is TWLinkPoint) then
+        Result := TWLinkPoint(LastPoint).TableB
       else
         Result := nil;
     else raise ERangeError.CreateFmt(SPropertyOutOfRange, ['Index']);
   end;
 end;
 
-procedure TWForeignKey.LoadFromXML(const XML: IXMLNode);
+procedure TWLink.LoadFromXML(const XML: IXMLNode);
 
   function ConnectorCoord(const Table: TWTable; const Align: TAlign; const Position: Integer): TPoint;
   begin
@@ -2633,7 +2642,7 @@ var
   I: Integer;
   Index: Integer;
   J: Integer;
-  Point: TWForeignKeyPoint;
+  Point: TWLinkPoint;
   PointsNode: IXMLNode;
   Position: Integer;
   Table: TWTable;
@@ -2663,13 +2672,13 @@ begin
           for J := 0 to PointsNode.ChildNodes.Count - 1 do
             if ((PointsNode.ChildNodes[J].NodeName = 'point') and (TryStrToInt(PointsNode.ChildNodes[J].Attributes['index'], Index) and (Index = I))) then
             begin
-              Point := TWForeignKeyPoint.Create(Workbench, Types.Point(-1, -1), LastPoint);
+              Point := TWLinkPoint.Create(Workbench, Types.Point(-1, -1), LastPoint);
               Point.LoadFromXML(PointsNode.ChildNodes[J]);
             end;
           Inc(I);
         until (PointCount < I);
 
-      Point := TWForeignKeyPoint.Create(Workbench, Types.Point(-1, -1), LastPoint);
+      Point := TWLinkPoint.Create(Workbench, Types.Point(-1, -1), LastPoint);
       Point.TableB := Table;
       if (Assigned(XMLNode(XML, 'tables/parent/align'))
         and TryStrToAlign(XMLNode(XML, 'tables/parent/align').Text, Align)
@@ -2680,14 +2689,14 @@ begin
       Cleanup(Self);
     end;
 
-    if (Assigned(ChildTable)) then
-      BaseForeignKey := ChildTable.BaseTable.ForeignKeyByName(Caption);
+    if (Assigned(ChildTable) and (Self is TWForeignKey)) then
+      TWForeignKey(Self).BaseForeignKey := ChildTable.BaseTable.ForeignKeyByName(Caption);
   end;
 
   Workbench.State := wsNormal;
 end;
 
-procedure TWForeignKey.SaveToXML(const XML: IXMLNode);
+procedure TWLink.SaveToXML(const XML: IXMLNode);
 var
   I: Integer;
   Index: Integer;
@@ -2705,12 +2714,12 @@ begin
   end;
 
   XMLNode(XML, 'tables/parent').Attributes['name'] := ParentTable.Caption;
-  XMLNode(XML, 'tables/parent/align').Text := AlignToStr(InvertAlign(LastPoint.ControlAlign(TWForeignKeyPoint(LastPoint).TableB)));
-  case (InvertAlign(LastPoint.ControlAlign(TWForeignKeyPoint(LastPoint).TableB))) of
+  XMLNode(XML, 'tables/parent/align').Text := AlignToStr(InvertAlign(LastPoint.ControlAlign(TWLinkPoint(LastPoint).TableB)));
+  case (InvertAlign(LastPoint.ControlAlign(TWLinkPoint(LastPoint).TableB))) of
     alLeft, alRight:
-      XMLNode(XML, 'tables/parent/position').Text := IntToStr(LastPoint.Coord.Y - TWForeignKeyPoint(LastPoint).TableB.Coord.Y);
+      XMLNode(XML, 'tables/parent/position').Text := IntToStr(LastPoint.Coord.Y - TWLinkPoint(LastPoint).TableB.Coord.Y);
     alTop, alBottom:
-      XMLNode(XML, 'tables/parent/position').Text := IntToStr(LastPoint.Coord.X - TWForeignKeyPoint(LastPoint).TableB.Coord.X);
+      XMLNode(XML, 'tables/parent/position').Text := IntToStr(LastPoint.Coord.X - TWLinkPoint(LastPoint).TableB.Coord.X);
   end;
 
   PointsNode := XMLNode(XML, 'points');
@@ -2735,28 +2744,27 @@ begin
   end;
 end;
 
-procedure TWForeignKey.SetCaption(const ACaption: TCaption);
+procedure TWLink.SetCaption(const ACaption: TCaption);
 begin
   FCaption := ACaption;
 
-  if (not Assigned(BaseForeignKey)) then
-    Workbench.FModified := True;
+  Workbench.FModified := True;
 end;
 
-procedure TWForeignKey.SetForeignKeySelected(AForeignKeySelected: Boolean);
+procedure TWLink.SetLinkSelected(const ALinkSelected: Boolean);
 var
   I: Integer;
 begin
   Workbench.BeginUpdate();
 
-  Selected := AForeignKeySelected;
+  Selected := ALinkSelected;
   for I := 1 to PointCount - 1 do
-    Points[I].Selected := AForeignKeySelected;
+    Points[I].Selected := ALinkSelected;
 
   Workbench.EndUpdate();
 end;
 
-procedure TWForeignKey.SetTable(Index: Integer; ATable: TWTable);
+procedure TWLink.SetTable(Index: Integer; ATable: TWTable);
 begin
   Workbench.State := wsAutoCreate;
 
@@ -2769,7 +2777,7 @@ begin
       end;
     1:
       begin
-        if (Assigned(ATable) and (LastPoint is TWForeignKeyPoint)) then
+        if (Assigned(ATable) and (LastPoint is TWLinkPoint)) then
         begin
           if (ChildTable = ATable) then
           begin
@@ -2786,7 +2794,7 @@ begin
             LastPoint.MoveState := msFixed;
             LastPoint.MoveTo(Self, [], Point(ATable.Coord.X + (ATable.Area.Right - ATable.Area.Left) div 2, ATable.Coord.Y + (ATable.Area.Bottom - ATable.Area.Top) div 2));
           end;
-          TWForeignKeyPoint(LastPoint).TableB := ATable;
+          TWLinkPoint(LastPoint).TableB := ATable;
         end;
       end;
     else raise ERangeError.CreateFmt(SPropertyOutOfRange, ['Index']);
@@ -2797,14 +2805,33 @@ begin
   Workbench.State := wsNormal;
 end;
 
-{ TWForeignKeys ***************************************************************}
+{ TWForeignKey ****************************************************************}
 
-function TWForeignKeys.GetForeignKey(Index: Integer): TWForeignKey;
+constructor TWForeignKey.Create(const AWorkbench: TWWorkbench; const ACoord: TCoord; const PreviousPoint: TWPoint = nil);
 begin
-  Result := TWForeignKey(Items[Index]);
+  inherited;
+
+  FBaseForeignKey := nil;
 end;
 
-function TWForeignKeys.GetSelCount(): Integer;
+function TWForeignKey.GetCaption(): TCaption;
+begin
+  Result := FCaption;
+  Result := BaseForeignKey.Name;
+end;
+
+procedure TWForeignKey.SetCaption(const ACaption: TCaption);
+begin
+end;
+
+{ TWLinks *********************************************************************}
+
+function TWLinks.GetLink(Index: Integer): TWLink;
+begin
+  Result := TWLink(Items[Index]);
+end;
+
+function TWLinks.GetSelCount(): Integer;
 var
   I: Integer;
   J: Integer;
@@ -2814,46 +2841,46 @@ begin
 
   for I := 0 to Count - 1 do
   begin
-    Selected := ForeignKey[I].Points[0].Selected;
-    for J := 1 to ForeignKey[I].PointCount - 1 do
-      Selected := Selected and ForeignKey[I].Points[J].LineA.Selected and ForeignKey[I].Points[J].Selected;
+    Selected := Link[I].Points[0].Selected;
+    for J := 1 to Link[I].PointCount - 1 do
+      Selected := Selected and Link[I].Points[J].LineA.Selected and Link[I].Points[J].Selected;
     if (Selected) then
       Inc(Result);
   end;
 end;
 
-procedure TWForeignKeys.SaveToXML(const XML: IXMLNode);
+procedure TWLinks.SaveToXML(const XML: IXMLNode);
 var
   I: Integer;
   J: Integer;
   Node: IXMLNode;
 begin
   for I := XML.ChildNodes.Count - 1 downto 0 do
-    if (XML.ChildNodes.Nodes[I].NodeName = 'foreignkey') and not Assigned(Workbench.ForeignKeyByCaption(XML.ChildNodes.Nodes[I].Attributes['name'])) then
+    if (XML.ChildNodes.Nodes[I].NodeName = 'foreignkey') and not Assigned(Workbench.LinkByCaption(XML.ChildNodes.Nodes[I].Attributes['name'])) then
       XML.ChildNodes.Delete(I);
 
   for I := 0 to Count - 1 do
   begin
     Node := nil;
     for J := 0 to XML.ChildNodes.Count - 1 do
-      if ((XML.ChildNodes.Nodes[J].NodeName = 'foreignkey') and (Workbench.ForeignKeyByCaption(XML.ChildNodes.Nodes[J].Attributes['name']) = ForeignKey[I])) then
+      if ((XML.ChildNodes.Nodes[J].NodeName = 'foreignkey') and (Workbench.LinkByCaption(XML.ChildNodes.Nodes[J].Attributes['name']) = Link[I])) then
         Node := XML.ChildNodes.Nodes[J];
     if (not Assigned(Node)) then
     begin
       Node := XML.AddChild('foreignkey');
-      if (not ForeignKey[I].IsLine) then
-        Node.Attributes['name'] := ForeignKey[I].Caption;
+      if (not (Link[I] is TWForeignKey)) then
+        Node.Attributes['name'] := Link[I].Caption;
     end;
 
-    ForeignKey[I].SaveToXML(Node);
+    Link[I].SaveToXML(Node);
   end;
 end;
 
 { TWSection *******************************************************************}
 
-constructor TWSection.Create(const AWorkbench: TWWorkbench; const ACoord: TPoint);
+constructor TWSection.Create(const AWorkbench: TWWorkbench; const ACoord: TCoord);
 begin
-  inherited Create(AWorkbench);
+  inherited;
 
   FColor := clGreen;
 
@@ -3070,13 +3097,11 @@ end;
 
 { TWLasso *********************************************************************}
 
-constructor TWLasso.Create(const AWorkbench: TWWorkbench; const X, Y: Integer);
+constructor TWLasso.Create(const AWorkbench: TWWorkbench; const ACoord: TCoord);
 begin
-  inherited Create(AWorkbench);
+  inherited;
 
   Canvas.Brush.Style := bsClear;
-
-  MoveTo(Self, [], Point(X, Y));
 
   MouseDown(mbLeft, [], 0, 0);
 end;
@@ -3170,6 +3195,19 @@ end;
 
 { TWWorkbench *****************************************************************}
 
+procedure TWWorkbench.AddExistingTable(const X, Y: Integer; const ABaseTable: TCBaseTable);
+var
+  Table: TWTable;
+begin
+  Table := TWTable.Create(Tables, PointToCoord(X, Y), ABaseTable);
+  Tables.Add(Table);
+  if (Assigned(OnValidateControl)) then
+    if (not OnValidateControl(Self, Table)) then
+      Table.Selected := True
+    else
+      Selected := Table;
+end;
+
 procedure TWWorkbench.BeginUpdate();
 begin
   Inc(UpdateCount);
@@ -3206,7 +3244,7 @@ procedure TWWorkbench.Clear();
 begin
   BeginUpdate();
 
-  ForeignKeys.Clear();
+  Links.Clear();
   Tables.Clear();
   Sections.Clear();
 
@@ -3216,9 +3254,9 @@ end;
 procedure TWWorkbench.ClientUpdate(const Event: TCClient.TEvent);
 var
   BaseTable: TCBaseTable;
-  ForeignKey: TWForeignKey;
   I: Integer;
   J: Integer;
+  Link: TWLink;
   OldModified: Boolean;
   Table: TWTable;
 begin
@@ -3232,27 +3270,39 @@ begin
   begin
     BaseTable := TCBaseTable(Event.CItem);
 
-    for I := ForeignKeys.Count - 1 downto 0 do
-      if ((ForeignKeys[I].ChildTable.BaseTable = BaseTable)
-        and not Assigned(ForeignKeys[I].ChildTable.BaseTable.ForeignKeyByName(ForeignKeys[I].Caption))) then
-        ForeignKeys.Delete(I);
+    for I := Links.Count - 1 downto 0 do
+      if ((Links[I].ChildTable.BaseTable = BaseTable)
+        and not Assigned(Links[I].ChildTable.BaseTable.ForeignKeyByName(Links[I].Caption))) then
+      begin
+//        if (Links[I] = CreatedLink) then
+//          for J := 0 to BaseTable.ForeignKeys.Count - 1 do
+//            if (not Assigned(LinkByBaseForeignKey(BaseTable.ForeignKeys[I]))) then
+//            begin
+//              Links[I].BaseForeignKey := BaseTable.ForeignKeys[I];
+//              CreatedLink := nil;
+//            end;
+//        if (Assigned(CreatedLink)) then
+          Links.Delete(I);
+//        CreatedLink := nil;
+      end;
 
-    if (BaseTable = CreatedTable.BaseTable) then
+    if (Assigned(CreatedTable)) then
     begin
-      BeginUpdate();
-      Table := TWTable.Create(Tables, CreatedTable.BaseTable);
-      Table.Move(nil, [], CreatedTable.Point);
-      Tables.Add(Table);
-      Selected := Table;
-      EndUpdate();
+      CreatedTable.FBaseTable := TCBaseTable(Event.CItem);
+      Tables.Add(CreatedTable);
+      Selected := CreatedTable;
 
-      CreatedTable.BaseTable := nil;
+      CreatedTable := nil;
     end
     else if (Assigned(TableByBaseTable(BaseTable))) then
     begin
       Table := TableByBaseTable(BaseTable);
       if (Assigned(Table)) then
+      begin
         Table.Invalidate();
+        if (not Assigned(Selected) and Table.Selected) then
+          Selected := Table;
+      end;
     end
     else if (Assigned(XML)) then
     begin
@@ -3261,7 +3311,7 @@ begin
       for I := 0 to XML.ChildNodes.Count - 1 do
         if ((XML.ChildNodes.Nodes[I].NodeName = 'table') and (Database.Tables.NameCmp(XML.ChildNodes.Nodes[I].Attributes['name'], BaseTable.Name) = 0)) then
         begin
-          Table := TWTable.Create(Tables, BaseTable);
+          Table := TWTable.Create(Tables, Point(-1, -1), BaseTable);
           Table.LoadFromXML(XML.ChildNodes.Nodes[I]);
           Tables.Add(Table);
 
@@ -3272,12 +3322,12 @@ begin
               and ((Database.Tables.NameCmp(XMLNode(XML.ChildNodes.Nodes[J], 'tables/child').Attributes['name'], BaseTable.Name) = 0)
                 or (Database.Tables.NameCmp(XMLNode(XML.ChildNodes.Nodes[J], 'tables/parent').Attributes['name'], BaseTable.Name) = 0))) then
             begin
-              ForeignKey := TWForeignKey.Create(Self, Point(-1, -1));
-              ForeignKey.LoadFromXML(XML.ChildNodes.Nodes[J]);
-              if (not Assigned(ForeignKey.ChildTable) or not Assigned(ForeignKey.ParentTable) or not Assigned(ForeignKey.BaseForeignKey)) then
-                ForeignKey.Free()
+              Link := TWLink.Create(Self, Point(-1, -1));
+              Link.LoadFromXML(XML.ChildNodes.Nodes[J]);
+              if (not Assigned(Link.ChildTable) or not Assigned(Link.ParentTable) or (Link is TWForeignKey) and not Assigned(TWForeignKey(Link).BaseForeignKey)) then
+                Link.Free()
               else
-                ForeignKeys.Add(ForeignKey);
+                Links.Add(Link);
             end;
         end;
 
@@ -3285,26 +3335,26 @@ begin
     end;
 
     for J := 0 to BaseTable.ForeignKeys.Count - 1 do
-      if (not Assigned(ForeignKeyByCaption(BaseTable.ForeignKeys[J].Name))
+      if (not Assigned(LinkByCaption(BaseTable.ForeignKeys[J].Name))
         and Assigned(TableByCaption(BaseTable.ForeignKeys[J].Parent.TableName))) then
         begin
-          ForeignKey := TWForeignKey.Create(Self, Point(-1, -1));
-          ForeignKey.Caption := BaseTable.ForeignKeys[J].Name;
-          ForeignKey.ChildTable := TableByBaseTable(BaseTable);
-          ForeignKey.ParentTable := TableByCaption(BaseTable.ForeignKeys[J].Parent.TableName);
-          ForeignKeys.Add(ForeignKey);
+          Link := TWLink.Create(Self, Point(-1, -1));
+          Link.Caption := BaseTable.ForeignKeys[J].Name;
+          Link.ChildTable := TableByBaseTable(BaseTable);
+          Link.ParentTable := TableByCaption(BaseTable.ForeignKeys[J].Parent.TableName);
+          Links.Add(Link);
         end;
 
     for I := 0 to Tables.Count - 1 do
       for J := 0 to Tables[I].BaseTable.ForeignKeys.Count - 1 do
         if ((Database.Tables.NameCmp(Tables[I].BaseTable.ForeignKeys[J].Parent.TableName, BaseTable.Name) = 0)
-          and not Assigned(ForeignKeyByCaption(Tables[I].BaseTable.ForeignKeys[J].Name))) then
+          and not Assigned(LinkByCaption(Tables[I].BaseTable.ForeignKeys[J].Name))) then
         begin
-          ForeignKey := TWForeignKey.Create(Self, Point(-1, -1));
-          ForeignKey.Caption := Tables[I].BaseTable.ForeignKeys[J].Name;
-          ForeignKey.ChildTable := Tables[I];
-          ForeignKey.ParentTable := TableByBaseTable(BaseTable);
-          ForeignKeys.Add(ForeignKey);
+          Link := TWLink.Create(Self, Point(-1, -1));
+          Link.Caption := Tables[I].BaseTable.ForeignKeys[J].Name;
+          Link.ChildTable := Tables[I];
+          Link.ParentTable := TableByBaseTable(BaseTable);
+          Links.Add(Link);
         end;
   end
   else if ((Event.EventType = ceItemDropped) and (Event.Sender = Database) and (Event.CItem is TCBaseTable)) then
@@ -3325,12 +3375,13 @@ begin
   inherited;
 
   AutoScroll := False;
-  CreatedTable.BaseTable := nil;
+  CreatedLink := nil;
+  CreatedTable := nil;
   FDatabaseName := '';
   FOnChange := nil;
   FOnCursorMove := nil;
   FOnValidateControl := nil;
-  FForeignKeys := TWForeignKeys.Create(Self);
+  FLinks := TWLinks.Create(Self);
   FHideSelection := False;
   FModified := False;
   FMultiSelect := False;
@@ -3358,7 +3409,54 @@ begin
   FDatabaseName := ADatabase.Name;
 end;
 
-procedure TWWorkbench.CursorMove(const Coord: TPoint);
+procedure TWWorkbench.CreateNewForeignKey(const X, Y: Integer);
+var
+  Table: TWTable;
+begin
+  Selected := nil;
+  State := wsCreateForeignKey;
+
+  Table := TableAtCoord(Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
+  if (Assigned(Table)) then
+    Table.MouseDown(mbLeft, [], X - Table.Left, Y - Table.Top);
+end;
+
+procedure TWWorkbench.CreateNewLink(const X, Y: Integer);
+var
+  Table: TWTable;
+begin
+  Selected := nil;
+  State := wsCreateLink;
+
+  Table := TableAtCoord(PointToCoord(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
+  if (Assigned(Table)) then
+    Table.MouseDown(mbLeft, [], X - Table.Left, Y - Table.Top);
+end;
+
+procedure TWWorkbench.CreateNewSection(const X, Y: Integer);
+var
+  Section: TWSection;
+begin
+  Selected := nil;
+
+  if ((X >= 0) or (Y >= 0)) then
+  begin
+    Section := TWSection.Create(Self, PointToCoord(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
+    Sections.Add(Section);
+    Section.MouseDown(mbLeft, [], 0, 0);
+  end
+  else
+    State := wsCreateSection;
+end;
+
+procedure TWWorkbench.CreateNewTable(const X, Y: Integer);
+begin
+  CreatedTable := TWTable.Create(Tables, PointToCoord(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
+  if (not Assigned(OnValidateControl) or not OnValidateControl(Self, CreatedTable)) then
+    FreeAndNil(CreatedTable);
+end;
+
+procedure TWWorkbench.CursorMove(const Coord: TCoord);
 begin
   if Assigned(FOnCursorMove) then FOnCursorMove(Self, Coord.X, Coord.Y);
 end;
@@ -3367,7 +3465,7 @@ destructor TWWorkbench.Destroy();
 begin
   Clear();
 
-  ForeignKeys.Free();
+  Links.Free();
   Tables.Free();
   Sections.Free();
 
@@ -3414,8 +3512,8 @@ begin
     Result := Assigned(Selected);
     if (Result and (Selected is TWTable)) then
       Tables.Delete(Tables.IndexOf(Selected))
-    else if (Result and (Selected is TWForeignKey)) then
-      ForeignKeys.Delete(ForeignKeys.IndexOf(Selected))
+    else if (Result and (Selected is TWLink)) then
+      Links.Delete(Links.IndexOf(Selected))
     else if (Result and (Selected is TWSection)) then
       Sections.Delete(Sections.IndexOf(Selected));
   end
@@ -3423,15 +3521,15 @@ begin
     Result := inherited ExecuteAction(Action);
 end;
 
-function TWWorkbench.ForeignKeyByCaption(const Caption: string): TWForeignKey;
+function TWWorkbench.ForeignKeyByBaseForeignKey(const BaseForeignKey: TCForeignKey): TWForeignKey;
 var
   I: Integer;
 begin
   Result := nil;
 
-  for I := 0 to ForeignKeys.Count - 1 do
-    if (lstrcmpI(PChar(ForeignKeys[I].Caption), PChar(Caption)) = 0) then
-      Result := ForeignKeys[I];
+  for I := 0 to Links.Count - 1 do
+    if ((Links[I] is TWForeignKey) and (TWForeignKey(Links[I]).BaseForeignKey = BaseForeignKey)) then
+      Result := TWForeignKey(Links[I]);
 end;
 
 function TWWorkbench.GetDatabase(): TCDatabase;
@@ -3453,44 +3551,27 @@ begin
       Inc(Result);
 end;
 
-procedure TWWorkbench.InsertForeignKey(const X, Y: Integer);
-var
-  Table: TWTable;
-begin
-  Selected := nil;
-  State := wsInsertForeignKey;
-
-  Table := TableAtCoord(Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
-  if (Assigned(Table)) then
-    Table.MouseDown(mbLeft, [], X - Table.Left, Y - Table.Top);
-end;
-
-procedure TWWorkbench.InsertSection(const X, Y: Integer);
-var
-  Section: TWSection;
-begin
-  Selected := nil;
-
-  if ((X >= 0) or (Y >= 0)) then
-  begin
-    Section := TWSection.Create(Self, Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
-    Sections.Add(Section);
-    Section.MouseDown(mbLeft, [], 0, 0);
-  end
-  else
-    State := wsInsertSection;
-end;
-
 procedure TWWorkbench.KeyPress(var Key: Char);
 begin
   if ((Key = Chr(VK_ESCAPE)) and Assigned(Lasso)) then
     Perform(CM_ENDLASSO, 0, 0)
-  else if ((Key = Chr(VK_ESCAPE)) and (Selected is TWForeignKeyPoint) and not Assigned(TWForeignKeyPoint(Selected).ForeignKey.ParentTable)) then
-    ForeignKeys.Delete(ForeignKeys.IndexOf(Selected))
+  else if ((Key = Chr(VK_ESCAPE)) and (Selected is TWLinkPoint) and not Assigned(TWLinkPoint(Selected).Link.ParentTable)) then
+    Links.Delete(Links.IndexOf(Selected))
   else if ((Key = Chr(VK_ESCAPE)) and (Selected is TWSection) and (TWSection(Selected).ResizeMode = rmCreate)) then
     Sections.Delete(Sections.IndexOf(Selected))
   else
     inherited;
+end;
+
+function TWWorkbench.LinkByCaption(const Caption: string): TWLink;
+var
+  I: Integer;
+begin
+  Result := nil;
+
+  for I := 0 to Links.Count - 1 do
+    if (lstrcmpI(PChar(Links[I].Caption), PChar(Caption)) = 0) then
+      Result := Links[I];
 end;
 
 procedure TWWorkbench.LoadFromFile(const FileName: string);
@@ -3531,9 +3612,9 @@ begin
 
   SetFocus();
 
-  if (State = wsInsertSection) then
+  if (State = wsCreateSection) then
   begin
-    Section := TWSection.Create(Self, Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
+    Section := TWSection.Create(Self, PointToCoord(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
     Sections.Add(Section);
     Section.MouseDown(mbLeft, [], 0, 0);
 
@@ -3546,15 +3627,15 @@ begin
     TableFocused := nil;
 
     if ((Button = mbLeft) and not (MultiSelect and (ssCtrl in Shift))) then
-      Lasso := TWLasso.Create(Self, HorzScrollBar.Position + X, VertScrollBar.Position + Y);
+      Lasso := TWLasso.Create(Self, Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
   end;
 end;
 
 procedure TWWorkbench.MouseMove(Shift: TShiftState; X, Y: Integer);
 begin
-  if (State = wsInsertForeignKey) then
+  if (State in [wsCreateLink, wsCreateForeignKey]) then
     Cursor := crNo
-  else if (State = wsInsertSection) then
+  else if (State = wsCreateSection) then
     Cursor := crCross
   else
     Cursor := crDefault;
@@ -3562,6 +3643,11 @@ begin
   inherited;
 
   CursorMove(Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
+end;
+
+function TWWorkbench.PointToCoord(const X, Y: Integer): TCoord;
+begin
+  Result := Point(X, Y);
 end;
 
 procedure TWWorkbench.Print(const Title: string);
@@ -3654,7 +3740,7 @@ begin
   XMLDocument.Options := XMLDocument.Options + [doNodeAutoCreate];
 
   Tables.SaveToXML(XMLDocument.DocumentElement);
-  ForeignKeys.SaveToXML(XMLDocument.DocumentElement);
+  Links.SaveToXML(XMLDocument.DocumentElement);
   Sections.SaveToXML(XMLDocument.DocumentElement);
 
   if ((ExtractFilePath(FileName) = '') or ForceDirectories(ExtractFilePath(FileName))) then
@@ -3683,10 +3769,10 @@ begin
 
   BeginUpdate();
 
-  if (ASelected is TWForeignKeyPoint) then
-    FSelected := TWForeignKeyPoint(ASelected).ForeignKey
-  else if ((ASelected is TWForeignKeyLine) and (TWForeignKeyLine(ASelected).PointA is TWForeignKeyPoint)) then
-    FSelected := TWForeignKeyPoint(TWForeignKeyLine(ASelected).PointA).ForeignKey
+  if (ASelected is TWLinkPoint) then
+    FSelected := TWLinkPoint(ASelected).Link
+  else if ((ASelected is TWLinkLine) and (TWLinkLine(ASelected).PointA is TWLinkPoint)) then
+    FSelected := TWLinkPoint(TWLinkLine(ASelected).PointA).Link
   else if (not (ASelected is TWLasso)) then
     FSelected := ASelected;
 
@@ -3695,7 +3781,11 @@ begin
       TWControl(Controls[I]).Selected := False;
 
   if (Assigned(Selected)) then
+  begin
     Selected.Selected := True;
+    if (Selected is TWTable) then
+      TWTable(Selected).Focused := True;
+  end;
 
   EndUpdate();
 
@@ -3718,7 +3808,7 @@ begin
   end;
 end;
 
-function TWWorkbench.TableAtCoord(const Coord: TPoint): TWTable;
+function TWWorkbench.TableAtCoord(const Coord: TCoord): TWTable;
 var
   I: Integer;
 begin
@@ -3749,12 +3839,6 @@ begin
       Result := Tables[I];
 end;
 
-procedure TWWorkbench.TableCreated(const ATable: TCBaseTable; const APoint: TPoint);
-begin
-  CreatedTable.BaseTable := ATable;
-  CreatedTable.Point := APoint;
-end;
-
 function TWWorkbench.UpdateAction(Action: TBasicAction): Boolean;
 begin
   if (Action is TEditAction) then
@@ -3764,7 +3848,7 @@ begin
       if (Action is TEditCut) then
         TEditCut(Action).Enabled := False
       else if (Action is TEditDelete) then
-        TEditDelete(Action).Enabled := (Selected is TWTable) or (Selected is TWForeignKey) and TWForeignKey(Selected).IsLine or (Selected is TWSection)
+        TEditDelete(Action).Enabled := (Selected is TWTable) or (Selected is TWLink) or (Selected is TWSection)
       else if (Action is TEditSelectAll) then
         TEditSelectAll(Action).Enabled := False
       else
@@ -3789,24 +3873,6 @@ begin
     else
       PendingUpdateControls.Move(Index, PendingUpdateControls.Count - 1);
   end;
-end;
-
-procedure TWWorkbench.ValidateControl(const Sender: TComponent; const Control: TWControl);
-var
-  I: Integer;
-begin
-  if (Assigned(OnValidateControl)) then
-  begin
-    OnValidateControl(Self, Control);
-    I := 0;
-    while ((Control is TWForeignKey) and (TWForeignKey(Control).Caption = '')) do
-      if (Assigned(ForeignKeyByCaption('__Line_' + IntToStr(I)))) then
-        Inc(I)
-      else
-        TWForeignKey(Control).Caption := '__Line_' + IntToStr(I);
-  end
-  else if ((Control is TWForeignKey) and (TWForeignKey(Control).Caption = '')) then
-    TWForeignKey(Control).Caption := InputBox('Name', 'How should the Foreign Key named?', 'ForeignKey_' + IntToStr(ForeignKeys.Count));
 end;
 
 end.

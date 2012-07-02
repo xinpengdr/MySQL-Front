@@ -23,8 +23,7 @@ const
   CM_POSTSCROLL = WM_USER + 502;
   CM_POST_BUILDER_QUERY_CHANGE = WM_USER + 503;
   CM_POST_MONITOR = WM_USER + 504;
-  CM_REMOVE_WFOREIGENKEY = WM_USER + 505;
-  CM_WANTED_SYNCHRONIZE = WM_USER + 506;
+  CM_WANTED_SYNCHRONIZE = WM_USER + 505;
 
 const
   sbMessage = 0;
@@ -255,7 +254,7 @@ type
     mtBuilder: TMenuItem;
     mtEditor: TMenuItem;
     mwAddTable: TMenuItem;
-    mwCreateLine: TMenuItem;
+    mwCreateLink: TMenuItem;
     mwCreateSection: TMenuItem;
     mwDCreate: TMenuItem;
     mwDCreateField: TMenuItem;
@@ -602,7 +601,7 @@ type
     procedure MSQLHistoryPopup(Sender: TObject);
     procedure MTextPopup(Sender: TObject);
     procedure MToolBarPopup(Sender: TObject);
-    procedure mwCreateLineExecute(Sender: TObject);
+    procedure mwCreateLinkExecute(Sender: TObject);
     procedure mwCreateSectionClick(Sender: TObject);
     procedure mwDCreateForeignKeyClick(Sender: TObject);
     procedure mwEPasteClick(Sender: TObject);
@@ -667,18 +666,19 @@ type
     procedure mfRenameClick(Sender: TObject);
     procedure mfPropertiesClick(Sender: TObject);
     procedure MFilesPopup(Sender: TObject);
+    procedure mwDCreateTableClick(Sender: TObject);
   type
     TNewLineFormat = (nlWindows, nlUnix, nlMacintosh);
     TTabState = set of (tsLoading, tsActive);
     TView = (vObjects, vBrowser, vIDE, vBuilder, vEditor, vDiagram);
     TToolBarData = record
-      View: TView;
       Address: string;
       Addresses: TStringList;
       AddressMRU: TMRUList;
       Caption: string;
       CurrentAddress: Integer;
       tbPropertiesAction: TBasicAction;
+      View: TView;
     end;
 
     TSQLEditor = class(TObject)
@@ -852,7 +852,6 @@ type
     ActiveWorkbench: TWWorkbench;
     aDRunExecuteSelStart: Integer;
     CloseButton: TPicture;
-    CreateLine: Boolean;
     EditorField: TField;
     FAddress: string;
     FFiles: TJamShellList;
@@ -864,7 +863,6 @@ type
     FrameState: TTabState;
     FSQLEditorCompletionTimerCounter: Integer;
     FSQLHistoryMenuNode: TTreeNode;
-    FWorkbenchMouseDownPoint: TPoint;
     GIFImage: TGIFImage;
     HostsListView: TListView;
     IgnoreFGridTitleClick: Boolean;
@@ -973,20 +971,6 @@ type
     procedure FRTFShow(Sender: TObject);
     procedure FSQLHistoryRefresh(Sender: TObject);
     procedure FTextShow(Sender: TObject);
-    procedure FWorkbenchAddTable(Sender: TObject);
-    procedure FWorkbenchChange(Sender: TObject; Control: TWControl);
-    procedure FWorkbenchCursorMove(Sender: TObject; X, Y: Integer);
-    procedure FWorkbenchDragDrop(Sender, Source: TObject; X, Y: Integer);
-    procedure FWorkbenchDragOver(Sender, Source: TObject; X, Y: Integer;
-      State: TDragState; var Accept: Boolean);
-    procedure FWorkbenchEmptyExecute(Sender: TObject);
-    procedure FWorkbenchEnter(Sender: TObject);
-    procedure FWorkbenchExit(Sender: TObject);
-    procedure FWorkbenchMouseDown(Sender: TObject;
-      Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    procedure FWorkbenchPasteExecute(Sender: TObject);
-    procedure FWorkbenchPrintExecute(Sender: TObject);
-    procedure FWorkbenchValidateControl(Sender: TObject; Control: TWControl);
     function GetActiveDBGrid(): TMySQLDBGrid;
     function GetActiveIDEInputDataSet(): TDataSet;
     function GetActiveListView(): TListView;
@@ -1032,6 +1016,18 @@ type
     procedure TableOpen(Sender: TObject);
     procedure TSymMemoGotoExecute(Sender: TObject);
     function UpdateAfterAddressChanged(): Boolean; virtual;
+    procedure WorkbenchAddTable(Sender: TObject);
+    procedure WorkbenchChange(Sender: TObject; Control: TWControl);
+    procedure WorkbenchCursorMove(Sender: TObject; X, Y: Integer);
+    procedure WorkbenchDragDrop(Sender, Source: TObject; X, Y: Integer);
+    procedure WorkbenchDragOver(Sender, Source: TObject; X, Y: Integer;
+      State: TDragState; var Accept: Boolean);
+    procedure WorkbenchEmptyExecute(Sender: TObject);
+    procedure WorkbenchEnter(Sender: TObject);
+    procedure WorkbenchExit(Sender: TObject);
+    procedure WorkbenchPasteExecute(Sender: TObject);
+    procedure WorkbenchPrintExecute(Sender: TObject);
+    function WorkbenchValidateControl(Sender: TObject; Control: TWControl): Boolean;
     procedure CMActivateDBGrid(var Message: TMessage); message CM_ACTIVATE_DBGRID;
     procedure CMActivateFText(var Message: TMessage); message CM_ACTIVATEFTEXT;
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
@@ -1043,7 +1039,6 @@ type
     procedure CMPostMonitor(var Message: TMessage); message CM_POST_MONITOR;
     procedure CMPostScroll(var Message: TMessage); message CM_POSTSCROLL;
     procedure CMPostShow(var Message: TMessage); message CM_POSTSHOW;
-    procedure CMRemoveWForeignKey(var Message: TMessage); message CM_REMOVE_WFOREIGENKEY;
     procedure CMSysFontChanged(var Message: TMessage); message CM_SYSFONTCHANGED;
     procedure CMWantedSynchronize(var Message: TWMTimer); message CM_WANTED_SYNCHRONIZE;
     procedure WMNotify(var Message: TWMNotify); message WM_NOTIFY;
@@ -2239,7 +2234,9 @@ procedure TFClient.aDCreateTableExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  if (FocusedCItem is TCDatabase) then
+  if ((Window.ActiveControl = ActiveWorkbench) and Assigned(ActiveWorkbench) and (FNavigator.Selected.ImageIndex = iiDatabase) and (View = vDiagram)) then
+    ActiveWorkbench.CreateNewTable(0, 0)
+  else if (FocusedCItem is TCDatabase) then
   begin
     DTable.Database := TCDatabase(FocusedCItem);
     DTable.Table := nil;
@@ -2311,7 +2308,7 @@ begin
       if ((ActiveWorkbench.Controls[I] is TWTable) and (TWTable(ActiveWorkbench.Controls[I]).Selected)) then
         CItems.Add(Client.DatabaseByName(SelectedDatabase).BaseTableByName(TWTable(ActiveWorkbench.Controls[I]).Caption))
       else if ((ActiveWorkbench.Controls[I] is TWForeignKey) and (TWForeignKey(ActiveWorkbench.Controls[I]).Selected)) then
-        CItems.Add(Client.DatabaseByName(SelectedDatabase).BaseTableByName(TWForeignKey(ActiveWorkbench.Controls[I]).ChildTable.Caption).ForeignKeyByName(TWForeignKey(ActiveWorkbench.Controls[I]).Caption));
+        CItems.Add(TWForeignKey(ActiveWorkbench.Controls[I]).BaseForeignKey);
   end
   else if (Assigned(FocusedCItem)) then
     CItems.Add(FocusedCItem);
@@ -2534,7 +2531,7 @@ begin
       vDiagram: if (not (ttDiagram in Preferences.ToolbarTabs)) then begin Include(Preferences.ToolbarTabs, ttDiagram); PostMessage(Window.Handle, CM_CHANGEPREFERENCES, 0, 0); end;
     end;
 
-    ToolBarData.Caption := Client.Account.Name + ' - ' + AddressToCaption(Address);
+    ToolBarData.Caption := AddressToCaption(Address);
 
     ToolBarData.View := View;
 
@@ -3186,11 +3183,11 @@ begin
       begin
         Data := 'Address=' + NavigatorNodeToAddress(FNavigator.Selected);
         if (not Assigned(ActiveWorkbench.Selected)) then
-          Data := Data + 'Database='   + ActiveWorkbench.Selected.Name + #13#10
+          Data := Data + 'Database='   + ActiveWorkbench.Database.Name + #13#10
         else if (ActiveWorkbench.Selected is TWTable) then
-          Data := Data + 'Table='      + ActiveWorkbench.Selected.Name + #13#10
+          Data := Data + 'Table='      + TWTable(ActiveWorkbench.Selected).BaseTable.Name + #13#10
         else if (ActiveWorkbench.Selected is TWForeignKey) then
-          Data := Data + 'ForeignKey=' + ActiveWorkbench.Selected.Name + #13#10;
+          Data := Data + 'ForeignKey=' + TWForeignKey(ActiveWorkbench.Selected).BaseForeignKey.Name + #13#10;
         if (Data <> '') then
           Data := 'Address=' + NavigatorNodeToAddress(FNavigator.Selected) + #13#10 + Data;
       end;
@@ -3379,7 +3376,7 @@ begin
   else if (Window.ActiveControl = FSQLEditorSynMemo) then
     FSQLEditorSynMemo.PasteFromClipboard()
   else if (Assigned(ActiveWorkbench) and (Window.ActiveControl = ActiveWorkbench)) then
-    FWorkbenchPasteExecute(Sender)
+    WorkbenchPasteExecute(Sender)
   else
     MessageBeep(MB_ICONERROR);
 end;
@@ -4038,7 +4035,7 @@ begin
   if ((Window.ActiveControl = FSQLEditorSynMemo) or (Window.ActiveControl = FLog)) then
     SynMemoPrintExecute(Sender)
   else if (Window.ActiveControl = ActiveWorkbench) then
-    FWorkbenchPrintExecute(Sender)
+    WorkbenchPrintExecute(Sender)
   else
     aFExportExecute(Sender, etPrint);
 end;
@@ -4687,10 +4684,6 @@ begin
     if ((Event.EventType = ceItemAltered) and (Event.CItem is TCTable)
       and Assigned(Desktop(TCTable(Event.CItem)).DBGrid)) then
       Desktop(TCTable(Event.CItem)).DBGrid.DataSource.DataSet.Close();
-
-    if ((Event.EventType = ceItemCreated) and (Event.Sender = FNavigator.Selected.Data) and (Event.CItem is TCBaseTable)
-      and (View = vDiagram) and (Window.ActiveControl = ActiveWorkbench)) then
-      ActiveWorkbench.TableCreated(TCBaseTable(Event.CItem), FWorkbenchMouseDownPoint);
   end;
 
   if (PContent.Visible and Assigned(TempActiveControl) and TempActiveControl.Visible) then
@@ -4770,8 +4763,9 @@ begin
   aVBlobHTML.Caption := 'HTML';
   aVBlobImage.Caption := Preferences.LoadStr(380);
   aVBlobHexEditor.Caption := Preferences.LoadStr(381);
+  mwDCreateTable.Caption := MainAction('aDCreateTable').Caption;
   mwCreateSection.Caption := Preferences.LoadStr(877) + ' ...';
-  mwCreateLine.Caption := Preferences.LoadStr(251) + ' ...';
+  mwCreateLink.Caption := Preferences.LoadStr(251) + ' ...';
 
   for I := 0 to ActionList.ActionCount - 1 do
     if (ActionList.Actions[I] is TCustomAction) and (TCustomAction(ActionList.Actions[I]).Hint = '') then
@@ -5254,19 +5248,6 @@ begin
     Address := Client.Account.Desktop.Address;
 end;
 
-procedure TFClient.CMRemoveWForeignKey(var Message: TMessage);
-var
-  ForeignKey: TWForeignKey;
-  Index: Integer;
-  Workbench: TWWorkbench;
-begin
-  Workbench := TWWorkbench(Message.WParam);
-  ForeignKey := TWForeignKey(Message.LParam);
-  Index := Workbench.ForeignKeys.IndexOf(ForeignKey);
-  if (Index >= 0) then
-    Workbench.ForeignKeys.Delete(Index);
-end;
-
 procedure TFClient.CMSysFontChanged(var Message: TMessage);
 var
   LogFont: TLogFont;
@@ -5464,8 +5445,6 @@ begin
   StatiListView := nil;
   UsersListView := nil;
   VariablesListView := nil;
-  FNavigatorNodeToExpand := nil;
-  PanelMouseDownPoint := Point(-1, -1);
   for Kind := lkServer to lkVariables do
   begin
     ListViewSortData[Kind].Kind := Kind;
@@ -5475,7 +5454,8 @@ begin
     else
       ListViewSortData[Kind].Order := 1;
   end;
-  CreateLine := False;
+  FNavigatorNodeToExpand := nil;
+  PanelMouseDownPoint := Point(-1, -1);
 
 
   TBSideBar.Images := Preferences.SmallImages;
@@ -5628,7 +5608,6 @@ begin
   mwFExportBitmap.Action := MainAction('aFExportBitmap');
   mwECopy.Action := MainAction('aECopy');
   mwEDelete.Action := MainAction('aEDelete');
-  mwDCreateTable.Action := MainAction('aDCreateTable');
   mwDCreateField.Action := MainAction('aDCreateField');
   mwDCreateForeignKey.Action := MainAction('aDCreateForeignKey');
   mwDEmpty.Action := MainAction('aDEmpty');
@@ -6006,7 +5985,6 @@ begin
   Result.Width := PDBGrid.ClientWidth;
   Result.Height := 24;
   Result.Align := alTop;
-  Result.ParentShowHint := False;
   Result.ShowHint := True;
   Result.TabHeight := 23;
   Result.TabOrder := 0;
@@ -6015,7 +5993,7 @@ begin
 
   Result.Perform(CM_PARENTCOLORCHANGED, 0, 0);
   Result.Perform(CM_PARENTFONTCHANGED, 0, 0);
-  Result.Perform(CM_PARENTSHOWHINTCHANGED, 0, 0);
+  Result.ParentShowHint := False;
   Result.Perform(CM_PARENTBIDIMODECHANGED, 0, 0);
   Result.Perform(CM_PARENTDOUBLEBUFFEREDCHANGED, 0, 0);
   Result.Perform(CM_PARENTTABLETOPTIONSCHANGED, 0, 0);
@@ -6039,15 +6017,14 @@ begin
   Result.HideSelection := True;
   Result.HorzScrollBar.Tracking := True;
   Result.MultiSelect := True;
-  Result.OnChange := FWorkbenchChange;
+  Result.OnChange := WorkbenchChange;
   Result.OnDblClick := ListViewDblClick;
-  Result.OnDragOver := FWorkbenchDragOver;
-  Result.OnDragDrop := FWorkbenchDragDrop;
-  Result.OnEnter := FWorkbenchEnter;
-  Result.OnExit := FWorkbenchExit;
-  Result.OnCursorMove := FWorkbenchCursorMove;
-  Result.OnMouseDown := FWorkbenchMouseDown;
-  Result.OnValidateControl := FWorkbenchValidateControl;
+  Result.OnDragOver := WorkbenchDragOver;
+  Result.OnDragDrop := WorkbenchDragDrop;
+  Result.OnEnter := WorkbenchEnter;
+  Result.OnExit := WorkbenchExit;
+  Result.OnCursorMove := WorkbenchCursorMove;
+  Result.OnValidateControl := WorkbenchValidateControl;
   Result.ParentFont := True;
   Result.PopupMenu := MWorkbench;
   Result.VertScrollBar.Tracking := True;
@@ -9258,418 +9235,6 @@ begin
   aVBlobRTF.Visible := (EditorField.DataType = ftWideMemo) and not EditorField.IsNull and IsRTF(EditorField.AsString);
 end;
 
-procedure TFClient.FWorkbenchAddTable(Sender: TObject);
-var
-  MenuItem: TMenuItem;
-  Table: TCBaseTable;
-  WTable: TWTable;
-begin
-  if (Sender is TMenuItem) then
-  begin
-    MenuItem := TMenuItem(Sender);
-
-    if ((MenuItem.GetParentMenu() is TPopupMenu) and (TObject(MenuItem.Tag) is TCTable)) then
-    begin
-      Table := TCBaseTable(TMenuItem(Sender).Tag);
-
-      ActiveWorkbench.BeginUpdate();
-      WTable := TWTable.Create(ActiveWorkbench.Tables, Table);
-      FWorkbenchValidateControl(nil, WTable);
-      WTable.Move(nil, [], ActiveWorkbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint));
-      ActiveWorkbench.Tables.Add(WTable);
-      Table.PushBuildEvent();
-      ActiveWorkbench.Selected := WTable;
-      Window.ActiveControl := ActiveWorkbench;
-      ActiveWorkbench.EndUpdate();
-    end;
-  end;
-end;
-
-procedure TFClient.FWorkbenchChange(Sender: TObject; Control: TWControl);
-var
-  aEPasteEnabled: Boolean;
-  ClipboardData: HGLOBAL;
-  Database: TCDatabase;
-  DatabaseName: string;
-  Index: Integer;
-  S: string;
-  AccountName: string;
-  Table: TCBaseTable;
-  TableName: string;
-  Values: TStringList;
-begin
-  if (not Clipboard.HasFormat(CF_MYSQLTABLE) or not OpenClipboard(Handle)) then
-    aEPasteEnabled := False
-  else
-  begin
-    ClipboardData := GetClipboardData(CF_MYSQLTABLE);
-    S := PChar(GlobalLock(ClipboardData));
-    GlobalUnlock(ClipboardData);
-    CloseClipboard();
-
-    Values := TStringList.Create();
-    Values.Text := ReplaceStr(Trim(S), ',', #13#10);
-
-    aEPasteEnabled := Values.Count = 1;
-
-    if (aEPasteEnabled) then
-    begin
-      S := Values[0];
-
-      if (Pos('.', S) = 0) then
-        AccountName := ''
-      else
-      begin
-        Index := Pos('.', S);
-        while ((Index > 1) and (S[Index - 1] = '\')) do
-          Inc(Index, Pos('.', Copy(S, Index + 1, Length(S) - Index)));
-        AccountName := ReplaceStr(Copy(S, 1, Index - 1), '\.', '.');
-        Delete(S, 1, Index);
-      end;
-      if (Pos('.', S) = 0) then
-        DatabaseName := ''
-      else
-      begin
-        DatabaseName := Copy(S, 1, Pos('.', S) - 1);
-        Delete(S, 1, Length(DatabaseName) + 1);
-      end;
-      if (Pos('.', S) = 0) then
-        TableName := S
-      else
-        TableName := '';
-
-      Table := Client.DatabaseByName(SelectedDatabase).BaseTableByName(TableName);
-
-      aEPasteEnabled := (AccountName = Client.Account.Name) and (DatabaseName = SelectedDatabase)
-        and Assigned(Table) and Assigned(Table.Engine) and Table.Engine.ForeignKeyAllowed
-        and not Assigned(ActiveWorkbench.TableByCaption(Table.Name));
-    end;
-
-    Values.Free();
-  end;
-
-  Database := Client.DatabaseByName(SelectedDatabase);
-
-  aPOpenInNewWindow.Enabled := (Control is TWTable);
-  aPOpenInNewTab.Enabled := (Control is TWTable);
-  MainAction('aFImportSQL').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFImportText').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFImportExcel').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFImportAccess').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFImportSQLite').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFImportODBC').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFImportXML').Enabled := (Control is TWTable);
-  MainAction('aFExportSQL').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFExportText').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFExportExcel').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFExportAccess').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFExportSQLite').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFExportODBC').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFExportXML').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFExportHTML').Enabled := not Assigned(Control) or (Control is TWTable);
-  MainAction('aFExportBitmap').Enabled := not Assigned(Control) and Assigned(ActiveWorkbench) and (ActiveWorkbench.ControlCount > 0);
-  MainAction('aFPrint').Enabled := Assigned(ActiveWorkbench) and (ActiveWorkbench.ControlCount > 0);
-  MainAction('aECopy').Enabled := Assigned(Control) and (not (Control is TWForeignKey) or not TWForeignKey(Control).IsLine);
-  MainAction('aEPaste').Enabled := aEPasteEnabled;
-  MainAction('aDCreateTable').Enabled := not Assigned(Control) or (Control is TWSection);
-  MainAction('aDCreateView').Enabled := not Assigned(Control) and (Client.ServerVersion >= 50001);
-  MainAction('aDCreateProcedure').Enabled := not Assigned(Control) and (Client.ServerVersion >= 50004);
-  MainAction('aDCreateFunction').Enabled := MainAction('aDCreateProcedure').Enabled;
-  MainAction('aDCreateEvent').Enabled := not Assigned(Control) and (Client.ServerVersion >= 50106);
-  MainAction('aDCreateKey').Enabled := Control is TWTable;
-  MainAction('aDCreateField').Enabled := Control is TWTable;
-  MainAction('aDCreateForeignKey').Enabled := (Control is TWTable) and Assigned(Database.BaseTableByName(TWTable(Control).Caption)) and Database.BaseTableByName(TWTable(Control).Caption).Engine.ForeignKeyAllowed;
-  mwCreateSection.Enabled := not Assigned(Control);
-  mwCreateLine.Enabled := Control is TWTable;
-  MainAction('aDCreateTrigger').Enabled := (Control is TWTable) and Assigned(Database.BaseTableByName(TWTable(Control).Caption)) and Assigned(Database.Triggers);
-  MainAction('aDDeleteTable').Enabled := Control is TWTable;
-  MainAction('aDDeleteForeignKey').Enabled := (Control is TWForeignKey) and not TWForeignKey(Control).IsLine;
-  MainAction('aDEmpty').Enabled := Control is TWTable;
-  mwDProperties.Enabled := Assigned(Control) and (not (Control is TWForeignKey) or not TWForeignKey(Control).IsLine);
-
-  aDDelete.Enabled := MainAction('aDDeleteTable').Enabled or MainAction('aDDeleteForeignKey').Enabled;
-end;
-
-procedure TFClient.FWorkbenchCursorMove(Sender: TObject; X, Y: Integer);
-begin
-  StatusBar.Panels.Items[sbItem].Text := IntToStr(X) + ':' + IntToStr(Y);
-end;
-
-procedure TFClient.FWorkbenchDragDrop(Sender, Source: TObject; X, Y: Integer);
-var
-  Database: TCDatabase;
-  SourceNode: TTreeNode;
-  Table: TCBaseTable;
-  WTable: TWTable;
-begin
-  if (Source = FNavigator) then
-  begin
-    SourceNode := MouseDownNode;
-    Database := Client.DatabaseByName(SelectedDatabase);
-    Table := Database.BaseTableByName(SourceNode.Text);
-
-    Client.BeginSynchro();
-    Table.Update();
-    Client.EndSynchro();
-
-    ActiveWorkbench.BeginUpdate();
-    WTable := TWTable.Create(ActiveWorkbench.Tables, Table);
-    FWorkbenchValidateControl(nil, WTable);
-    WTable.Move(nil, [], Point(X, Y));
-    ActiveWorkbench.Tables.Add(WTable);
-    Table.PushBuildEvent();
-    ActiveWorkbench.Selected := WTable;
-    Window.ActiveControl := ActiveWorkbench;
-    ActiveWorkbench.EndUpdate();
-  end;
-end;
-
-procedure TFClient.FWorkbenchDragOver(Sender, Source: TObject; X, Y: Integer;
-  State: TDragState; var Accept: Boolean);
-var
-  SourceNode: TTreeNode;
-  Table: TCBaseTable;
-begin
-  Accept := False;
-
-  if (Source = FNavigator) then
-  begin
-    SourceNode := MouseDownNode;
-    if ((SourceNode.ImageIndex = iiBaseTable) and (SourceNode.Parent.Text = SelectedDatabase)) then
-    begin
-      Table := Client.DatabaseByName(SelectedDatabase).BaseTableByName(SourceNode.Text);
-      Accept := Assigned(Table) and not Assigned(ActiveWorkbench.TableByCaption(SourceNode.Text));
-    end;
-  end;
-end;
-
-procedure TFClient.FWorkbenchEmptyExecute(Sender: TObject);
-var
-  Table: TCBaseTable;
-begin
-  if (ActiveWorkbench.Selected is TWTable) then
-  begin
-    Table := Client.DatabaseByName(SelectedDatabase).BaseTableByName(TWTable(ActiveWorkbench.Selected).Caption);
-
-    if (MsgBox(Preferences.LoadStr(375, Table.Name), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
-      Table.Empty();
-  end;
-end;
-
-procedure TFClient.FWorkbenchEnter(Sender: TObject);
-begin
-  if (Sender is TWWorkbench) then
-  begin
-    MainAction('aDEmpty').OnExecute := FWorkbenchEmptyExecute;
-
-    FWorkbenchChange(Sender, TWWorkbench(Sender).Selected);
-  end;
-end;
-
-procedure TFClient.FWorkbenchExit(Sender: TObject);
-begin
-  MainAction('aFImportAccess').Enabled := False;
-  MainAction('aFImportText').Enabled := False;
-  MainAction('aFImportExcel').Enabled := False;
-  MainAction('aFImportSQLite').Enabled := False;
-  MainAction('aFImportODBC').Enabled := False;
-  MainAction('aFImportXML').Enabled := False;
-  MainAction('aFExportSQL').Enabled := False;
-  MainAction('aFExportText').Enabled := False;
-  MainAction('aFExportExcel').Enabled := False;
-  MainAction('aFExportAccess').Enabled := False;
-  MainAction('aFExportSQLite').Enabled := False;
-  MainAction('aFExportODBC').Enabled := False;
-  MainAction('aFExportXML').Enabled := False;
-  MainAction('aFExportHTML').Enabled := False;
-  MainAction('aFExportBitmap').Enabled := False;
-  MainAction('aFPrint').Enabled := False;
-  MainAction('aECopy').Enabled := False;
-  MainAction('aDCreateTable').Enabled := False;
-  MainAction('aDCreateView').Enabled := False;
-  MainAction('aDCreateProcedure').Enabled := False;
-  MainAction('aDCreateFunction').Enabled := False;
-  MainAction('aDCreateEvent').Enabled := False;
-  MainAction('aDCreateKey').Enabled := False;
-  MainAction('aDCreateField').Enabled := False;
-  MainAction('aDCreateForeignKey').Enabled := False;
-  MainAction('aDCreateTrigger').Enabled := False;
-  MainAction('aDDeleteTable').Enabled := False;
-  MainAction('aDDeleteForeignKey').Enabled := False;
-  mwCreateSection.Enabled := False;
-  mwCreateLine.Enabled := False;
-  MainAction('aDEmpty').Enabled := False;
-end;
-
-procedure TFClient.FWorkbenchMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  FWorkbenchMouseDownPoint := Point(X, Y);
-end;
-
-procedure TFClient.FWorkbenchPasteExecute(Sender: TObject);
-var
-  aEPasteEnabled: Boolean;
-  ClipboardData: HGLOBAL;
-  DatabaseName: string;
-  Index: Integer;
-  MenuItem: TMenuItem;
-  S: string;
-  AccountName: string;
-  Table: TCBaseTable;
-  TableName: string;
-  Values: TStringList;
-  WTable: TWTable;
-begin
-  Wanted.Clear();
-
-  if (not Clipboard.HasFormat(CF_MYSQLTABLE) or not OpenClipboard(Handle)) then
-    MessageBeep(MB_ICONERROR)
-  else
-  begin
-    ClipboardData := GetClipboardData(CF_MYSQLTABLE);
-    S := PChar(GlobalLock(ClipboardData));
-    GlobalUnlock(ClipboardData);
-    CloseClipboard();
-
-    Values := TStringList.Create();
-    Values.Text := ReplaceStr(Trim(S), ',', #13#10);
-
-    aEPasteEnabled := Values.Count = 1;
-
-    if (aEPasteEnabled) then
-    begin
-      S := Values[0];
-
-      if (Pos('.', S) = 0) then
-        AccountName := ''
-      else
-      begin
-        Index := Pos('.', S);
-        while ((Index > 1) and (S[Index - 1] = '\')) do
-          Inc(Index, Pos('.', Copy(S, Index + 1, Length(S) - Index)));
-        AccountName := ReplaceStr(Copy(S, 1, Index - 1), '\.', '.');
-        Delete(S, 1, Index);
-      end;
-      if (Pos('.', S) = 0) then
-        DatabaseName := ''
-      else
-      begin
-        DatabaseName := Copy(S, 1, Pos('.', S) - 1);
-        Delete(S, 1, Length(DatabaseName) + 1);
-      end;
-      if (Pos('.', S) = 0) then
-        TableName := S
-      else
-        TableName := '';
-
-      Table := Client.DatabaseByName(SelectedDatabase).BaseTableByName(TableName);
-
-      ActiveWorkbench.BeginUpdate();
-      WTable := TWTable.Create(ActiveWorkbench.Tables, Table);
-      ActiveWorkbench.Tables.Add(WTable);
-      FWorkbenchValidateControl(nil, WTable);
-
-      if (Sender is TMenuItem) then
-      begin
-        MenuItem := TMenuItem(Sender);
-
-        if ((MenuItem.GetParentMenu() is TPopupMenu)) then
-          WTable.Move(nil, [], ActiveWorkbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint));
-      end
-      else
-        WTable.Move(nil, [], Point(0, 0));
-
-      Table.PushBuildEvent();
-      ActiveWorkbench.Selected := WTable;
-      Window.ActiveControl := ActiveWorkbench;
-      ActiveWorkbench.EndUpdate();
-    end;
-
-    Values.Free();
-  end;
-end;
-
-procedure TFClient.FWorkbenchPrintExecute(Sender: TObject);
-begin
-  Wanted.Clear();
-
-  PrintDialog.FromPage := 1;
-  PrintDialog.ToPage := 1;
-  PrintDialog.MinPage := 1;
-  PrintDialog.MaxPage := 1;
-  if (FSQLEditorPrint.PageCount = 1) then
-    PrintDialog.Options := PrintDialog.Options - [poPageNums]
-  else
-    PrintDialog.Options := PrintDialog.Options + [poPageNums];
-  PrintDialog.Options := PrintDialog.Options - [poSelection];
-  PrintDialog.PrintRange := prAllPages;
-  if (PrintDialog.Execute()) then
-    ActiveWorkbench.Print(SelectedDatabase);
-end;
-
-procedure TFClient.FWorkbenchValidateControl(Sender: TObject; Control: TWControl);
-var
-  Database: TCDatabase;
-  ForeignKey: TCForeignKey;
-  I: Integer;
-  Objects: array of TCDBObject;
-  ParentTable: TCBaseTable;
-  Table: TCBaseTable;
-  Workbench: TWWorkbench;
-begin
-  Database := Client.DatabaseByName(SelectedDatabase);
-  if (Sender is TWWorkbench) then
-    Workbench := TWWorkbench(Sender)
-  else
-    Workbench := nil;
-
-  if (not Assigned(Control)) then
-  begin
-    SetLength(Objects, Workbench.Tables.Count);
-    for I := 0 to Workbench.Tables.Count - 1 do
-      Objects[I] := Database.BaseTableByName(Workbench.Tables[I].Caption);
-    Database.Update();
-  end
-  else if (Control is TWTable) then
-  begin
-    Table := Database.BaseTableByName(TWTable(Control).Caption);
-    if (Assigned(Table)) then
-      Table.Update();
-  end
-  else if (Control is TWForeignKey) then
-  begin
-    Table := Database.BaseTableByName(TWForeignKey(Control).ChildTable.Caption);
-    ParentTable := Database.BaseTableByName(TWForeignKey(Control).ParentTable.Caption);
-
-    if (Assigned(Table) and Assigned(ParentTable)) then
-      if (CreateLine) then
-        TWForeignKey(Control).Caption := ''
-      else
-      begin
-        if (TWForeignKey(Control).Caption <> '') then
-        begin
-          ForeignKey := Table.ForeignKeyByName(TWForeignKey(Control).Caption);
-          ParentTable := Client.DatabaseByName(ForeignKey.Parent.DatabaseName).BaseTableByName(ForeignKey.Parent.TableName);
-          if (Assigned(ForeignKey)) then
-            ParentTable.Update();
-        end
-        else
-        begin
-          DForeignKey.Database := Client.DatabaseByName(SelectedDatabase);
-          DForeignKey.Table := DForeignKey.Database.BaseTableByName(TWForeignKey(Control).ChildTable.Caption);
-          DForeignKey.ParentTable := DForeignKey.Database.BaseTableByName(TWForeignKey(Control).ParentTable.Caption);
-          DForeignKey.ForeignKey := nil;
-          if (not DForeignKey.Execute()) then
-            PostMessage(Handle, CM_REMOVE_WFOREIGENKEY, wParam(Workbench), lParam(TWForeignKey(Control)))
-          else
-            Client.Update();
-        end;
-      end;
-  end;
-
-  CreateLine := False;
-end;
-
 function TFClient.GetActiveDBGrid(): TMySQLDBGrid;
 var
   I: Integer;
@@ -12360,7 +11925,7 @@ begin
     MToolBar.Items[I].Enabled := (Checked > 1) or not MToolBar.Items[I].Checked;
 end;
 
-procedure TFClient.mwCreateLineExecute(Sender: TObject);
+procedure TFClient.mwCreateLinkExecute(Sender: TObject);
 var
   MenuItem: TMenuItem;
   P: TPoint;
@@ -12371,9 +11936,8 @@ begin
   begin
     MenuItem := TMenuItem(Sender);
 
-    CreateLine := True;
     P := ActiveWorkbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint);
-    ActiveWorkbench.InsertForeignKey(P.X, P.Y);
+    ActiveWorkbench.CreateNewLink(P.X, P.Y);
   end;
 end;
 
@@ -12388,9 +11952,8 @@ begin
   begin
     MenuItem := TMenuItem(Sender);
 
-    CreateLine := True;
     P := ActiveWorkbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint);
-    ActiveWorkbench.InsertSection(P.X, P.Y);
+    ActiveWorkbench.CreateNewSection(P.X, P.Y);
   end;
 end;
 
@@ -12405,15 +11968,30 @@ begin
   begin
     MenuItem := TMenuItem(Sender);
 
-    CreateLine := False;
     P := ActiveWorkbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint);
-    ActiveWorkbench.InsertForeignKey(P.X, P.Y);
+    ActiveWorkbench.CreateNewForeignKey(P.X, P.Y);
+  end;
+end;
+
+procedure TFClient.mwDCreateTableClick(Sender: TObject);
+var
+  MenuItem: TMenuItem;
+  P: TPoint;
+begin
+  Wanted.Clear();
+
+  if (Sender is TMenuItem) then
+  begin
+    MenuItem := TMenuItem(Sender);
+
+    P := ActiveWorkbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint);
+    ActiveWorkbench.CreateNewTable(P.X, P.Y);
   end;
 end;
 
 procedure TFClient.mwEPasteClick(Sender: TObject);
 begin
-  FWorkbenchPasteExecute(Sender);
+  WorkbenchPasteExecute(Sender);
 end;
 
 procedure TFClient.MWorkbenchPopup(Sender: TObject);
@@ -12433,13 +12011,11 @@ begin
   if (not Assigned(ActiveWorkbench.Selected)) then
     for I := 0 to Database.Tables.Count - 1 do
       if ((Database.Tables[I] is TCBaseTable)
-        and Assigned(TCBaseTable(Database.Tables[I]).Engine)
-        and TCBaseTable(Database.Tables[I]).Engine.ForeignKeyAllowed
-        and not Assigned(ActiveWorkbench.TableByCaption(Database.Tables[I].Name))) then
+        and not Assigned(ActiveWorkbench.TableByBaseTable(TCBaseTable(Database.Tables[I])))) then
       begin
         MenuItem := TMenuItem.Create(Self);
         MenuItem.Caption := Database.Tables[I].Name;
-        MenuItem.OnClick := FWorkbenchAddTable;
+        MenuItem.OnClick := WorkbenchAddTable;
         MenuItem.Tag := Integer(Database.Tables[I]);
         mwAddTable.Add(MenuItem);
       end;
@@ -14682,6 +14258,345 @@ begin
         StatusBarRefresh();
       end;
   end;
+end;
+
+procedure TFClient.WorkbenchAddTable(Sender: TObject);
+var
+  BaseTable: TCBaseTable;
+  MenuItem: TMenuItem;
+  Point: TPoint;
+begin
+  if (Sender is TMenuItem) then
+  begin
+    MenuItem := TMenuItem(Sender);
+
+    if ((MenuItem.GetParentMenu() is TPopupMenu) and (TObject(MenuItem.Tag) is TCTable)) then
+    begin
+      Point := ActiveWorkbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint);
+      BaseTable := TCBaseTable(TMenuItem(Sender).Tag);
+
+      ActiveWorkbench.AddExistingTable(Point.X, Point.Y, BaseTable);
+    end;
+  end;
+end;
+
+procedure TFClient.WorkbenchChange(Sender: TObject; Control: TWControl);
+var
+  aEPasteEnabled: Boolean;
+  ClipboardData: HGLOBAL;
+  Database: TCDatabase;
+  DatabaseName: string;
+  Index: Integer;
+  S: string;
+  AccountName: string;
+  Table: TCBaseTable;
+  TableName: string;
+  Values: TStringList;
+begin
+  if (not Clipboard.HasFormat(CF_MYSQLTABLE) or not OpenClipboard(Handle)) then
+    aEPasteEnabled := False
+  else
+  begin
+    ClipboardData := GetClipboardData(CF_MYSQLTABLE);
+    S := PChar(GlobalLock(ClipboardData));
+    GlobalUnlock(ClipboardData);
+    CloseClipboard();
+
+    Values := TStringList.Create();
+    Values.Text := ReplaceStr(Trim(S), ',', #13#10);
+
+    aEPasteEnabled := Values.Count = 1;
+
+    if (aEPasteEnabled) then
+    begin
+      S := Values[0];
+
+      if (Pos('.', S) = 0) then
+        AccountName := ''
+      else
+      begin
+        Index := Pos('.', S);
+        while ((Index > 1) and (S[Index - 1] = '\')) do
+          Inc(Index, Pos('.', Copy(S, Index + 1, Length(S) - Index)));
+        AccountName := ReplaceStr(Copy(S, 1, Index - 1), '\.', '.');
+        Delete(S, 1, Index);
+      end;
+      if (Pos('.', S) = 0) then
+        DatabaseName := ''
+      else
+      begin
+        DatabaseName := Copy(S, 1, Pos('.', S) - 1);
+        Delete(S, 1, Length(DatabaseName) + 1);
+      end;
+      if (Pos('.', S) = 0) then
+        TableName := S
+      else
+        TableName := '';
+
+      Table := Client.DatabaseByName(SelectedDatabase).BaseTableByName(TableName);
+
+      aEPasteEnabled := (AccountName = Client.Account.Name) and (DatabaseName = SelectedDatabase)
+        and Assigned(Table) and Assigned(Table.Engine) and Table.Engine.ForeignKeyAllowed
+        and not Assigned(ActiveWorkbench.TableByCaption(Table.Name));
+    end;
+
+    Values.Free();
+  end;
+
+  Database := Client.DatabaseByName(SelectedDatabase);
+
+  aPOpenInNewWindow.Enabled := (Control is TWTable);
+  aPOpenInNewTab.Enabled := (Control is TWTable);
+  MainAction('aFExportSQL').Enabled := not Assigned(Control) or (Control is TWTable);
+  MainAction('aFExportText').Enabled := not Assigned(Control) or (Control is TWTable);
+  MainAction('aFExportExcel').Enabled := not Assigned(Control) or (Control is TWTable);
+  MainAction('aFExportAccess').Enabled := not Assigned(Control) or (Control is TWTable);
+  MainAction('aFExportSQLite').Enabled := not Assigned(Control) or (Control is TWTable);
+  MainAction('aFExportODBC').Enabled := not Assigned(Control) or (Control is TWTable);
+  MainAction('aFExportXML').Enabled := not Assigned(Control) or (Control is TWTable);
+  MainAction('aFExportHTML').Enabled := not Assigned(Control) or (Control is TWTable);
+  MainAction('aFExportBitmap').Enabled := not Assigned(Control) and Assigned(ActiveWorkbench) and (ActiveWorkbench.ControlCount > 0);
+  MainAction('aFPrint').Enabled := Assigned(ActiveWorkbench) and (ActiveWorkbench.ControlCount > 0);
+  MainAction('aECopy').Enabled := Assigned(Control) and (not (Control is TWLink) or (Control is TWForeignKey));
+  MainAction('aEPaste').Enabled := aEPasteEnabled;
+  MainAction('aDCreateTable').Enabled := not Assigned(Control) or (Control is TWSection);
+  mwDCreateTable.Enabled := MainAction('aDCreateTable').Enabled;
+  MainAction('aDCreateKey').Enabled := Control is TWTable;
+  MainAction('aDCreateField').Enabled := Control is TWTable;
+  MainAction('aDCreateForeignKey').Enabled := (Control is TWTable) and Assigned(TWTable(Control).BaseTable) and TWTable(Control).BaseTable.Engine.ForeignKeyAllowed;
+  mwCreateSection.Enabled := not Assigned(Control);
+  mwCreateLink.Enabled := Control is TWTable;
+  MainAction('aDCreateTrigger').Enabled := (Control is TWTable) and Assigned(TWTable(Control).BaseTable) and Assigned(Database.Triggers);
+  MainAction('aDDeleteTable').Enabled := Control is TWTable;
+  MainAction('aDDeleteForeignKey').Enabled := (Control is TWForeignKey);
+  MainAction('aDEmpty').Enabled := Control is TWTable;
+  mwDProperties.Enabled := Assigned(Control) and (not (Control is TWLink) or (Control is TWForeignKey));
+
+  aDDelete.Enabled := MainAction('aDDeleteTable').Enabled or MainAction('aDDeleteForeignKey').Enabled;
+end;
+
+procedure TFClient.WorkbenchCursorMove(Sender: TObject; X, Y: Integer);
+begin
+  StatusBar.Panels.Items[sbItem].Text := IntToStr(X) + ':' + IntToStr(Y);
+end;
+
+procedure TFClient.WorkbenchDragDrop(Sender, Source: TObject; X, Y: Integer);
+begin
+  if (Assigned(MouseDownNode) and (MouseDownNode.TreeView = Source) and (Source = FNavigator)
+    and (FNavigator.Selected = MouseDownNode.Parent) and (MouseDownNode.ImageIndex = iiBaseTable)) then
+  begin
+    ActiveWorkbench.AddExistingTable(X, Y, TCBaseTable(MouseDownNode.Data));
+    Window.ActiveControl := ActiveWorkbench;
+  end;
+end;
+
+procedure TFClient.WorkbenchDragOver(Sender, Source: TObject; X, Y: Integer;
+  State: TDragState; var Accept: Boolean);
+var
+  BaseTable: TCBaseTable;
+begin
+  Accept := False;
+
+  if (Assigned(MouseDownNode) and (MouseDownNode.TreeView = Source) and (Source = FNavigator)
+    and (FNavigator.Selected = MouseDownNode.Parent) and (MouseDownNode.ImageIndex = iiBaseTable)) then
+  begin
+    BaseTable := TCBaseTable(MouseDownNode.Data);
+    Accept := Assigned(BaseTable) and not Assigned(ActiveWorkbench.TableByBaseTable(BaseTable));
+  end;
+end;
+
+procedure TFClient.WorkbenchEmptyExecute(Sender: TObject);
+var
+  BaseTable: TCBaseTable;
+begin
+  if (ActiveWorkbench.Selected is TWTable) then
+  begin
+    BaseTable := TWTable(ActiveWorkbench.Selected).BaseTable;
+
+    if (MsgBox(Preferences.LoadStr(375, BaseTable.Name), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
+      BaseTable.Empty();
+  end;
+end;
+
+procedure TFClient.WorkbenchEnter(Sender: TObject);
+begin
+  if (Sender is TWWorkbench) then
+  begin
+    MainAction('aDEmpty').OnExecute := WorkbenchEmptyExecute;
+
+    WorkbenchChange(Sender, TWWorkbench(Sender).Selected);
+  end;
+end;
+
+procedure TFClient.WorkbenchExit(Sender: TObject);
+begin
+  MainAction('aFExportSQL').Enabled := False;
+  MainAction('aFExportText').Enabled := False;
+  MainAction('aFExportExcel').Enabled := False;
+  MainAction('aFExportAccess').Enabled := False;
+  MainAction('aFExportSQLite').Enabled := False;
+  MainAction('aFExportODBC').Enabled := False;
+  MainAction('aFExportXML').Enabled := False;
+  MainAction('aFExportHTML').Enabled := False;
+  MainAction('aFExportBitmap').Enabled := False;
+  MainAction('aFPrint').Enabled := False;
+  MainAction('aECopy').Enabled := False;
+  MainAction('aDCreateTable').Enabled := False;
+  MainAction('aDCreateView').Enabled := False;
+  MainAction('aDCreateProcedure').Enabled := False;
+  MainAction('aDCreateFunction').Enabled := False;
+  MainAction('aDCreateEvent').Enabled := False;
+  MainAction('aDCreateKey').Enabled := False;
+  MainAction('aDCreateField').Enabled := False;
+  MainAction('aDCreateForeignKey').Enabled := False;
+  MainAction('aDCreateTrigger').Enabled := False;
+  MainAction('aDDeleteTable').Enabled := False;
+  MainAction('aDDeleteForeignKey').Enabled := False;
+  mwCreateSection.Enabled := False;
+  mwCreateLink.Enabled := False;
+  MainAction('aDEmpty').Enabled := False;
+end;
+
+procedure TFClient.WorkbenchPasteExecute(Sender: TObject);
+var
+  aEPasteEnabled: Boolean;
+  ClipboardData: HGLOBAL;
+  DatabaseName: string;
+  Index: Integer;
+  MenuItem: TMenuItem;
+  P: TPoint;
+  S: string;
+  AccountName: string;
+  BaseTable: TCBaseTable;
+  TableName: string;
+  Values: TStringList;
+  WTable: TWTable;
+begin
+  Wanted.Clear();
+
+  if (not Clipboard.HasFormat(CF_MYSQLTABLE) or not OpenClipboard(Handle)) then
+    MessageBeep(MB_ICONERROR)
+  else
+  begin
+    ClipboardData := GetClipboardData(CF_MYSQLTABLE);
+    S := PChar(GlobalLock(ClipboardData));
+    GlobalUnlock(ClipboardData);
+    CloseClipboard();
+
+    Values := TStringList.Create();
+    Values.Text := ReplaceStr(Trim(S), ',', #13#10);
+
+    aEPasteEnabled := Values.Count = 1;
+
+    if (aEPasteEnabled) then
+    begin
+      S := Values[0];
+
+      if (Pos('.', S) = 0) then
+        AccountName := ''
+      else
+      begin
+        Index := Pos('.', S);
+        while ((Index > 1) and (S[Index - 1] = '\')) do
+          Inc(Index, Pos('.', Copy(S, Index + 1, Length(S) - Index)));
+        AccountName := ReplaceStr(Copy(S, 1, Index - 1), '\.', '.');
+        Delete(S, 1, Index);
+      end;
+      if (Pos('.', S) = 0) then
+        DatabaseName := ''
+      else
+      begin
+        DatabaseName := Copy(S, 1, Pos('.', S) - 1);
+        Delete(S, 1, Length(DatabaseName) + 1);
+      end;
+      if (Pos('.', S) = 0) then
+        TableName := S
+      else
+        TableName := '';
+
+      P := Point(0, 0);
+      if (Sender is TMenuItem) then
+      begin
+        MenuItem := TMenuItem(Sender);
+
+        if ((MenuItem.GetParentMenu() is TPopupMenu)) then
+          P := ActiveWorkbench.ScreenToClient(TPopupMenu(MenuItem.GetParentMenu()).PopupPoint);
+      end;
+      BaseTable := Client.DatabaseByName(SelectedDatabase).BaseTableByName(TableName);
+
+      ActiveWorkbench.BeginUpdate();
+      WTable := TWTable.Create(ActiveWorkbench.Tables, P, BaseTable);
+      ActiveWorkbench.Tables.Add(WTable);
+      WorkbenchValidateControl(nil, WTable);
+
+
+      BaseTable.PushBuildEvent();
+      ActiveWorkbench.Selected := WTable;
+      Window.ActiveControl := ActiveWorkbench;
+      ActiveWorkbench.EndUpdate();
+    end;
+
+    Values.Free();
+  end;
+end;
+
+procedure TFClient.WorkbenchPrintExecute(Sender: TObject);
+begin
+  Wanted.Clear();
+
+  PrintDialog.FromPage := 1;
+  PrintDialog.ToPage := 1;
+  PrintDialog.MinPage := 1;
+  PrintDialog.MaxPage := 1;
+  if (FSQLEditorPrint.PageCount = 1) then
+    PrintDialog.Options := PrintDialog.Options - [poPageNums]
+  else
+    PrintDialog.Options := PrintDialog.Options + [poPageNums];
+  PrintDialog.Options := PrintDialog.Options - [poSelection];
+  PrintDialog.PrintRange := prAllPages;
+  if (PrintDialog.Execute()) then
+    ActiveWorkbench.Print(SelectedDatabase);
+end;
+
+function TFClient.WorkbenchValidateControl(Sender: TObject; Control: TWControl): Boolean;
+var
+  ChildTable: TCBaseTable;
+  ParentTable: TCBaseTable;
+begin
+  if (Control is TWTable) then
+  begin
+    if (Assigned(TWTable(Control).BaseTable)) then
+      Result := TWTable(Control).BaseTable.Update()
+    else
+    begin
+      DTable.Database := Control.Workbench.Database;
+      DTable.Table := nil;
+      DTable.Tables := nil;
+      Result := DTable.Execute();
+      if (Result) then
+        Client.Update();
+    end
+  end
+  else if (Control is TWForeignKey) then
+  begin
+    ChildTable := TWForeignKey(Control).ChildTable.BaseTable;
+    ParentTable := TWForeignKey(Control).ParentTable.BaseTable;
+
+    if (Assigned(ChildTable) and Assigned(ParentTable) and not Assigned(TWForeignKey(Control).BaseForeignKey)) then
+    begin
+      DForeignKey.Database := Control.Workbench.Database;
+      DForeignKey.Table := ChildTable;
+      DForeignKey.ParentTable := ParentTable;
+      DForeignKey.ForeignKey := nil;
+      Result := DForeignKey.Execute();
+      if (Result) then
+        Client.Update();
+    end
+    else
+      Result := False;
+  end
+  else
+    Result := False;
 end;
 
 end.

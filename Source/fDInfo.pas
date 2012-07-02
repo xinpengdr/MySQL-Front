@@ -58,7 +58,7 @@ end;
 
 procedure TDInfo.CMChangePreferences(var Message: TMessage);
 begin
-  Caption := Preferences.LoadStr(367) + ' ' + Application.Title;
+  Caption := Preferences.LoadStr(367) + ' ' + LoadStr(1000);
 
   FVersion.Caption := Preferences.LoadStr(169) + ' ' + IntToStr(Preferences.VerMajor) + '.' + IntToStr(Preferences.VerMinor);
   FBuild.Caption := '(' + Preferences.LoadStr(737) + ': ' + IntToStr(Preferences.VerPatch) + '.' + IntToStr(Preferences.VerBuild) + ')';
