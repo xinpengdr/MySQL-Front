@@ -726,7 +726,6 @@ type
       FWorkbench: TWWorkbench;
     public
       ListView: TListView;
-      WorkbenchLoaded: Boolean;
       function BuilderResultEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
       procedure CloseBuilderResult();
       procedure CloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -1396,7 +1395,6 @@ begin
   FDBGrid := nil;
   PDBGrid := nil;
   FWorkbench := nil;
-  WorkbenchLoaded := False;
   FXML := nil;
 end;
 
@@ -5985,11 +5983,10 @@ begin
   Result.Width := PDBGrid.ClientWidth;
   Result.Height := 24;
   Result.Align := alTop;
-  Result.ShowHint := True;
-  Result.TabHeight := 23;
-  Result.TabOrder := 0;
 
   Result.Parent := PDBGrid;
+
+  Result.TabHeight := 23;
 
   Result.Perform(CM_PARENTCOLORCHANGED, 0, 0);
   Result.Perform(CM_PARENTFONTCHANGED, 0, 0);
@@ -9421,7 +9418,7 @@ var
 begin
   case (View) of
     vDiagram:
-      Result := Desktop(Client.DatabaseByName(SelectedDatabase)).CreateWorkbench();
+      Result := Desktop(Client.DatabaseByName(SelectedDatabase)).Workbench;
     else
       Result := nil;
   end;
@@ -14195,11 +14192,12 @@ begin
       if (not TCTable(FNavigator.Selected.Data).ValidDataSet or not TCTable(FNavigator.Selected.Data).DataSet.Active) then
         TableOpen(nil);
     vDiagram:
-      if (not Desktop(ActiveWorkbench.Database).WorkbenchLoaded) then
+      if (not Assigned(ActiveWorkbench)) then
       begin
+        Desktop(TCDatabase(FNavigator.Selected.Data)).CreateWorkbench();
+        ActiveWorkbench := GetActiveWorkbench();
         if (FileExists(Client.Account.DataPath + ActiveWorkbench.Database.Name + PathDelim + 'Diagram.xml')) then
           ActiveWorkbench.LoadFromFile(Client.Account.DataPath + ActiveWorkbench.Database.Name + PathDelim + 'Diagram.xml');
-        Desktop(ActiveWorkbench.Database).WorkbenchLoaded := True;
       end;
   end;
 end;

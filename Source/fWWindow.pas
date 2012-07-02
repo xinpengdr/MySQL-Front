@@ -1400,7 +1400,7 @@ begin
       Caption := Tab.Client.Account.Name
     else
       Caption := Tab.Client.Account.Name + ' - ' + Tab.ToolBarData.Caption;
-    Application.Title := Tab.Client.Account.Name;
+    Application.Title := Caption;
 
     tbProperties.Action := Tab.ToolBarData.tbPropertiesAction;
     tbProperties.Caption := Preferences.LoadStr(97) + '...';

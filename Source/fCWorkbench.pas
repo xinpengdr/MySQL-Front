@@ -2816,8 +2816,10 @@ end;
 
 function TWForeignKey.GetCaption(): TCaption;
 begin
-  Result := FCaption;
-  Result := BaseForeignKey.Name;
+  if (not Assigned(BaseForeignKey)) then
+    inherited
+  else
+    Result := BaseForeignKey.Name;
 end;
 
 procedure TWForeignKey.SetCaption(const ACaption: TCaption);
@@ -3202,10 +3204,13 @@ begin
   Table := TWTable.Create(Tables, PointToCoord(X, Y), ABaseTable);
   Tables.Add(Table);
   if (Assigned(OnValidateControl)) then
+  begin
     if (not OnValidateControl(Self, Table)) then
       Table.Selected := True
     else
       Selected := Table;
+    FModified := True;
+  end;
 end;
 
 procedure TWWorkbench.BeginUpdate();
@@ -3254,10 +3259,12 @@ end;
 procedure TWWorkbench.ClientUpdate(const Event: TCClient.TEvent);
 var
   BaseTable: TCBaseTable;
+  ChildTable: TWTable;
   I: Integer;
   J: Integer;
   Link: TWLink;
   OldModified: Boolean;
+  ParentTable: TWTable;
   Table: TWTable;
 begin
   if ((Event.EventType = ceItemsValid) and (Event.Sender = Database) and (Event.CItems is TCTables)) then
@@ -3317,17 +3324,25 @@ begin
 
           for J := 0 to XML.ChildNodes.Count - 1 do
             if ((XML.ChildNodes.Nodes[J].NodeName = 'foreignkey')
-              and Assigned(XMLNode(XML.ChildNodes.Nodes[J], 'tables/child'))
-              and (XMLNode(XML.ChildNodes.Nodes[J], 'tables/child').Attributes['name'] <> Null)
-              and ((Database.Tables.NameCmp(XMLNode(XML.ChildNodes.Nodes[J], 'tables/child').Attributes['name'], BaseTable.Name) = 0)
-                or (Database.Tables.NameCmp(XMLNode(XML.ChildNodes.Nodes[J], 'tables/parent').Attributes['name'], BaseTable.Name) = 0))) then
+              and Assigned(XMLNode(XML.ChildNodes.Nodes[J], 'tables/child')) and (XMLNode(XML.ChildNodes.Nodes[J], 'tables/child').Attributes['name'] <> Null)
+              and Assigned(XMLNode(XML.ChildNodes.Nodes[J], 'tables/parent')) and (XMLNode(XML.ChildNodes.Nodes[J], 'tables/parent').Attributes['name'] <> Null)) then
             begin
-              Link := TWLink.Create(Self, Point(-1, -1));
-              Link.LoadFromXML(XML.ChildNodes.Nodes[J]);
-              if (not Assigned(Link.ChildTable) or not Assigned(Link.ParentTable) or (Link is TWForeignKey) and not Assigned(TWForeignKey(Link).BaseForeignKey)) then
-                Link.Free()
-              else
+              ChildTable := TableByCaption(XMLNode(XML.ChildNodes.Nodes[J], 'tables/child').Attributes['name']);
+              ParentTable := TableByCaption(XMLNode(XML.ChildNodes.Nodes[J], 'tables/parent').Attributes['name']);
+              if (((Table = ChildTable) or (Table = ParentTable))
+                and Assigned(ChildTable) and Assigned(ChildTable.BaseTable)
+                and Assigned(ParentTable) and Assigned(ParentTable.BaseTable)) then
+              begin
+                if (XML.ChildNodes.Nodes[J].Attributes['name'] = Null) then
+                  Link := TWLink.Create(Self, Point(-1, -1))
+                else
+                begin
+                  Link := TWForeignKey.Create(Self, Point(-1, -1));
+                  TWForeignKey(Link).BaseForeignKey := ChildTable.BaseTable.ForeignKeyByName(XML.ChildNodes.Nodes[J].Attributes['name']);
+                end;
+                Link.LoadFromXML(XML.ChildNodes.Nodes[J]);
                 Links.Add(Link);
+              end;
             end;
         end;
 
@@ -3453,7 +3468,9 @@ procedure TWWorkbench.CreateNewTable(const X, Y: Integer);
 begin
   CreatedTable := TWTable.Create(Tables, PointToCoord(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
   if (not Assigned(OnValidateControl) or not OnValidateControl(Self, CreatedTable)) then
-    FreeAndNil(CreatedTable);
+    FreeAndNil(CreatedTable)
+  else
+    FModified := True;
 end;
 
 procedure TWWorkbench.CursorMove(const Coord: TCoord);
