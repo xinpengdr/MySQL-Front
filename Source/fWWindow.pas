@@ -1050,7 +1050,7 @@ begin
 
   miBookmarks.Caption := Preferences.LoadStr(727);
   aBAdd.Caption := Preferences.LoadStr(728) + '...';
-  aBDelete.Caption := Preferences.LoadStr(559);
+  aBDelete.Caption := Preferences.LoadStr(28);
   aBEdit.Caption := Preferences.LoadStr(97) + '...';
 
   miDatabase.Caption := Preferences.LoadStr(38);
@@ -1067,7 +1067,7 @@ begin
   aDCreateForeignKey.Caption := Preferences.LoadStr(248) + '...';
   aDCreateHost.Caption := Preferences.LoadStr(560) + '...';
   aDCreateUser.Caption := Preferences.LoadStr(561) + '...';
-  miDDelete.Caption := Preferences.LoadStr(559);
+  miDDelete.Caption := Preferences.LoadStr(28);
   aDDeleteDatabase.Caption := Preferences.LoadStr(38);
   aDDeleteTable.Caption := Preferences.LoadStr(302);
   aDDeleteView.Caption := Preferences.LoadStr(738);
@@ -1134,15 +1134,15 @@ begin
 
   SetToolBarHints(ToolBar);
   tbCreateDatabase.Hint := Preferences.LoadStr(147) + '...';
-  tbDeleteDatabase.Hint := ReplaceStr(Preferences.LoadStr(559), '&', '');
+  tbDeleteDatabase.Hint := ReplaceStr(Preferences.LoadStr(28), '&', '');
   tbCreateTable.Hint := Preferences.LoadStr(383) + '...';
-  tbDeleteTable.Hint := ReplaceStr(Preferences.LoadStr(559), '&', '');
+  tbDeleteTable.Hint := ReplaceStr(Preferences.LoadStr(28), '&', '');
   tbCreateIndex.Hint := Preferences.LoadStr(160) + '...';
-  tbDeleteIndex.Hint := ReplaceStr(Preferences.LoadStr(559), '&', '');
+  tbDeleteIndex.Hint := ReplaceStr(Preferences.LoadStr(28), '&', '');
   tbCreateField.Hint := Preferences.LoadStr(87) + '...';
-  tbDeleteField.Hint := ReplaceStr(Preferences.LoadStr(559), '&', '');
+  tbDeleteField.Hint := ReplaceStr(Preferences.LoadStr(28), '&', '');
   tbCreateForeignKey.Hint := Preferences.LoadStr(249) + '...';
-  tbDeleteForeignKey.Hint := ReplaceStr(Preferences.LoadStr(559), '&', '');
+  tbDeleteForeignKey.Hint := ReplaceStr(Preferences.LoadStr(28), '&', '');
   tbProperties.Hint := ReplaceStr(Preferences.LoadStr(97), '&', '') + '...';
   tbPostRecord.Hint := Preferences.LoadStr(516);
   tbCancelRecord.Hint := Preferences.LoadStr(517);
@@ -1397,9 +1397,9 @@ begin
   if (Assigned(Tab) and (Tab = ActiveTab)) then
   begin
     if (Tab.ToolBarData.Caption = '') then
-      Caption := Tab.Client.Account.Name
+      Caption := Tab.Client.Account.Name + ' - ' + LoadStr(1000)
     else
-      Caption := Tab.Client.Account.Name + ' - ' + Tab.ToolBarData.Caption;
+      Caption := Tab.Client.Account.Name + ' - ' + Tab.ToolBarData.Caption + ' - ' + LoadStr(1000);
     Application.Title := Caption;
 
     tbProperties.Action := Tab.ToolBarData.tbPropertiesAction;

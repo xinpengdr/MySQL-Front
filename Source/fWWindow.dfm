@@ -2,11 +2,12 @@ object WWindow: TWWindow
   Left = 387
   Top = 161
   Caption = 'WWindow'
-  ClientHeight = 460
+  ClientHeight = 459
   ClientWidth = 691
   Color = clBtnFace
   Constraints.MinHeight = 485
   Constraints.MinWidth = 560
+  DoubleBuffered = True
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clBlack
   Font.Height = -12
@@ -28,12 +29,14 @@ object WWindow: TWWindow
     Left = 0
     Top = 113
     Width = 691
-    Height = 326
+    Height = 325
     Align = alClient
     BevelOuter = bvNone
     Color = clAppWorkSpace
     ParentBackground = False
     TabOrder = 5
+    ExplicitTop = 116
+    ExplicitHeight = 322
   end
   object TabControl: TTabControl
     Left = 0
@@ -62,6 +65,7 @@ object WWindow: TWWindow
     OnMouseUp = TabControlMouseUp
     OnResize = TabControlResize
     OnStartDrag = TabControlStartDrag
+    ExplicitTop = 88
   end
   object PAddressBar: TPanel_Ext
     Left = 0
@@ -134,7 +138,7 @@ object WWindow: TWWindow
   end
   object StatusBar: TStatusBar
     Left = 0
-    Top = 439
+    Top = 438
     Width = 691
     Height = 21
     AutoHint = True

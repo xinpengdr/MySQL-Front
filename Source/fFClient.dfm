@@ -6,6 +6,8 @@ object FClient: TFClient
   Align = alClient
   Constraints.MinHeight = 300
   Constraints.MinWidth = 200
+  DoubleBuffered = True
+  ParentDoubleBuffered = False
   TabOrder = 0
   Visible = False
   OnResize = FormResize
@@ -82,14 +84,13 @@ object FClient: TFClient
         Left = 2
         Top = 106
         Width = 116
-        Height = 468
+        Height = 121
         Align = alClient
         BevelOuter = bvNone
         Color = clWindow
         Constraints.MinHeight = 50
         ParentBackground = False
         TabOrder = 0
-        ExplicitHeight = 121
       end
       object PFolders: TPanel_Ext
         Left = 2
@@ -162,7 +163,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 572
+        Height = 225
         HelpContext = 1082
         Align = alClient
         BorderStyle = bsNone
@@ -184,7 +185,6 @@ object FClient: TFClient
         OnExit = FBookmarksExit
         OnDragDrop = FBookmarksDragDrop
         OnDragOver = FBookmarksDragOver
-        ExplicitHeight = 225
       end
     end
     object PNavigator: TPanel_Ext
@@ -1176,7 +1176,9 @@ object FClient: TFClient
       Width = 120
       Height = 27
       BevelOuter = bvNone
+      DoubleBuffered = False
       ParentBackground = False
+      ParentDoubleBuffered = False
       ParentShowHint = False
       ShowHint = False
       TabOrder = 0
@@ -2262,7 +2264,8 @@ object FClient: TFClient
       OnClick = mwEPasteClick
     end
     object mwEDelete: TMenuItem
-      Caption = 'aEDelete'
+      Caption = 'mwERemove'
+      OnClick = mwERemoveClick
     end
     object N28: TMenuItem
       Caption = '-'

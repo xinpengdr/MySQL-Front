@@ -95,7 +95,7 @@ begin
 
   TSDatabases.Caption := Preferences.LoadStr(265);
   FBNew.Caption := Preferences.LoadStr(26) + '...';
-  FBDelete.Caption := Preferences.LoadStr(559);
+  FBDelete.Caption := Preferences.LoadStr(28);
   FBEdit.Caption := Preferences.LoadStr(97) + '...';
 
   TSSource.Caption := Preferences.LoadStr(198);

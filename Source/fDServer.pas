@@ -239,7 +239,7 @@ begin
   FBFlushHosts.Caption := Preferences.LoadStr(329);
 
   miAdd.Caption := Preferences.LoadStr(26) + '...';
-  miDelete.Caption := Preferences.LoadStr(559);
+  miDelete.Caption := Preferences.LoadStr(28);
   miProperties.Caption := Preferences.LoadStr(97) + '...';
 
   msUndo.Action := MainAction('aEUndo'); msCut.ShortCut := 0;

@@ -280,14 +280,11 @@ type
     FTable: TCBaseTable;
     function GetKey(Index: Integer): TCKey; inline;
     function GetPrimaryKey(): TCKey;
-  protected
-    function InsertIndex(const Name: string; out Index: Integer): Boolean; override;
   public
     procedure AddKey(const NewKey: TCKey); virtual;
     procedure Assign(const Source: TCKeys); virtual;
     constructor Create(const ATable: TCBaseTable); reintroduce; virtual;
     procedure DeleteKey(const AKey: TCKey); virtual;
-    function IndexByName(const Name: string): Integer; override;
     property Key[Index: Integer]: TCKey read GetKey; default;
     property PrimaryKey: TCKey read GetPrimaryKey;
     property Table: TCBaseTable read FTable;
@@ -438,14 +435,12 @@ type
     function GetForeignKey(Index: Integer): TCForeignKey; inline;
   protected
     FValid: Boolean;
-    function InsertIndex(const Name: string; out Index: Integer): Boolean; override;
   public
     procedure AddForeignKey(const NewForeignKey: TCForeignKey); virtual;
     procedure Assign(const Source: TCForeignKeys); virtual;
     procedure Clear(); override;
     constructor Create(const ATable: TCBaseTable); reintroduce; virtual;
     procedure DeleteForeignKey(const AForeignKey: TCForeignKey); virtual;
-    function IndexByName(const Name: string): Integer; override;
     procedure InsertForeignKey(const Index: Integer; const NewForeignKey: TCForeignKey); virtual;
     property Client: TCClient read GetClient;
     property ForeignKey[Index: Integer]: TCForeignKey read GetForeignKey; default;
@@ -2169,7 +2164,11 @@ end;
 
 procedure TCKeyColumn.Assign(const Source: TCKeyColumn);
 begin
+try
   Field := IndexColumns.Key.Table.FieldByName(Source.Field.Name);
+except
+  Field := IndexColumns.Key.Table.FieldByName(Source.Field.Name);
+end;
   Length := Source.Length;
 end;
 
@@ -2415,30 +2414,12 @@ begin
   Result := TCKey(Items[Index]);
 end;
 
-function TCKeys.InsertIndex(const Name: string; out Index: Integer): Boolean;
-begin
-  raise EAbstractError.Create(SAbstractError);
-end;
-
 function TCKeys.GetPrimaryKey(): TCKey;
 begin
   if ((Count >= 1) and (Key[0].Name = '')) then
     Result := Key[0]
   else
     Result := nil;
-end;
-
-function TCKeys.IndexByName(const Name: string): Integer;
-var
-  I: Integer;
-begin
-  Result := -1;
-  for I := 0 to Count - 1 do
-    if (NameCmp(Item[I].Name, Name) = 0) then
-    begin
-      Result := I;
-      break;
-    end;
 end;
 
 { TCField *********************************************************************}
@@ -3152,29 +3133,11 @@ begin
   Result := TCForeignKey(Items[Index]);
 end;
 
-function TCForeignKeys.IndexByName(const Name: string): Integer;
-var
-  I: Integer;
-begin
-  Result := -1;
-  for I := 0 to Count - 1 do
-    if (NameCmp(Item[I].Name, Name) = 0) then
-    begin
-      Result := I;
-      break;
-    end;
-end;
-
 procedure TCForeignKeys.InsertForeignKey(const Index: Integer; const NewForeignKey: TCForeignKey);
 begin
   Insert(Index, TCForeignKey.Create(Self));
   ForeignKey[Index].Assign(NewForeignKey);
   ForeignKey[Index].Created := True;
-end;
-
-function TCForeignKeys.InsertIndex(const Name: string; out Index: Integer): Boolean;
-begin
-  raise EAbstractError.Create(SAbstractError);
 end;
 
 { TCTableDataSet **************************************************************}
@@ -4167,6 +4130,7 @@ end;
 
 procedure TCBaseTable.ParseCreateTable(const SQL: string);
 var
+  DeleteList: TList;
   FieldName: string;
   Fulltext: Boolean;
   I: Integer;
@@ -4236,6 +4200,8 @@ begin
         FFields.Delete(I);
         FFields.Insert(Index, TCBaseTableField.Create(TCBaseTableFields(FFields), Name));
       end
+      else if (Name <> FFields[Index].Name) then
+        FFields.Insert(Index, TCBaseTableField.Create(TCBaseTableFields(FFields), Name))
       else
       begin
         TCBaseTableField(FFields[Index]).Clear();
@@ -4304,7 +4270,8 @@ begin
     end;
 
 
-    Index := 0;
+    DeleteList := TList.Create();
+    DeleteList.Assign(FKeys);
     while (SQLParseKeyword(Parse, 'PRIMARY', False)
       or SQLParseKeyword(Parse, 'SPATIAL', False)
       or SQLParseKeyword(Parse, 'KEY', False)
@@ -4323,25 +4290,21 @@ begin
       SQLParseKeyword(Parse, 'KEY');
       SQLParseKeyword(Parse, 'INDEX');
 
-      if (not SQLParseKeyword(Parse, 'TYPE', False) and not SQLParseKeyword(Parse, 'USING', False) and not SQLParseChar(Parse, '(', False)) then
-        Name := SQLParseValue(Parse)
+      if (Primary or SQLParseKeyword(Parse, 'TYPE', False) or SQLParseKeyword(Parse, 'USING', False) or SQLParseChar(Parse, '(', False)) then
+        Name := ''
       else
-        Name := '';
+        Name := SQLParseValue(Parse);
 
-      if (Index = FKeys.Count) then
-        Index := FKeys.Add(TCKey.Create(FKeys, Name))
-      else if (Index < FKeys.IndexByName(Name)) then
+
+      if (not FKeys.InsertIndex(Name, Index)) then
       begin
-        I := FKeys.IndexByName(Name);
-        FKeys[I].Free();
-        FKeys.Delete(I);
-        FKeys.Insert(Index, TCKey.Create(FKeys, Name));
-      end
-      else
-      begin
+        DeleteList.Delete(DeleteList.IndexOf(FKeys.Items[Index]));
         FKeys[Index].Clear();
-        FKeys[Index].FName := Name;
-      end;
+      end
+      else if (Index < FKeys.Count) then
+        FKeys.Insert(Index, TCKey.Create(FKeys, Name))
+      else
+        FKeys.Add(TCKey.Create(FKeys, Name));
       NewKey := FKeys[Index];
 
       NewKey.Primary := Primary;
@@ -4374,43 +4337,40 @@ begin
       NewKey.Unique := NewKey.Unique or NewKey.Primary;
 
 
-      Inc(Index);
       SQLParseChar(Parse, ',');
     end;
-    while (Index < FKeys.Count) do
+    while (DeleteList.Count > 0) do
     begin
+      Index := FKeys.IndexOf(DeleteList.Items[0]);
       FKeys[Index].Free();
       FKeys.Delete(Index);
+      DeleteList.Delete(0);
     end;
 
 
-    Index := 0;
+    DeleteList.Assign(FForeignKeys);
     while (SQLParseKeyword(Parse, 'CONSTRAINT', False) or SQLParseKeyword(Parse, 'FOREIGN KEY', False)) do
     begin
-      if (SQLParseKeyword(Parse, 'CONSTRAINT')) then
-        Name := SQLParseValue(Parse) // Symbol Name
+      if (not SQLParseKeyword(Parse, 'CONSTRAINT')) then
+        Name := ''
       else
-        Name := '';
+        Name := SQLParseValue(Parse);// Symbol Name
 
       if (not SQLParseKeyword(Parse, 'FOREIGN KEY')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 2, SQL]);
 
       if (not SQLParseChar(Parse, '(', False)) then
         Name := SQLParseValue(Parse); // Index Name
 
-      if (Index = FForeignKeys.Count) then
-        Index := FForeignKeys.Add(TCForeignKey.Create(FForeignKeys, Name))
-      else if (Index < FForeignKeys.IndexByName(Name)) then
+
+      if (not FForeignKeys.InsertIndex(Name, Index)) then
       begin
-        I := FForeignKeys.IndexByName(Name);
-        FForeignKeys[I].Free();
-        FForeignKeys.Delete(I);
-        FForeignKeys.Insert(Index, TCForeignKey.Create(FForeignKeys, Name));
-      end
-      else
-      begin
+        DeleteList.Delete(DeleteList.IndexOf(FForeignKeys.Items[Index]));
         FForeignKeys[Index].Clear();
-        FForeignKeys[Index].FName := Name;
-      end;
+      end
+      else if (Index < FForeignKeys.Count) then
+        FForeignKeys.Insert(Index, TCForeignKey.Create(FForeignKeys, Name))
+      else
+        FForeignKeys.Add(TCForeignKey.Create(FForeignKeys, Name));
       NewForeignKey := FForeignKeys[Index];
 
       if (not SQLParseChar(Parse, '(')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 3, SQL]);
@@ -4470,11 +4430,15 @@ begin
       Inc(Index);
       SQLParseChar(Parse, ',');
     end;
-    while (Index < FForeignKeys.Count) do
+    while (DeleteList.Count > 0) do
     begin
+      Index := FForeignKeys.IndexOf(DeleteList.Items[0]);
       FForeignKeys[Index].Free();
       FForeignKeys.Delete(Index);
+      DeleteList.Delete(0);
     end;
+    DeleteList.Free();
+
 
     if (not SQLParseChar(Parse, ')')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 10, SQL]);
 

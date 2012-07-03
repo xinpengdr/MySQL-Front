@@ -667,6 +667,7 @@ type
     procedure mfPropertiesClick(Sender: TObject);
     procedure MFilesPopup(Sender: TObject);
     procedure mwDCreateTableClick(Sender: TObject);
+    procedure mwERemoveClick(Sender: TObject);
   type
     TNewLineFormat = (nlWindows, nlUnix, nlMacintosh);
     TTabState = set of (tsLoading, tsActive);
@@ -1377,13 +1378,16 @@ end;
 
 procedure TFClient.TDatabaseDesktop.CloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
-  if (Assigned(FWorkbench) and FWorkbench.Modified) then
-    try
-      SysUtils.ForceDirectories(ExtractFilePath(FClient.Client.Account.DataPath + Database.Name));
-      FWorkbench.SaveToFile(FClient.Client.Account.DataPath + Database.Name + PathDelim + 'Diagram.xml');
-    except
-      raise EInOutError.Create(SysErrorMessage(GetLastError()) + '  (' + FClient.Client.Account.DataPath + Database.Name + ')');
-    end;
+  if (Assigned(Workbench) and Workbench.Modified) then
+    if (Workbench.ObjectCount > 0) then
+      try
+        SysUtils.ForceDirectories(ExtractFilePath(FClient.Client.Account.DataPath + Database.Name));
+        FWorkbench.SaveToFile(FClient.Client.Account.DataPath + Database.Name + PathDelim + 'Diagram.xml');
+      except
+        raise EInOutError.Create(SysErrorMessage(GetLastError()) + '  (' + FClient.Client.Account.DataPath + Database.Name + ')');
+      end
+    else if (FileExists(FClient.Client.Account.DataPath + Database.Name + PathDelim + 'Diagram.xml')) then
+      DeleteFile(FClient.Client.Account.DataPath + Database.Name + PathDelim + 'Diagram.xml');
 end;
 
 constructor TFClient.TDatabaseDesktop.Create(const AFClient: TFClient; const ADatabase: TCDatabase);
@@ -2779,44 +2783,34 @@ end;
 function TFClient.AddressToCaption(const AAddress: string): string;
 var
   URI: TUURI;
-  View: string;
 begin
   URI := TUURI.Create(AAddress); if (URI.Scheme <> 'mysql') then FreeAndNil(URI);
 
   if (not Assigned(URI)) then
     Result := ''
-  else
+  else if (URI.Database <> '') then
   begin
     Result := URI.Database;
     if (URI.Table <> '') then
-      Result := Result + '.' + URI.Table
-    else if (URI.Param['object'] <> Null) then
+      Result := Result + '.' + URI.Table;
+    if (((URI.Table = '') or (URI.Param['objecttype'] = 'trigger')) and (URI.Param['object'] <> Null)) then
       Result := Result + '.' + URI.Param['object'];
+  end
+  else if ((URI.Database = '') and (URI.Param['system'] = 'hosts')) then
+    Result := ReplaceStr(Preferences.LoadStr(335), '&', '')
+  else if ((URI.Database = '') and (URI.Param['system'] = 'processes')) then
+    Result := ReplaceStr(Preferences.LoadStr(24), '&', '')
+  else if ((URI.Database = '') and (URI.Param['system'] = 'stati')) then
+    Result := ReplaceStr(Preferences.LoadStr(23), '&', '')
+  else if ((URI.Database = '') and (URI.Param['system'] = 'users')) then
+    Result := ReplaceStr(Preferences.LoadStr(561), '&', '')
+  else if ((URI.Database = '') and (URI.Param['system'] = 'variables')) then
+    Result := ReplaceStr(Preferences.LoadStr(22), '&', '');
 
-    if ((URI.Database = '') and (URI.Param['system'] = 'hosts')) then View := ReplaceStr(Preferences.LoadStr(335), '&', '')
-    else if ((URI.Database = '') and (URI.Param['system'] = 'processes')) then View := ReplaceStr(Preferences.LoadStr(24), '&', '')
-    else if ((URI.Database = '') and (URI.Param['system'] = 'stati')) then View := ReplaceStr(Preferences.LoadStr(23), '&', '')
-    else if ((URI.Database = '') and (URI.Param['system'] = 'users')) then View := ReplaceStr(Preferences.LoadStr(561), '&', '')
-    else if ((URI.Database = '') and (URI.Param['system'] = 'variables')) then View := ReplaceStr(Preferences.LoadStr(22), '&', '')
-    else if (URI.Param['view'] = Null) then View := ReplaceStr(Preferences.LoadStr(4), '&', '')
-    else if (URI.Param['view'] = 'browser') then View := ReplaceStr(Preferences.LoadStr(5), '&', '')
-    else if (URI.Param['view'] = 'builder') then View := ReplaceStr(Preferences.LoadStr(852), '&', '')
-    else if (URI.Param['view'] = 'ide') then View := ReplaceStr(Preferences.LoadStr(865), '&', '')
-    else if (URI.Param['view'] = 'editor') then
-    begin
-      View := ReplaceStr(Preferences.LoadStr(6), '&', '');
-      if (SQLEditor.Filename <> '') then
-        View := View + ': ' + SQLEditor.Filename;
-    end
-    else if (URI.Param['view'] = 'diagram') then View := ReplaceStr(Preferences.LoadStr(800), '&', '');
+  if ((URI.Param['view'] = 'editor') and (URI.Param['file'] <> Null)) then
+    Result := Result + ' - ' + URIToPath(URI.ParamEncode(URI.Param['file']));
 
-    if (Result = '') then
-      Result := View
-    else
-      Result := Result + '  (' + View + ')';
-
-    URI.Free();
-  end;
+  URI.Free();
 end;
 
 procedure TFClient.aDInsertRecordExecute(Sender: TObject);
@@ -4749,7 +4743,7 @@ begin
   aPCollapse.Caption := Preferences.LoadStr(151);
   aPOpenInNewWindow.Caption := Preferences.LoadStr(760);
   aPOpenInNewTab.Caption := Preferences.LoadStr(850);
-  aDDelete.Caption := Preferences.LoadStr(559);
+  aDDelete.Caption := Preferences.LoadStr(28);
   aDPrev.Caption := Preferences.LoadStr(512);
   aDNext.Caption := Preferences.LoadStr(513);
   DataSetFirst.Caption := Preferences.LoadStr(514);
@@ -4793,7 +4787,7 @@ begin
   miNImport.Caption := Preferences.LoadStr(371);
   miNExport.Caption := Preferences.LoadStr(200);
   miNCreate.Caption := Preferences.LoadStr(26);
-  miNDelete.Caption := Preferences.LoadStr(559);
+  miNDelete.Caption := Preferences.LoadStr(28);
 
   mbBOpen.Caption := Preferences.LoadStr(581);
 
@@ -4807,7 +4801,7 @@ begin
   mlFImport.Caption := Preferences.LoadStr(371);
   mlFExport.Caption := Preferences.LoadStr(200);
   mlDCreate.Caption := Preferences.LoadStr(26);
-  mlDDelete.Caption := Preferences.LoadStr(559);
+  mlDDelete.Caption := Preferences.LoadStr(28);
 
   mwFImport.Caption := Preferences.LoadStr(371);
   mwFExport.Caption := Preferences.LoadStr(200);
@@ -5238,7 +5232,7 @@ begin
     URI.Param['system'] := Null;
     URI.Param['filter'] := Null;
     URI.Param['offset'] := Null;
-    URI.Param['file'] := PathToURI(Param);
+    URI.Param['file'] := URI.ParamEncode(PathToURI(Param));
     Address := URI.Address;
     URI.Free();
   end
@@ -5605,7 +5599,6 @@ begin
   mwFExportHTML.Action := MainAction('aFExportHTML');
   mwFExportBitmap.Action := MainAction('aFExportBitmap');
   mwECopy.Action := MainAction('aECopy');
-  mwEDelete.Action := MainAction('aEDelete');
   mwDCreateField.Action := MainAction('aDCreateField');
   mwDCreateForeignKey.Action := MainAction('aDCreateForeignKey');
   mwDEmpty.Action := MainAction('aDEmpty');
@@ -11596,7 +11589,7 @@ begin
         or not (ActiveDBGrid.DataSource.DataSet is TMySQLTable) and ActiveDBGrid.DataSource.DataSet.Filtered) then
       begin
         NewMenuItem := TMenuItem.Create(Self);
-        NewMenuItem.Caption := Preferences.LoadStr(559);
+        NewMenuItem.Caption := Preferences.LoadStr(28);
         NewMenuItem.OnClick := gmFilterClearClick;
         gmFilter.Add(NewMenuItem);
 
@@ -11986,6 +11979,11 @@ begin
   end;
 end;
 
+procedure TFClient.mwERemoveClick(Sender: TObject);
+begin
+  MainAction('aEDelete').Execute();
+end;
+
 procedure TFClient.mwEPasteClick(Sender: TObject);
 begin
   WorkbenchPasteExecute(Sender);
@@ -12004,6 +12002,11 @@ begin
 
   ActiveWorkbench.UpdateAction(MainAction('aEDelete'));
   mwEDelete.Enabled := MainAction('aEDelete').Enabled;
+  if ((ActiveWorkbench.Selected is TWTable)) then
+    mwEDelete.Caption := Preferences.LoadStr(559)
+  else
+    mwEDelete.Caption := Preferences.LoadStr(28);
+
 
   if (not Assigned(ActiveWorkbench.Selected)) then
     for I := 0 to Database.Tables.Count - 1 do
@@ -12115,7 +12118,7 @@ begin
         end;
       if (URI.Param['view'] = 'editor') then
         if (SQLEditor.Filename <> '') then
-          URI.Param['file'] := PathToURI(SQLEditor.Filename);
+          URI.Param['file'] := URI.ParamDecode(PathToURI(SQLEditor.Filename));
     end;
   end;
 
@@ -12155,7 +12158,7 @@ begin
   begin
     URI.Param['view'] := 'editor';
     URI.Database := DatabaseName;
-    URI.Param['file'] := PathToURI(Filename);
+    URI.Param['file'] := URI.ParamEncode(PathToURI(Filename));
   end;
 
   if (not OpenNewWindow) then
@@ -12173,6 +12176,7 @@ var
   Handle: THandle;
   Import: TTImportSQL;
   Text: string;
+  URI: TUURI;
 begin
   tbEditor.Click();
 
@@ -12237,7 +12241,11 @@ begin
           FSQLEditorSynMemo.Text := Text;
           SQLEditor.Filename := Import.Filename;
           SQLEditor.FileCodePage := Import.CodePage;
+          URI := TUURI.Create(Address);
+          URI.Param['file'] := URI.ParamEncode(PathToURI(SQLEditor.Filename));
+          FAddress := URI.Address;
           AddressChanged(nil);
+          URI.Free();
         end;
         if (Length(FSQLEditorSynMemo.Lines.Text) < LargeSQLScriptSize) then
           FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options - [eoScrollPastEol];  // Slow down the performance on large content
@@ -13200,6 +13208,7 @@ var
   Len: Cardinal;
   Success: Boolean;
   Text: string;
+  URI: TUURI;
 begin
   SaveDialog.Title := ReplaceStr(Preferences.LoadStr(582), '&', '');
   SaveDialog.InitialDir := Path;
@@ -13282,8 +13291,17 @@ begin
 
       if (not Success) then
         MsgBox(SysErrorMessage(GetLastError()), Preferences.LoadStr(45), MB_OK + MB_ICONERROR)
-      else if ((Sender = MainAction('aFSave')) or (Sender = MainAction('aFSaveAs'))) then
-        ActiveSynMemo.Modified := False;
+      else
+      begin
+        if ((Sender = MainAction('aFSave')) or (Sender = MainAction('aFSaveAs'))) then
+          ActiveSynMemo.Modified := False;
+
+        URI := TUURI.Create(Address);
+        URI.Param['file'] := URI.ParamEncode(PathToURI(SQLEditor.Filename));
+        FAddress := URI.Address;
+        AddressChanged(nil);
+        URI.Free();
+      end;
 
       CloseHandle(Handle);
     end;
@@ -13376,9 +13394,15 @@ begin
       vBrowser: URI.Param['view'] := 'browser';
       vIDE: URI.Param['view'] := 'ide';
       vBuilder: URI.Param['view'] := 'builder';
-      vEditor: URI.Param['view'] := 'editor';
+      vEditor:
+        begin
+          URI.Param['view'] := 'editor';
+          if (SQLEditor.Filename <> '') then
+            URI.Param['file'] := URI.ParamEncode(PathToURI(SQLEditor.Filename));
+        end;
       vDiagram: URI.Param['view'] := 'diagram';
     end;
+
 
     if ((AView = vObjects) and (SelectedImageIndex in [iiProcedure, iiFunction, iiTrigger, iiEvent])) then
     begin
@@ -13441,7 +13465,7 @@ begin
   AddressChanging(nil, NewAddress, AllowChange);
   if (not AllowChange and Wanted.Nothing) then
   begin
-    NewAddress := Client.Account.FullAddress('/');
+    NewAddress := Client.Account.ExpandAddress('/');
     AllowChange := True;
     AddressChanging(nil, NewAddress, AllowChange);
   end;
@@ -13503,10 +13527,10 @@ begin
       vEditor:
         if (URI.Param['file'] <> Null) then
         begin
-          FileName := URIToPath(URI.Param['file']);
+          FileName := URIToPath(URI.ParamEncode(URI.Param['file']));
           if (ExtractFilePath(FileName) = '') then
             FileName := ExpandFilename(FileName);
-          if (FileExists(FileName) and (FileName <> SQLEditor.Filename)) then
+          if ((FileName <> SQLEditor.Filename) and FileExists(FileName)) then
             OpenSQLFile(FileName);
         end;
     end;
@@ -14592,6 +14616,13 @@ begin
     end
     else
       Result := False;
+  end
+  else if (Control is TWLink) then
+  begin
+    ChildTable := TWForeignKey(Control).ChildTable.BaseTable;
+    ParentTable := TWForeignKey(Control).ParentTable.BaseTable;
+
+    Result := Assigned(ChildTable) and Assigned(ParentTable);
   end
   else
     Result := False;

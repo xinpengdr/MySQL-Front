@@ -143,6 +143,13 @@ object DUser: TDUser
     object TSRights: TTabSheet
       Caption = 'TSRights'
       OnShow = TSRightsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
+      DesignSize = (
+        313
+        195)
       object FRights: TListView
         Left = 8
         Top = 8
@@ -387,6 +394,13 @@ object DUser: TDUser
     object TSSource: TTabSheet
       Caption = 'TSSource'
       OnShow = TSSourceShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
+      DesignSize = (
+        313
+        195)
       object FSource: TSynMemo
         Left = 8
         Top = 8

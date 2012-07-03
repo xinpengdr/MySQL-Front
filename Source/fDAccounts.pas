@@ -148,7 +148,7 @@ begin
   aOpen.Caption := ReplaceStr(Preferences.LoadStr(581), '&', '');
   aNew.Caption := Preferences.LoadStr(26) + '...';
   aEdit.Caption := Preferences.LoadStr(97) + '...';
-  aDelete.Caption := Preferences.LoadStr(559);
+  aDelete.Caption := Preferences.LoadStr(28);
 
   FBOk.Caption := Preferences.LoadStr(581);
 end;

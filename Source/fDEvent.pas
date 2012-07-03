@@ -203,7 +203,7 @@ begin
   FLEnabled.Caption := Preferences.LoadStr(812) + ':';
   FEnabled.Caption := Preferences.LoadStr(529);
   FLPreserve.Caption := Preferences.LoadStr(819) + ':';
-  FPreserve.Caption := ReplaceStr(Preferences.LoadStr(28), '&', '');
+  FPreserve.Caption := ReplaceStr(Preferences.LoadStr(884), '&', '');
   FLComment.Caption := Preferences.LoadStr(111) + ':';
   FLStatement.Caption := Preferences.LoadStr(794) + ':';
 

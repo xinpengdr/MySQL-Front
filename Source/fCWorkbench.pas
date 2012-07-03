@@ -258,7 +258,7 @@ type
 
   TWLinks = class(TWObjects)
   private
-    function GetLink(Index: Integer): TWLink;
+    function GetLink(Index: Integer): TWLink; inline;
     function GetSelCount(): Integer;
   protected
     procedure SaveToXML(const XML: IXMLNode); virtual;
@@ -317,9 +317,7 @@ type
   private
     CreatedLink: TWLink;
     CreatedTable: TWTable;
-    FClient: TCClient;
     FDatabase: TCDatabase;
-    FDatabaseName: string;
     FHideSelection: Boolean;
     FLinks: TWLinks;
     FMultiSelect: Boolean;
@@ -336,7 +334,7 @@ type
     UpdateCount: Integer;
     XML: IXMLNode;
     XMLDocument: IXMLDocument;
-    function GetDatabase(): TCDatabase;
+    function GetObjectCount(): Integer;
     function GetSelCount(): Integer;
     procedure SetMultiSelect(AMultiSelect: Boolean);
     procedure SetSelected(ASelected: TWControl);
@@ -346,11 +344,13 @@ type
     FModified: Boolean;
     State: TMWorkbenchState;
     procedure Change(); virtual;
+    function CoordToPoint(const Coord: TCoord): TPoint;
     procedure CursorMove(const Coord: TCoord); virtual;
     procedure DoEnter(); override;
     procedure DoExit(); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    function PointToCoord(const X, Y: Integer): TPoint; virtual;
     procedure ReleaseControl(const Control: TWControl); virtual;
     procedure UpdateControl(const Control: TWControl); virtual;
   public
@@ -372,7 +372,6 @@ type
     procedure KeyPress(var Key: Char); override;
     function LinkByCaption(const Caption: string): TWLink; virtual;
     procedure LoadFromFile(const FileName: string); virtual;
-    function PointToCoord(const X, Y: Integer): TPoint; virtual;
     procedure Print(const Title: string); virtual;
     procedure SaveToBMP(const FileName: string); virtual;
     procedure SaveToFile(const FileName: string); virtual;
@@ -380,11 +379,12 @@ type
     function TableByBaseTable(const ATable: TCBaseTable): TWTable; virtual;
     function TableByCaption(const Caption: string): TWTable; virtual;
     function UpdateAction(Action: TBasicAction): Boolean; override;
-    property Database: TCDatabase read GetDatabase;
+    property Database: TCDatabase read FDatabase;
     property HideSelection: Boolean read FHideSelection write FHideSelection default False;
     property Links: TWLinks read FLinks;
     property Modified: Boolean read FModified;
     property MultiSelect: Boolean read FMultiSelect write SetMultiSelect default False;
+    property ObjectCount: Integer read GetObjectCount;
     property OnChange: TWWorkbenchChangeEvent read FOnChange write FOnChange;
     property OnCursorMove: TWWorkbenchCursorMoveEvent read FOnCursorMove write FOnCursorMove;
     property OnValidateControl: TWWorkbenchValidateControlEvent read FOnValidateControl write FOnValidateControl;
@@ -398,7 +398,8 @@ type
 implementation {***************************************************************}
 
 uses
-  ExtCtrls, Math, Dialogs, StdActns, Consts, Printers;
+  ExtCtrls, Math, Dialogs, StdActns, Consts, Printers,
+  fPreferences;
 
 const
   BorderSize = 1;
@@ -406,37 +407,6 @@ const
   ConnectorSize = LineWidth + 6; // nur gerade Werte
   PointSize = LineWidth + 2; // nur gerade Werte
   Padding = 2;
-
-function XMLNode(const Parent: IXMLNode; const Key: string; const NodeAutoCreate: Boolean = False): IXMLNode;
-var
-  ChildKey: string;
-  CurrentKey: string;
-begin
-  if (not Assigned(Parent)) then
-    Result := nil
-  else if (Key = '') then
-    Result := Parent
-  else
-  begin
-    if (Pos('/', Key) = 0) then
-    begin
-      CurrentKey := Key;
-      ChildKey := '';
-    end
-    else
-    begin
-      CurrentKey := Copy(Key, 1, Pos('/', Key) - 1);
-      ChildKey := Key; Delete(ChildKey, 1, Length(CurrentKey) + 1);
-    end;
-
-    if (Assigned(Parent.ChildNodes.FindNode(CurrentKey))) then
-      Result := XMLNode(Parent.ChildNodes.FindNode(CurrentKey), ChildKey, NodeAutoCreate)
-    else if (NodeAutoCreate or (doNodeAutoCreate in Parent.OwnerDocument.Options)) then
-      Result := XMLNode(Parent.AddChild(CurrentKey), ChildKey, NodeAutoCreate)
-    else
-      Result := nil;
-  end;
-end;
 
 function TryStrToAlign(const Str: string; var Align: TAlign): Boolean;
 begin
@@ -597,7 +567,7 @@ begin
   FCoord := ACoord;
 
   FSelected := False;
-  MouseDownCoord.X := -1; MouseDownCoord.Y := -1;
+  MouseDownCoord := Point(-1, -1);
   MouseDownPoint := Point(-1, -1);
 end;
 
@@ -916,7 +886,8 @@ begin
 
   Workbench.UpdateControl(Self);
 
-  Workbench.FModified := True;
+  if (Workbench.State <> wsLoading) then
+    Workbench.FModified := True;
 end;
 
 procedure TWControl.Moving(const Sender: TWControl; const Shift: TShiftState; var NewCoord: TCoord);
@@ -1751,6 +1722,8 @@ begin
 
   FBaseTable := ABaseTable;
 
+  Hint := BaseTable.Comment;
+
   SetLength(FLinkPoints, 0);
 
   Canvas.Font := Font;
@@ -1789,7 +1762,13 @@ procedure TWTable.Invalidate();
 begin
   if (CanAutoSize(FSize.cx, FSize.cy)) then
     ApplyCoord();
+
   inherited;
+
+  if (not Assigned(BaseTable)) then
+    Hint := ''
+  else
+    Hint := BaseTable.Comment;
 end;
 
 procedure TWTable.LoadFromXML(const XML: IXMLNode);
@@ -1800,19 +1779,16 @@ begin
 end;
 
 procedure TWTable.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  Link: TWLink;
 begin
   if (Workbench.State in [wsCreateLink, wsCreateForeignKey]) then
   begin
     if (Workbench.State = wsCreateLink) then
-      Link := TWLink.Create(Workbench, Point(Workbench.HorzScrollBar.Position + Left + X, Workbench.VertScrollBar.Position + Top + Y))
+      Workbench.CreatedLink := TWLink.Create(Workbench, Workbench.PointToCoord(Left + X, Top + Y))
     else
-      Link := TWForeignKey.Create(Workbench, Point(Workbench.HorzScrollBar.Position + Left + X, Workbench.VertScrollBar.Position + Top + Y));
-    Link.TableA := Self;
-    Link.MoveState := msFixed;
-    Link.MouseDown(Button, Shift, Workbench.HorzScrollBar.Position + Left + X - Link.Left, Workbench.VertScrollBar.Position + Top + Y - Link.Top);
-    Workbench.Links.Add(Link);
+      Workbench.CreatedLink := TWForeignKey.Create(Workbench, Workbench.PointToCoord(Left + X, Top + Y));
+    Workbench.CreatedLink.TableA := Self;
+    Workbench.CreatedLink.MoveState := msFixed;
+    Workbench.CreatedLink.MouseDown(Button, Shift, Workbench.HorzScrollBar.Position + Left + X - Workbench.CreatedLink.Left, Workbench.VertScrollBar.Position + Top + Y - Workbench.CreatedLink.Top);
 
     Workbench.State := wsNormal;
   end
@@ -2246,9 +2222,15 @@ begin
       MoveState := msAutomatic;
     end;
   end
-  else if (Link.Caption = '') then
+  else if (Link = Workbench.CreatedLink) then
   begin
-    Workbench.OnValidateControl(Workbench, Link);
+    if (not Workbench.OnValidateControl(Workbench, Workbench.CreatedLink)) then
+      FreeAndNil(Workbench.CreatedLink)
+    else if ((Workbench.CreatedLink is TWLink) and not (Workbench.CreatedLink is TWForeignKey)) then
+    begin
+      Workbench.Links.Add(Workbench.CreatedLink);
+      Workbench.CreatedLink := nil;
+    end;
   end;
 end;
 
@@ -2649,13 +2631,22 @@ var
 begin
   Workbench.State := wsLoading;
 
-  Caption := XML.Attributes['name'];
+  if (XML.Attributes['name'] <> Null) then
+    Caption := XML.Attributes['name'];
 
   if (Assigned(XMLNode(XML, 'tables/child')) and (XMLNode(XML, 'tables/child').Attributes['name'] <> Null)
     and Assigned(XMLNode(XML, 'tables/parent')) and (XMLNode(XML, 'tables/parent').Attributes['name'] <> Null)) then
   begin
-    TableA := Workbench.TableByCaption(XMLNode(XML, 'tables/child').Attributes['name']);
-    Table := Workbench.TableByCaption(XMLNode(XML, 'tables/parent').Attributes['name']);
+    if (not (Self is TWForeignKey) or not Assigned(TWForeignKey(Self).BaseForeignKey)) then
+    begin
+      TableA := Workbench.TableByCaption(XMLNode(XML, 'tables/child').Attributes['name']);
+      Table := Workbench.TableByCaption(XMLNode(XML, 'tables/parent').Attributes['name']);
+    end
+    else
+    begin
+      TableA := Workbench.TableByCaption(TWForeignKey(Self).BaseForeignKey.Table.Name);
+      Table := Workbench.TableByCaption(TWForeignKey(Self).BaseForeignKey.Parent.TableName);
+    end;
 
     if (Assigned(TableA) and Assigned(Table)) then
     begin
@@ -2870,7 +2861,7 @@ begin
     if (not Assigned(Node)) then
     begin
       Node := XML.AddChild('foreignkey');
-      if (not (Link[I] is TWForeignKey)) then
+      if (Link[I] is TWForeignKey) then
         Node.Attributes['name'] := Link[I].Caption;
     end;
 
@@ -3044,7 +3035,8 @@ begin
 
   Workbench.UpdateControl(Self);
 
-  Workbench.FModified := True;
+  if (Workbench.State <> wsLoading) then
+    Workbench.FModified := True;
 end;
 
 procedure TWSection.SetZOrder(TopMost: Boolean);
@@ -3076,6 +3068,7 @@ var
   I: Integer;
   Section: TWSection;
 begin
+  Workbench.State := wsLoading;
   for I := 0 to XML.ChildNodes.Count - 1 do
     if (XML.ChildNodes.Nodes[I].NodeName = 'section') then
     begin
@@ -3083,6 +3076,7 @@ begin
       Section.LoadFromXML(XML.ChildNodes.Nodes[I]);
       Add(Section);
     end;
+  Workbench.State := wsNormal;
 end;
 
 procedure TWSections.SaveToXML(const XML: IXMLNode);
@@ -3100,12 +3094,15 @@ end;
 { TWLasso *********************************************************************}
 
 constructor TWLasso.Create(const AWorkbench: TWWorkbench; const ACoord: TCoord);
+var
+  P: TPoint;
 begin
   inherited;
 
   Canvas.Brush.Style := bsClear;
 
-  MouseDown(mbLeft, [], 0, 0);
+  P := Workbench.CoordToPoint(ACoord);
+  MouseDown(mbLeft, [], P.X, P.Y);
 end;
 
 procedure TWLasso.MouseMove(Shift: TShiftState; X, Y: Integer);
@@ -3265,6 +3262,7 @@ var
   Link: TWLink;
   OldModified: Boolean;
   ParentTable: TWTable;
+  S: string;
   Table: TWTable;
 begin
   if ((Event.EventType = ceItemsValid) and (Event.Sender = Database) and (Event.CItems is TCTables)) then
@@ -3280,18 +3278,7 @@ begin
     for I := Links.Count - 1 downto 0 do
       if ((Links[I].ChildTable.BaseTable = BaseTable)
         and not Assigned(Links[I].ChildTable.BaseTable.ForeignKeyByName(Links[I].Caption))) then
-      begin
-//        if (Links[I] = CreatedLink) then
-//          for J := 0 to BaseTable.ForeignKeys.Count - 1 do
-//            if (not Assigned(LinkByBaseForeignKey(BaseTable.ForeignKeys[I]))) then
-//            begin
-//              Links[I].BaseForeignKey := BaseTable.ForeignKeys[I];
-//              CreatedLink := nil;
-//            end;
-//        if (Assigned(CreatedLink)) then
           Links.Delete(I);
-//        CreatedLink := nil;
-      end;
 
     if (Assigned(CreatedTable)) then
     begin
@@ -3300,6 +3287,23 @@ begin
       Selected := CreatedTable;
 
       CreatedTable := nil;
+      OldModified := True;
+    end
+    else if (Assigned(CreatedLink) and (CreatedLink is TWForeignKey)) then
+    begin
+      for J := 0 to BaseTable.ForeignKeys.Count - 1 do
+        if (not Assigned(LinkByCaption(BaseTable.ForeignKeys[J].Name))) then
+          TWForeignKey(CreatedLink).BaseForeignKey := BaseTable.ForeignKeys[J];
+      if (not Assigned(TWForeignKey(CreatedLink).BaseForeignKey)) then
+        FreeAndNil(CreatedLink)
+      else
+      begin
+        Links.Add(CreatedLink);
+        Selected := CreatedLink;
+
+        CreatedLink := nil;
+        OldModified := True;
+      end;
     end
     else if (Assigned(TableByBaseTable(BaseTable))) then
     begin
@@ -3335,13 +3339,20 @@ begin
               begin
                 if (XML.ChildNodes.Nodes[J].Attributes['name'] = Null) then
                   Link := TWLink.Create(Self, Point(-1, -1))
-                else
+                else if (not Assigned(LinkByCaption(XML.ChildNodes.Nodes[J].Attributes['name']))
+                  and Assigned(ChildTable.BaseTable.ForeignKeyByName(XML.ChildNodes.Nodes[J].Attributes['name']))) then
                 begin
+                  S := XML.ChildNodes.Nodes[J].Attributes['name'];
                   Link := TWForeignKey.Create(Self, Point(-1, -1));
                   TWForeignKey(Link).BaseForeignKey := ChildTable.BaseTable.ForeignKeyByName(XML.ChildNodes.Nodes[J].Attributes['name']);
+                end
+                else
+                  Link := nil;
+                if (Assigned(Link)) then
+                begin
+                  Link.LoadFromXML(XML.ChildNodes.Nodes[J]);
+                  Links.Add(Link);
                 end;
-                Link.LoadFromXML(XML.ChildNodes.Nodes[J]);
-                Links.Add(Link);
               end;
             end;
         end;
@@ -3353,8 +3364,8 @@ begin
       if (not Assigned(LinkByCaption(BaseTable.ForeignKeys[J].Name))
         and Assigned(TableByCaption(BaseTable.ForeignKeys[J].Parent.TableName))) then
         begin
-          Link := TWLink.Create(Self, Point(-1, -1));
-          Link.Caption := BaseTable.ForeignKeys[J].Name;
+          Link := TWForeignKey.Create(Self, Point(-1, -1));
+          TWForeignKey(Link).BaseForeignKey := BaseTable.ForeignKeys[J];
           Link.ChildTable := TableByBaseTable(BaseTable);
           Link.ParentTable := TableByCaption(BaseTable.ForeignKeys[J].Parent.TableName);
           Links.Add(Link);
@@ -3365,8 +3376,8 @@ begin
         if ((Database.Tables.NameCmp(Tables[I].BaseTable.ForeignKeys[J].Parent.TableName, BaseTable.Name) = 0)
           and not Assigned(LinkByCaption(Tables[I].BaseTable.ForeignKeys[J].Name))) then
         begin
-          Link := TWLink.Create(Self, Point(-1, -1));
-          Link.Caption := Tables[I].BaseTable.ForeignKeys[J].Name;
+          Link := TWForeignKey.Create(Self, Point(-1, -1));
+          TWForeignKey(Link).BaseForeignKey := Tables[I].BaseTable.ForeignKeys[J];
           Link.ChildTable := Tables[I];
           Link.ParentTable := TableByBaseTable(BaseTable);
           Links.Add(Link);
@@ -3385,6 +3396,11 @@ begin
   FreeAndNil(Lasso);
 end;
 
+function TWWorkbench.CoordToPoint(const Coord: TCoord): TPoint;
+begin
+  Result := Point(Coord.X - HorzScrollBar.Position, Coord.Y - VertScrollBar.Position);
+end;
+
 constructor TWWorkbench.Create(AOwner: TComponent);
 begin
   inherited;
@@ -3392,7 +3408,7 @@ begin
   AutoScroll := False;
   CreatedLink := nil;
   CreatedTable := nil;
-  FDatabaseName := '';
+  FDatabase := nil;
   FOnChange := nil;
   FOnCursorMove := nil;
   FOnValidateControl := nil;
@@ -3419,9 +3435,7 @@ constructor TWWorkbench.Create(const AOwner: TComponent; const ADatabase: TCData
 begin
   Create(AOwner);
 
-  FClient := ADatabase.Client;
   FDatabase := ADatabase;
-  FDatabaseName := ADatabase.Name;
 end;
 
 procedure TWWorkbench.CreateNewForeignKey(const X, Y: Integer);
@@ -3443,7 +3457,7 @@ begin
   Selected := nil;
   State := wsCreateLink;
 
-  Table := TableAtCoord(PointToCoord(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
+  Table := TableAtCoord(PointToCoord(X, Y));
   if (Assigned(Table)) then
     Table.MouseDown(mbLeft, [], X - Table.Left, Y - Table.Top);
 end;
@@ -3456,7 +3470,7 @@ begin
 
   if ((X >= 0) or (Y >= 0)) then
   begin
-    Section := TWSection.Create(Self, PointToCoord(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
+    Section := TWSection.Create(Self, PointToCoord(X, Y));
     Sections.Add(Section);
     Section.MouseDown(mbLeft, [], 0, 0);
   end
@@ -3466,7 +3480,7 @@ end;
 
 procedure TWWorkbench.CreateNewTable(const X, Y: Integer);
 begin
-  CreatedTable := TWTable.Create(Tables, PointToCoord(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
+  CreatedTable := TWTable.Create(Tables, PointToCoord(X, Y));
   if (not Assigned(OnValidateControl) or not OnValidateControl(Self, CreatedTable)) then
     FreeAndNil(CreatedTable)
   else
@@ -3549,12 +3563,9 @@ begin
       Result := TWForeignKey(Links[I]);
 end;
 
-function TWWorkbench.GetDatabase(): TCDatabase;
+function TWWorkbench.GetObjectCount(): Integer;
 begin
-  if (not Assigned(FDatabase)) then
-    FDatabase := FClient.DatabaseByName(FDatabaseName);
-
-  Result := FDatabase;
+  Result := Tables.Count + Links.Count + Sections.Count;
 end;
 
 function TWWorkbench.GetSelCount(): Integer;
@@ -3572,8 +3583,8 @@ procedure TWWorkbench.KeyPress(var Key: Char);
 begin
   if ((Key = Chr(VK_ESCAPE)) and Assigned(Lasso)) then
     Perform(CM_ENDLASSO, 0, 0)
-  else if ((Key = Chr(VK_ESCAPE)) and (Selected is TWLinkPoint) and not Assigned(TWLinkPoint(Selected).Link.ParentTable)) then
-    Links.Delete(Links.IndexOf(Selected))
+  else if ((Key = Chr(VK_ESCAPE)) and (Selected is TWLinkPoint) and Assigned(CreatedLink)) then
+    FreeAndNil(CreatedLink)
   else if ((Key = Chr(VK_ESCAPE)) and (Selected is TWSection) and (TWSection(Selected).ResizeMode = rmCreate)) then
     Sections.Delete(Sections.IndexOf(Selected))
   else
@@ -3586,9 +3597,10 @@ var
 begin
   Result := nil;
 
-  for I := 0 to Links.Count - 1 do
-    if (lstrcmpI(PChar(Links[I].Caption), PChar(Caption)) = 0) then
-      Result := Links[I];
+  if (Caption <> '') then
+    for I := 0 to Links.Count - 1 do
+      if (lstrcmpI(PChar(Links[I].Caption), PChar(Caption)) = 0) then
+        Result := Links[I];
 end;
 
 procedure TWWorkbench.LoadFromFile(const FileName: string);
@@ -3631,7 +3643,7 @@ begin
 
   if (State = wsCreateSection) then
   begin
-    Section := TWSection.Create(Self, PointToCoord(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
+    Section := TWSection.Create(Self, PointToCoord(X, Y));
     Sections.Add(Section);
     Section.MouseDown(mbLeft, [], 0, 0);
 
@@ -3644,7 +3656,7 @@ begin
     TableFocused := nil;
 
     if ((Button = mbLeft) and not (MultiSelect and (ssCtrl in Shift))) then
-      Lasso := TWLasso.Create(Self, Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
+      Lasso := TWLasso.Create(Self, PointToCoord(X, Y));
   end;
 end;
 
@@ -3664,7 +3676,7 @@ end;
 
 function TWWorkbench.PointToCoord(const X, Y: Integer): TCoord;
 begin
-  Result := Point(X, Y);
+  Result := Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y);
 end;
 
 procedure TWWorkbench.Print(const Title: string);
@@ -3865,7 +3877,7 @@ begin
       if (Action is TEditCut) then
         TEditCut(Action).Enabled := False
       else if (Action is TEditDelete) then
-        TEditDelete(Action).Enabled := (Selected is TWTable) or (Selected is TWLink) or (Selected is TWSection)
+        TEditDelete(Action).Enabled := (Selected is TWTable) or (Selected is TWLink) and not (Selected is TWForeignKey) or (Selected is TWSection)
       else if (Action is TEditSelectAll) then
         TEditSelectAll(Action).Enabled := False
       else

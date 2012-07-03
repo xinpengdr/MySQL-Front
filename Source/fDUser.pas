@@ -129,7 +129,7 @@ begin
   TSRights.Caption := Preferences.LoadStr(284);
   FBRightsNew.Caption := Preferences.LoadStr(26) + '...';
   FBRightsEdit.Caption := Preferences.LoadStr(97) + '...';
-  FBRightsDelete.Caption := Preferences.LoadStr(559);
+  FBRightsDelete.Caption := Preferences.LoadStr(28);
 
   TSLimits.Caption := Preferences.LoadStr(294);
   GLimits.Caption := Preferences.LoadStr(294);

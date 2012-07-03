@@ -180,7 +180,7 @@ type
     constructor Create(const AAccounts: TAAccounts; const AXML: IXMLNode = nil); virtual;
     destructor Destroy(); override;
     function ExtractPath(const AAddress: string): string; virtual;
-    function FullAddress(const APath: string): string; virtual;
+    function ExpandAddress(const APath: string): string; virtual;
     function Frame(): Pointer; virtual;
     function GetDefaultDatabase(): string; virtual;
     procedure RegisterDesktop(const AControl: Pointer; const AEventProc: TEventProc); virtual;
@@ -334,7 +334,7 @@ begin
   if (Assigned(XML)) then
   begin
     Caption := XML.Attributes['name'];
-    if (Assigned(XMLNode(XML, 'uri'))) then FURI := Bookmarks.Desktop.Account.FullAddress(XMLNode(XML, 'uri').Text);
+    if (Assigned(XMLNode(XML, 'uri'))) then FURI := Bookmarks.Desktop.Account.ExpandAddress(XMLNode(XML, 'uri').Text);
   end;
 end;
 
@@ -549,7 +549,7 @@ var
   I: Integer;
   Kind: TListViewKind;
 begin
-  Address := Account.FullAddress(Source.Account.ExtractPath(Source.Address));
+  Address := Account.ExpandAddress(Source.Account.ExtractPath(Source.Address));
   BlobHeight := Source.BlobHeight;
   BookmarksVisible := Source.BookmarksVisible;
   for Kind := lkServer to lkVariables do
@@ -609,7 +609,7 @@ end;
 
 function TADesktop.GetAddress(): string;
 begin
-  Result := Account.FullAddress(FPath);
+  Result := Account.ExpandAddress(FPath);
 end;
 
 function TADesktop.GetXML(): IXMLNode;
@@ -934,7 +934,7 @@ begin
     Result := FDesktops[0].Control;
 end;
 
-function TAAccount.FullAddress(const APath: string): string;
+function TAAccount.ExpandAddress(const APath: string): string;
 var
   Len: Cardinal;
   URL: array[0 .. INTERNET_MAX_URL_LENGTH] of Char;
