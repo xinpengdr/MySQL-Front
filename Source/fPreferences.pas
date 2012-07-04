@@ -11,7 +11,7 @@ type
 
   TPImportType = (itInsert, itReplace, itUpdate);
   TPSeparatorType = (stTab, stChar);
-  TPUpdateCheckType = (utNever, utStartUp, utDaily);
+  TPUpdateCheckType = (utNever, utDaily);
 
   TMRUList = class
   private
@@ -572,7 +572,6 @@ function TryStrToUpdateCheck(const Str: string; var UpdateCheckType: TPUpdateChe
 begin
   Result := True;
   if (UpperCase(Str) = 'NEVER') then UpdateCheckType := utNever
-  else if (UpperCase(Str) = 'STARTUP') then UpdateCheckType := utStartUp
   else if (UpperCase(Str) = 'DAILY') then UpdateCheckType := utDaily
   else Result := False;
 end;
@@ -580,7 +579,6 @@ end;
 function UpdateCheckToStr(const UpdateCheck: TPUpdateCheckType): string;
 begin
   case UpdateCheck of
-    utStartUp: Result := 'StartUp';
     utDaily: Result := 'Daily';
     else Result := 'Never';
   end;
@@ -1628,6 +1626,15 @@ begin
           FXMLDocument.DocumentElement.ChildNodes.Delete('sessions');
 
           FXMLDocument.DocumentElement.Attributes['version'] := '1.1.0';
+        end;
+
+        if (VersionStrToVersion(FXMLDocument.DocumentElement.Attributes['version']) < 10101)  then
+        begin
+          if (Assigned(XMLNode(FXMLDocument.DocumentElement, 'updates/check'))
+            and (UpperCase(XMLNode(FXMLDocument.DocumentElement, 'updates/check').Text) = 'STARTUP')) then
+            XMLNode(FXMLDocument.DocumentElement, 'updates/check').Text := 'Daily';
+
+          FXMLDocument.DocumentElement.Attributes['version'] := '1.1.1';
         end;
       except
         FXMLDocument := nil;

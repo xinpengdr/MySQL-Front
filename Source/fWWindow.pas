@@ -1798,7 +1798,7 @@ end;
 
 procedure TWWindow.FormShow(Sender: TObject);
 begin
-  if (IsConnectedToInternet() and ((Preferences.UpdateCheck = utStartup) or ((Preferences.UpdateCheck = utDaily) and (Trunc(Preferences.UpdateChecked) < Date())))) then
+  if (IsConnectedToInternet() and ((Preferences.UpdateCheck = utDaily) and (Trunc(Preferences.UpdateChecked) < Date()))) then
   begin
     CheckUpdateThread := TCheckUpdateThread.Create(True);
     CheckUpdateThread.FreeOnTerminate := True;

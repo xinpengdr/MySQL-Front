@@ -82,6 +82,7 @@ object WWindow: TWWindow
       Left = 0
       Top = 0
       Width = 691
+      Height = 29
       AutoSize = True
       BorderWidth = 2
       EdgeBorders = [ebBottom]

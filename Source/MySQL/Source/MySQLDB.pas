@@ -1842,7 +1842,7 @@ end;
 
 function TMySQLConnection.TSynchroThread.GetIsRunning(): Boolean;
 begin
-  Result := (ExecuteE.WaitFor(IGNORE) = wrSignaled) or not (State in [ssClose, ssReady]);
+  Result := not Terminated and (ExecuteE.WaitFor(IGNORE) = wrSignaled) or not (State in [ssClose, ssReady]);
 end;
 
 procedure TMySQLConnection.TSynchroThread.ReleaseDataSet(const ADataSet: TMySQLDataSet);

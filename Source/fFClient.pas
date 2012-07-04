@@ -14546,10 +14546,7 @@ begin
       end;
       BaseTable := Client.DatabaseByName(SelectedDatabase).BaseTableByName(TableName);
 
-      ActiveWorkbench.BeginUpdate();
-      WTable := TWTable.Create(ActiveWorkbench.Tables, P, BaseTable);
-      ActiveWorkbench.Tables.Add(WTable);
-      WorkbenchValidateControl(nil, WTable);
+      ActiveWorkbench.AddExistingTable(P.X, P.Y, BaseTable);
 
 
       BaseTable.PushBuildEvent();

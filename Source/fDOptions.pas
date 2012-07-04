@@ -85,7 +85,6 @@ type
     FUnderline: TCheckBox;
     FUpdateCheckDaily: TRadioButton;
     FUpdateCheckNever: TRadioButton;
-    FUpdateCheckStartup: TRadioButton;
     GAssociate: TGroupBox_Ext;
     GColors: TGroupBox_Ext;
     GEditor: TGroupBox_Ext;
@@ -285,7 +284,6 @@ begin
   GUpdates.Caption := Preferences.LoadStr(592);
   FLUpdateCheck.Caption := ReplaceStr(Preferences.LoadStr(509), '&', '') + ':';
   FUpdateCheckNever.Caption := Preferences.LoadStr(638);
-  FUpdateCheckStartup.Caption := Preferences.LoadStr(448);
   FUpdateCheckDaily.Caption := Preferences.LoadStr(640);
 
 
@@ -570,7 +568,6 @@ begin
     Preferences.Editor.LineNumbersBackground := LineNumbersAttri.Background;
     Preferences.Editor.LineNumbersStyle := LineNumbersAttri.Style;
     if (FUpdateCheckNever.Checked) then Preferences.UpdateCheck := utNever;
-    if (FUpdateCheckStartup.Checked) then Preferences.UpdateCheck := utStartup;
     if (FUpdateCheckDaily.Checked) then Preferences.UpdateCheck := utDaily;
 
     Preferences.SaveToXML();
@@ -695,7 +692,6 @@ begin
   LineNumbersAttri.Style := Preferences.Editor.LineNumbersStyle; FPreviewRefresh();
   FStyles.ItemIndex := 0; FStylesSelectItem(Self, FStyles.Selected, True);
   FUpdateCheckNever.Checked := Preferences.UpdateCheck = utNever;
-  FUpdateCheckStartup.Checked := Preferences.UpdateCheck = utStartup;
   FUpdateCheckDaily.Checked := Preferences.UpdateCheck = utDaily;
 
   PageControl.ActivePage := TSView;
