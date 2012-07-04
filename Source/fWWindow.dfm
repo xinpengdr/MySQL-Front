@@ -35,8 +35,6 @@ object WWindow: TWWindow
     Color = clAppWorkSpace
     ParentBackground = False
     TabOrder = 5
-    ExplicitTop = 116
-    ExplicitHeight = 322
   end
   object TabControl: TTabControl
     Left = 0
@@ -65,7 +63,6 @@ object WWindow: TWWindow
     OnMouseUp = TabControlMouseUp
     OnResize = TabControlResize
     OnStartDrag = TabControlStartDrag
-    ExplicitTop = 88
   end
   object PAddressBar: TPanel_Ext
     Left = 0
@@ -82,7 +79,6 @@ object WWindow: TWWindow
       Left = 0
       Top = 0
       Width = 691
-      Height = 29
       AutoSize = True
       BorderWidth = 2
       EdgeBorders = [ebBottom]

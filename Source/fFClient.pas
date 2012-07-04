@@ -1998,10 +1998,17 @@ end;
 procedure TFClient.TWanted.SetUpdate(const AUpdate: TCClient.TUpdate);
 begin
   Clear();
+try
   if (not FClient.Client.InUse) then
     AUpdate()
   else
     FUpdate := AUpdate;
+except
+  if (not FClient.Client.InUse) then
+    AUpdate()
+  else
+    FUpdate := AUpdate;
+end;
 end;
 
 procedure TFClient.TWanted.Synchronize();
@@ -14492,7 +14499,6 @@ var
   BaseTable: TCBaseTable;
   TableName: string;
   Values: TStringList;
-  WTable: TWTable;
 begin
   Wanted.Clear();
 
@@ -14547,12 +14553,6 @@ begin
       BaseTable := Client.DatabaseByName(SelectedDatabase).BaseTableByName(TableName);
 
       ActiveWorkbench.AddExistingTable(P.X, P.Y, BaseTable);
-
-
-      BaseTable.PushBuildEvent();
-      ActiveWorkbench.Selected := WTable;
-      Window.ActiveControl := ActiveWorkbench;
-      ActiveWorkbench.EndUpdate();
     end;
 
     Values.Free();

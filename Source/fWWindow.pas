@@ -1387,6 +1387,7 @@ procedure TWWindow.CMUpdateToolbar(var Message: TCMUpdateToolBar);
 var
   Found: Boolean;
   I: Integer;
+  S: string;
   Tab: TFClient;
 begin
   Tab := Message.Tab;
@@ -1396,10 +1397,12 @@ begin
 
   if (Assigned(Tab) and (Tab = ActiveTab)) then
   begin
-    if (Tab.ToolBarData.Caption = '') then
-      Caption := Tab.Client.Account.Name + ' - ' + LoadStr(1000)
-    else
-      Caption := Tab.Client.Account.Name + ' - ' + Tab.ToolBarData.Caption + ' - ' + LoadStr(1000);
+    S := Tab.Client.Account.Connection.Host;
+    if (Tab.Client.Account.Connection.Port <> MYSQL_PORT) then
+      S := S + ':' + IntToStr(Tab.Client.Account.Connection.Port);
+    if (Tab.ToolBarData.Caption <> '') then
+      S := S + ' - ' + Tab.ToolBarData.Caption;
+    Caption := S + ' - ' + LoadStr(1000);
     Application.Title := Caption;
 
     tbProperties.Action := Tab.ToolBarData.tbPropertiesAction;

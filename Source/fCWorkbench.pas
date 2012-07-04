@@ -407,7 +407,7 @@ implementation {***************************************************************}
 
 uses
   ExtCtrls, Math, Dialogs, StdActns, Consts, Printers,
-  fPreferences;
+  fPreferences, MySQLDB;
 
 const
   BorderSize = 1;
@@ -1355,7 +1355,15 @@ begin
       OrgNewCoord := NewCoord;
       Moving(Sender, Shift, NewCoord);
       if (NewCoord <> OrgNewCoord) then
-        NewPoint := CreateSegment(Sender, OrgNewCoord, Self, Assigned(LineA) and ((Sender = LineA) or (Sender = LineA.PointA)));
+        NewPoint := CreateSegment(Sender, OrgNewCoord, Self, Assigned(LineA) and ((Sender = LineA) or (Sender = LineA.PointA)))
+//      else if (Assigned(LineA) and Assigned(LineA.PointA)
+//        and (NewCoord.X <> LineA.PointA.Coord.X) and (NewCoord.Y <> LineA.PointA.Coord.Y)) then
+//      begin
+//        if (Abs(NewCoord.X - LineA.PointA.Coord.X) < Abs(NewCoord.Y - LineA.PointA.Coord.Y)) then
+//          NewPoint := CreateSegment(Sender, MakeCoord(NewCoord.X, LineA.PointA.Coord.Y), Self, Assigned(LineA) and ((Sender = LineA) or (Sender = LineA.PointA)))
+//        else
+//          NewPoint := CreateSegment(Sender, MakeCoord(LineA.PointA.Coord.X, NewCoord.Y), Self, Assigned(LineA) and ((Sender = LineA) or (Sender = LineA.PointA)));
+//      end;
     end;
 
     // Align "automatic" point
@@ -2142,27 +2150,11 @@ begin
 end;
 
 constructor TWLinkPoint.Create(const AWorkbench: TWWorkbench; const ACoord: TCoord; const APreviousPoint: TWPoint = nil);
-var
-  PreviousPoint: TWPoint;
 begin
-  PreviousPoint := APreviousPoint;
+  inherited Create(AWorkbench, ACoord, APreviousPoint);
 
-  if (Assigned(PreviousPoint)
-    and (PreviousPoint.Coord.X <> ACoord.X) and (PreviousPoint.Coord.Y <> ACoord.Y)) then
-  begin
-    if (Abs(PreviousPoint.Coord.X - ACoord.X) < Abs(PreviousPoint.Coord.Y - ACoord.Y)) then
-      PreviousPoint := TWLinkPoint.Create(Workbench, MakeCoord(ACoord.X, PreviousPoint.Coord.Y), PreviousPoint)
-    else
-      PreviousPoint := TWLinkPoint.Create(Workbench, MakeCoord(PreviousPoint.Coord.X, ACoord.Y), PreviousPoint);
-
-    if (APreviousPoint is TWLinkPoint) then
-      PreviousPoint.LineA := TWLinkLine.Create(Workbench, TWLinkPoint(APreviousPoint), Self);
-  end;
-
-  inherited Create(AWorkbench, ACoord, PreviousPoint);
-
-  if (PreviousPoint is TWLinkPoint) then
-    LineA := TWLinkLine.Create(Workbench, TWLinkPoint(PreviousPoint), Self);
+  if (APreviousPoint is TWLinkPoint) then
+    LineA := TWLinkLine.Create(Workbench, TWLinkPoint(APreviousPoint), Self);
 
   Workbench.UpdateControl(Self);
 end;
@@ -2739,7 +2731,10 @@ begin
             if ((PointsNode.ChildNodes[J].NodeName = 'point') and (TryStrToInt(PointsNode.ChildNodes[J].Attributes['index'], Index) and (Index = PointIndex))
               and Assigned(XMLNode(PointsNode.ChildNodes[J], 'coord/x')) and TryStrToInt(XMLNode(PointsNode.ChildNodes[J], 'coord/x').Text, PointCoord.X)
               and Assigned(XMLNode(PointsNode.ChildNodes[J], 'coord/y')) and TryStrToInt(XMLNode(PointsNode.ChildNodes[J], 'coord/y').Text, PointCoord.Y)) then
-              TWLinkPoint.Create(Workbench, PointCoord, LastPoint);
+            begin
+              Point := TWLinkPoint.Create(Workbench, MakeCoord(-1, -1), LastPoint);
+              Point.MoveTo(nil, [], PointCoord);
+            end;
           Inc(PointIndex);
         until (PointCount < PointIndex);
 

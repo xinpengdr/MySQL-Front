@@ -1786,7 +1786,7 @@ var
 begin
   while (not Terminated) do
   begin
-    if (Connection.ServerTimeout = 0) then
+    if ((Connection.ServerTimeout = 0) or (Connection.LibraryType = ltHTTP)) then
       Timeout := INFINITE
     else
       Timeout := Connection.ServerTimeout * 1000;
@@ -1842,7 +1842,7 @@ end;
 
 function TMySQLConnection.TSynchroThread.GetIsRunning(): Boolean;
 begin
-  Result := not Terminated and (ExecuteE.WaitFor(IGNORE) = wrSignaled) or not (State in [ssClose, ssReady]);
+  Result := (ExecuteE.WaitFor(IGNORE) = wrSignaled) or not (State in [ssClose, ssReady]);
 end;
 
 procedure TMySQLConnection.TSynchroThread.ReleaseDataSet(const ADataSet: TMySQLDataSet);

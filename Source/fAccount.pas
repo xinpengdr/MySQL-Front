@@ -900,7 +900,7 @@ begin
   FHistoryXMLDocument := nil;
   FLastLogin := 0;
   IconFetched := False;
-  ImageIndex := -1;
+  ImageIndex := 23;
   ManualURL := '';
   ManualURLFetched := False;
   Modified := False;
