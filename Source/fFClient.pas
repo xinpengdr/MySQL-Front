@@ -8000,18 +8000,20 @@ end;
 
 procedure TFClient.FNavigatorInitialize(Sender: TObject);
 var
-  I: Integer;
   Node: TTreeNode;
 begin
-  Node := FNavigator.Items.getFirstNode();
-  for I := 0 to Node.Count - 1 do
-    case (Node.Item[I].ImageIndex) of
+  Node := FNavigator.Items.getFirstNode().getFirstChild();
+  while (Assigned(Node)) do
+  begin
+    case (Node.ImageIndex) of
       iiHosts: Node.Text := Preferences.LoadStr(335);
       iiProcesses: Node.Text := Preferences.LoadStr(24);
       iiStati: Node.Text := Preferences.LoadStr(23);
       iiUsers: Node.Text := ReplaceStr(Preferences.LoadStr(561), '&', '');
       iiVariables: Node.Text := Preferences.LoadStr(22);
     end;
+    Node := Node.getNextSibling();
+  end;
 end;
 
 procedure TFClient.FNavigatorKeyDown(Sender: TObject; var Key: Word;
@@ -8198,37 +8200,58 @@ procedure TFClient.FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
   procedure InsertChild(const Node: TTreeNode; const Data: TObject);
   var
     Added: Boolean;
+    C: Integer;
     Child: TTreeNode;
+    I: Integer;
     Index: Integer;
     Left: Integer;
     Mid: Integer;
+    MidChild: TTreeNode;
+    OldMid: Integer;
     Right: Integer;
     Text: string;
+    VirtualChild: TTreeNode;
   begin
     Index := 0;
-    while ((Index < Node.Count) and (Node.Item[Index].Data <> Data)) do
+    Child := Node.getFirstChild();
+    while (Assigned(Child) and (Child.Data <> Data)) do
+    begin
+      Child := Child.getNextSibling();
       Inc(Index);
+    end;
 
     if ((Index = Node.Count) and (Node.Count > 0)) then
     begin
-      Child := TTreeNode.Create(Node.Owner);
-      Child.Data := Data;
-      Child.ImageIndex := ImageIndexByData(Data);
-      Child.Text := TCItem(Data).Caption;
+      VirtualChild := TTreeNode.Create(Node.Owner);
+      VirtualChild.Data := Data;
+      VirtualChild.ImageIndex := ImageIndexByData(Data);
+      VirtualChild.Text := TCItem(Data).Caption;
 
-      Left := 0;
+      Left := 0; C := 0; OldMid := 0; MidChild := Node.getFirstChild();
       Right := Node.Count - 1;
       while (Left <= Right) do
       begin
         Mid := (Right - Left) div 2 + Left;
-        case (Compare(Node.ImageIndex, Node.Item[Mid], Child)) of
+        if (Mid < OldMid) then
+          for I := OldMid downto Mid + 1 do
+            MidChild := MidChild.getPrevSibling()
+        else if (Mid > OldMid) then
+          for I := OldMid to Mid - 1 do
+            MidChild := MidChild.getNextSibling();
+        OldMid := Mid;
+        C := Compare(Node.ImageIndex, MidChild, VirtualChild);
+        case (C) of
           -1: begin Left := Mid + 1; Index := Mid + 1; end;
           0: raise ERangeError.Create(SRangeError);
           1: begin Right := Mid - 1; Index := Mid; end;
         end;
       end;
+      if (C = -1) then
+        Child := MidChild.getNextSibling()
+      else
+        Child := MidChild;
 
-      Child.Free();
+      VirtualChild.Free();
     end;
 
     if (TObject(Data) is TCItem) then
@@ -8251,16 +8274,13 @@ procedure TFClient.FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
       Child := FNavigator.Items.AddChild(Node, Text);
       Added := True;
     end
-    else if (Node.Item[Index].Data <> Data) then
+    else if (Child.Data <> Data) then
     begin
-      Child := FNavigator.Items.Insert(Node.Item[Index], Text);
+      Child := FNavigator.Items.Insert(Child, Text);
       Added := True;
     end
     else
-    begin
-      Child := Node.Item[Index];
       Added := False;
-    end;
     Child.Data := Data;
     Child.ImageIndex := ImageIndexByData(Data);
     Child.Text := Text;
@@ -8268,26 +8288,65 @@ procedure TFClient.FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
       Child.HasChildren := True;
   end;
 
-  procedure UpdateGroup(const Node: TTreeNode; const GroupID: Integer; const CItems: TCItems);
+  procedure AddChild(const Node: TTreeNode; const Data: TObject);
   var
     Child: TTreeNode;
+    Text: string;
+  begin
+    if (TObject(Data) is TCItem) then
+      Text := TCItem(Data).Caption
+    else if (TObject(Data) is TCHosts) then
+      Text := Preferences.LoadStr(335)
+    else if (TObject(Data) is TCProcesses) then
+      Text := Preferences.LoadStr(24)
+    else if (TObject(Data) is TCStati) then
+      Text := Preferences.LoadStr(23)
+    else if (TObject(Data) is TCUsers) then
+      Text := ReplaceStr(Preferences.LoadStr(561), '&', '')
+    else if (TObject(Data) is TCVariables) then
+      Text := Preferences.LoadStr(22)
+    else
+      raise ERangeError.Create(SRangeError);
+
+    Child := FNavigator.Items.AddChild(Node, Text);
+    Child.Data := Data;
+    Child.ImageIndex := ImageIndexByData(Data);
+    Child.Text := Text;
+    if (Child.ImageIndex in [iiDatabase, iiSystemDatabase, iiSystemView, iiBaseTable, iiView]) then
+      Child.HasChildren := True;
+  end;
+
+  procedure UpdateGroup(const Node: TTreeNode; const GroupID: Integer; const CItems: TCItems);
+  var
+    Add: Boolean;
+    Child: TTreeNode;
+    DeleteChild: TTreeNode;
     Destination: TTreeNode;
     I: Integer;
   begin
     case (ClientEvent.EventType) of
       ceItemsValid:
         begin
-          for I := Node.Count - 1 downto 0 do
-            if ((GroupIDByImageIndex(Node.Item[I].ImageIndex) = GroupID) and (CItems.IndexOf(Node.Item[I].Data) < 0)) then
+          Child := Node.getFirstChild();
+          while (Assigned(Child)) do
+            if ((GroupIDByImageIndex(Child.ImageIndex) <> GroupID) or (CItems.IndexOf(Child.Data) >= 0)) then
+              Child := Child.getNextSibling()
+            else
             begin
-              if (Node.Item[I] = FNavigatorNodeToExpand) then
+              if (Child = FNavigatorNodeToExpand) then
                 FNavigatorNodeToExpand := nil;
-              Node.Item[I].Delete();
+              DeleteChild := Child;
+              Child := Child.getNextSibling();
+              DeleteChild.Delete();
             end;
 
+          Add := Node.Count = 0;
           for I := 0 to CItems.Count - 1 do
             if (not (CItems is TCTriggers) or (TCTriggers(CItems)[I].Table = ClientEvent.Sender)) then
-              InsertChild(Node, CItems[I]);
+              if (not Add) then
+                InsertChild(Node, CItems[I])
+              else
+                AddChild(Node, CItems[I]);
         end;
       ceItemCreated:
         InsertChild(Node, ClientEvent.CItem);
@@ -8309,26 +8368,39 @@ procedure TFClient.FNavigatorUpdate(const ClientEvent: TCClient.TEvent);
           end;
         end;
       ceItemDropped:
-        for I := Node.Count - 1 downto 0 do
-          if (Node.Item[I].Data = ClientEvent.CItem) then
-          begin
-            if (Node.Item[I] = FNavigatorNodeToExpand) then
-              FNavigatorNodeToExpand := nil;
-            NavigatorElapse := 1; // We're inside a Monitor callback - but the related Address change has to be outside the callback
-            Node.Item[I].Delete();
-            if (not Assigned(FNavigator.Selected)) then
-              FNavigator.Selected := Node;
-          end;
+        begin
+          Child := Node.getFirstChild();
+          while (Assigned(Child)) do
+            if (Child.Data <> ClientEvent.CItem) then
+              Child := Child.getNextSibling()
+            else
+            begin
+              if (Child = FNavigatorNodeToExpand) then
+                FNavigatorNodeToExpand := nil;
+              DeleteChild := FNavigator.Selected;
+              while (Assigned(DeleteChild)) do
+              begin
+                if (Child = DeleteChild) then
+                  NavigatorElapse := 1; // We're inside a Monitor callback - but the related Address change has to be outside the callback
+                DeleteChild := DeleteChild.Parent;
+              end;
+              DeleteChild := Child;
+              Child := Child.getNextSibling();
+              DeleteChild.Delete();
+              if (not Assigned(FNavigator.Selected)) then
+                FNavigator.Selected := Node;
+            end;
+        end;
     end;
   end;
 
 var
+  Child: TTreeNode;
   ChangeEvent: TTVChangedEvent;
   ChangingEvent: TTVChangingEvent;
   Database: TCDatabase;
   Expanded: Boolean;
   ExpandingEvent: TTVExpandingEvent;
-  I: Integer;
   Node: TTreeNode;
   OldSelected: TTreeNode;
   Table: TCTable;
@@ -8379,9 +8451,13 @@ begin
       end
       else
       begin
-        for I := 0 to Node.Count - 1 do
-          if (Node.Item[I].ImageIndex = iiBaseTable) then
-            UpdateGroup(Node.Item[I], giTables, ClientEvent.CItems);
+        Child := Node.getFirstChild();
+        while (Assigned(Child)) do
+        begin
+          if (Child.ImageIndex = iiBaseTable) then
+            UpdateGroup(Child, giTables, ClientEvent.CItems);
+          Child := Child.getNextSibling();
+        end;
       end;
     end;
   end
@@ -8397,7 +8473,7 @@ begin
       Node := Node.getFirstChild();
       while (Assigned(Node) and (Node.Data <> Table)) do Node := Node.getNextSibling();
 
-      if (Assigned(Node)) then
+      if (Assigned(Node) and (not Node.HasChildren or (Node.Count > 0) or (Node = FNavigatorNodeToExpand))) then
       begin
         Expanded := Node.Expanded;
 
@@ -9678,7 +9754,7 @@ procedure TFClient.ListViewChanging(Sender: TObject; Item: TListItem;
 var
   Database: TCDatabase;
 begin
-  if (not Assigned(ActiveListView.ItemFocused) and (Change = ctState) and Assigned(Item) and (Item.SubItems.Count = 0) and (NMListView^.uNewState and LVIS_SELECTED <> 0) and (Item.ImageIndex = iiBaseTable)) then
+  if ((Sender is TListView) and not Assigned(TListView(Sender).ItemFocused) and (Change = ctState) and Assigned(Item) and (Item.SubItems.Count = 0) and (NMListView^.uNewState and LVIS_SELECTED <> 0) and (Item.ImageIndex = iiBaseTable)) then
   begin
     Database := Client.DatabaseByName(SelectedDatabase);
     AllowChange := Assigned(Database) and Assigned(Database.BaseTableByName(Item.Caption));
@@ -10762,8 +10838,16 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const List
     end;
   end;
 
+  function AddItem(const Kind: TADesktop.TListViewKind; const Data: TObject): TListItem;
+  begin
+    Result := ListView.Items.Add();
+    Result.Data := Data;
+    UpdateItem(Result, Data);
+  end;
+
   procedure UpdateGroup(const Kind: TADesktop.TListViewKind; const GroupID: Integer; const CItems: TCItems);
   var
+    Add: Boolean;
     ColumnWidths: array [0..7] of Integer;
     Count: Integer;
     Header: string;
@@ -10790,9 +10874,13 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const List
             if ((ListView.Items[I].GroupID = GroupID) and (CItems.IndexOf(ListView.Items[I].Data) < 0)) then
               ListView.Items.Delete(I);
 
+          Add := ListView.Items.Count = 0;
           for I := 0 to CItems.Count - 1 do
             if (not (CItems is TCTriggers) or (TCTriggers(CItems)[I].Table = ClientEvent.Sender)) then
-              InsertItem(Kind, CItems[I]);
+              if (not Add) then
+                InsertItem(Kind, CItems[I])
+              else
+                AddItem(Kind, CItems[I]);
 
           ListView.Columns.EndUpdate();
 

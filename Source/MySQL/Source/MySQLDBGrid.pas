@@ -290,12 +290,12 @@ end;
 procedure TMySQLDBGrid.CopyToClipboard();
 var
   ClipboardData: HGLOBAL;
+  Content: string;
   FormatSettings: TFormatSettings;
   I: Integer;
   J: Integer;
   Len: Cardinal;
   OldRecNo: Integer;
-  S: string;
 begin
   FormatSettings := TFormatSettings.Create(LOCALE_USER_DEFAULT);
 
@@ -305,20 +305,20 @@ begin
 
     if (SelectedRows.Count = 0) then
     begin
-      S := SelectedField.AsString;
+      Content := SelectedField.AsString;
 
-      Len := Length(S);
-      ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, (Len + 1) * SizeOf(S[1]));
-      Move(PChar(S)^, GlobalLock(ClipboardData)^, (Len + 1) * SizeOf(S[1]));
+      Len := Length(Content);
+      ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, (Len + 1) * SizeOf(Content[1]));
+      Move(PChar(Content)^, GlobalLock(ClipboardData)^, (Len + 1) * SizeOf(Content[1]));
       SetClipboardData(CF_UNICODETEXT, ClipboardData);
       GlobalUnlock(ClipboardData);
     end
     else if (DataLink.DataSet is TMySQLDataSet) then
     begin
-      S := SelText;
+      Content := SelText;
 
-      ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, (Length(S) + 1) * SizeOf(Char));
-      Move(PChar(S)^, GlobalLock(ClipboardData)^, (Length(S) + 1) * SizeOf(Char));
+      ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, (Length(Content) + 1) * SizeOf(Char));
+      Move(PChar(Content)^, GlobalLock(ClipboardData)^, (Length(Content) + 1) * SizeOf(Char));
       SetClipboardData(CF_UNICODETEXT, ClipboardData);
       GlobalUnlock(ClipboardData);
 
@@ -327,52 +327,56 @@ begin
       OldRecNo := DataLink.DataSet.RecNo;
 
 
-      S := '';
+      Content := '';
       for I := 0 to SelectedRows.Count - 1 do
       begin
         DataLink.DataSet.Bookmark := SelectedRows.Items[I];
         for J := 0 to Columns.Count - 1 do
           if (Columns[J].Visible) then
           begin
-            if (S <> '') then S := S + FormatSettings.ListSeparator;
+            if (Content <> '') then Content := Content + FormatSettings.ListSeparator;
 
             if (Columns[J].Field.IsNull) then
-              S := S + ''
+              Content := Content + ''
             else if (Columns[J].Field.DataType in UnquotedDataTypes) then
-              S := S + Columns[J].Field.AsString
+              Content := Content + Columns[J].Field.AsString
             else
-              S := S + CSVEscape(Columns[J].Field.AsString);
+              Content := Content + CSVEscape(Columns[J].Field.AsString);
           end;
-        S := S + #13#10;
+        Content := Content + #13#10;
       end;
 
-      Len := WideCharToMultiByte(GetACP(), 0, PChar(S), Length(S), nil, 0, nil, nil);
+      Len := WideCharToMultiByte(GetACP(), 0, PChar(Content), Length(Content), nil, 0, nil, nil);
       ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, (Len + 1));
-      WideCharToMultiByte(GetACP(), 0, PChar(S), Length(S), GlobalLock(ClipboardData), Len, nil, nil);
+      WideCharToMultiByte(GetACP(), 0, PChar(Content), Length(Content), GlobalLock(ClipboardData), Len, nil, nil);
       PAnsiChar(GlobalLock(ClipboardData))[Len] := #0;
       SetClipboardData(49581, ClipboardData);
       GlobalUnlock(ClipboardData);
 
 
-      S := '';
+      Content := '';
       for I := 0 to SelectedRows.Count - 1 do
       begin
         DataLink.DataSet.Bookmark := SelectedRows.Items[I];
         for J := 0 to Columns.Count - 1 do
           if (Columns[J].Visible) then
           begin
-            if (S <> '') then S := S + #9;
-            if (Columns[J].Field.DataType in UnquotedDataTypes) then
-              S := S + Columns[J].Field.AsString
+            if (Content <> '') then Content := Content + #9;
+            if (not Assigned(TMySQLDataSet(DataLink.DataSet).LibRow^[Columns[J].Field.FieldNo - 1])) then
+              // NULL values are empty in MS Text files
+            else if (Columns[J].Field.DataType in UnquotedDataTypes) then
+              Content := Content + TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo)
+            else if (Columns[J].Field.DataType in BinaryDataTypes) then
+              Content := Content + CSVEscape(TMySQLDataSet(DataLink.DataSet).LibRow^[Columns[J].Field.FieldNo - 1], TMySQLDataSet(DataLink.DataSet).LibLengths^[Columns[J].Field.FieldNo - 1])
             else
-              S := S + CSVEscape(Columns[J].Field.AsString);
+              Content := Content + CSVEscape(TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo));
           end;
-        S := S + #13#10;
+        Content := Content + #13#10;
       end;
 
-      Len := WideCharToMultiByte(GetACP(), 0, PChar(S), Length(S), nil, 0, nil, nil);
+      Len := WideCharToMultiByte(GetACP(), 0, PChar(Content), Length(Content), nil, 0, nil, nil);
       ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, (Len + 1));
-      WideCharToMultiByte(GetACP(), 0, PChar(S), Length(S), GlobalLock(ClipboardData), Len, nil, nil);
+      WideCharToMultiByte(GetACP(), 0, PChar(Content), Length(Content), GlobalLock(ClipboardData), Len, nil, nil);
       PAnsiChar(GlobalLock(ClipboardData))[Len] := #0;
       SetClipboardData(CF_DSPTEXT, ClipboardData);
       GlobalUnlock(ClipboardData);
@@ -1062,9 +1066,9 @@ begin
   DataLink.DataSet.DisableControls();
   SelectedRows.Clear();
   if (DataLink.DataSet.FindFirst()) then
-  repeat
-    SelectedRows.CurrentRowSelected := True;
-  until (not DataLink.DataSet.FindNext());
+    repeat
+      SelectedRows.CurrentRowSelected := True;
+    until (not DataLink.DataSet.FindNext());
   DataLink.DataSet.RecNo := OldRecNo;
   DataLink.DataSet.EnableControls();
 
