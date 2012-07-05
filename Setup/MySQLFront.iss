@@ -71,7 +71,6 @@ Name: "{userappdata}\{BuildName}\Accounts"
 [Files]
 Source: "{BuildTempPath}\{BuildName}.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{BuildTempPath}\{BuildName}.chm"; DestDir: "{app}"
-Source: "{BuildTempPath}\PAD_File.xml"; DestDir: "{app}"
 Source: "{BuildTempPath}\libMySQL.php"; DestDir: "{app}"
 Source: "{BuildLanguagesPath}\*.ini"; DestDir: "{app}\Languages"; Flags: comparetimestamp
 

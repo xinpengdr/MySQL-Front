@@ -84,12 +84,6 @@ if Errorlevel 1 goto Error
 "%BuildInnoSetup%" /O"%BuildTempPath%" "%BuildTempPath%\MySQLFront.iss" /F"%BuildName%_Setup"
 if Errorlevel 1 goto Error
 
-"%BuildTempPath%\Build_Setup.exe" /PAD_FILE
-if Errorlevel 1 goto Error
-
-"%BuildInnoSetup%" /O"%BuildTempPath%" /F"%BuildName%_Setup" "%BuildTempPath%\MySQLFront.iss"
-if Errorlevel 1 goto Error
-
 
 if not exist "%BuildPublishPath%" MKDIR "%BuildPublishPath%"
 

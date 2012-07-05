@@ -493,6 +493,7 @@ object WWindow: TWWindow
       Left = 0
       Top = 0
       Action = aFOpenAccount
+      ImageIndex = 15
     end
   end
   object MPrev: TPopupMenu

@@ -22,15 +22,9 @@ type
   TWSection = class;
   TWWorkbench = class;
 
-  TCoord = record
-    X: Longint;
-    Y: Longint;
-  public
-    class operator Equal(const Lhs, Rhs : TCoord) : Boolean;
-    class operator NotEqual(const Lhs, Rhs : TCoord): Boolean;
-  end;
+  TCoord = TPoint;
 
-  TWControls = class(TList)
+  TWObjects = class(TList)
   private
     FWorkbench: TWWorkbench;
   public
@@ -156,9 +150,9 @@ type
     FFocused: Boolean;
     FLinkPoints: array of TWLinkPoint;
     function GetCaption(): TCaption;
+    function GetIndex(): Integer;
     function GetLinkPoint(AIndex: Integer): TWLinkPoint;
     function GetLinkPointCount(): Integer;
-    function GetIndex(): Integer;
     procedure SetFocused(AFocused: Boolean);
   protected
     FBaseTable: TCBaseTable;
@@ -185,7 +179,7 @@ type
     property Index: Integer read GetIndex;
   end;
 
-  TWTables = class(TWControls)
+  TWTables = class(TWObjects)
   private
     function GetSelCount(): Integer;
     function GetTable(Index: Integer): TWTable;
@@ -264,9 +258,9 @@ type
     property BaseForeignKey: TCForeignKey read FBaseForeignKey write FBaseForeignKey;
   end;
 
-  TWLinks = class(TWControls)
+  TWLinks = class(TWObjects)
   private
-    function GetLink(Index: Integer): TWLink; inline;
+    function GetLink(Index: Integer): TWLink;
     function GetSelCount(): Integer;
   protected
     procedure SaveToXML(const XML: IXMLNode); virtual;
@@ -295,7 +289,7 @@ type
     property Color: TColor read FColor write FColor;
   end;
 
-  TWSections = class(TWControls)
+  TWSections = class(TWObjects)
   private
     function GetSection(Index: Integer): TWSection;
   protected
@@ -352,8 +346,7 @@ type
     FModified: Boolean;
     State: TMWorkbenchState;
     procedure Change(); virtual;
-    function CoordToPoint(const Coord: TCoord): TPoint;
-    procedure CursorMove(const Coord: TCoord); virtual;
+    procedure CursorMove(const X, Y: Integer); virtual;
     procedure DoEnter(); override;
     procedure DoExit(); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -407,7 +400,7 @@ implementation {***************************************************************}
 
 uses
   ExtCtrls, Math, Dialogs, StdActns, Consts, Printers,
-  fPreferences, MySQLDB;
+  fPreferences;
 
 const
   BorderSize = 1;
@@ -515,32 +508,9 @@ begin
   Point.Free();
 end;
 
-function MakeCoord(const X, Y: Integer): TCoord;
-begin
-  Result.X := X;
-  Result.Y := Y;
-end;
-
-function CoordInArea(const Coord: TCoord; const Area: TRect): Boolean;
-begin
-  Result := PtInRect(Area, Point(Coord.X, Coord.Y));
-end;
-
-{ TCoord **********************************************************************}
-
-class operator TCoord.Equal(const Lhs, Rhs: TCoord): Boolean;
-begin
-  Result := (Lhs.X = Rhs.X) and (Lhs.Y = Rhs.Y);
-end;
-
-class operator TCoord.NotEqual(const Lhs, Rhs: TCoord): Boolean;
-begin
-  Result := (Lhs.X <> Rhs.X) or (Lhs.Y <> Rhs.Y);
-end;
-
 { TWObjects *******************************************************************}
 
-procedure TWControls.Clear();
+procedure TWObjects.Clear();
 begin
   Workbench.BeginUpdate();
 
@@ -552,21 +522,21 @@ begin
   Workbench.EndUpdate();
 end;
 
-constructor TWControls.Create(const AWorkbench: TWWorkbench);
+constructor TWObjects.Create(const AWorkbench: TWWorkbench);
 begin
   inherited Create();
 
   FWorkbench := AWorkbench;
 end;
 
-procedure TWControls.Delete(Index: Integer);
+procedure TWObjects.Delete(Index: Integer);
 begin
   TWControl(Items[Index]).Free();
 
   inherited;
 end;
 
-destructor TWControls.Destroy();
+destructor TWObjects.Destroy();
 begin
   Clear();
 
@@ -598,7 +568,7 @@ begin
   FCoord := ACoord;
 
   FSelected := False;
-  MouseDownCoord := MakeCoord(-1, -1);
+  MouseDownCoord.X := -1; MouseDownCoord.Y := -1;
   MouseDownPoint := Point(-1, -1);
 end;
 
@@ -645,9 +615,10 @@ procedure TWControl.LoadFromXML(const XML: IXMLNode);
 var
   NewCoord: TCoord;
 begin
-  if (Assigned(XMLNode(XML, 'coord/x')) and TryStrToInt(XMLNode(XML, 'coord/x').Text, NewCoord.X)
-    and Assigned(XMLNode(XML, 'coord/y')) and TryStrToInt(XMLNode(XML, 'coord/y').Text, NewCoord.Y)) then
-    MoveTo(Self, [], NewCoord);
+  NewCoord := Coord;
+  if (Assigned(XMLNode(XML, 'coord/x'))) then TryStrToInt(XMLNode(XML, 'coord/x').Text, NewCoord.X);
+  if (Assigned(XMLNode(XML, 'coord/y'))) then TryStrToInt(XMLNode(XML, 'coord/y').Text, NewCoord.Y);
+  MoveTo(Self, [], NewCoord);
 end;
 
 procedure TWControl.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -824,7 +795,7 @@ begin
         Move(Self, Shift, NewCoord);
     end;
 
-    Workbench.CursorMove(MakeCoord(X, Y));
+    Workbench.CursorMove(X, Y);
   end;
 end;
 
@@ -1284,7 +1255,7 @@ procedure TWPoint.MoveTo(const Sender: TWControl; const Shift: TShiftState; NewC
       and (ControlAlign(Control) in [alTop, alBottom]) and (NewCoord.X < Point.Coord.X) and (MoveState = msNormal)
       and ((ControlAlign(Sender) = alLeft) or (Point.MoveState = msFixed) or (Sender = AntiLine))) then
     begin
-      CreateSegment(Self, MakeCoord(Point.Coord.X, NewCoord.Y), Self, (Line = LineA) and not Assigned(AntiLine));
+      CreateSegment(Self, Types.Point(Point.Coord.X, NewCoord.Y), Self, (Line = LineA) and not Assigned(AntiLine));
       MoveState := msNormal;
       if (Assigned(AntiLine)) then
         NewCoord.X := Coord.X;
@@ -1293,7 +1264,7 @@ procedure TWPoint.MoveTo(const Sender: TWControl; const Shift: TShiftState; NewC
       and (ControlAlign(Control) in [alLeft, alRight]) and (NewCoord.Y < Point.Coord.Y) and (MoveState = msNormal)
       and ((ControlAlign(Sender) = alTop) or (Point.MoveState = msFixed) or (Sender = AntiLine))) then
     begin
-      CreateSegment(Self, MakeCoord(NewCoord.X, Point.Coord.Y), Self, (Line = LineA) and not Assigned(AntiLine));
+      CreateSegment(Self, Types.Point(NewCoord.X, Point.Coord.Y), Self, (Line = LineA) and not Assigned(AntiLine));
       MoveState := msNormal;
       if (Assigned(AntiLine)) then
         NewCoord.Y := Coord.Y;
@@ -1302,7 +1273,7 @@ procedure TWPoint.MoveTo(const Sender: TWControl; const Shift: TShiftState; NewC
       and (ControlAlign(Control) in [alTop, alBottom]) and (NewCoord.X > Point.Coord.X) and (MoveState = msNormal)
       and ((ControlAlign(Sender) = alRight) or (Point.MoveState = msFixed) or (Sender = AntiLine))) then
     begin
-      CreateSegment(Self, MakeCoord(Point.Coord.X, NewCoord.Y), Self, (Line = LineA) and not Assigned(AntiLine));
+      CreateSegment(Self, Types.Point(Point.Coord.X, NewCoord.Y), Self, (Line = LineA) and not Assigned(AntiLine));
       MoveState := msNormal;
       if (Assigned(AntiLine)) then
         NewCoord.X := Coord.X;
@@ -1311,7 +1282,7 @@ procedure TWPoint.MoveTo(const Sender: TWControl; const Shift: TShiftState; NewC
       and (ControlAlign(Control) in [alLeft, alRight]) and (NewCoord.Y > Point.Coord.Y) and (MoveState = msNormal)
       and ((ControlAlign(Sender) = alBottom) or (Point.MoveState = msFixed) or (Sender = AntiLine))) then
     begin
-      CreateSegment(Self, MakeCoord(NewCoord.X, Point.Coord.Y), Self, (Line = LineA) and not Assigned(AntiLine));
+      CreateSegment(Self, Types.Point(NewCoord.X, Point.Coord.Y), Self, (Line = LineA) and not Assigned(AntiLine));
       MoveState := msNormal;
       if (Assigned(AntiLine)) then
         NewCoord.Y := Coord.Y;
@@ -1328,10 +1299,10 @@ procedure TWPoint.MoveTo(const Sender: TWControl; const Shift: TShiftState; NewC
     // adjust other end of a line
     else if ((Sender <> Point) and (Self is TWLinkPoint) and Assigned(TWLinkPoint(Self).Link.ParentTable) and (Point.MoveState = msNormal)
       and ((ControlAlign(Line) in [alLeft, alRight]) or (Point.ControlAlign(NextLine) in [alTop, alBottom]) and (Point.Coord.Y = Coord.Y) and (Point.Coord.X = Coord.X))) then
-      Point.MoveTo(Self, Shift, MakeCoord(Point.Coord.X, NewCoord.Y))
+      Point.MoveTo(Self, Shift, Types.Point(Point.Coord.X, NewCoord.Y))
     else if ((Sender <> Point) and (Self is TWLinkPoint) and Assigned(TWLinkPoint(Self).Link.ParentTable) and (Point.MoveState = msNormal)
       and ((ControlAlign(Line) in [alTop, alBottom]) or (Point.ControlAlign(NextLine) in [alLeft, alRight]) and (Point.Coord.X = Coord.X) and (Point.Coord.Y = Coord.Y))) then
-      Point.MoveTo(Self, Shift, MakeCoord(NewCoord.X, Point.Coord.Y));
+      Point.MoveTo(Self, Shift, Types.Point(NewCoord.X, Point.Coord.Y));
 
     // remove a crushed line
     if ((Sender <> Self)
@@ -1359,10 +1330,11 @@ begin
 //      else if (Assigned(LineA) and Assigned(LineA.PointA)
 //        and (NewCoord.X <> LineA.PointA.Coord.X) and (NewCoord.Y <> LineA.PointA.Coord.Y)) then
 //      begin
+//        // Should never be used. But sometimes a point is be wrong - this fixes this problem.
 //        if (Abs(NewCoord.X - LineA.PointA.Coord.X) < Abs(NewCoord.Y - LineA.PointA.Coord.Y)) then
-//          NewPoint := CreateSegment(Sender, MakeCoord(NewCoord.X, LineA.PointA.Coord.Y), Self, Assigned(LineA) and ((Sender = LineA) or (Sender = LineA.PointA)))
+//          NewPoint := CreateSegment(Sender, MakeCoord(NewCoord.X, LineA.PointA.Coord.Y), Self, True)
 //        else
-//          NewPoint := CreateSegment(Sender, MakeCoord(LineA.PointA.Coord.X, NewCoord.Y), Self, Assigned(LineA) and ((Sender = LineA) or (Sender = LineA.PointA)));
+//          NewPoint := CreateSegment(Sender, MakeCoord(LineA.PointA.Coord.X, NewCoord.Y), Self, True);
 //      end;
     end;
 
@@ -1395,8 +1367,8 @@ begin
         TempOrientation := foHorizontal;
 
       case (TempOrientation) of
-        foHorizontal: LineA.PointA.MoveTo(Self, [], MakeCoord(LineA.PointA.LineA.PointA.Coord.X, NewCoord.Y));
-        foVertical: LineA.PointA.MoveTo(Self, [], MakeCoord(NewCoord.X, LineA.PointA.LineA.PointA.Coord.Y));
+        foHorizontal: LineA.PointA.MoveTo(Self, [], Point(LineA.PointA.LineA.PointA.Coord.X, NewCoord.Y));
+        foVertical: LineA.PointA.MoveTo(Self, [], Point(NewCoord.X, LineA.PointA.LineA.PointA.Coord.Y));
         else raise ERangeError.CreateFmt(SPropertyOutOfRange, ['Orientation']);
       end;
     end
@@ -1408,9 +1380,9 @@ begin
       or (MoveState = msAutomatic) and (Sender = Self) and (ControlAlign(LineA) in [alLeft, alRight]) and ((ControlAlign(LineA) in [alLeft, alTop]) and (NewCoord.X <> Coord.X) or (ControlAlign(LineA) in [alTop, alBottom]) and (NewCoord.X <> Coord.X)))) then
     begin
       if (Abs(NewCoord.X - Coord.X) >= Abs(NewCoord.Y - Coord.Y)) then
-        NewPoint := CreateSegment(Self, MakeCoord(NewCoord.X, Coord.Y), Self, Assigned(TWLinkPoint(Self).Link.ParentTable) and Assigned(LineA) and not Assigned(LineB))
+        NewPoint := CreateSegment(Self, Point(NewCoord.X, Coord.Y), Self, Assigned(TWLinkPoint(Self).Link.ParentTable) and Assigned(LineA) and not Assigned(LineB))
       else
-        NewPoint := CreateSegment(Self, MakeCoord(Coord.X, NewCoord.Y), Self, Assigned(TWLinkPoint(Self).Link.ParentTable) and Assigned(LineA) and not Assigned(LineB));
+        NewPoint := CreateSegment(Self, Point(Coord.X, NewCoord.Y), Self, Assigned(TWLinkPoint(Self).Link.ParentTable) and Assigned(LineA) and not Assigned(LineB));
       NewPoint.MouseDown(mbLeft, [], (PointSize - 1) div 2, (PointSize - 1) div 2);
       NewPoint.MoveState := msAutomatic;
 
@@ -1430,12 +1402,12 @@ begin
     // move a point away from a fixed point
     else if ((Sender = Self) and Assigned(LineA) and (NewCoord.Y <> Coord.Y) and (LineA.Orientation = foHorizontal) and (LineA.PointA.MoveState = msFixed)) then
     begin
-      NewPoint := CreateSegment(Self, MakeCoord(Coord.X, NewCoord.Y), Self, False);
+      NewPoint := CreateSegment(Self, Types.Point(Coord.X, NewCoord.Y), Self, False);
       NewPoint.MouseDown(mbLeft, [], (PointSize - 1) div 2, (PointSize - 1) div 2);
     end
     else if ((Sender = Self) and Assigned(LineA) and (NewCoord.X <> Coord.X) and (LineA.Orientation = foVertical) and (LineA.PointA.MoveState = msFixed)) then
     begin
-      NewPoint := CreateSegment(Self, MakeCoord(NewCoord.X, Coord.Y), Self, False);
+      NewPoint := CreateSegment(Self, Types.Point(NewCoord.X, Coord.Y), Self, False);
       NewPoint.MouseDown(mbLeft, [], (PointSize - 1) div 2, (PointSize - 1) div 2);
     end
 
@@ -1635,8 +1607,8 @@ begin
   else
     Cursor := crDefault;
 
-  PointANewCoord := MakeCoord(MouseDownCoord.X + Workbench.HorzScrollBar.Position + Left + X - MouseDownPoint.X,
-                              MouseDownCoord.Y + Workbench.VertScrollBar.Position + Top + Y - MouseDownPoint.Y);
+  PointANewCoord := Point(MouseDownCoord.X + Workbench.HorzScrollBar.Position + Left + X - MouseDownPoint.X,
+                          MouseDownCoord.Y + Workbench.VertScrollBar.Position + Top + Y - MouseDownPoint.Y);
 
   if (PointANewCoord.X < 0) then
     PointANewCoord.X := 0;
@@ -1652,13 +1624,13 @@ begin
     begin
       MouseCapture := False;
 
-      NewCoord := Workbench.PointToCoord(Point(Left + X, Top + Y));
+      NewCoord := Point(Left + X, Top + Y);
 
       TWLinkPoint(PointA).MoveState := msFixed;
       if (Orientation = foHorizontal) then
-        NewPoint := CreateSegment(Self, MakeCoord(NewCoord.X, PointA.Coord.Y), PointA, False)
+        NewPoint := CreateSegment(Self, Point(NewCoord.X, PointA.Coord.Y), PointA, False)
       else
-        NewPoint := CreateSegment(Self, MakeCoord(PointA.Coord.X, NewCoord.Y), PointA, False);
+        NewPoint := CreateSegment(Self, Point(PointA.Coord.X, NewCoord.Y), PointA, False);
       NewPoint.MoveState := msAutomatic;
       NewPoint := CreateSegment(Self, NewCoord, NewPoint, False);
       NewPoint.MouseDown(mbLeft, [], (PointSize - 1) div 2, (PointSize - 1) div 2);
@@ -1669,12 +1641,12 @@ begin
   else
     case (Orientation) of
       foHorizontal:
-        PointA.MoveTo(Self, Shift, MakeCoord(PointA.Coord.X, PointANewCoord.Y));
+        PointA.MoveTo(Self, Shift, Point(PointA.Coord.X, PointANewCoord.Y));
       foVertical:
-        PointA.MoveTo(Self, Shift, MakeCoord(PointANewCoord.X, PointA.Coord.Y));
+        PointA.MoveTo(Self, Shift, Point(PointANewCoord.X, PointA.Coord.Y));
     end;
 
-  Workbench.CursorMove(MakeCoord(Left + Workbench.HorzScrollBar.Position + X, Top + Workbench.VertScrollBar.Position + Y));
+  Workbench.CursorMove(Left + Workbench.HorzScrollBar.Position + X, Top + Workbench.VertScrollBar.Position + Y);
 end;
 
 procedure TWLine.PaintTo(const Canvas: TCanvas; const X, Y: Integer);
@@ -1880,7 +1852,7 @@ var
 begin
   for I := 0 to Length(FLinkPoints) - 1 do
     if (not FLinkPoints[I].Selected) then
-      FLinkPoints[I].MoveTo(Self, Shift, MakeCoord(FLinkPoints[I].Coord.X + NewCoord.X - Coord.X, FLinkPoints[I].Coord.Y + NewCoord.Y - Coord.Y));
+      FLinkPoints[I].MoveTo(Self, Shift, Point(FLinkPoints[I].Coord.X + NewCoord.X - Coord.X, FLinkPoints[I].Coord.Y + NewCoord.Y - Coord.Y));
 
   inherited;
 end;
@@ -1894,9 +1866,9 @@ begin
 
   for I := 0 to Length(FLinkPoints) - 1 do
   begin
-    TempCoord := MakeCoord(FLinkPoints[I].Coord.X + (NewCoord.X - Coord.X), FLinkPoints[I].Coord.Y + (NewCoord.Y - Coord.Y));
+    TempCoord := Point(FLinkPoints[I].Coord.X + (NewCoord.X - Coord.X), FLinkPoints[I].Coord.Y + (NewCoord.Y - Coord.Y));
     FLinkPoints[I].Moving(Self, Shift, TempCoord);
-    NewCoord := MakeCoord(Coord.X + TempCoord.X - FLinkPoints[I].Coord.X, Coord.Y + TempCoord.Y - FLinkPoints[I].Coord.Y);
+    NewCoord := Point(Coord.X + TempCoord.X - FLinkPoints[I].Coord.X, Coord.Y + TempCoord.Y - FLinkPoints[I].Coord.Y);
   end;
 end;
 
@@ -2151,7 +2123,7 @@ end;
 
 constructor TWLinkPoint.Create(const AWorkbench: TWWorkbench; const ACoord: TCoord; const APreviousPoint: TWPoint = nil);
 begin
-  inherited Create(AWorkbench, ACoord, APreviousPoint);
+  inherited Create(AWorkbench, ACoord);
 
   if (APreviousPoint is TWLinkPoint) then
     LineA := TWLinkLine.Create(Workbench, TWLinkPoint(APreviousPoint), Self);
@@ -2273,7 +2245,7 @@ end;
 procedure TWLinkPoint.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   if (not Assigned(Link.ParentTable) and (Link.PointCount > 1)) then
-    TableB := Workbench.TableAtCoord(MakeCoord(Coord.X, Coord.Y));
+    TableB := Workbench.TableAtCoord(Point(Coord.X, Coord.Y));
 
   inherited;
 
@@ -2449,7 +2421,7 @@ procedure TWLink.Cleanup(const Sender: TWControl);
       LinePoint := Line.PointA;
     end;
 
-    if (Assigned(Line) and (CoordInArea(Point.Coord, Table.Area) or (Point.ControlAlign(Line) = Point.ControlAlign(Table)))) then
+    if (Assigned(Line) and (PtInRect(Table.Area, Point.Coord) or (Point.ControlAlign(Line) = Point.ControlAlign(Table)))) then
     begin
       NewCoord := Point.Coord;
       case (PointAlign(LinePoint.Coord, Table.Area)) of
@@ -2471,7 +2443,7 @@ begin
   for I := 0 to PointCount - 1 do
   begin
     Points[I].MoveState := msNormal;
-    Points[I].MouseDownCoord := MakeCoord(-1, -1);
+    Points[I].MouseDownCoord := Types.Point(-1, -1);
     Points[I].MouseDownPoint := Types.Point(-1, -1);
   end;
 
@@ -2656,7 +2628,7 @@ end;
 
 procedure TWLink.LoadFromXML(const XML: IXMLNode);
 
-  function ConnectorCoord(const Table: TWTable; const Align: TAlign; const Position: Integer): TCoord;
+  function ConnectorCoord(const Table: TWTable; const Align: TAlign; const Position: Integer): TPoint;
   begin
     Result.X := Table.Area.Left;
     Result.Y := Table.Area.Top - (ConnectorSize + (PointSize - 1) div 2);
@@ -2690,7 +2662,7 @@ var
   Index: Integer;
   J: Integer;
   Point: TWLinkPoint;
-  PointCoord: TCoord;
+  PointCoord: TPoint;
   PointIndex: Integer;
   PointsNode: IXMLNode;
   Position: Integer;
@@ -2732,13 +2704,13 @@ begin
               and Assigned(XMLNode(PointsNode.ChildNodes[J], 'coord/x')) and TryStrToInt(XMLNode(PointsNode.ChildNodes[J], 'coord/x').Text, PointCoord.X)
               and Assigned(XMLNode(PointsNode.ChildNodes[J], 'coord/y')) and TryStrToInt(XMLNode(PointsNode.ChildNodes[J], 'coord/y').Text, PointCoord.Y)) then
             begin
-              Point := TWLinkPoint.Create(Workbench, MakeCoord(-1, -1), LastPoint);
+              Point := TWLinkPoint.Create(Workbench, Types.Point(-1, -1), LastPoint);
               Point.MoveTo(nil, [], PointCoord);
             end;
           Inc(PointIndex);
         until (PointCount < PointIndex);
 
-      Point := TWLinkPoint.Create(Workbench, MakeCoord(-1, -1), LastPoint);
+      Point := TWLinkPoint.Create(Workbench, Types.Point(-1, -1), LastPoint);
       Point.TableB := Table;
       if (Assigned(XMLNode(XML, 'tables/parent/align'))
         and TryStrToAlign(XMLNode(XML, 'tables/parent/align').Text, Align)
@@ -2833,7 +2805,7 @@ begin
       begin
         TableA := ATable;
         if (Assigned(ATable)) then
-          MoveTo(Self, [], MakeCoord(ATable.Coord.X + (ATable.Area.Right - ATable.Area.Left) div 2, ATable.Coord.Y + (ATable.Area.Bottom - ATable.Area.Top) div 2));
+          MoveTo(Self, [], Point(ATable.Coord.X + (ATable.Area.Right - ATable.Area.Left) div 2, ATable.Coord.Y + (ATable.Area.Bottom - ATable.Area.Top) div 2));
       end;
     1:
       begin
@@ -2841,18 +2813,18 @@ begin
         begin
           if (ChildTable = ATable) then
           begin
-            LastPoint.MoveTo(LastPoint, [], MakeCoord(ATable.Area.Left + (ATable.Area.Right - ATable.Area.Left) div 3, ATable.Coord.Y + (ATable.Area.Bottom - ATable.Area.Top) div 2));
+            LastPoint.MoveTo(LastPoint, [], Point(ATable.Area.Left + (ATable.Area.Right - ATable.Area.Left) div 3, ATable.Coord.Y + (ATable.Area.Bottom - ATable.Area.Top) div 2));
             LastPoint.MoveState := msFixed;
-            LastPoint.MoveTo(LastPoint, [], MakeCoord(ATable.Area.Left + (ATable.Area.Right - ATable.Area.Left) div 3, ATable.Area.Top - 2 * ConnectorSize));
+            LastPoint.MoveTo(LastPoint, [], Point(ATable.Area.Left + (ATable.Area.Right - ATable.Area.Left) div 3, ATable.Area.Top - 2 * ConnectorSize));
             LastPoint.MoveState := msFixed;
-            LastPoint.MoveTo(LastPoint, [], MakeCoord(ATable.Area.Right - (ATable.Area.Right - ATable.Area.Left) div 3, ATable.Area.Top - 2 * ConnectorSize));
+            LastPoint.MoveTo(LastPoint, [], Point(ATable.Area.Right - (ATable.Area.Right - ATable.Area.Left) div 3, ATable.Area.Top - 2 * ConnectorSize));
             LastPoint.MoveState := msFixed;
-            LastPoint.MoveTo(LastPoint, [], MakeCoord(ATable.Area.Right - (ATable.Area.Right - ATable.Area.Left) div 3, ATable.Coord.Y + (ATable.Area.Bottom - ATable.Area.Top) div 2));
+            LastPoint.MoveTo(LastPoint, [], Point(ATable.Area.Right - (ATable.Area.Right - ATable.Area.Left) div 3, ATable.Coord.Y + (ATable.Area.Bottom - ATable.Area.Top) div 2));
           end
           else
           begin
             LastPoint.MoveState := msFixed;
-            LastPoint.MoveTo(Self, [], MakeCoord(ATable.Coord.X + (ATable.Area.Right - ATable.Area.Left) div 2, ATable.Coord.Y + (ATable.Area.Bottom - ATable.Area.Top) div 2));
+            LastPoint.MoveTo(Self, [], Point(ATable.Coord.X + (ATable.Area.Right - ATable.Area.Left) div 2, ATable.Coord.Y + (ATable.Area.Bottom - ATable.Area.Top) div 2));
           end;
           TWLinkPoint(LastPoint).TableB := ATable;
         end;
@@ -3141,7 +3113,7 @@ begin
   for I := 0 to XML.ChildNodes.Count - 1 do
     if (XML.ChildNodes.Nodes[I].NodeName = 'section') then
     begin
-      Section := TWSection.Create(Workbench, MakeCoord(-1, -1));
+      Section := TWSection.Create(Workbench, Point(-1, -1));
       Section.LoadFromXML(XML.ChildNodes.Nodes[I]);
       Add(Section);
     end;
@@ -3163,15 +3135,12 @@ end;
 { TWLasso *********************************************************************}
 
 constructor TWLasso.Create(const AWorkbench: TWWorkbench; const ACoord: TCoord);
-var
-  P: TPoint;
 begin
   inherited;
 
   Canvas.Brush.Style := bsClear;
 
-  P := Workbench.CoordToPoint(ACoord);
-  MouseDown(mbLeft, [], P.X, P.Y);
+  MouseDown(mbLeft, [], 0, 0);
 end;
 
 procedure TWLasso.MouseMove(Shift: TShiftState; X, Y: Integer);
@@ -3193,7 +3162,7 @@ begin
     else if (Workbench.Controls[I] is TWArea) then
       TWArea(Workbench.Controls[I]).Selected := IntersectRect(R, LassoRect, TWArea(Workbench.Controls[I]).Area)
     else if (Workbench.Controls[I] is TWPoint) then
-      TWPoint(Workbench.Controls[I]).Selected := CoordInArea(TWPoint(Workbench.Controls[I]).Coord, LassoRect);
+      TWPoint(Workbench.Controls[I]).Selected := PtInRect(LassoRect, TWPoint(Workbench.Controls[I]).Coord);
 
   BringToFront();
 
@@ -3267,7 +3236,7 @@ procedure TWWorkbench.AddExistingTable(const X, Y: Integer; const ABaseTable: TC
 var
   Table: TWTable;
 begin
-  Table := TWTable.Create(Tables, PointToCoord(Point(X, Y)), ABaseTable);
+  Table := TWTable.Create(Tables, Point(X, Y), ABaseTable);
   Tables.Add(Table);
   if (Assigned(OnValidateControl)) then
   begin
@@ -3391,7 +3360,7 @@ begin
       for I := 0 to XML.ChildNodes.Count - 1 do
         if ((XML.ChildNodes.Nodes[I].NodeName = 'table') and (Database.Tables.NameCmp(XML.ChildNodes.Nodes[I].Attributes['name'], BaseTable.Name) = 0)) then
         begin
-          Table := TWTable.Create(Tables, MakeCoord(-1, -1), BaseTable);
+          Table := TWTable.Create(Tables, Point(-1, -1), BaseTable);
           Table.LoadFromXML(XML.ChildNodes.Nodes[I]);
           Tables.Add(Table);
 
@@ -3407,12 +3376,12 @@ begin
                 and Assigned(ParentTable) and Assigned(ParentTable.BaseTable)) then
               begin
                 if (XML.ChildNodes.Nodes[J].Attributes['name'] = Null) then
-                  Link := TWLink.Create(Self, MakeCoord(-1, -1))
+                  Link := TWLink.Create(Self, Point(-1, -1))
                 else if (not Assigned(LinkByCaption(XML.ChildNodes.Nodes[J].Attributes['name']))
                   and Assigned(ChildTable.BaseTable.ForeignKeyByName(XML.ChildNodes.Nodes[J].Attributes['name']))) then
                 begin
                   S := XML.ChildNodes.Nodes[J].Attributes['name'];
-                  Link := TWForeignKey.Create(Self, MakeCoord(-1, -1));
+                  Link := TWForeignKey.Create(Self, Point(-1, -1));
                   TWForeignKey(Link).BaseForeignKey := ChildTable.BaseTable.ForeignKeyByName(XML.ChildNodes.Nodes[J].Attributes['name']);
                 end
                 else
@@ -3433,7 +3402,7 @@ begin
       if (not Assigned(LinkByCaption(BaseTable.ForeignKeys[J].Name))
         and Assigned(TableByCaption(BaseTable.ForeignKeys[J].Parent.TableName))) then
         begin
-          Link := TWForeignKey.Create(Self, MakeCoord(-1, -1));
+          Link := TWForeignKey.Create(Self, Point(-1, -1));
           TWForeignKey(Link).BaseForeignKey := BaseTable.ForeignKeys[J];
           Link.ChildTable := TableByBaseTable(BaseTable);
           Link.ParentTable := TableByCaption(BaseTable.ForeignKeys[J].Parent.TableName);
@@ -3445,7 +3414,7 @@ begin
         if ((Database.Tables.NameCmp(Tables[I].BaseTable.ForeignKeys[J].Parent.TableName, BaseTable.Name) = 0)
           and not Assigned(LinkByCaption(Tables[I].BaseTable.ForeignKeys[J].Name))) then
         begin
-          Link := TWForeignKey.Create(Self, MakeCoord(-1, -1));
+          Link := TWForeignKey.Create(Self, Point(-1, -1));
           TWForeignKey(Link).BaseForeignKey := Tables[I].BaseTable.ForeignKeys[J];
           Link.ChildTable := Tables[I];
           Link.ParentTable := TableByBaseTable(BaseTable);
@@ -3463,11 +3432,6 @@ end;
 procedure TWWorkbench.CMEndLasso(var Message: TMessage);
 begin
   FreeAndNil(Lasso);
-end;
-
-function TWWorkbench.CoordToPoint(const Coord: TCoord): TPoint;
-begin
-  Result := Point(Coord.X - HorzScrollBar.Position, Coord.Y - VertScrollBar.Position);
 end;
 
 constructor TWWorkbench.Create(AOwner: TComponent);
@@ -3514,7 +3478,7 @@ begin
   Selected := nil;
   State := wsCreateForeignKey;
 
-  Table := TableAtCoord(MakeCoord(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
+  Table := TableAtCoord(Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
   if (Assigned(Table)) then
     Table.MouseDown(mbLeft, [], X - Table.Left, Y - Table.Top);
 end;
@@ -3526,7 +3490,7 @@ begin
   Selected := nil;
   State := wsCreateLink;
 
-  Table := TableAtCoord(PointToCoord(Point(X, Y)));
+  Table := TableAtCoord(Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
   if (Assigned(Table)) then
     Table.MouseDown(mbLeft, [], X - Table.Left, Y - Table.Top);
 end;
@@ -3539,7 +3503,7 @@ begin
 
   if ((X >= 0) or (Y >= 0)) then
   begin
-    Section := TWSection.Create(Self, PointToCoord(Point(X, Y)));
+    Section := TWSection.Create(Self, Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
     Sections.Add(Section);
     Section.MouseDown(mbLeft, [], 0, 0);
   end
@@ -3549,16 +3513,16 @@ end;
 
 procedure TWWorkbench.CreateNewTable(const X, Y: Integer);
 begin
-  CreatedTable := TWTable.Create(Tables, PointToCoord(Point(X, Y)));
+  CreatedTable := TWTable.Create(Tables, Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
   if (not Assigned(OnValidateControl) or not OnValidateControl(Self, CreatedTable)) then
     FreeAndNil(CreatedTable)
   else
     FModified := True;
 end;
 
-procedure TWWorkbench.CursorMove(const Coord: TCoord);
+procedure TWWorkbench.CursorMove(const X, Y: Integer);
 begin
-  if Assigned(FOnCursorMove) then FOnCursorMove(Self, Coord.X, Coord.Y);
+  if Assigned(FOnCursorMove) then FOnCursorMove(Self, X, Y);
 end;
 
 destructor TWWorkbench.Destroy();
@@ -3712,7 +3676,7 @@ begin
 
   if (State = wsCreateSection) then
   begin
-    Section := TWSection.Create(Self, PointToCoord(Point(X, Y)));
+    Section := TWSection.Create(Self, Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
     Sections.Add(Section);
     Section.MouseDown(mbLeft, [], 0, 0);
 
@@ -3725,7 +3689,7 @@ begin
     TableFocused := nil;
 
     if ((Button = mbLeft) and not (MultiSelect and (ssCtrl in Shift))) then
-      Lasso := TWLasso.Create(Self, PointToCoord(Point(X, Y)));
+      Lasso := TWLasso.Create(Self, Point(HorzScrollBar.Position + X, VertScrollBar.Position + Y));
   end;
 end;
 
@@ -3740,12 +3704,12 @@ begin
 
   inherited;
 
-  CursorMove(PointToCoord(Point(X, Y)));
+  CursorMove(HorzScrollBar.Position + X, VertScrollBar.Position + Y);
 end;
 
 function TWWorkbench.PointToCoord(const Point: TPoint): TCoord;
 begin
-  Result := MakeCoord(HorzScrollBar.Position + Point.X, VertScrollBar.Position + Point.Y);
+  Result := Point;
 end;
 
 procedure TWWorkbench.Print(const Title: string);
@@ -3912,7 +3876,7 @@ var
 begin
   Result := nil;
   for I := 0 to ControlCount - 1 do
-    if ((Controls[I] is TWTable) and CoordInArea(Coord, TWTable(Controls[I]).Area)) then
+    if ((Controls[I] is TWTable) and PtInRect(TWTable(Controls[I]).Area, Coord)) then
       Result := TWTable(Controls[I]);
 end;
 
@@ -3946,7 +3910,7 @@ begin
       if (Action is TEditCut) then
         TEditCut(Action).Enabled := False
       else if (Action is TEditDelete) then
-        TEditDelete(Action).Enabled := (Selected is TWTable) or (Selected is TWLink) and not (Selected is TWForeignKey) or (Selected is TWSection)
+        TEditDelete(Action).Enabled := (Selected is TWTable) or (Selected is TWLink) or (Selected is TWSection)
       else if (Action is TEditSelectAll) then
         TEditSelectAll(Action).Enabled := False
       else

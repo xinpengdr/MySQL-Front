@@ -1354,10 +1354,10 @@ begin
     mysql_num_fields := Tmysql_num_fields(@MySQLClient.mysql_num_fields);
     mysql_num_rows := Tmysql_num_rows(@MySQLClient.mysql_num_rows);
     mysql_options := Tmysql_options(@MySQLClient.mysql_options);
-    if (LibraryType <> ltHTTP) then
-      mysql_ping := Tmysql_ping(@MySQLClient.mysql_ping)
+    if (LibraryType = ltHTTP) then
+      mysql_ping := nil
     else
-      mysql_ping := nil;
+      mysql_ping := Tmysql_ping(@MySQLClient.mysql_ping);
     mysql_real_connect := Tmysql_real_connect(@MySQLClient.mysql_real_connect);
     mysql_real_escape_string := Tmysql_real_escape_string(@MySQLClient.mysql_real_escape_string);
     mysql_real_query := Tmysql_real_query(@MySQLClient.mysql_real_query);
@@ -1792,7 +1792,9 @@ begin
       Timeout := Connection.ServerTimeout * 1000;
     WaitResult := ExecuteE.WaitFor(Timeout);
     if (not Terminated) then
-      if (WaitResult = wrSignaled) then
+      if (WaitResult = wrTimeout) then
+        Connection.SyncPing(Self)
+      else
       begin
         case (State) of
           ssConnecting:
@@ -1820,9 +1822,7 @@ begin
 
         if (SynchronizeRequestSent) then
           SynchronizeE.WaitFor(INFINITE);
-      end
-      else
-        Connection.SyncPing(Self);
+      end;
   end;
 
   if (Assigned(LibHandle)) then
@@ -2904,7 +2904,7 @@ end;
 
 procedure TMySQLConnection.SyncPing(const SynchroThread: TSynchroThread);
 begin
-  if (Assigned(SynchroThread.LibHandle)) then
+  if (Assigned(Lib.mysql_ping) and Assigned(SynchroThread.LibHandle)) then
     Lib.mysql_ping(SynchroThread.LibHandle);
 end;
 

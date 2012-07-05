@@ -363,9 +363,9 @@ begin
           begin
             if (S <> '') then S := S + #9;
             if (Columns[J].Field.DataType in UnquotedDataTypes) then
-              S := S + Columns[J].Field.DisplayText
+              S := S + Columns[J].Field.AsString
             else
-              S := S + CSVEscape(Columns[J].Field.DisplayText);
+              S := S + CSVEscape(Columns[J].Field.AsString);
           end;
         S := S + #13#10;
       end;

@@ -1998,17 +1998,10 @@ end;
 procedure TFClient.TWanted.SetUpdate(const AUpdate: TCClient.TUpdate);
 begin
   Clear();
-try
   if (not FClient.Client.InUse) then
     AUpdate()
   else
     FUpdate := AUpdate;
-except
-  if (not FClient.Client.InUse) then
-    AUpdate()
-  else
-    FUpdate := AUpdate;
-end;
 end;
 
 procedure TFClient.TWanted.Synchronize();
@@ -5159,11 +5152,11 @@ begin
 
   aPResult.ShortCut := 0;
 
-  if (Window.ActiveControl = FNavigator) then FNavigatorExit(nil)
-  else if (Window.ActiveControl = ActiveListView) then ListViewExit(nil)
-  else if (Window.ActiveControl = FLog) then FLogExit(nil)
-  else if (Window.ActiveControl is TSynMemo) then SynMemoExit(nil)
-  else if (Window.ActiveControl = ActiveDBGrid) then DBGridExit(ActiveDBGrid);
+  if (Window.ActiveControl = FNavigator) then FNavigatorExit(Window.ActiveControl)
+  else if (Window.ActiveControl = ActiveListView) then ListViewExit(Window.ActiveControl)
+  else if (Window.ActiveControl = FLog) then FLogExit(Window.ActiveControl)
+  else if (Window.ActiveControl is TSynMemo) then SynMemoExit(Window.ActiveControl)
+  else if (Window.ActiveControl = ActiveDBGrid) then DBGridExit(Window.ActiveControl);
 
   Include(FrameState, tsActive);
 end;
@@ -10271,10 +10264,13 @@ var
   I: Integer;
   ImageIndex: Integer;
 begin
-  ImageIndex := ImageIndexByData(TObject(ActiveListView.Tag));
-  if (ImageIndex > 0) then
-    for I := 0 to ActiveListView.Columns.Count - 1 do
-      Client.Account.Desktop.ColumnWidths[ColumnWidthKindFromImageIndex(ImageIndex), I] := ActiveListView.Columns[I].Width;
+  if (Sender is TListView) then
+  begin
+    ImageIndex := ImageIndexByData(TObject(TListView(Sender).Tag));
+    if (ImageIndex > 0) then
+      for I := 0 to ActiveListView.Columns.Count - 1 do
+        Client.Account.Desktop.ColumnWidths[ColumnWidthKindFromImageIndex(ImageIndex), I] := ActiveListView.Columns[I].Width;
+  end;
 
   MainAction('aFImportSQL').Enabled := False;
   MainAction('aFImportText').Enabled := False;

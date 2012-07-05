@@ -358,7 +358,7 @@ begin
   InitTSSelect(Sender);
 
   TSSelectShow(Sender);
-  if (not Assigned(MasterClient)) then
+  if (not Assigned(SlaveClient)) then
   begin
     PageControl.ActivePage := TSSelect;
     if (Assigned(MasterClient)) then
