@@ -7672,7 +7672,9 @@ end;
 procedure TFClient.FLimitEnabledClick(Sender: TObject);
 begin
   FQuickSearchEnabled.Down := False;
+
   TableOpen(Sender);
+
   Window.ActiveControl := FOffset;
 end;
 
@@ -14083,8 +14085,6 @@ var
   SortDef: TIndexDef;
   Table: TCTable;
 begin
-  PResult.Visible := False; SResult.Visible := PResult.Visible;
-
   Table := TCTable(FNavigator.Selected.Data);
 
   if (Assigned(Table) and Assigned(Table.Fields) and (Table.Fields.Count > 0)) then  // Terminate in Table.Fields.GetCount erkennen und Struktur vor SELECT ermitteln, damit bei UPDATE Charset bekannt ist
@@ -14116,7 +14116,20 @@ begin
     else if ((Table is TCBaseTable) and (TCBaseTable(Table).Keys.Count > 0) and (TCBaseTable(Table).Keys[0].Name = '')) then
       TCBaseTable(Table).Keys[0].GetSortDef(SortDef);
 
-    Table.Open(FilterSQL, QuickSearch, SortDef, Offset, Limit, Desktop(Table).DataSetOpenEvent);
+    if (not Table.DataSet.Active) then
+    begin
+      PResult.Visible := False; SResult.Visible := PResult.Visible;
+      Table.Open(FilterSQL, QuickSearch, SortDef, Offset, Limit, Desktop(Table).DataSetOpenEvent);
+    end
+    else
+    begin
+      Table.DataSet.FilterSQL := FilterSQL;
+      Table.DataSet.QuickSearch := QuickSearch;
+      Table.DataSet.SortDef.Assign(SortDef);
+      Table.DataSet.Offset := Offset;
+      Table.DataSet.Limit := Limit;
+      Table.DataSet.Refresh();
+    end;
 
     SortDef.Free();
   end;

@@ -184,7 +184,6 @@ begin
   FSlave.Items.Clear();
   FSlave.Items.EndUpdate();
 
-  FBBack.Enabled := False;
   if (Success) then
   begin
     FBCancel.Caption := Preferences.LoadStr(231);
@@ -825,6 +824,7 @@ begin
   ProgressInfos.Progress := 0;
   SendMessage(Self.Handle, CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos));
 
+  FBBack.Enabled := False;
   FBForward.Enabled := False;
   FBCancel.Default := True;
   ActiveControl := FBCancel;

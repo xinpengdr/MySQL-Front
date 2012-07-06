@@ -456,7 +456,7 @@ type
     function SQLSelect(const IgnoreLimit: Boolean = False): string; override;
   public
     constructor Create(const ATable: TCTable); reintroduce; virtual;
-    property QuickSearch: string read FQuickSearch;
+    property QuickSearch: string read FQuickSearch write FQuickSearch;
     property Table: TCTable read FTable;
   end;
 

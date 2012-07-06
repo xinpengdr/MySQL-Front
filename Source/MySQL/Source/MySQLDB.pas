@@ -406,7 +406,6 @@ type
   private
     OpenByCommandText: Boolean;
     FConnection: TMySQLConnection;
-    FHandle: MySQLConsts.MYSQL_RES;
     FIndexDefs: TIndexDefs;
     FInformConvertError: Boolean;
     FRecNo: Integer;
@@ -416,6 +415,7 @@ type
   protected
     FCommandText: string;
     FCommandType: TCommandType;
+    FHandle: MySQLConsts.MYSQL_RES;
     FDatabaseName: string;
     FTableName: string;
     function AllocRecordBuffer(): TRecordBuffer; override;
@@ -619,8 +619,6 @@ type
     FLimit: Integer;
     FLimitedDataReceived: Boolean;
     FOffset: Integer;
-    procedure SetLimit(const ALimit: Integer);
-    procedure SetOffset(const AOffset: Integer);
   protected
     FFilterSQL: string;
     RequestedRecordCount: Integer;
@@ -640,8 +638,8 @@ type
   published
     property AutomaticLoadNextRecords: Boolean read FAutomaticLoadNextRecords write FAutomaticLoadNextRecords default False;
     property FilterSQL: string read FFilterSQL write FFilterSQL;
-    property Limit: Integer read FLimit write SetLimit default 0;
-    property Offset: Integer read FOffset write SetOffset default 0;
+    property Limit: Integer read FLimit write FLimit default 0;
+    property Offset: Integer read FOffset write FOffset default 0;
   end;
 
   TMySQLBitField = class(TLargeintField)
@@ -1847,6 +1845,7 @@ end;
 
 procedure TMySQLConnection.TSynchroThread.ReleaseDataSet(const ADataSet: TMySQLDataSet);
 begin
+  ADataSet.FHandle := nil;
   ADataSet.SynchroThread := nil;
   DataSet := nil;
 end;
@@ -2939,6 +2938,8 @@ begin
       TMySQLTable(SynchroThread.DataSet).FLimitedDataReceived := not SynchroThread.Success or (Lib.mysql_num_rows(SynchroThread.ResultHandle) = TMySQLTable(SynchroThread.DataSet).RequestedRecordCount);
     TerminateCS.Leave();
   end;
+
+  SynchroThread.ReleaseDataSet(SynchroThread.DataSet);
 end;
 
 procedure TMySQLConnection.UnRegisterSQLMonitor(const AMySQLMonitor: TMySQLMonitor);
@@ -4783,9 +4784,7 @@ var
   I: Integer;
   InternRecordBuffer: PInternRecordBuffer;
 begin
-  if (not Assigned(LibRow)) then
-    FHandle := nil
-  else
+  if (Assigned(LibRow)) then
   begin
     Data.LibLengths := LibLengths;
     Data.LibRow := LibRow;
@@ -5505,10 +5504,7 @@ procedure TMySQLDataSet.InternalClose();
 begin
   Connection.TerminateCS.Enter();
   if (IsCursorOpen() and Assigned(RecordReceived) and Assigned(SynchroThread) and (SynchroThread.DataSet = Self)) then
-  begin
     SynchroThread.ReleaseDataSet(SynchroThread.DataSet);
-    FHandle := nil;
-  end;
   Connection.TerminateCS.Leave();
 
   FSortDef.Fields := '';
@@ -6356,22 +6352,6 @@ begin
   for I := 0 to FieldCount - 1 do
     if (GetFieldInfo(Fields[I].Origin, FieldInfo)) then
       Fields[I].Origin := '"' + DatabaseName + '"."' + FTableName + '"."' + FieldInfo.OriginalFieldName + '"';
-end;
-
-procedure TMySQLTable.SetLimit(const ALimit: Integer);
-begin
-  Assert(not IsCursorOpen());
-
-
-  FLimit := ALimit;
-end;
-
-procedure TMySQLTable.SetOffset(const AOffset: Integer);
-begin
-  Assert(not IsCursorOpen());
-
-
-  FOffset := AOffset;
 end;
 
 procedure TMySQLDataSet.Sort(const ASortDef: TIndexDef);

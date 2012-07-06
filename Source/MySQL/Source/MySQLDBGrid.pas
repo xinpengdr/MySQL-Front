@@ -337,11 +337,13 @@ begin
             if (Content <> '') then Content := Content + FormatSettings.ListSeparator;
 
             if (Columns[J].Field.IsNull) then
-              Content := Content + ''
+              // NULL values are empty in MS Text files
             else if (Columns[J].Field.DataType in UnquotedDataTypes) then
-              Content := Content + Columns[J].Field.AsString
+              Content := Content + TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo)
+            else if (Columns[J].Field.DataType in BinaryDataTypes) then
+              Content := Content + CSVEscape(TMySQLDataSet(DataLink.DataSet).LibRow^[Columns[J].Field.FieldNo - 1], TMySQLDataSet(DataLink.DataSet).LibLengths^[Columns[J].Field.FieldNo - 1])
             else
-              Content := Content + CSVEscape(Columns[J].Field.AsString);
+              Content := Content + CSVEscape(TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo));
           end;
         Content := Content + #13#10;
       end;
@@ -362,7 +364,7 @@ begin
           if (Columns[J].Visible) then
           begin
             if (Content <> '') then Content := Content + #9;
-            if (not Assigned(TMySQLDataSet(DataLink.DataSet).LibRow^[Columns[J].Field.FieldNo - 1])) then
+            if (Columns[J].Field.IsNull) then
               // NULL values are empty in MS Text files
             else if (Columns[J].Field.DataType in UnquotedDataTypes) then
               Content := Content + TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo)
@@ -690,10 +692,14 @@ begin
         if (Columns[J].Visible and not (Columns[J].Field.DataType = ftBlob)) then
         begin
           if (J > 0) then Result := Result + #9;
-          if (Columns[J].Field.DataType in UnquotedDataTypes) then
-            Result := Result + Columns[J].Field.DisplayText
+          if (Columns[J].Field.IsNull) then
+            // NULL values are empty in MS Text files
+          else if (Columns[J].Field.DataType in UnquotedDataTypes) then
+            Result := Result + TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo)
+          else if (Columns[J].Field.DataType in BinaryDataTypes) then
+            Result := Result + CSVEscape(TMySQLDataSet(DataLink.DataSet).LibRow^[Columns[J].Field.FieldNo - 1], TMySQLDataSet(DataLink.DataSet).LibLengths^[Columns[J].Field.FieldNo - 1])
           else
-            Result := Result + CSVEscape(Columns[J].Field.DisplayText);
+            Result := Result + CSVEscape(TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo));
         end;
       Result := Result + #13#10;
     end;
@@ -1064,11 +1070,19 @@ begin
   OldRecNo := DataLink.DataSet.RecNo;
 
   DataLink.DataSet.DisableControls();
+
+  if ((DataLink.DataSet is TMySQLTable) and TMySQLTable(DataLink.DataSet).LimitedDataReceived) then
+  begin
+    TMySQLTable(DataLink.DataSet).Limit := 0;
+    TMySQLTable(DataLink.DataSet).Refresh();
+  end;
+
   SelectedRows.Clear();
   if (DataLink.DataSet.FindFirst()) then
     repeat
       SelectedRows.CurrentRowSelected := True;
     until (not DataLink.DataSet.FindNext());
+
   DataLink.DataSet.RecNo := OldRecNo;
   DataLink.DataSet.EnableControls();
 
