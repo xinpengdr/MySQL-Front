@@ -911,7 +911,7 @@ type
     procedure aERedoExecute(Sender: TObject);
     procedure aERenameExecute(Sender: TObject);
     procedure aFExportExecute(const Sender: TObject; const ExportType: TExportType);
-    procedure aFImportExecute(const ImportType: TImportType);
+    procedure aFImportExecute(const Sender: TObject; const ImportType: TImportType);
     procedure aFOpenExecute(Sender: TObject);
     procedure aFPrintExecute(Sender: TObject);
     procedure aFSaveAsExecute(Sender: TObject);
@@ -3867,92 +3867,97 @@ procedure TFClient.aFImportAccessExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  aFImportExecute(itAccessFile);
+  aFImportExecute(Sender, itAccessFile);
 end;
 
 procedure TFClient.aFImportExcelExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  aFImportExecute(itExcelFile);
+  aFImportExecute(Sender, itExcelFile);
 end;
 
-procedure TFClient.aFImportExecute(const ImportType: TImportType);
+procedure TFClient.aFImportExecute(const Sender: TObject; const ImportType: TImportType);
 var
   CItem: TCItem;
 begin
   CItem := FocusedCItem;
 
-  DImport.Client := Client;
-  DImport.Database := nil;
-  DImport.Table := nil;
-  if (CItem is TCDatabase) then
-    DImport.Database := TCDatabase(CItem)
-  else if (CItem is TCBaseTable) then
+  if ((Sender is TAction) and ((CItem is TCDatabase) and TCDatabase(CItem).Update()) or ((CItem is TCTable) and TCTable(CItem).Update())) then
+    Wanted.Action := TAction(Sender)
+  else
   begin
-    DImport.Table := TCBaseTable(CItem);
-    DImport.Database := DImport.Table.Database;
-  end;
+    DImport.Client := Client;
+    DImport.Database := nil;
+    DImport.Table := nil;
+    if (CItem is TCDatabase) then
+      DImport.Database := TCDatabase(CItem)
+    else if (CItem is TCBaseTable) then
+    begin
+      DImport.Database := TCBaseTable(CItem).Database;
+      DImport.Table := TCBaseTable(CItem);
+    end;
 
-  OpenDialog.Title := ReplaceStr(Preferences.LoadStr(581), '&', '');
-  OpenDialog.InitialDir := Path;
-  OpenDialog.Filter := '';
-  case (ImportType) of
-    itSQLFile:
-      begin
-        OpenDialog.Filter := FilterDescription('sql') + ' (*.sql)|*.sql';
-        OpenDialog.DefaultExt := 'sql';
-        OpenDialog.Encodings.Text := EncodingCaptions();
-      end;
-    itTextFile:
-      begin
-        OpenDialog.Filter := FilterDescription('txt') + ' (*.txt;*.csv;*.tab;*.asc)|*.txt;*.csv;*.tab;*.asc';
-        OpenDialog.DefaultExt := 'csv';
-        OpenDialog.Encodings.Text := EncodingCaptions();
-      end;
-    itExcelFile:
-      begin
-        OpenDialog.Filter := FilterDescription('xls') + ' (*.xls)|*.xls';
-        OpenDialog.DefaultExt := 'xls';
-        OpenDialog.Encodings.Clear();
-      end;
-    itAccessFile:
-      begin
-        OpenDialog.Filter := FilterDescription('mdb') + ' (*.mdb)|*.mdb';
-        OpenDialog.DefaultExt := 'mdb';
-        OpenDialog.Encodings.Clear();
-      end;
-    itSQLiteFile:
-      begin
-        OpenDialog.Filter := FilterDescription('sqlite') + ' (*.db3;*.sqlite)|*.db3;*.sqlite';
-        OpenDialog.DefaultExt := 'db3';
-        OpenDialog.Encodings.Clear();
-      end;
-    itXMLFile:
-      begin
-        OpenDialog.Filter := FilterDescription('xml') + ' (*.xml)|*.xml';
-        OpenDialog.DefaultExt := 'xml';
-        OpenDialog.Encodings.Clear();
-      end;
-  end;
-  OpenDialog.Filter := OpenDialog.Filter + '|' + FilterDescription('*') + ' (*.*)|*.*';
+    OpenDialog.Title := ReplaceStr(Preferences.LoadStr(581), '&', '');
+    OpenDialog.InitialDir := Path;
+    OpenDialog.Filter := '';
+    case (ImportType) of
+      itSQLFile:
+        begin
+          OpenDialog.Filter := FilterDescription('sql') + ' (*.sql)|*.sql';
+          OpenDialog.DefaultExt := 'sql';
+          OpenDialog.Encodings.Text := EncodingCaptions();
+        end;
+      itTextFile:
+        begin
+          OpenDialog.Filter := FilterDescription('txt') + ' (*.txt;*.csv;*.tab;*.asc)|*.txt;*.csv;*.tab;*.asc';
+          OpenDialog.DefaultExt := 'csv';
+          OpenDialog.Encodings.Text := EncodingCaptions();
+        end;
+      itExcelFile:
+        begin
+          OpenDialog.Filter := FilterDescription('xls') + ' (*.xls)|*.xls';
+          OpenDialog.DefaultExt := 'xls';
+          OpenDialog.Encodings.Clear();
+        end;
+      itAccessFile:
+        begin
+          OpenDialog.Filter := FilterDescription('mdb') + ' (*.mdb)|*.mdb';
+          OpenDialog.DefaultExt := 'mdb';
+          OpenDialog.Encodings.Clear();
+        end;
+      itSQLiteFile:
+        begin
+          OpenDialog.Filter := FilterDescription('sqlite') + ' (*.db3;*.sqlite)|*.db3;*.sqlite';
+          OpenDialog.DefaultExt := 'db3';
+          OpenDialog.Encodings.Clear();
+        end;
+      itXMLFile:
+        begin
+          OpenDialog.Filter := FilterDescription('xml') + ' (*.xml)|*.xml';
+          OpenDialog.DefaultExt := 'xml';
+          OpenDialog.Encodings.Clear();
+        end;
+    end;
+    OpenDialog.Filter := OpenDialog.Filter + '|' + FilterDescription('*') + ' (*.*)|*.*';
 
-  OpenDialog.FileName := '';
-  OpenDialog.EncodingIndex := OpenDialog.Encodings.IndexOf(CodePageToEncoding(CP_ACP));
+    OpenDialog.FileName := '';
+    OpenDialog.EncodingIndex := OpenDialog.Encodings.IndexOf(CodePageToEncoding(CP_ACP));
 
-  if (OpenDialog.Execute()) then
-  begin
-    Path := ExtractFilePath(OpenDialog.FileName);
+    if (OpenDialog.Execute()) then
+    begin
+      Path := ExtractFilePath(OpenDialog.FileName);
 
-    DImport.Window := Window;
-    DImport.ImportType := ImportType;
-    DImport.Filename := OpenDialog.FileName;
-    if (OpenDialog.EncodingIndex < 0) then
-      DImport.CodePage := CP_ACP
-    else
-      DImport.CodePage := EncodingToCodePage(OpenDialog.Encodings[OpenDialog.EncodingIndex]);
-    DImport.Execute();
-    Client.Update();
+      DImport.Window := Window;
+      DImport.ImportType := ImportType;
+      DImport.Filename := OpenDialog.FileName;
+      if (OpenDialog.EncodingIndex < 0) then
+        DImport.CodePage := CP_ACP
+      else
+        DImport.CodePage := EncodingToCodePage(OpenDialog.Encodings[OpenDialog.EncodingIndex]);
+      DImport.Execute();
+      Client.Update();
+    end;
   end;
 end;
 
@@ -3988,28 +3993,28 @@ procedure TFClient.aFImportSQLExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  aFImportExecute(itSQLFile);
+  aFImportExecute(Sender, itSQLFile);
 end;
 
 procedure TFClient.aFImportSQLiteExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  aFImportExecute(itSQLiteFile);
+  aFImportExecute(Sender, itSQLiteFile);
 end;
 
 procedure TFClient.aFImportTextExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  aFImportExecute(itTextFile);
+  aFImportExecute(Sender, itTextFile);
 end;
 
 procedure TFClient.aFImportXMLExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  aFImportExecute(itXMLFile);
+  aFImportExecute(Sender, itXMLFile);
 end;
 
 procedure TFClient.aFOpenExecute(Sender: TObject);
