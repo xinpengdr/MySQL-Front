@@ -1191,10 +1191,14 @@ begin
   Highlighter.VariableAttri.Background := Preferences.Editor.VariableBackground;
   Highlighter.VariableAttri.Style := Preferences.Editor.VariableStyle;
 
-  acQBLanguageManager.CurrentLanguageIndex := -1;
-  for I := 0 to acQBLanguageManager.LanguagesCount - 1 do
-    if (lstrcmpi(PChar(acQBLanguageManager.Language[i].LanguageName), PChar(Preferences.Language.ActiveQueryBuilderLanguageName)) = 0) then
-      acQBLanguageManager.CurrentLanguageIndex := I;
+  try
+    acQBLanguageManager.CurrentLanguageIndex := -1;
+    for I := 0 to acQBLanguageManager.LanguagesCount - 1 do
+      if (lstrcmpi(PChar(acQBLanguageManager.Language[i].LanguageName), PChar(Preferences.Language.ActiveQueryBuilderLanguageName)) = 0) then
+        acQBLanguageManager.CurrentLanguageIndex := I;
+  except
+    // There is a bug inside acQBLocalizer.pas ver. 1.18 - but it's not interested to get informed
+  end;
 
   if (Assigned(Tabs)) then
     for I := 0 to Tabs.Count - 1 do

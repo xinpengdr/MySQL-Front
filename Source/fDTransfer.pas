@@ -177,12 +177,14 @@ begin
 
   FreeAndNil(Transfer);
 
-  ModalResult := mrOk;
+  FMaster.Items.BeginUpdate();
+  FMaster.Items.Clear();
+  FMaster.Items.EndUpdate();
+  FSlave.Items.BeginUpdate();
+  FSlave.Items.Clear();
+  FSlave.Items.EndUpdate();
 
-  InitTSSelect(nil); // Löschen falls zurück auf TSSelect
-
-  ModalResult := mrNone;
-
+  FBBack.Enabled := False;
   if (Success) then
   begin
     FBCancel.Caption := Preferences.LoadStr(231);
@@ -436,8 +438,12 @@ begin
   FSlaveOnChange := FSlave.OnChange;
   FSlave.OnChange := nil;
 
+  FMaster.Items.BeginUpdate();
   FMaster.Items.Clear();
+  FMaster.Items.EndUpdate();
+  FSlave.Items.BeginUpdate();
   FSlave.Items.Clear();
+  FSlave.Items.EndUpdate();
 
   for I := 0 to Accounts.Count - 1 do
   begin

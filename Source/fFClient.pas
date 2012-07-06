@@ -6213,7 +6213,7 @@ begin
     MainAction('aEPasteFromFile').Enabled := (DBGrid.SelectedField.DataType in [ftWideMemo, ftBlob]) and not DBGrid.SelectedField.ReadOnly and (DBGrid.SelectedRows.Count <= 1);
     MainAction('aDCreateField').Enabled := Assigned(DBGrid.SelectedField) and (View = vBrowser);
     MainAction('aDEditRecord').Enabled := Assigned(DBGrid.SelectedField) and (View <> vIDE);
-    MainAction('aDEmpty').Enabled := Assigned(DBGrid.DataSource.DataSet) and DBGrid.DataSource.DataSet.CanModify and Assigned(DBGrid.SelectedField) and not DBGrid.SelectedField.IsNull and not DBGrid.SelectedField.Required and (DBGrid.SelectedRows.Count <= 1);
+    MainAction('aDEmpty').Enabled := (Assigned(DBGrid.DataSource.DataSet) and DBGrid.DataSource.DataSet.CanModify and Assigned(DBGrid.SelectedField) and not DBGrid.SelectedField.IsNull and not DBGrid.SelectedField.Required and (DBGrid.SelectedRows.Count <= 1));
   end;
 
   StatusBarRefresh();
@@ -6921,6 +6921,7 @@ begin
 
   DBGrid.DataSource.Enabled := True;
 
+  DBGrid.Columns.BeginUpdate();
   for I := 0 to DBGrid.Columns.Count - 1 do
     if (Assigned(DBGrid.Columns[I].Field)) then
     begin
@@ -6934,6 +6935,7 @@ begin
 
       DBGrid.Columns[I].Field.OnSetText := FieldSetText;
     end;
+  DBGrid.Columns.EndUpdate();
 
   DBGridColEnter(DBGrid);
 
@@ -6953,9 +6955,13 @@ begin
   FNavigator.Items.Clear();
   FNavigator.Items.EndUpdate();
 
-  if (Assigned(ShellLink)) then ShellLink.Free();
-  if (Assigned(FFolders)) then FFolders.Free();
-  if (Assigned(FFiles)) then FFiles.Free();
+  try
+    if (Assigned(ShellLink)) then ShellLink.Free();
+    if (Assigned(FFolders)) then FFolders.Free();
+    if (Assigned(FFiles)) then FFiles.Free();
+  except
+      // There is a bug inside ShellBrowser.pas ver. 7.3 - but it's not interested to get informed
+  end;
 
   FServerListView.OnChanging := nil;
   FServerListView.Items.BeginUpdate();
@@ -6976,7 +6982,11 @@ begin
     Client.Account.Desktop.EditorContent := FSQLEditorSynMemo.Text;
   Client.Account.Desktop.FoldersHeight := PFolders.Height;
   if (Assigned(FFiles)) then
-    Client.Account.Desktop.FilesFilter := FFiles.Filter;
+    try
+      Client.Account.Desktop.FilesFilter := FFiles.Filter;
+    except
+      // There is a bug inside ShellBrowser.pas ver. 7.3 - but it's not interested to get informed
+    end;
   Client.Account.Desktop.NavigatorVisible := PNavigator.Visible;
   Client.Account.Desktop.BookmarksVisible := PBookmarks.Visible;
   Client.Account.Desktop.ExplorerVisible := PExplorer.Visible;
