@@ -1753,7 +1753,7 @@ begin
     Canvas.Font.Style := [];
     for I := 0 to BaseTable.Fields.Count - 1 do
     begin
-      if (not BaseTable.Fields[I].InPrimaryIndex) then
+      if (not BaseTable.Fields[I].InPrimaryKey) then
         Canvas.Font.Style := Canvas.Font.Style - [fsBold]
       else
         Canvas.Font.Style := Canvas.Font.Style + [fsBold];
@@ -1971,7 +1971,7 @@ begin
 
   for I := 0 to BaseTable.Fields.Count - 1 do
   begin
-    if (not BaseTable.Fields[I].InPrimaryIndex) then
+    if (not BaseTable.Fields[I].InPrimaryKey) then
       Canvas.Font.Style := Canvas.Font.Style - [fsBold]
     else
       Canvas.Font.Style := Canvas.Font.Style + [fsBold];

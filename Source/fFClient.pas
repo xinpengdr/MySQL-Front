@@ -469,7 +469,6 @@ type
     procedure DBGridDblClick(Sender: TObject);
     procedure DBGridDrawColumnCell(Sender: TObject; const Rect: TRect;
       DataCol: Integer; Column: TColumn; State: TGridDrawState);
-    procedure DBGridEditButtonClick(Sender: TObject);
     procedure DBGridEditExecute(Sender: TObject);
     procedure DBGridEmptyExecute(Sender: TObject);
     procedure DBGridEnter(Sender: TObject);
@@ -504,12 +503,14 @@ type
     procedure FBuilderValidatePopupMenu(Sender: TacQueryBuilder;
       AControlOwner: TacQueryBuilderControlOwner; AForControl: TControl;
       APopupMenu: TPopupMenu);
+    procedure PDataBrowserResize(Sender: TObject);
     procedure FFilesEnter(Sender: TObject);
     procedure FFilterChange(Sender: TObject);
     procedure FFilterDropDown(Sender: TObject);
     procedure FFilterEnabledClick(Sender: TObject);
     procedure FFilterEnter(Sender: TObject);
     procedure FFilterKeyPress(Sender: TObject; var Key: Char);
+    procedure FFoldersChange(Sender: TObject; Node: TTreeNode);
     procedure FHexEditorChange(Sender: TObject);
     procedure FHexEditorEnter(Sender: TObject);
     procedure FHexEditorKeyPress(Sender: TObject; var Key: Char);
@@ -518,6 +519,9 @@ type
     procedure FLogEnter(Sender: TObject);
     procedure FLogExit(Sender: TObject);
     procedure FLogSelectionChange(Sender: TObject);
+    procedure FNavigatorAdvancedCustomDrawItem(Sender: TCustomTreeView;
+      Node: TTreeNode; State: TCustomDrawState; Stage: TCustomDrawStage;
+      var PaintImages, DefaultDraw: Boolean);
     procedure FNavigatorChange(Sender: TObject; Node: TTreeNode);
     procedure FNavigatorChange2(Sender: TObject; Node: TTreeNode);
     procedure FNavigatorChanging(Sender: TObject; Node: TTreeNode;
@@ -556,9 +560,13 @@ type
     procedure FSQLEditorCompletionShow(Sender: TObject);
     procedure FSQLEditorCompletionTimerTimer(Sender: TObject);
     procedure FSQLHistoryChange(Sender: TObject; Node: TTreeNode);
+    procedure FSQLHistoryChanging(Sender: TObject; Node: TTreeNode;
+      var AllowChange: Boolean);
     procedure FSQLHistoryDblClick(Sender: TObject);
     procedure FSQLHistoryEnter(Sender: TObject);
     procedure FSQLHistoryExit(Sender: TObject);
+    procedure FSQLHistoryHint(Sender: TObject; const Node: TTreeNode;
+      var Hint: string);
     procedure FSQLHistoryKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure FSQLHistoryKeyPress(Sender: TObject; var Key: Char);
@@ -566,8 +574,12 @@ type
     procedure FTextEnter(Sender: TObject);
     procedure FTextExit(Sender: TObject);
     procedure FTextKeyPress(Sender: TObject; var Key: Char);
-    procedure ListViewChanging(Sender: TObject; Item: TListItem;
-      Change: TItemChange; var AllowChange: Boolean);
+    procedure ListViewAdvancedCustomDrawItem(Sender: TCustomListView;
+      Item: TListItem; State: TCustomDrawState; Stage: TCustomDrawStage;
+      var DefaultDraw: Boolean);
+    procedure ListViewAdvancedCustomDrawSubItem(Sender: TCustomListView;
+      Item: TListItem; SubItem: Integer; State: TCustomDrawState;
+      Stage: TCustomDrawStage; var DefaultDraw: Boolean);
     procedure ListViewColumnClick(Sender: TObject; Column: TListColumn);
     procedure ListViewCompare(Sender: TObject; Item1: TListItem;
       Item2: TListItem; Data: Integer; var Compare: Integer);
@@ -588,6 +600,19 @@ type
     procedure MBookmarksPopup(Sender: TObject);
     procedure MetadataProviderGetSQLFieldNames(Sender: TacBaseMetadataProvider;
       const ASQL: WideString; AFields: TacFieldsList);
+    procedure mfOpenClick(Sender: TObject);
+    procedure mfFilterClearClick(Sender: TObject);
+    procedure mfFilterSQLClick(Sender: TObject);
+    procedure mfFilterTextClick(Sender: TObject);
+    procedure mfFilterHTMLClick(Sender: TObject);
+    procedure mfFilterXMLClick(Sender: TObject);
+    procedure mfFilterAccessClick(Sender: TObject);
+    procedure mfFilterExcelClick(Sender: TObject);
+    procedure mfFilterSQLiteClick(Sender: TObject);
+    procedure mfDeleteClick(Sender: TObject);
+    procedure mfRenameClick(Sender: TObject);
+    procedure mfPropertiesClick(Sender: TObject);
+    procedure MFilesPopup(Sender: TObject);
     procedure MGridHeaderPopup(Sender: TObject);
     procedure MGridPopup(Sender: TObject);
     procedure miHOpenClick(Sender: TObject);
@@ -604,7 +629,9 @@ type
     procedure mwCreateLinkExecute(Sender: TObject);
     procedure mwCreateSectionClick(Sender: TObject);
     procedure mwDCreateForeignKeyClick(Sender: TObject);
+    procedure mwDCreateTableClick(Sender: TObject);
     procedure mwEPasteClick(Sender: TObject);
+    procedure mwERemoveClick(Sender: TObject);
     procedure MWorkbenchPopup(Sender: TObject);
     procedure PanelMouseDown(Sender: TObject;
       Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -651,23 +678,6 @@ type
     procedure TreeViewMouseUp(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure ToolBarResize(Sender: TObject);
-    procedure PDataBrowserResize(Sender: TObject);
-    procedure FFoldersChange(Sender: TObject; Node: TTreeNode);
-    procedure mfOpenClick(Sender: TObject);
-    procedure mfFilterClearClick(Sender: TObject);
-    procedure mfFilterSQLClick(Sender: TObject);
-    procedure mfFilterTextClick(Sender: TObject);
-    procedure mfFilterHTMLClick(Sender: TObject);
-    procedure mfFilterXMLClick(Sender: TObject);
-    procedure mfFilterAccessClick(Sender: TObject);
-    procedure mfFilterExcelClick(Sender: TObject);
-    procedure mfFilterSQLiteClick(Sender: TObject);
-    procedure mfDeleteClick(Sender: TObject);
-    procedure mfRenameClick(Sender: TObject);
-    procedure mfPropertiesClick(Sender: TObject);
-    procedure MFilesPopup(Sender: TObject);
-    procedure mwDCreateTableClick(Sender: TObject);
-    procedure mwERemoveClick(Sender: TObject);
   type
     TNewLineFormat = (nlWindows, nlUnix, nlMacintosh);
     TTabState = set of (tsLoading, tsActive);
@@ -1087,7 +1097,7 @@ uses
   fDField, fDKey, fDTable, fDVariable, fDDatabase, fDForeignKey,
   fDHost, fDUser, fDQuickFilter, fDGoto, fDSQLHelp, fDTransfer,
   fDSearch, fDServer, fDBookmark, fURI, fDView, fDRoutine,
-  fDTrigger, fDStatement, fDEvent, fDColumns, fWForeignKeySelect,
+  fDTrigger, fDStatement, fDEvent, fDColumns,
   fDPaste, fDSegment, fDConnecting;
 
 const
@@ -2308,7 +2318,7 @@ begin
   begin
     for I := 0 to ActiveWorkbench.ControlCount - 1 do
       if ((ActiveWorkbench.Controls[I] is TWTable) and (TWTable(ActiveWorkbench.Controls[I]).Selected)) then
-        CItems.Add(Client.DatabaseByName(SelectedDatabase).BaseTableByName(TWTable(ActiveWorkbench.Controls[I]).Caption))
+        CItems.Add(TWTable(ActiveWorkbench.Controls[I]).BaseTable)
       else if ((ActiveWorkbench.Controls[I] is TWForeignKey) and (TWForeignKey(ActiveWorkbench.Controls[I]).Selected)) then
         CItems.Add(TWForeignKey(ActiveWorkbench.Controls[I]).BaseForeignKey);
   end
@@ -3493,16 +3503,16 @@ procedure TFClient.aETransferExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  DTransfer.MasterClient := Client;
-  DTransfer.MasterDatabaseName := FocusedDatabaseNames;
-  if (DTransfer.MasterDatabaseName = '') then
-    DTransfer.MasterTableName := ''
+  DTransfer.SourceClient := Client;
+  DTransfer.SourceDatabaseName := FocusedDatabaseNames;
+  if (DTransfer.SourceDatabaseName = '') then
+    DTransfer.SourceTableName := ''
   else
   begin
-    DTransfer.MasterDatabaseName := SelectedDatabase;
-    DTransfer.MasterTableName := FocusedTableNames;
+    DTransfer.SourceDatabaseName := SelectedDatabase;
+    DTransfer.SourceTableName := FocusedTableNames;
   end;
-  DTransfer.SlaveClient := nil;
+  DTransfer.DestinationClient := nil;
   DTransfer.Execute();
 end;
 
@@ -3567,7 +3577,7 @@ begin
     else
       for I := 0 to ActiveWorkbench.Tables.Count - 1 do
         if (not Assigned(ActiveWorkbench.Selected) or ActiveWorkbench.Tables[I].Selected) then
-          DExport.DBObjects.Add(Database.TableByName(ActiveWorkbench.Tables[I].Caption));
+          DExport.DBObjects.Add(ActiveWorkbench.Tables[I].BaseTable);
   end
   else if ((Window.ActiveControl = ActiveListView) and (ActiveListView.SelCount > 0)) then
   begin
@@ -4818,12 +4828,6 @@ begin
   gmFExport.Caption := Preferences.LoadStr(200);
   gmFilter.Caption := Preferences.LoadStr(209);
 
-  FSQLHistory.Font.Name := Preferences.SQLFontName;
-  FSQLHistory.Font.Style := Preferences.SQLFontStyle;
-  FSQLHistory.Font.Color := Preferences.SQLFontColor;
-  FSQLHistory.Font.Size := Preferences.SQLFontSize;
-  FSQLHistory.Font.Charset := Preferences.SQLFontCharset;
-
   mtObjects.Caption := tbObjects.Caption;
   mtBrowser.Caption := tbBrowser.Caption;
   mtIDE.Caption := tbIDE.Caption;
@@ -5797,19 +5801,22 @@ begin
     LogFont.lfQuality  := NonClientMetrics.lfMessageFont.lfQuality;
     Result.Font.Handle := CreateFontIndirect(LogFont);
   end;
+  Result.TitleFont.Name :=  Result.Font.Name;
+  Result.TitleFont.Style := Result.Font.Style;
+  Result.TitleFont.Color := Result.Font.Color;
+  Result.TitleFont.Size := Result.Font.Size;
+  Result.TitleFont.Charset := Result.Font.Charset;
   Result.Canvas.Font := Result.Font;
   for I := 0 to Result.Columns.Count - 1 do
     Result.Columns[I].Font := Result.Font;
   Result.PopupMenu := MGrid;
   Result.TabOrder := 0;
-  Result.TitleFont.Handle := Result.Font.Handle;
   Result.OnCanEditShow := Client.GridCanEditShow;
   Result.OnColEnter := DBGridColEnter;
   Result.OnColExit := DBGridColExit;
   Result.OnColumnMoved := DBGridColumnMoved;
   Result.OnDrawColumnCell := DBGridDrawColumnCell;
   Result.OnDblClick := DBGridDblClick;
-  Result.OnEditButtonClick := DBGridEditButtonClick;
   Result.OnEnter := DBGridEnter;
   Result.OnExit := DBGridExit;
   Result.OnKeyDown := DBGridKeyDown;
@@ -5855,6 +5862,11 @@ begin
   Result.Parent := FServerListView.Parent;
   Result.ViewStyle := FServerListView.ViewStyle;
   Result.Visible := False;
+  if (TObject(Data) is TCTable) then
+  begin
+    Result.OnAdvancedCustomDrawItem := ListViewAdvancedCustomDrawItem;
+    Result.OnAdvancedCustomDrawSubItem := ListViewAdvancedCustomDrawSubItem;
+  end;
   Result.OnChange := FServerListView.OnChange;
   Result.OnChanging := FServerListView.OnChanging;
   Result.OnColumnClick := FServerListView.OnColumnClick;
@@ -6498,62 +6510,6 @@ begin
     end;
 end;
 
-procedure TFClient.DBGridEditButtonClick(Sender: TObject);
-var
-  Database: TCDatabase;
-  Field: TCTableField;
-  FieldInfo: TFieldInfo;
-  ForeignKey: TCForeignKey;
-  Grid: TMySQLDBGrid;
-  I: Integer;
-  J: Integer;
-  Table: TCBaseTable;
-begin
-  Wanted.Clear();
-
-  if (Sender is TMySQLDBGrid) then
-  begin
-    Grid := TMySQLDBGrid(Sender);
-    if (GetFieldInfo(Grid.SelectedField.Origin, FieldInfo)) then
-    begin
-      Database := Client.DatabaseByName(FieldInfo.DatabaseName);
-      if (Assigned(Database)) then
-      begin
-        Table := Database.BaseTableByName(FieldInfo.TableName);
-        if (Assigned(Table)) then
-        begin
-          Field := Table.FieldByName(FieldInfo.OriginalFieldName);
-          if (Assigned(Field)) then
-          begin
-            ForeignKey := nil;
-            for I := 0 to Table.ForeignKeys.Count - 1 do
-              for J := 0 to Length(Table.ForeignKeys[I].Fields) - 1 do
-                if (Table.ForeignKeys[I].Fields[J] = Field) then
-                  ForeignKey := Table.ForeignKeys[I];
-
-            if (Assigned(ForeignKey)) then
-            begin
-              if (Length(ForeignKey.Fields) <> Length(ForeignKey.Parent.FieldNames)) then
-                ForeignKey := nil; // Foreign Key is broken
-
-              I := 0;
-              while (Assigned(ForeignKey) and (I < Length(ForeignKey.Fields))) do
-                Inc(I);
-
-              if (Assigned(ForeignKey)) then
-              begin
-                WForeignKeySelect.ChildGrid := Grid;
-                WForeignKeySelect.ForeignKey := ForeignKey;
-                WForeignKeySelect.Show();
-              end;
-            end;
-          end;
-        end;
-      end;
-    end;
-  end;
-end;
-
 procedure TFClient.DBGridEditExecute(Sender: TObject);
 begin
   Wanted.Clear();
@@ -6675,8 +6631,6 @@ begin
       MainAction('aDEditRecord').ShortCut := 0;
 
       MainAction('aERename').ShortCut := VK_F2;
-
-      WForeignKeySelect.ForeignKey := nil;
     end;
   end;
 end;
@@ -6916,6 +6870,7 @@ begin
       begin
         MenuItem := TMenuItem.Create(Self);
         MenuItem.Caption := TCBaseTable(Table).Keys[I].Caption;
+        MenuItem.Default := TCBaseTable(Table).Keys[I].Primary;
         MenuItem.Tag := I;
         MenuItem.RadioItem := True;
         MenuItem.OnClick := MGridHeaderMenuOrderClick;
@@ -6930,11 +6885,6 @@ begin
   for I := 0 to DBGrid.Columns.Count - 1 do
     if (Assigned(DBGrid.Columns[I].Field)) then
     begin
-      if (DBGrid.Columns[I].Field.IsIndexField) then
-        DBGrid.Columns[I].Font.Style := DBGrid.Columns[I].Font.Style + [fsBold]
-      else
-        DBGrid.Columns[I].Font.Style := DBGrid.Columns[I].Font.Style - [fsBold];
-
       if (DBGrid.Columns[I].Width > Preferences.GridMaxColumnWidth) then
         DBGrid.Columns[I].Width := Preferences.GridMaxColumnWidth;
 
@@ -7194,17 +7144,17 @@ var
   Node: TTreeNode;
   SQLQualifiedName: TSQLQualifiedName;
 begin
-  if (Source = FNavigator) then
+  if ((Source = FNavigator) and (MouseDownNode.ImageIndex in [iiBaseTable, iiSystemView, iiView])) then
   begin
     Node := MouseDownNode;
 
-    Database := Client.DatabaseByName(Node.Parent.Text);
+    Database := TCDatabase(Node.Parent.Data);
 
     SQLQualifiedName := TSQLQualifiedName.Create(FBuilder.MetadataContainer.SQLContext);
-    if (Database <> Client.DatabaseByName(SelectedDatabase)) then
+    if (Database <> TCDatabase(FNavigator.Selected.Data)) then
       SQLQualifiedName.AddPrefix(Database.Name);
 
-    SQLQualifiedName.AddName(Database.TableByName(Node.Text).Name);
+    SQLQualifiedName.AddName(TCTable(Node.Data).Name);
     FBuilder.ActiveSubQuery.ActiveUnionSubquery.AddObjectAt(SQLQualifiedName, Point(X, Y));
 
     SQLQualifiedName.Free();
@@ -7421,12 +7371,12 @@ begin
         APopupMenu.Items[I].Caption := Preferences.LoadStr(383);
         APopupMenu.Items[I].OnClick := nil;
 
-        for J := 0 to Client.DatabaseByName(SelectedDatabase).Tables.Count - 1 do
+        for J := 0 to TCDatabase(FNavigator.Selected.Data).Tables.Count - 1 do
         begin
           MenuItem := TMenuItem.Create(Self);
-          MenuItem.Caption := Client.DatabaseByName(SelectedDatabase).Tables[J].Name;
+          MenuItem.Caption := TCDatabase(FNavigator.Selected.Data).Tables[J].Name;
           MenuItem.OnClick := FBuilderAddTable;
-          MenuItem.Tag := Integer(Client.DatabaseByName(SelectedDatabase).Tables[J]);
+          MenuItem.Tag := Integer(TCDatabase(FNavigator.Selected.Data).Tables[J]);
           APopupMenu.Items[I].Add(MenuItem);
         end;
       end;
@@ -7713,6 +7663,17 @@ procedure TFClient.FLogSelectionChange(Sender: TObject);
 begin
   if (PLog.Visible and (Window.ActiveControl = FLog)) then
     MainAction('aECopyToFile').Enabled := FLog.SelText <> '';
+end;
+
+procedure TFClient.FNavigatorAdvancedCustomDrawItem(Sender: TCustomTreeView;
+  Node: TTreeNode; State: TCustomDrawState; Stage: TCustomDrawStage;
+  var PaintImages, DefaultDraw: Boolean);
+begin
+  if ((Stage = cdPrePaint) and not (csDestroying in ComponentState) and Assigned(Node)
+    and ((Node.ImageIndex = iiKey) and TCKey(Node.Data).Primary or (Node.ImageIndex = iiField) and TCTableField(Node.Data).InPrimaryKey)) then
+    Sender.Canvas.Font.Style := Sender.Canvas.Font.Style + [fsBold]
+  else
+    Sender.Canvas.Font.Style := Sender.Canvas.Font.Style - [fsBold];
 end;
 
 procedure TFClient.FNavigatorChange(Sender: TObject; Node: TTreeNode);
@@ -8557,10 +8518,10 @@ begin
   MainAction('aDCreateProcedure').Enabled := Assigned(Node) and (Node.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50004);
   MainAction('aDCreateFunction').Enabled := MainAction('aDCreateProcedure').Enabled;
   MainAction('aDCreateEvent').Enabled := Assigned(Node) and (Node.ImageIndex = iiDatabase) and (Client.ServerVersion >= 50106);
-  MainAction('aDCreateTrigger').Enabled := Assigned(Node) and (Node.ImageIndex = iiBaseTable) and Assigned(Client.DatabaseByName(Node.Parent.Text).Triggers);
+  MainAction('aDCreateTrigger').Enabled := Assigned(Node) and (Node.ImageIndex = iiBaseTable) and Assigned(TCDatabase(Node.Parent.Data).Triggers);
   MainAction('aDCreateKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiBaseTable);
   MainAction('aDCreateField').Enabled := Assigned(Node) and (Node.ImageIndex = iiBaseTable);
-  MainAction('aDCreateForeignKey').Enabled := Assigned(Node) and (Node.ImageIndex in [iiBaseTable]) and Assigned(Client.DatabaseByName(Node.Parent.Text).BaseTableByName(Node.Text)) and Assigned(Client.DatabaseByName(Node.Parent.Text).BaseTableByName(Node.Text).Engine) and Client.DatabaseByName(Node.Parent.Text).BaseTableByName(Node.Text).Engine.ForeignKeyAllowed;
+  MainAction('aDCreateForeignKey').Enabled := Assigned(Node) and (Node.ImageIndex in [iiBaseTable]) and Assigned(TCBaseTable(Node.Data).Engine) and TCBaseTable(Node.Data).Engine.ForeignKeyAllowed;
   MainAction('aDCreateHost').Enabled := Assigned(Node) and (Node.ImageIndex = iiHosts);
   MainAction('aDCreateUser').Enabled := Assigned(Node) and (Node.ImageIndex = iiUsers);
   MainAction('aDDeleteDatabase').Enabled := Assigned(Node) and (Node.ImageIndex = iiDatabase);
@@ -8569,7 +8530,7 @@ begin
   MainAction('aDDeleteRoutine').Enabled := Assigned(Node) and (Node.ImageIndex in [iiProcedure, iiFunction]);
   MainAction('aDDeleteEvent').Enabled := Assigned(Node) and (Node.ImageIndex = iiEvent);
   MainAction('aDDeleteKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiKey);
-  MainAction('aDDeleteField').Enabled := Assigned(Node) and (Node.ImageIndex = iiField) and (Client.DatabaseByName(Node.Parent.Parent.Text).TableByName(Node.Parent.Text).Fields.Count > 1);
+  MainAction('aDDeleteField').Enabled := Assigned(Node) and (Node.ImageIndex = iiField) and (TCTableField(Node.Data).Fields.Count > 1);
   MainAction('aDDeleteForeignKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiForeignKey) and (Client.ServerVersion >= 40013);
   MainAction('aDDeleteTrigger').Enabled := Assigned(Node) and (Node.ImageIndex = iiTrigger);
   MainAction('aDDeleteHost').Enabled := False;
@@ -8585,7 +8546,7 @@ begin
   MainAction('aDEditField').Enabled := Assigned(Node) and (Node.ImageIndex = iiField);
   MainAction('aDEditForeignKey').Enabled := Assigned(Node) and (Node.ImageIndex = iiForeignKey);
   MainAction('aDEditTrigger').Enabled := Assigned(Node) and (Node.ImageIndex = iiTrigger);
-  MainAction('aDEmpty').Enabled := Assigned(Node) and (((Node.ImageIndex = iiDatabase) or (Node.ImageIndex = iiBaseTable) or ((Node.ImageIndex = iiField) and Client.DatabaseByName(Node.Parent.Parent.Text).BaseTableByName(Node.Parent.Text).FieldByName(Node.Text).NullAllowed)));
+  MainAction('aDEmpty').Enabled := Assigned(Node) and ((Node.ImageIndex = iiDatabase) or (Node.ImageIndex = iiBaseTable) or ((Node.ImageIndex = iiField) and TCTableField(Node.Data).NullAllowed));
 
   miNExpand.Default := aPExpand.Enabled;
   miNCollapse.Default := aPCollapse.Enabled;
@@ -8885,10 +8846,10 @@ begin
     Database := Client.DatabaseByName(SelectedDatabase);
     if (Assigned(Database)) then
     begin
-      Client.BeginSynchro();
+      Client.BeginSynchron();
       if (not Database.Update()) then
         Database := nil;
-      Client.EndSynchro();
+      Client.EndSynchron();
     end;
 
     StringList := TStringList.Create();
@@ -9093,6 +9054,12 @@ begin
   FSQLHistoryMenuNode := Node;
 end;
 
+procedure TFClient.FSQLHistoryChanging(Sender: TObject; Node: TTreeNode;
+  var AllowChange: Boolean);
+begin
+  AllowChange := False;
+end;
+
 procedure TFClient.FSQLHistoryDblClick(Sender: TObject);
 begin
   Wanted.Clear();
@@ -9118,6 +9085,15 @@ begin
   MainAction('aECopy').Enabled := False;
 
   miHProperties.ShortCut := 0;
+end;
+
+procedure TFClient.FSQLHistoryHint(Sender: TObject; const Node: TTreeNode;
+  var Hint: string);
+begin
+  if (Node.ImageIndex in [iiQuery, iiStatement]) then
+    Hint := XMLNode(IXMLNode(Node.Data), 'sql').Text
+  else
+    Hint := '';
 end;
 
 procedure TFClient.FSQLHistoryKeyDown(Sender: TObject; var Key: Word;
@@ -9192,8 +9168,6 @@ begin
           DateNode := FSQLHistory.Items.Add(nil, SysUtils.DateToStr(Date, LocaleFormatSettings));
           DateNode.HasChildren := True;
           DateNode.ImageIndex := iiCalendar;
-
-          TTreeNode_Ext(DateNode).Bold := True;
         end;
 
         OldNode := FSQLHistory.Items[FSQLHistory.Items.Count - 1];
@@ -9504,7 +9478,7 @@ var
 begin
   case (View) of
     vDiagram:
-      Result := Desktop(Client.DatabaseByName(SelectedDatabase)).Workbench;
+      Result := Desktop(TCDatabase(FNavigator.Selected.Data)).Workbench;
     else
       Result := nil;
   end;
@@ -9766,16 +9740,23 @@ begin
   Success := daAbort;
 end;
 
-procedure TFClient.ListViewChanging(Sender: TObject; Item: TListItem;
-  Change: TItemChange; var AllowChange: Boolean);
-var
-  Database: TCDatabase;
+procedure TFClient.ListViewAdvancedCustomDrawItem(
+  Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
+  Stage: TCustomDrawStage; var DefaultDraw: Boolean);
 begin
-  if ((Sender is TListView) and not Assigned(TListView(Sender).ItemFocused) and (Change = ctState) and Assigned(Item) and (Item.SubItems.Count = 0) and (NMListView^.uNewState and LVIS_SELECTED <> 0) and (Item.ImageIndex = iiBaseTable)) then
-  begin
-    Database := Client.DatabaseByName(SelectedDatabase);
-    AllowChange := Assigned(Database) and Assigned(Database.BaseTableByName(Item.Caption));
-  end;
+  if ((Stage = cdPrePaint) and not (csDestroying in ComponentState) and Assigned(Item)
+    and ((Item.ImageIndex = iiKey) and TCKey(Item.Data).Primary or (Item.ImageIndex = iiField) and TCTableField(Item.Data).InPrimaryKey)) then
+    Sender.Canvas.Font.Style := [fsBold]
+  else
+    Sender.Canvas.Font.Style := [];
+end;
+
+procedure TFClient.ListViewAdvancedCustomDrawSubItem(
+  Sender: TCustomListView; Item: TListItem; SubItem: Integer;
+  State: TCustomDrawState; Stage: TCustomDrawStage; var DefaultDraw: Boolean);
+begin
+  Sender.Canvas.Font.Style := [fsBold]; // Without this the first sub item is Bold (Delphi XE2)
+  Sender.Canvas.Font.Style := [];
 end;
 
 procedure TFClient.ListViewColumnClick(Sender: TObject; Column: TListColumn);
@@ -11478,11 +11459,11 @@ begin
           Table := Database.TableByName(TableName);
           if (Assigned(Table)) then
           begin
-            Client.BeginSynchro();
+            Client.BeginSynchron();
             if (Table.Update()) then
               for I := 0 to Table.Fields.Count - 1 do
                 AFields.AddField(Table.Fields[I].Name, Client.LowerCaseTableNames = 0);
-            Client.EndSynchro();
+            Client.EndSynchron();
           end;
         end;
       end;
@@ -11611,23 +11592,10 @@ procedure TFClient.MGridHeaderPopup(Sender: TObject);
 var
   I: Integer;
   Key: TCKey;
-  J: Integer;
   SortMenuItem: TMenuItem;
   Table: TCBaseTable;
-  VisibleItems: Integer;
 begin
   MainAction('aVDetails').Enabled := True;
-
-  VisibleItems := 0;
-  for I := 0 to ActiveDBGrid.Columns.Count - 1 do
-    for J := 0 to ActiveDBGrid.Columns.Count - 1 do
-      if (I = ActiveDBGrid.Columns[J].Field.FieldNo - 1) then
-      begin
-        MGridHeader.Items[I].Checked := ActiveDBGrid.Columns[J].Visible;
-        if (MGridHeader.Items[I].Checked) then Inc(VisibleItems);
-      end;
-  for I := 0 to ActiveDBGrid.Columns.Count - 1 do
-    MGridHeader.Items[I].Enabled := (VisibleItems > 1) or not MGridHeader.Items[I].Checked;
 
   if (SelectedImageIndex in [iiBaseTable, iiSystemView]) then
   begin
@@ -12099,12 +12067,9 @@ end;
 
 procedure TFClient.MWorkbenchPopup(Sender: TObject);
 var
-  Database: TCDatabase;
   I: Integer;
   MenuItem: TMenuItem;
 begin
-  Database := Client.DatabaseByName(SelectedDatabase);
-
   mwAddTable.Clear();
   mwEPaste.Enabled := MainAction('aEPaste').Enabled;
 
@@ -12117,14 +12082,14 @@ begin
 
 
   if (not Assigned(ActiveWorkbench.Selected)) then
-    for I := 0 to Database.Tables.Count - 1 do
-      if ((Database.Tables[I] is TCBaseTable)
-        and not Assigned(ActiveWorkbench.TableByBaseTable(TCBaseTable(Database.Tables[I])))) then
+    for I := 0 to ActiveWorkbench.Database.Tables.Count - 1 do
+      if ((ActiveWorkbench.Database.Tables[I] is TCBaseTable)
+        and not Assigned(ActiveWorkbench.TableByBaseTable(TCBaseTable(ActiveWorkbench.Database.Tables[I])))) then
       begin
         MenuItem := TMenuItem.Create(Self);
-        MenuItem.Caption := Database.Tables[I].Name;
+        MenuItem.Caption := ActiveWorkbench.Database.Tables[I].Name;
         MenuItem.OnClick := WorkbenchAddTable;
-        MenuItem.Tag := Integer(Database.Tables[I]);
+        MenuItem.Tag := Integer(ActiveWorkbench.Database.Tables[I]);
         mwAddTable.Add(MenuItem);
       end;
   mwDProperties.Default := mwDProperties.Enabled;
@@ -12538,23 +12503,23 @@ begin
         iiServer:
           if (SourceClient <> Client) then
           begin
-            DTransfer.MasterClient := SourceClient;
-            DTransfer.MasterDatabaseName := '';
+            DTransfer.SourceClient := SourceClient;
+            DTransfer.SourceDatabaseName := '';
             for I := 1 to StringList.Count - 1 do
               if (Assigned(SourceClient.DatabaseByName(StringList.ValueFromIndex[I]))) then
               begin
-                if (DTransfer.MasterDatabaseName <> '') then
-                  DTransfer.MasterDatabaseName := DTransfer.MasterDatabaseName + ',';
-                DTransfer.MasterDatabaseName := DTransfer.MasterDatabaseName + StringList.ValueFromIndex[I];
+                if (DTransfer.SourceDatabaseName <> '') then
+                  DTransfer.SourceDatabaseName := DTransfer.SourceDatabaseName + ',';
+                DTransfer.SourceDatabaseName := DTransfer.SourceDatabaseName + StringList.ValueFromIndex[I];
               end;
-            if (DTransfer.MasterDatabaseName = '') then
+            if (DTransfer.SourceDatabaseName = '') then
               MessageBeep(MB_ICONERROR)
             else
             begin
-              DTransfer.MasterTableName := '';
-              DTransfer.SlaveClient := Client;
-              DTransfer.SlaveDatabaseName := '';
-              DTransfer.SlaveTableName := '';
+              DTransfer.SourceTableName := '';
+              DTransfer.DestinationClient := Client;
+              DTransfer.DestinationDatabaseName := '';
+              DTransfer.DestinationTableName := '';
               DTransfer.Execute();
             end;
           end
@@ -12594,7 +12559,7 @@ begin
               MessageBeep(MB_ICONERROR)
             else
             begin
-              Database := Client.DatabaseByName(Node.Text);
+              Database := TCDatabase(Node.Data);
 
               Found := False;
               for I := 1 to StringList.Count - 1 do
@@ -12606,23 +12571,23 @@ begin
               begin
                 if (Found and (SourceClient <> Client)) then
                 begin
-                  DTransfer.MasterClient := SourceClient;
-                  DTransfer.MasterDatabaseName := SourceURI.Database;
-                  DTransfer.MasterTableName := '';
+                  DTransfer.SourceClient := SourceClient;
+                  DTransfer.SourceDatabaseName := SourceURI.Database;
+                  DTransfer.SourceTableName := '';
                   for I := 1 to StringList.Count - 1 do
                     if (Assigned(SourceClient.DatabaseByName(SourceURI.Database).TableByName(StringList.ValueFromIndex[I]))) then
                     begin
-                      if (DTransfer.MasterTableName <> '') then
-                        DTransfer.MasterTableName := DTransfer.MasterTableName + ',';
-                      DTransfer.MasterTableName := DTransfer.MasterTableName + StringList.ValueFromIndex[I];
+                      if (DTransfer.SourceTableName <> '') then
+                        DTransfer.SourceTableName := DTransfer.SourceTableName + ',';
+                      DTransfer.SourceTableName := DTransfer.SourceTableName + StringList.ValueFromIndex[I];
                     end;
-                  if (DTransfer.MasterTableName = '') then
+                  if (DTransfer.SourceTableName = '') then
                     MessageBeep(MB_ICONERROR)
                   else
                   begin
-                    DTransfer.SlaveClient := Client;
-                    DTransfer.SlaveDatabaseName := SelectedDatabase;
-                    DTransfer.SlaveTableName := '';
+                    DTransfer.DestinationClient := Client;
+                    DTransfer.DestinationDatabaseName := SelectedDatabase;
+                    DTransfer.DestinationTableName := '';
                     DTransfer.Execute();
                   end;
                 end
@@ -13260,7 +13225,7 @@ begin
 
     NewBaseTable := TCBaseTable.Create(BaseTable.Database.Tables);
     NewBaseTable.Assign(BaseTable);
-    NewBaseTable.FieldByName(CItem.Name).Name := NewName;
+    TCBaseTableField(CItem).Name := NewName;
     Result := BaseTable.Database.UpdateTable(BaseTable, NewBaseTable);
     NewBaseTable.Free();
   end
@@ -13270,7 +13235,7 @@ begin
 
     NewBaseTable := TCBaseTable.Create(BaseTable.Database.Tables);
     NewBaseTable.Assign(BaseTable);
-    NewBaseTable.ForeignKeyByName(CItem.Name).Name := NewName;
+    TCForeignKey(CItem).Name := NewName;
     Result := BaseTable.Database.UpdateTable(BaseTable, NewBaseTable);
     NewBaseTable.Free();
   end
@@ -13702,8 +13667,6 @@ begin
         Dec(MaxHeight, Splitter.Height + 3);
 
     Accept := (MinHeight <= NewSize) and (NewSize <= MaxHeight);
-    if (Accept) then
-      Write;
   end;
 end;
 
@@ -13873,8 +13836,8 @@ begin
   if ((Source = FNavigator) and (Sender is TSynMemo)) then
   begin
     case (MouseDownNode.ImageIndex) of
-      iiKey: S := Client.DatabaseByName(MouseDownNode.Parent.Parent.Text).BaseTableByName(MouseDownNode.Parent.Text).KeyByCaption(MouseDownNode.Text).Name;
-      iiForeignKey: S := Client.DatabaseByName(MouseDownNode.Parent.Parent.Text).BaseTableByName(MouseDownNode.Parent.Text).ForeignKeyByName(MouseDownNode.Text).Name;
+      iiKey: S := TCKey(MouseDownNode.Data).Name;
+      iiForeignKey: S := TCForeignKey(MouseDownNode.Data).Name;
       else S := MouseDownNode.Text;
     end;
     SelStart := TSynMemo(Sender).SelStart;
@@ -14504,7 +14467,7 @@ begin
   mwDCreateTable.Enabled := MainAction('aDCreateTable').Enabled;
   MainAction('aDCreateKey').Enabled := Control is TWTable;
   MainAction('aDCreateField').Enabled := Control is TWTable;
-  MainAction('aDCreateForeignKey').Enabled := (Control is TWTable) and Assigned(TWTable(Control).BaseTable) and TWTable(Control).BaseTable.Engine.ForeignKeyAllowed;
+  MainAction('aDCreateForeignKey').Enabled := (Control is TWTable) and Assigned(TWTable(Control).BaseTable.Engine) and TWTable(Control).BaseTable.Engine.ForeignKeyAllowed;
   mwCreateSection.Enabled := not Assigned(Control);
   mwCreateLink.Enabled := Control is TWTable;
   MainAction('aDCreateTrigger').Enabled := (Control is TWTable) and Assigned(TWTable(Control).BaseTable) and Assigned(Database.Triggers);

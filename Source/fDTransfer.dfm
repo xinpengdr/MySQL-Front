@@ -38,7 +38,7 @@ object DTransfer: TDTransfer
     Top = 0
     Width = 444
     Height = 289
-    ActivePage = TSExecute
+    ActivePage = TSSelect
     Anchors = [akLeft, akTop, akRight, akBottom]
     Style = tsFlatButtons
     TabOrder = 0
@@ -48,25 +48,21 @@ object DTransfer: TDTransfer
       Caption = 'TSSelect'
       TabVisible = False
       OnShow = TSSelectShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         436
         279)
-      object GMaster: TGroupBox_Ext
+      object GSource: TGroupBox_Ext
         Left = 4
         Top = 0
         Width = 209
         Height = 265
         Anchors = [akLeft, akTop, akBottom]
-        Caption = 'GMaster'
+        Caption = 'GSource'
         TabOrder = 0
         DesignSize = (
           209
           265)
-        object PMaster: TPanel_Ext
+        object PSource: TPanel_Ext
           Left = 8
           Top = 16
           Width = 193
@@ -74,10 +70,10 @@ object DTransfer: TDTransfer
           Anchors = [akLeft, akTop, akRight, akBottom]
           BevelInner = bvRaised
           BevelOuter = bvLowered
-          Caption = 'PMaster'
+          Caption = 'PSource'
           ParentBackground = False
           TabOrder = 0
-          object FMaster: TTreeView_Ext
+          object FSource: TTreeView_Ext
             Left = 2
             Top = 2
             Width = 189
@@ -88,7 +84,7 @@ object DTransfer: TDTransfer
             Indent = 19
             MultiSelect = True
             MultiSelectStyle = [msControlSelect, msShiftSelect, msSiblingOnly]
-            PopupMenu = MMaster
+            PopupMenu = MSource
             ReadOnly = True
             ShowLines = False
             TabOrder = 0
@@ -99,18 +95,18 @@ object DTransfer: TDTransfer
           end
         end
       end
-      object GSlave: TGroupBox_Ext
+      object GDestination: TGroupBox_Ext
         Left = 224
         Top = 0
         Width = 209
         Height = 265
         Anchors = [akTop, akBottom]
-        Caption = 'GSlave'
+        Caption = 'GDestination'
         TabOrder = 1
         DesignSize = (
           209
           265)
-        object PSlave: TPanel_Ext
+        object PDestination: TPanel_Ext
           Left = 8
           Top = 16
           Width = 193
@@ -120,7 +116,7 @@ object DTransfer: TDTransfer
           BevelOuter = bvLowered
           ParentBackground = False
           TabOrder = 0
-          object FSlave: TTreeView_Ext
+          object FDestination: TTreeView_Ext
             Left = 2
             Top = 2
             Width = 189
@@ -144,10 +140,6 @@ object DTransfer: TDTransfer
       Caption = 'TSExecute'
       TabVisible = False
       OnShow = TSExecuteShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         436
         279)
@@ -331,10 +323,6 @@ object DTransfer: TDTransfer
       Caption = 'TSTransferOptions'
       TabVisible = False
       OnShow = TSTransferOptionsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         436
         279)
@@ -443,8 +431,8 @@ object DTransfer: TDTransfer
     TabOrder = 4
     OnClick = FBCancelClick
   end
-  object MMaster: TPopupMenu
-    OnPopup = MMasterPopup
+  object MSource: TPopupMenu
+    OnPopup = MSourcePopup
     Left = 112
     Top = 296
     object miSelectAll: TMenuItem

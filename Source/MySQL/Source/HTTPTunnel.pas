@@ -485,15 +485,11 @@ var
 begin
   BytesRead := 0;
   repeat
-    if (BytesRead > 0) then
-      Write;
     Result := InternetReadFile(Request, @my_char(@Buffer)[BytesRead], BytesToRead - BytesRead, Size);
     if (not Result) then
       Seterror(CR_SERVER_LOST)
     else
       Inc(BytesRead, Size);
-    if (BytesRead < BytesToRead) then
-      Write;
   until (not Result or (Size = 0) or (BytesRead = BytesToRead));
 end;
 

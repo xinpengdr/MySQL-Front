@@ -127,14 +127,15 @@ object FClient: TFClient
         BorderStyle = bsNone
         DragMode = dmAutomatic
         HideSelection = False
-        HotTrack = True
         Indent = 19
         PopupMenu = MSQLHistory
         ReadOnly = True
         RightClickSelect = True
+        RowSelect = True
         ShowLines = False
         TabOrder = 0
         OnChange = FSQLHistoryChange
+        OnChanging = FSQLHistoryChanging
         OnCollapsed = TreeViewCollapsed
         OnCollapsing = TreeViewCollapsing
         OnDblClick = FSQLHistoryDblClick
@@ -142,6 +143,8 @@ object FClient: TFClient
         OnEnter = FSQLHistoryEnter
         OnExit = FSQLHistoryExit
         OnExpanded = TreeViewExpanded
+        OnGetSelectedIndex = TreeViewGetSelectedIndex
+        OnHint = FSQLHistoryHint
         OnKeyDown = FSQLHistoryKeyDown
         OnKeyPress = FSQLHistoryKeyPress
         OnMouseDown = TreeViewMouseDown
@@ -195,7 +198,6 @@ object FClient: TFClient
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
-      Caption = 'PNavigator'
       ParentBackground = False
       TabOrder = 0
       Visible = False
@@ -211,14 +213,11 @@ object FClient: TFClient
         HideSelection = False
         HotTrack = True
         Indent = 19
-        ParentShowHint = False
         PopupMenu = MNavigator
         RightClickSelect = True
-        RowSelect = True
-        ShowHint = True
         ShowLines = False
-        ShowRoot = False
         TabOrder = 0
+        OnAdvancedCustomDrawItem = FNavigatorAdvancedCustomDrawItem
         OnChange = FNavigatorChange
         OnChanging = FNavigatorChanging
         OnCollapsed = TreeViewCollapsed
@@ -374,7 +373,6 @@ object FClient: TFClient
         PopupMenu = MList
         TabOrder = 0
         ViewStyle = vsReport
-        OnChanging = ListViewChanging
         OnColumnClick = ListViewColumnClick
         OnCompare = ListViewCompare
         OnDblClick = ListViewDblClick

@@ -269,7 +269,7 @@ end;
 
 function CSVSplitValues(const Text: string; var Index: Integer; const Delimiter, Quoter: Char; var Values: TCSVValues): Boolean; overload;
 label
-  StartL, Start1, StartLE, StartE,
+  StartL, StartL2, StartLE, StartE,
   Unquoted, UnquotedL, UnquotedE,
   Quoted, QuotedL, QuotedLE, QuotedE, QuotedE2,
   IgnoreL,
@@ -313,16 +313,16 @@ begin
       StartL:
         MOV AX,[ESI]                     // Get character from Text
         CMP Value,0                      // First value?
-        JNE Start1                       // No!
+        JNE StartL2                       // No!
         CMP AX,10                        // Character in Text = NewLine?
         JE StartLE                       // Yes!
         CMP AX,13                        // Character in Text = Carrige Return?
         JE StartLE                       // Yes!
         CMP AX,26                        // Character in Text = EndOfFile?
-        JNE Start1                       // No!
+        JNE StartL2                      // No!
         MOV EOF,True
         JMP FinishE
-      Start1:
+      StartL2:
         CMP AX,Quoter                    // Character in Text = Quoter?
         JE Quoted                        // Yes!
         JMP Unquoted

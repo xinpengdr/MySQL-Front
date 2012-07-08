@@ -107,19 +107,16 @@ type
     procedure SaveToXML(); virtual;
     property XML: IXMLNode read GetXML;
   public
-    Asynchron: Boolean;
     Charset: string;
     Database: string;
     Host: string;
     HTTPTunnelURI: string;
     LibraryFilename: TFileName;
     LibraryType: TMySQLLibrary.TLibraryType;
-    MultiStatements: Boolean;
     Password: string;
     PipeName: string;
     Port: Integer;
     SavePassword: Boolean;
-    UseInformationSchema: Boolean;
     User: string;
     procedure Assign(const Source: TAConnection); virtual;
     constructor Create(const AAccount: TAAccount); virtual;
@@ -171,7 +168,6 @@ type
     property HistoryXMLDocument: IXMLDocument read FHistoryXMLDocument;
     property XML: IXMLNode read GetXML;
   public
-    CacheSize: Integer;
     Connection: TAConnection;
     IconFetched: Boolean;
     ManualURL: string;
@@ -761,19 +757,16 @@ end;
 
 procedure TAConnection.Assign(const Source: TAConnection);
 begin
-  Asynchron := Source.Asynchron;
   Charset := Source.Charset;
   Database := Source.Database;
   Host := Source.Host;
   HTTPTunnelURI := Source.HTTPTunnelURI;
   LibraryFilename := Source.LibraryFilename;
   LibraryType := Source.LibraryType;
-  MultiStatements := Source.MultiStatements;
   Password := Source.Password;
   PipeName := Source.PipeName;
   Port := Source.Port;
   SavePassword := Source.SavePassword;
-  UseInformationSchema := Source.UseInformationSchema;
   User := Source.User;
 end;
 
@@ -784,19 +777,16 @@ begin
   FAccount := AAccount;
   FXML := nil;
 
-  Asynchron := True;
   Charset := '';
   Database := '';
   Host := '';
   HTTPTunnelURI := '';
   LibraryFilename := 'libMySQL.dll';
   LibraryType := ltBuiltIn;
-  MultiStatements := True;
   Password := '';
   PipeName := MYSQL_NAMEDPIPE;
   Port := MYSQL_PORT;
   SavePassword := False;
-  UseInformationSchema := True;
   User := '';
 end;
 
@@ -812,7 +802,6 @@ procedure TAConnection.LoadFromXML();
 begin
   if (Assigned(XML)) then
   begin
-    if (Assigned(XMLNode(XML, 'asynchron'))) then TryStrToBool(XMLNode(XML, 'asynchron').Text, Asynchron);
     if (Assigned(XMLNode(XML, 'character_set'))) then Charset := XMLNode(XML, 'character_set').Text;
     if (Assigned(XMLNode(XML, 'database'))) then Database := XMLNode(XML, 'database').Text;
     if (Assigned(XMLNode(XML, 'host'))) then Host := XMLNode(XML, 'host').Text;
@@ -825,22 +814,15 @@ begin
     if (Assigned(XMLNode(XML, 'library/filename'))) then LibraryFilename := XMLNode(XML, 'library/filename').Text;
     if (Assigned(XMLNode(XML, 'library/pipename'))) then PipeName := XMLNode(XML, 'library/pipename').Text;
     if (Assigned(XMLNode(XML, 'library/tunnel_url'))) then HTTPTunnelURI := XMLNode(XML, 'library/tunnel_url').Text;
-    if (Assigned(XMLNode(XML, 'multistatements'))) then TryStrToBool(XMLNode(XML, 'multistatements').Text, MultiStatements);
     if (Assigned(XMLNode(XML, 'password')) and (XMLNode(XML, 'password').Attributes['encode'] = 'none')) then Password := XMLNode(XML, 'password').Text;
     if (Assigned(XMLNode(XML, 'port'))) then TryStrToInt(XMLNode(XML, 'port').Text, Port);
     if (Assigned(XMLNode(XML, 'savepassword'))) then TryStrToBool(XMLNode(XML, 'savepassword').Text, SavePassword);
-    if (Assigned(XMLNode(XML, 'information_schema'))) then
-      UseInformationSchema := UpperCase(XMLNode(XML, 'information_schema').Text) <> 'IGNORE';
     if (Assigned(XMLNode(XML, 'user'))) then User := XMLNode(XML, 'user').Text;
   end;
 end;
 
 procedure TAConnection.SaveToXML();
 begin
-  if (Asynchron) then
-    XML.ChildNodes.Delete('asynchron')
-  else
-    XMLNode(XML, 'asynchron').Text := BoolToStr(Asynchron, True);
   XMLNode(XML, 'character_set').Text := Charset;
   XMLNode(XML, 'database').Text := Database;
   XMLNode(XML, 'host').Text := Host;
@@ -853,19 +835,10 @@ begin
   XMLNode(XML, 'library/filename').Text := LibraryFilename;
   XMLNode(XML, 'library/pipename').Text := PipeName;
   XMLNode(XML, 'library/tunnel_url').Text := HTTPTunnelURI;
-  XMLNode(XML, 'multistatements').Text := BoolToStr(MultiStatements, True);
-  if (MultiStatements) then
-    XML.ChildNodes.Delete('multistatements')
-  else
-    XMLNode(XML, 'multistatements').Text := BoolToStr(MultiStatements, True);
   XMLNode(XML, 'password').Attributes['encode'] := 'none';
   XMLNode(XML, 'password').Text := Password;
   XMLNode(XML, 'port').Text := IntToStr(Port);
   XMLNode(XML, 'savepassword').Text := BoolToStr(SavePassword, True);
-  if (UseInformationSchema) then
-    XML.ChildNodes.Delete('information_schema')
-  else
-    XMLNode(XML, 'information_schema').Text := 'ignore';
   XMLNode(XML, 'user').Text := User;
 end;
 
@@ -875,7 +848,6 @@ procedure TAAccount.Assign(const Source: TAAccount);
 begin
   if (not Assigned(Accounts)) then FAccounts := Source.Accounts;
 
-  CacheSize := Source.CacheSize;
   FLastLogin := Source.LastLogin;
   IconFetched := Source.IconFetched;
   ImageIndex := Source.ImageIndex;
@@ -895,7 +867,6 @@ begin
   FAccounts := AAccounts;
   FXML := AXML;
 
-  CacheSize := 50;
   FDesktopXMLDocument := nil;
   FHistoryXMLDocument := nil;
   FLastLogin := 0;
@@ -1174,7 +1145,6 @@ procedure TAAccount.LoadFromXML();
 begin
   if (Assigned(XML)) then
   begin
-    if (Assigned(XMLNode(XML, 'cache/size'))) then TryStrToInt(XMLNode(XML, 'cache/size').Text, CacheSize);
     if (Assigned(XMLNode(XML, 'iconfetched'))) then TryStrToBool(XMLNode(XML, 'iconfetched').Text, IconFetched);
     if (Assigned(XMLNode(XML, 'lastlogin'))) then
       TryStrToFloat(ReplaceStr(XMLNode(XML, 'lastlogin').Text, '.', FormatSettings.DecimalSeparator), Double(FLastLogin));
@@ -1200,7 +1170,6 @@ procedure TAAccount.SaveToXML();
 begin
   if (Assigned(XML)) then
   begin
-    XMLNode(XML, 'cache/size').Text := IntToStr(CacheSize);
     XMLNode(XML, 'iconfetched').Text := BoolToStr(IconFetched, True);
     XMLNode(XML, 'lastlogin').Text := FloatToStr(LastLogin);
     XMLNode(XML, 'manualurl').Text := ManualURL;

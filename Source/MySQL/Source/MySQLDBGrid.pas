@@ -47,9 +47,9 @@ type
     SearchFindDialogOnCloseBeforeSearch: TNotifyEvent;
     SearchFindDialogOnFindBeforeSearch: TNotifyEvent;
     SearchFindDialogOnShowBeforeSearch: TNotifyEvent;
+    TitleBoldFont: TFont;
     procedure ActivateHint();
     function CanvasTextWidth(const Text: string): Integer;
-    procedure CMFontChanged(var Message); message CM_FONTCHANGED;
     function EditCopyExecute(): Boolean;
     function EditCutExecute(): Boolean;
     function EditDeleteExecute(): Boolean;
@@ -59,6 +59,7 @@ type
     function GetHeader(): HWND;
     procedure SearchFindExecute(const Action: TSearchFind);
     procedure SetHeaderColumnArrows();
+    procedure CMFontChanged(var Message); message CM_FONTCHANGED;
     procedure WMNotify(var Message: TWMNotify); message WM_NOTIFY;
     procedure WMTimer(var Message: TWMTimer); message WM_TIMER;
   protected
@@ -283,7 +284,11 @@ begin
   if (FListView > 0) then
     SendMessage(FListView, WM_SETFONT, WPARAM(Font.Handle), LPARAM(TRUE));
   if (FHeader > 0) then
-    SendMessage(FHeader, WM_SETFONT, WPARAM(Font.Handle), LPARAM(TRUE));
+  begin
+    if (Assigned(TitleBoldFont)) then
+      FreeAndNil(TitleBoldFont);
+    SendMessage(FHeader, WM_SETFONT, WPARAM(TitleFont.Handle), LPARAM(TRUE));
+  end;
   Resize();
 end;
 
@@ -461,7 +466,7 @@ begin
   if (not (dgColumnResize in Options) and CheckWin32Version(6)) then
     Style := Style or HDS_NOSIZING;
   FHeader := CreateWindow(WC_HEADER, nil, Style, 0, 0, ClientWidth, RowHeights[0], Handle, 0, hInstance, nil);
-  SendMessage(FHeader, WM_SETFONT, WPARAM(Font.Handle), LPARAM(TRUE));
+  SendMessage(FHeader, WM_SETFONT, WPARAM(TitleFont.Handle), LPARAM(TRUE));
   SendMessage(FHeader, HDM_SETUNICODEFORMAT, WPARAM(TRUE), 0);
   SetColumnAttributes();
   Resize();
@@ -495,6 +500,9 @@ destructor TMySQLDBGrid.Destroy();
 begin
 //  if (Assigned(FHintWindow)) then
 //    FHintWindow.Free();
+
+  if (Assigned(TitleBoldFont)) then
+    TitleBoldFont.Free();
 
   inherited;
 end;
@@ -1122,6 +1130,11 @@ begin
 
       SendMessage(FHeader, HDM_INSERTITEM, I - LeftCol, LPARAM(@HDItem));
     end;
+
+    if (Assigned(Columns[I].Field) and Columns[I].Field.IsIndexField) then
+      Columns[I].Font.Style := Columns[I].Font.Style + [fsBold]
+    else
+      Columns[I].Font.Style := Columns[I].Font.Style - [fsBold];
   end;
 
   if (not Assigned(OnTitleClick) or not (dgTitleClick in Options)) then
@@ -1230,6 +1243,8 @@ var
   Column: TColumn;
   HDItem: THDItem;
   HDNotify: PHDNotify;
+  HDCustomDraw: PNMCustomDraw;
+  LogFont: TLogFont;
 begin
   HDNotify := PHDNotify(Message.NMHdr);
   if (HDNotify^.Hdr.hwndFrom <> FHeader) then
@@ -1283,6 +1298,35 @@ begin
           Column.Index := HDNotify^.PItem.iOrder + LeftCol;
           Message.Result := LRESULT(TRUE);
           Resize();
+        end;
+      NM_CUSTOMDRAW:
+        begin
+          HDCustomDraw := PNMCustomDraw(HDNotify);
+          case (HDCustomDraw^.dwDrawStage) of
+            CDDS_PREPAINT:
+              Message.Result := CDRF_NOTIFYITEMDRAW;
+            CDDS_ITEMPREPAINT:
+              if (Columns[HDCustomDraw^.dwItemSpec].Field.IsIndexField
+                and (Assigned(TitleBoldFont) or (GetObject(TitleFont.Handle, SizeOf(LogFont), @LogFont) <> 0))) then
+              begin
+                if (not Assigned(TitleBoldFont)) then
+                begin
+                  TitleBoldFont := TFont.Create();
+                  TitleBoldFont.Handle := CreateFontIndirect(LogFont);
+                  TitleBoldFont.Style := TitleBoldFont.Style + [fsBold];
+                end;
+
+                SelectObject(HDCustomDraw^.hdc, TitleBoldFont.Handle);
+                Message.Result := CDRF_NEWFONT;
+              end
+              else
+              begin
+                SelectObject(HDCustomDraw^.hdc, TitleFont.Handle);
+                Message.Result := CDRF_NEWFONT;
+              end;
+            else
+              inherited;
+          end;
         end;
       else
         inherited;

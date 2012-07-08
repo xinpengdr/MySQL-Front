@@ -98,14 +98,17 @@ type
     Clients: array of TCClient;
     ExecuteClient: TCClient;
     Find: TTFind;
-    SQLWait: Boolean;
+    ProgressInfos: TTools.TProgressInfos;
     ReplaceClient: TCClient;
+    SQLWait: Boolean;
     Tables: array of TDSTableItem;
     WantedExecute: Boolean;
     WantedNodeExpand: TTreeNode;
     procedure FormClientEvent(const Event: TCClient.TEvent);
     function GetClient(const Index: Integer): TCClient;
     procedure OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
+    procedure OnExecuted(const ASuccess: Boolean);
+    procedure OnUpdate(const AProgressInfos: TTools.TProgressInfos);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMExecutedDone(var Message: TMessage); message CM_EXECUTIONDONE;
     procedure CMUpdateProgressInfo(var Message: TMessage); message CM_UPDATEPROGRESSINFO;
@@ -497,7 +500,7 @@ begin
 
   if (Assigned(Client)) then
   begin
-    Client.BeginSynchro();
+    Client.BeginSynchron();
 
     SelectedNodes := TList.Create();
     DatabaseNames := TStringList.Create();
@@ -565,7 +568,7 @@ begin
     TableNames.Free();
     FieldNames.Free();
 
-    Client.EndSynchro();
+    Client.EndSynchron();
   end;
 
   FFFindText.Text := '';
@@ -830,6 +833,30 @@ begin
   end;
 end;
 
+procedure TDSearch.OnExecuted(const ASuccess: Boolean);
+begin
+  if (not Find.Suspended) then
+    PostMessage(Handle, CM_EXECUTIONDONE, WPARAM(ASuccess), 0)
+  else
+  begin
+    Perform(CM_EXECUTIONDONE, WPARAM(ASuccess), 0);
+    Application.ProcessMessages();
+  end;
+end;
+
+procedure TDSearch.OnUpdate(const AProgressInfos: TTools.TProgressInfos);
+begin
+  MoveMemory(@ProgressInfos, @AProgressInfos, SizeOf(AProgressInfos));
+
+  if (not Find.Suspended) then
+    PostMessage(Handle, CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos))
+  else
+  begin
+    Perform(CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos));
+    Application.ProcessMessages();
+  end;
+end;
+
 procedure TDSearch.TSExecuteShow(Sender: TObject);
 
   procedure InitializeNode(const Client: TCClient; const Node: TTreeNode);
@@ -952,8 +979,6 @@ begin
       Find := TTFind.Create(ExecuteClient);
 
       Find.Wnd := Self.Handle;
-      Find.UpdateMessage := CM_UPDATEPROGRESSINFO;
-      Find.ExecutedMessage := CM_EXECUTIONDONE;
       Find.FindText := FFFindText.Text;
       Find.MatchCase := FFMatchCase.Checked;
       Find.WholeValue := FFWholeValue.Checked;
@@ -970,8 +995,6 @@ begin
         Find := TTReplace.Create(ExecuteClient, ReplaceClient);
 
         TTReplace(Find).Wnd := Self.Handle;
-        TTReplace(Find).UpdateMessage := CM_UPDATEPROGRESSINFO;
-        TTReplace(Find).ExecutedMessage := CM_EXECUTIONDONE;
         TTReplace(Find).OnError := OnError;
         TTReplace(Find).FindText := FRFindText.Text;
         TTReplace(Find).ReplaceText := FReplaceText.Text;
@@ -981,6 +1004,8 @@ begin
         TTReplace(Find).Backup := FBackup.Checked;
       end;
     end;
+    Find.OnExecuted := OnExecuted;
+    Find.OnUpdate := OnUpdate;
 
     for I := 0 to FSelect.Items.Count - 1 do
       if (FSelect.Items[I].Selected) then

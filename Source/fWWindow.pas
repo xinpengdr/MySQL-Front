@@ -574,8 +574,8 @@ begin
     TFClient(ActiveTab).aETransferExecute(Sender)
   else
   begin
-    DTransfer.MasterClient := nil;
-    DTransfer.SlaveClient := nil;
+    DTransfer.SourceClient := nil;
+    DTransfer.DestinationClient := nil;
     DTransfer.Execute();
   end;
 end;
@@ -1722,6 +1722,7 @@ begin
   Tabs := TList.Create();
   TBTabControl.Visible := Preferences.TabsVisible;
 
+  aHIndex.Enabled := FileExists(Application.HelpFile);
   aHUpdate.Enabled := IsConnectedToInternet() and (Preferences.SetupProgram = '');
 
   aVAddressBar.Checked := Preferences.AddressBarVisible;

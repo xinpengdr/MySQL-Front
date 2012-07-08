@@ -182,12 +182,15 @@ type
     FLReferrers: array of TLabel;
     ODBC: SQLHDBC;
     ODBCEnv: SQLHENV;
+    ProgressInfos: TTools.TProgressInfos;
     SQLWait: Boolean;
     procedure CheckActivePageChange(const ActivePageIndex: Integer);
     procedure ClearTSFields();
     procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure InitTSFields();
     procedure OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
+    procedure OnExecuted(const ASuccess: Boolean);
+    procedure OnUpdate(const AProgressInfos: TTools.TProgressInfos);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMExecutionDone(var Message: TMessage); message CM_EXECUTIONDONE;
     procedure CMSysFontChanged(var Message: TMessage); message CM_SYSFONTCHANGED;
@@ -429,7 +432,7 @@ begin
     WebBrowser.Visible := False;
     InsertControl(WebBrowser);
     while (WebBrowser.QueryStatusWB(OLECMDID_PRINT) and (OLECMDF_SUPPORTED + OLECMDF_ENABLED) <> OLECMDF_SUPPORTED + OLECMDF_ENABLED) do
-      Application.ProcessMessages;
+      Application.ProcessMessages();
     if (ModalResult = mrNone) then
       WebBrowser.ControlInterface.ExecWB(OLECMDID_PRINT, OLECMDEXECOPT_DODEFAULT, vaIn, vaOut);
     RemoveControl(WebBrowser);
@@ -1098,6 +1101,30 @@ begin
   end;
 end;
 
+procedure TDExport.OnExecuted(const ASuccess: Boolean);
+begin
+  if (not Export.Suspended) then
+    PostMessage(Handle, CM_EXECUTIONDONE, WPARAM(ASuccess), 0)
+  else
+  begin
+    Perform(CM_EXECUTIONDONE, WPARAM(ASuccess), 0);
+    Application.ProcessMessages();
+  end;
+end;
+
+procedure TDExport.OnUpdate(const AProgressInfos: TTools.TProgressInfos);
+begin
+  MoveMemory(@ProgressInfos, @AProgressInfos, SizeOf(AProgressInfos));
+
+  if (not Export.Suspended) then
+    PostMessage(Handle, CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos))
+  else
+  begin
+    Perform(CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos));
+    Application.ProcessMessages();
+  end;
+end;
+
 procedure TDExport.TSCSVOptionsShow(Sender: TObject);
 begin
   ClearTSFields();
@@ -1123,7 +1150,6 @@ var
   ExportText: TTExportText;
   ExportXML: TTExportXML;
   I: Integer;
-  ProgressInfos: TTools.TProgressInfos;
 begin
   Client.UnRegisterEventProc(FormClientEvent);
 
@@ -1267,8 +1293,8 @@ begin
             begin
               SetLength(Export.Fields, Length(Export.Fields) + 1);
               Export.Fields[Length(Export.Fields) - 1] := DBGrid.Columns[I].Field;
-              SetLength(Export.TargetFields, Length(Export.TargetFields) + 1);
-              Export.TargetFields[Length(Export.TargetFields) - 1].Name := DBGrid.Columns[I].DisplayName;
+              SetLength(Export.DestinationFields, Length(Export.DestinationFields) + 1);
+              Export.DestinationFields[Length(Export.DestinationFields) - 1].Name := DBGrid.Columns[I].DisplayName;
             end;
       end
       else
@@ -1277,13 +1303,13 @@ begin
           begin
             SetLength(Export.Fields, Length(Export.Fields) + 1);
             Export.Fields[Length(Export.Fields) - 1] := DBGrid.Fields[FFields[I].ItemIndex - 1];
-            SetLength(Export.TargetFields, Length(Export.TargetFields) + 1);
-            Export.TargetFields[Length(Export.TargetFields) - 1].Name := FDestFields[I].Text;
+            SetLength(Export.DestinationFields, Length(Export.DestinationFields) + 1);
+            Export.DestinationFields[Length(Export.DestinationFields) - 1].Name := FDestFields[I].Text;
           end;
 
       Export.Wnd := Handle;
-      Export.UpdateMessage := CM_UPDATEPROGRESSINFO;
-      Export.ExecutedMessage := CM_EXECUTIONDONE;
+      Export.OnUpdate := OnUpdate;
+      Export.OnExecuted := OnExecuted;
       Export.OnError := OnError;
       Export.Add(DBGrid);
       if (Export.Client.Asynchron) then
@@ -1453,13 +1479,13 @@ begin
           begin
             SetLength(Export.TableFields, Length(Export.TableFields) + 1);
             Export.TableFields[Length(Export.TableFields) - 1] := TCTable(DBObjects[0]).Fields[FFields[I].ItemIndex - 1];
-            SetLength(Export.TargetFields, Length(Export.TargetFields) + 1);
-            Export.TargetFields[Length(Export.TargetFields) - 1].Name := FDestFields[I].Text;
+            SetLength(Export.DestinationFields, Length(Export.DestinationFields) + 1);
+            Export.DestinationFields[Length(Export.DestinationFields) - 1].Name := FDestFields[I].Text;
           end;
 
       Export.Wnd := Handle;
-      Export.UpdateMessage := CM_UPDATEPROGRESSINFO;
-      Export.ExecutedMessage := CM_EXECUTIONDONE;
+      Export.OnUpdate := OnUpdate;
+      Export.OnExecuted := OnExecuted;
       Export.OnError := OnError;
 
       if (Export.Client.Asynchron) then

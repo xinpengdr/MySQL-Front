@@ -99,8 +99,6 @@ begin
 
   Client.AfterConnect := AfterConnect;
 
-  FBCancel.Enabled := Client.Account.Connection.Asynchron;
-
   PostMessage(Handle, CM_POSTSHOW, 0, 0);
 end;
 

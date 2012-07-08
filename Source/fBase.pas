@@ -456,8 +456,6 @@ begin
       Description := Preferences.LoadStr(350)
     else if (LowerCase(Ext) = 'ini') then
       Description := Preferences.LoadStr(452)
-    else if (LowerCase(Ext) = 'ico') then
-      Description := Preferences.LoadStr(762)
     else if (LowerCase(Ext) = 'bmp') then
       Description := Preferences.LoadStr(868)
     else if (LowerCase(Ext) = '*') then

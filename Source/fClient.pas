@@ -317,8 +317,8 @@ type
   private
     FCollation: string;
     FFields: TCTableFields;
-    FInPrimaryIndex: Boolean;
-    FInUniqueIndex: Boolean;
+    FInPrimaryKey: Boolean;
+    FInUniqueKey: Boolean;
     function GetTable(): TCTable; inline;
   protected
     procedure ParseFieldType(var Parse: TSQLParse); override;
@@ -341,8 +341,8 @@ type
     function UnescapeValue(const Value: string): string; virtual;
     property Collation: string read FCollation write FCollation;
     property Fields: TCTableFields read FFields;
-    property InPrimaryIndex: Boolean read FInPrimaryIndex;
-    property InUniqueIndex: Boolean read FInUniqueIndex;
+    property InPrimaryKey: Boolean read FInPrimaryKey;
+    property InUniqueKey: Boolean read FInUniqueKey;
     property Index: Integer read GetIndex;
     property Table: TCTable read GetTable;
   end;
@@ -608,7 +608,6 @@ type
     function PartitionByName(const PartitionName: string): TCPartition; virtual;
     procedure PushBuildEvent(); override;
     function Repair(): Boolean; virtual;
-    function Update(const Status: Boolean = False): Boolean; virtual;
     property AutoIncrement: LargeInt read FAutoIncrement write FAutoIncrement;
     property AutoIncrementField: TCBaseTableField read GetAutoIncrementField;
     property AvgRowLength: LargeInt read FAvgRowLength;
@@ -1050,7 +1049,7 @@ type
   TCEngines = class(TCEntities)
   private
     function GetDefaultEngine(): TCEngine;
-    function GetEngine(Index: Integer): TCEngine;
+    function GetEngine(Index: Integer): TCEngine; inline;
   protected
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean; Filtered: Boolean = False): Boolean; override;
     function GetValid(): Boolean; override;
@@ -2260,7 +2259,7 @@ begin
   Result := nil;
 
   for I := 0 to Columns.Count - 1 do
-    if (lstrcmpi(PChar(Columns[I].Field.Name), PChar(AFieldName)) = 0) then
+    if (Assigned(Columns[I]) and (lstrcmpi(PChar(Columns[I].Field.Name), PChar(AFieldName)) = 0)) then
       Result := Columns.Column[I];
 end;
 
@@ -2593,6 +2592,8 @@ begin
   FCollation := TCTableField(Source).FCollation;
   Default := TCTableField(Source).Default;
   FieldBefore := nil;
+  FInPrimaryKey := TCTableField(Source).InPrimaryKey;
+  FInUniqueKey := TCTableField(Source).InUniqueKey;
   if (Assigned(Fields) and Assigned(TCTableField(Source).Fields) and Assigned(TCTableField(Source).FieldBefore)) then
     FieldBefore := Fields.FieldByName(TCTableField(Source).FieldBefore.Name);
   NullAllowed := TCTableField(Source).NullAllowed or ((Default = 'NULL') and not TCTableField(Source).AutoIncrement and not (FieldType in [mfTinyText, mfText, mfMediumText, mfLongText, mfTinyBlob, mfBlob, mfMediumBlob, mfLongBlob]));
@@ -3398,7 +3399,7 @@ begin
         Database.Client.CachedTables[J] := Database.Client.CachedTables[J + 1];
       SetLength(Database.Client.CachedTables, Length(Database.Client.CachedTables) - 1);
     end;
-  while ((CacheSize div (1024 * 1024) >= Database.Client.Account.CacheSize) and (Length(Database.Client.CachedTables) > 0)) do
+  while ((CacheSize div (1024 * 1024) >= 50) and (Length(Database.Client.CachedTables) > 0)) do
   begin
     CacheSize := 0;
     FreeAndNil(Database.Client.CachedTables[0].FDataSet);
@@ -3927,8 +3928,18 @@ end;
 
 function TCBaseTable.GetEngine(): TCEngine;
 begin
-  if (not SourceParsed and not Assigned(FEngine) and (Source <> '')) then
-    ParseCreateTable(Source);
+  if (not Assigned(FEngine)) then
+  begin
+    if (ValidSource and (Source <> '')) then
+      ParseCreateTable(Source);
+
+    if (not Assigned(FEngine)) then
+    begin
+      Client.BeginSynchron();
+      Update();
+      Client.EndSynchron();
+    end;
+  end;
 
   Result := FEngine;
 end;
@@ -4572,18 +4583,18 @@ begin
     for I := 0 to FFields.Count - 1 do
       if (FFields.Field[I] is TCBaseTableField) then
       begin
-        TCBaseTableField(FFields.Field[I]).FInPrimaryIndex := False;
-        TCBaseTableField(FFields.Field[I]).FInUniqueIndex := False;
+        TCBaseTableField(FFields.Field[I]).FInPrimaryKey := False;
+        TCBaseTableField(FFields.Field[I]).FInUniqueKey := False;
         for J := 0 to FKeys.Count - 1 do
           if (J = 0) or (FKeys.Key[J].Unique) then
             for K := 0 to FKeys.Key[J].Columns.Count - 1 do
               if (TCBaseTableField(FFields.Field[I]) = FKeys.Key[J].Columns.Column[K].Field) then
-                TCBaseTableField(FFields.Field[I]).FInUniqueIndex := True;
+                TCBaseTableField(FFields.Field[I]).FInUniqueKey := True;
       end;
 
     if ((FKeys.Count >= 1) and (FKeys[0].Primary)) then
       for J := 0 to FKeys.Key[0].Columns.Count - 1 do
-        FKeys.Key[0].Columns.Column[J].Field.FInPrimaryIndex := True;
+        FKeys.Key[0].Columns.Column[J].Field.FInPrimaryKey := True;
 
     FSourceParsed := True;
   end;
@@ -4627,16 +4638,6 @@ end;
 function TCBaseTable.SQLGetSource(): string;
 begin
   Result := 'SHOW CREATE TABLE ' + Database.Client.EscapeIdentifier(Database.Name) + '.' + Database.Client.EscapeIdentifier(Name) + ';' + #13#10
-end;
-
-function TCBaseTable.Update(const Status: Boolean = False): Boolean;
-var
-  List: TList;
-begin
-  List := TList.Create();
-  List.Add(Self);
-  Result := Client.Update(List, Status);
-  List.Free();
 end;
 
 { TCSystemView ****************************************************************}
@@ -5039,8 +5040,8 @@ begin
           NewField.FieldType := mfUnknown
         else
           NewField.ParseFieldType(Parse);
-        NewField.FInPrimaryIndex := UpperCase(DataSet.FieldByName('EXTRA').AsString) = 'PRI';
-        NewField.FInUniqueIndex := NewField.InPrimaryIndex or (UpperCase(DataSet.FieldByName('EXTRA').AsString) = 'UNI');
+        NewField.FInPrimaryKey := UpperCase(DataSet.FieldByName('EXTRA').AsString) = 'PRI';
+        NewField.FInUniqueKey := NewField.InPrimaryKey or (UpperCase(DataSet.FieldByName('EXTRA').AsString) = 'UNI');
         NewField.NullAllowed := DataSet.FieldByName('IS_NULLABLE').AsBoolean;
 
         Inc(Index);
@@ -6534,15 +6535,18 @@ begin
       else
         SQL := 'DROP VIEW ' + Client.EscapeIdentifier(NewTableName) + ';' + #13#10 + SQL;
 
+    if (Client.DatabaseName <> Name) then
+      SQL := SQLUse() + SQL;
+
     Result := Client.ExecuteSQL(SQL);
   end;
 
   if (Result) then
     if ((Client.ServerVersion < 40100) and Assigned(Table.AutoIncrementField)) then
     begin
-      Client.BeginSynchro();
+      Client.BeginSynchron();
       BaseTableByName(NewTableName).Update();
-      Client.EndSynchro();
+      Client.EndSynchron();
 
       NewTable := TCBaseTable.Create(Tables);
       NewTable.Assign(BaseTableByName(NewTableName));
@@ -6634,7 +6638,7 @@ begin
     else if (TCObject(List[I]) is TCEvent) then
       SQL := SQL + 'DROP EVENT ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(TCObject(List[I]).Name) + ';' + #13#10;
 
-  if (Name <> Client.DatabaseName) then
+  if (Client.DatabaseName <> Name) then
     SQL := SQLUse() + SQL;
 
   Result := Client.ExecuteSQL(SQL);
@@ -7404,7 +7408,7 @@ begin
     Result := Result + 'ALTER TABLE ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(Table.Name) + #13#10 + TrimRight(SQL) + ';' + #13#10;
   end;
 
-  if ((Result <> '') and (Name <> Client.DatabaseName)) then
+  if ((Result <> '') and (Client.DatabaseName <> Name)) then
     Result := SQLUse() + Result;
 end;
 
@@ -7426,7 +7430,7 @@ begin
   if ((Client.ServerVersion < 32328) or ((Client.ServerVersion < 50013) and Assigned(Table.Engine) and (UpperCase(Table.Engine.Name) = 'INNODB'))) then
     Result := Result + 'ALTER TABLE ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(Table.Name) + ' AUTO_INCREMENT=0;' + #13#10;
 
-  if (Name <> Client.DatabaseName) then
+  if (Client.DatabaseName <> Name) then
     Result := SQLUse() + Result;
 end;
 
@@ -10717,7 +10721,6 @@ procedure TCClient.FirstConnect();
 begin
   Connected := False;
 
-  Asynchron := Account.Connection.ASynchron;
   if (Account.Connection.Charset <> '') then
     Charset := Account.Connection.Charset;
   FDatabaseName := Account.GetDefaultDatabase();
@@ -10731,7 +10734,6 @@ begin
   HTTPAgent := Preferences.InternetAgent;
   LibraryType := Account.Connection.LibraryType;
   LoginPrompt := False;
-  FMultiStatements := Account.Connection.MultiStatements;
   OnUpdateIndexDefs := UpdateIndexDefs;
   Password := Account.Connection.Password;
   Port := Account.Connection.Port;
@@ -10927,7 +10929,7 @@ end;
 
 function TCClient.GetUseInformationSchema(): Boolean;
 begin
-  Result := Assigned(Account) and Account.Connection.UseInformationSchema;
+  Result := True;
 end;
 
 function TCClient.GetUserRights(): TCUserRight;
@@ -10951,7 +10953,6 @@ var
   Grid: TMySQLDBGrid;
   I: Integer;
   J: Integer;
-  K: Integer;
   Table: TCTable;
 begin
   if ((Sender is TMySQLDBGrid) and (TMySQLDBGrid(Sender).DataSource.DataSet is TMySQLDataSet)) then
@@ -10977,11 +10978,6 @@ begin
                   Grid.Columns[I].PickList.Add(Field.Items[J]);
 
               Grid.Columns[I].ButtonStyle := cbsAuto;
-              if ((Table is TCBaseTable) and Grid.DataSource.DataSet.CanModify and not Grid.SelectedField.ReadOnly) then
-                for J := 0 to TCBaseTable(Table).ForeignKeys.Count - 1 do
-                  for K := 0 to Length(TCBaseTable(Table).ForeignKeys[J].Fields) - 1 do
-                    if (TCBaseTable(Table).ForeignKeys[J].Fields[K] = Field) then
-                      Grid.Columns[I].ButtonStyle := cbsEllipsis;
             end;
           end;
         end;

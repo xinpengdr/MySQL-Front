@@ -786,9 +786,9 @@ begin
   begin
     FProcesses.DisableAlign(); FProcesses.Items.BeginUpdate();
 
-    Client.BeginSynchro();
+    Client.BeginSynchron();
     Client.Processes.Update();
-    Client.EndSynchro();
+    Client.EndSynchron();
     for I := 0 to Client.Processes.Count - 1 do
     begin
       Item := FProcesses.Items.Add();

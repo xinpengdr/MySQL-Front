@@ -35,6 +35,9 @@ type
     procedure FormShow(Sender: TObject);
     procedure FWidthChange(Sender: TObject);
     procedure tbUpDownClick(Sender: TObject);
+    procedure FColumnsAdvancedCustomDrawItem(Sender: TCustomListView;
+      Item: TListItem; State: TCustomDrawState; Stage: TCustomDrawStage;
+      var DefaultDraw: Boolean);
   private
     OldChecked: Boolean;
     procedure FBOkCheckEnabled(Sender: TObject);
@@ -129,6 +132,17 @@ begin
       Inc(Found);
 
   FBOk.Enabled := Found > 0;
+end;
+
+procedure TDColumns.FColumnsAdvancedCustomDrawItem(Sender: TCustomListView;
+  Item: TListItem; State: TCustomDrawState; Stage: TCustomDrawStage;
+  var DefaultDraw: Boolean);
+begin
+  if ((Stage = cdPrePaint) and not (csDestroying in ComponentState) and Assigned(Item)
+    and DBGrid.Columns[Item.Index].Field.IsIndexField) then
+    Sender.Canvas.Font.Style := [fsBold]
+  else
+    Sender.Canvas.Font.Style := [];
 end;
 
 procedure TDColumns.FColumnsChange(Sender: TObject; Item: TListItem;

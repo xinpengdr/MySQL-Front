@@ -71,6 +71,7 @@ object DColumns: TDColumns
       RowSelect = True
       TabOrder = 0
       ViewStyle = vsReport
+      OnAdvancedCustomDrawItem = FColumnsAdvancedCustomDrawItem
       OnChange = FColumnsChange
       OnResize = FColumnsResize
       OnSelectItem = FColumnsSelectItem

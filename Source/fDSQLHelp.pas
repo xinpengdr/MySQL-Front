@@ -25,6 +25,7 @@ type
     N1: TMenuItem;
     Panel: TPanel_Ext;
     TBQuickSearchEnabled: TToolBar;
+    FBContent: TButton;
     procedure FBDescriptionClick(Sender: TObject);
     procedure FBExampleClick(Sender: TObject);
     procedure FBManualClick(Sender: TObject);
@@ -34,6 +35,7 @@ type
     procedure FormShow(Sender: TObject);
     procedure FQuickSearchKeyPress(Sender: TObject; var Key: Char);
     procedure FQuickSearchEnabledClick(Sender: TObject);
+    procedure FBContentClick(Sender: TObject);
   const
     CM_SEND_SQL = WM_USER + 300;
   private
@@ -149,7 +151,8 @@ begin
   msCopy.Action := MainAction('aECopy'); msCopy.ShortCut := 0;
   msSelectAll.Action := MainAction('aESelectAll'); msSelectAll.ShortCut := 0;
 
-  FBDescription.Caption := '&' + Preferences.LoadStr(85);
+  FBContent.Caption := Preferences.LoadStr(653);
+  FBDescription.Caption := Preferences.LoadStr(85);
   FBExample.Caption := Preferences.LoadStr(849);
   FBManual.Caption := Preferences.LoadStr(573);
   FQuickSearch.Hint := ReplaceStr(Preferences.LoadStr(424), '&', '');
@@ -178,11 +181,13 @@ end;
 
 procedure TDSQLHelp.CMSysFontChanged(var Message: TMessage);
 begin
+  FBContent.Width := Canvas.TextWidth(FBContent.Caption) + FBContent.Height - Canvas.TextHeight(FBContent.Caption);
+  FBDescription.Left := FBContent.Left + FBContent.Width;
   FBDescription.Width := Canvas.TextWidth(FBDescription.Caption) + FBDescription.Height - Canvas.TextHeight(FBDescription.Caption);
-  FBExample.Width := Canvas.TextWidth(FBExample.Caption) + FBExample.Height - Canvas.TextHeight(FBExample.Caption);
-  FBManual.Width := Canvas.TextWidth(FBManual.Caption) + FBManual.Height - Canvas.TextHeight(FBManual.Caption);
   FBExample.Left := FBDescription.Left + FBDescription.Width;
+  FBExample.Width := Canvas.TextWidth(FBExample.Caption) + FBExample.Height - Canvas.TextHeight(FBExample.Caption);
   FBManual.Left := FBExample.Left + FBExample.Width;
+  FBManual.Width := Canvas.TextWidth(FBManual.Caption) + FBManual.Height - Canvas.TextHeight(FBManual.Caption);
 
   Constraints.MinWidth := 2 * GetSystemMetrics(SM_CXFRAME) + 2 * Panel.BevelWidth + FBDescription.Width + FBExample.Width + FBManual.Width + FQuickSearch.Width + TBQuickSearchEnabled.Width + 50;
 end;
@@ -197,6 +202,12 @@ begin
   Perform(CM_SEND_SQL, 0, 0);
 
   Result := False;
+end;
+
+procedure TDSQLHelp.FBContentClick(Sender: TObject);
+begin
+  Keyword := 'Contents';
+  Perform(CM_SEND_SQL, 0, 0);
 end;
 
 procedure TDSQLHelp.FBDescriptionClick(Sender: TObject);

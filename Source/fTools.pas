@@ -3,7 +3,7 @@ unit fTools;
 interface {********************************************************************}
 
 uses
-  Windows, Messages, XMLDoc, XMLIntf, DBGrids, msxml,
+  Windows, XMLDoc, XMLIntf, DBGrids, msxml,
   SysUtils, DB, Classes, Graphics, SyncObjs,
   ODBCAPI,
   DISQLite3Api,
@@ -45,6 +45,7 @@ type
       ErrorMessage: string;
     end;
     TErrorEvent = procedure(const Sender: TObject; const Error: TError; const Item: TItem; var Success: TDataAction) of object;
+    TOnExecuted = procedure(const Success: Boolean) of object;
     PProgressInfos = ^TProgressInfos;
     TProgressInfos = record
       TablesDone, TablesSum: Integer;
@@ -52,6 +53,7 @@ type
       TimeDone, TimeSum: TDateTime;
       Progress: Byte;
     end;
+    TOnUpdate = procedure(const ProgressInfos: TProgressInfos) of object;
     TSQLThread = class(TThread)
     private
       Client: TCClient;
@@ -62,8 +64,10 @@ type
     end;
   private
     CriticalSection: TCriticalSection;
+    FOnExecuted: TOnExecuted;
     FErrorCount: Integer;
     FOnError: TErrorEvent;
+    FOnUpdate: TOnUpdate;
     FUserAbort: THandle;
     ProgressInfos: TProgressInfos;
   protected
@@ -80,12 +84,12 @@ type
     function NoPrimaryIndexError(): TError; virtual;
     property OnError: TErrorEvent read FOnError write FOnError;
   public
-    ExecutedMessage: UINT;
-    UpdateMessage: UINT;
     Wnd: HWND;
     constructor Create(); virtual;
     destructor Destroy(); override;
     property ErrorCount: Integer read FErrorCount;
+    property OnExecuted: TOnExecuted read FOnExecuted write FOnExecuted;
+    property OnUpdate: TOnUpdate read FOnUpdate write FOnUpdate;
     property UserAbort: THandle read FUserAbort;
   end;
 
@@ -283,15 +287,14 @@ type
       RecordsDone, RecordsSum: Integer;
       Done: Boolean;
     end;
-
     TExportDBGrid = record
       DBGrid: TDBGrid;
       RecordsDone, RecordsSum: Integer;
       Done: Boolean;
     end;
-
     TExportDBGrids = array of TExportDBGrid;
   private
+    DataTables: TList;
     FDBGrids: TExportDBGrids;
     FClient: TCClient;
     ExportObjects: array of TExportObject;
@@ -317,7 +320,7 @@ type
     property DBGrids: TExportDBGrids read FDBGrids;
   public
     Data: Boolean;
-    TargetFields: array of record
+    DestinationFields: array of record
       Name: string;
     end;
     Fields: array of TField;
@@ -560,39 +563,37 @@ type
 
   TTTransfer = class(TTools)
   type
-    TElement = record
+    TItem = record
       Client: TCClient;
       DatabaseName: string;
       TableName: string;
       RecordsSum, RecordsDone: Integer;
       Done: Boolean;
     end;
-    TItem = record
-      Master: TElement;
-      Slave: TElement;
+    TElement = record
+      Source: TItem;
+      Destination: TItem;
     end;
-    TErrorEvent = procedure(const ErrorCode: Integer; const Element: TElement; var Success: TDataAction) of object;
   private
-    Items: array of TItem;
+    Elements: TList;
   protected
     procedure AfterExecute(); override;
     procedure BeforeExecute(); override;
+    procedure CloneTable(var Source, Destination: TItem); virtual;
     function DifferentPrimaryIndexError(): TTools.TError; virtual;
-    function DoExecuteSQL(var Element: TElement; const Database: TCDatabase; var SQL: string): Boolean; virtual;
+    function DoExecuteSQL(var Item: TItem; const Client: TCClient; var SQL: string): Boolean; virtual;
     procedure DoUpdateGUI(); override;
-    procedure ExecuteData(var SourceItem, TargetItem: TElement); virtual;
-    procedure ExecuteForeignKeys(var Source, Target: TElement); virtual;
-    procedure ExecuteStructure(const Source, Target: TElement); virtual;
-    procedure ExecuteTable(var Source, Target: TElement); virtual;
-    function ToolsItem(const Element: TElement): TTools.TItem; virtual;
+    procedure ExecuteData(var Source, Destination: TItem); virtual;
+    procedure ExecuteForeignKeys(var Source, Destination: TItem); virtual;
+    procedure ExecuteStructure(const Source, Destination: TItem); virtual;
+    procedure ExecuteTable(var Source, Destination: TItem); virtual;
+    function ToolsItem(const Item: TItem): TTools.TItem; virtual;
   public
     Backup: Boolean;
     Data: Boolean;
     DisableKeys: Boolean;
     Structure: Boolean;
-    UpdateData: Boolean;
-    UpdateStructure: Boolean;
-    procedure Add(const MasterClient: TCClient; const MasterDatabaseName, MasterTableName: string; const SlaveClient: TCClient; const SlaveDatabaseName, SlaveTableName: string); virtual;
+    procedure Add(const SourceClient: TCClient; const SourceDatabaseName, SourceTableName: string; const DestinationClient: TCClient; const DestinationDatabaseName, DestinationTableName: string); virtual;
     constructor Create(); override;
     destructor Destroy(); override;
     procedure Execute(); override;
@@ -702,12 +703,16 @@ begin
 end;
 
 function SQLLoadDataInfile(const Database: TCDatabase; const IgnoreHeadline, Replace: Boolean; const Filename, FileCharset, DatabaseName, TableName: string; const FieldNames: string; const Quoter, FieldTerminator, LineTerminator: string): string;
+var
+  Client: TCClient;
 begin
+  Client := Database.Client;
+
   Result := 'LOAD DATA LOCAL INFILE ' + SQLEscape(Filename) + #13#10;
   if (Replace) then
     Result := Result + '  REPLACE' + #13#10;
-  Result := Result + '  INTO TABLE ' + Database.Client.EscapeIdentifier(DatabaseName) + '.' + Database.Client.EscapeIdentifier(TableName) + #13#10;
-  if (((50038 <= Database.Client.ServerVersion) and (Database.Client.ServerVersion < 50100) or (50117 <= Database.Client.ServerVersion)) and (FileCharset <> '')) then
+  Result := Result + '  INTO TABLE ' + Client.EscapeIdentifier(DatabaseName) + '.' + Client.EscapeIdentifier(TableName) + #13#10;
+  if (((50038 <= Client.ServerVersion) and (Client.ServerVersion < 50100) or (50117 <= Client.ServerVersion)) and (FileCharset <> '')) then
     Result := Result + '  CHARACTER SET ' + FileCharset + #13#10;
   Result := Result + '  FIELDS' + #13#10;
   Result := Result + '    TERMINATED BY ' + SQLEscape(FieldTerminator) + #13#10;
@@ -722,14 +727,14 @@ begin
     Result := Result + '  (' + FieldNames + ')' + #13#10;
   Result := Trim(Result) + ';' + #13#10;
 
-  if (((Database.Client.ServerVersion < 50038) or (50100 <= Database.Client.ServerVersion)) and (Database.Client.ServerVersion < 50117) and (FileCharset <> '')) then
-    if ((Database.Client.ServerVersion < 40100) or not Assigned(Database.Client.VariableByName('character_set_database'))) then
-      Database.Client.Charset := FileCharset
-    else if ((Database.Client.VariableByName('character_set_database').Value <> FileCharset) and (Database.Client.LibraryType <> ltHTTP)) then
+  if (((Client.ServerVersion < 50038) or (50100 <= Client.ServerVersion)) and (Client.ServerVersion < 50117) and (FileCharset <> '')) then
+    if ((Client.ServerVersion < 40100) or not Assigned(Client.VariableByName('character_set_database'))) then
+      Client.Charset := FileCharset
+    else if ((Client.VariableByName('character_set_database').Value <> FileCharset) and (Client.LibraryType <> ltHTTP)) then
       Result :=
         'SET SESSION character_set_database=' + SQLEscape(FileCharset) + ';' + #13#10
         + Result
-        + 'SET SESSION character_set_database=' + SQLEscape(Database.Client.VariableByName('character_set_database').Value) + ';' + #13#10;
+        + 'SET SESSION character_set_database=' + SQLEscape(Client.VariableByName('character_set_database').Value) + ';' + #13#10;
 end;
 
 function SQLUpdate(const Table: TCTable; const Values, WhereClausel: string): string;
@@ -1050,11 +1055,8 @@ procedure TTools.AfterExecute();
 begin
   DoUpdateGUI();
 
-  if ((Wnd > 0) and (ExecutedMessage > 0)) then
-    if (Suspended) then
-      SendMessage(Wnd, ExecutedMessage, WPARAM(Success = daSuccess), 0)
-    else
-      PostMessage(Wnd, ExecutedMessage, WPARAM(Success = daSuccess), 0);
+  if (Assigned(OnExecuted)) then
+    OnExecuted(Success = daSuccess);
 end;
 
 procedure TTools.BackupTable(const Item: TTools.TItem; const Rename: Boolean = False);
@@ -1174,7 +1176,7 @@ begin
   else
     Client.RollbackTransaction();
   Client.EndSilent();
-  Client.EndSynchro();
+  Client.EndSynchron();
 
   inherited;
 end;
@@ -1188,7 +1190,7 @@ begin
   inherited;
 
   Client.BeginSilent();
-  Client.BeginSynchro(); // We're still in a thread
+  Client.BeginSynchron(); // We're still in a thread
   Client.StartTransaction();
 end;
 
@@ -1238,56 +1240,51 @@ procedure TTImport.DoUpdateGUI();
 var
   I: Integer;
 begin
-  if ((Wnd > 0) and (UpdateMessage > 0)) then
+  CriticalSection.Enter();
+
+  ProgressInfos.TablesDone := 0;
+  ProgressInfos.TablesSum := Length(Items);
+  ProgressInfos.RecordsDone := 0;
+  ProgressInfos.RecordsSum := 0;
+  ProgressInfos.TimeDone := 0;
+  ProgressInfos.TimeSum := 0;
+
+  for I := 0 to Length(Items) - 1 do
   begin
-    CriticalSection.Enter();
+    if (Items[I].Done) then
+      Inc(ProgressInfos.TablesDone);
 
-    ProgressInfos.TablesDone := 0;
-    ProgressInfos.TablesSum := Length(Items);
-    ProgressInfos.RecordsDone := 0;
-    ProgressInfos.RecordsSum := 0;
-    ProgressInfos.TimeDone := 0;
-    ProgressInfos.TimeSum := 0;
-
-    for I := 0 to Length(Items) - 1 do
-    begin
-      if (Items[I].Done) then
-        Inc(ProgressInfos.TablesDone);
-
-      Inc(ProgressInfos.RecordsDone, Items[I].RecordsDone);
-      Inc(ProgressInfos.RecordsSum, Items[I].RecordsSum);
-    end;
-
-    ProgressInfos.TimeDone := Now() - StartTime;
-
-    if ((ProgressInfos.RecordsDone = 0) and (ProgressInfos.TablesDone = 0)) then
-    begin
-      ProgressInfos.Progress := 0;
-      ProgressInfos.TimeSum := 0;
-    end
-    else if (ProgressInfos.RecordsDone = 0) then
-    begin
-      ProgressInfos.Progress := Round(ProgressInfos.TablesDone / ProgressInfos.TablesSum * 100);
-      ProgressInfos.TimeSum := ProgressInfos.TimeDone / ProgressInfos.TablesDone * ProgressInfos.TablesSum;
-    end
-    else if (ProgressInfos.RecordsDone < ProgressInfos.RecordsSum) then
-    begin
-      ProgressInfos.Progress := Round(ProgressInfos.RecordsDone / ProgressInfos.RecordsSum * 100);
-      ProgressInfos.TimeSum := ProgressInfos.TimeDone / ProgressInfos.RecordsDone * ProgressInfos.RecordsSum;
-    end
-    else
-    begin
-      ProgressInfos.Progress := 100;
-      ProgressInfos.TimeSum := ProgressInfos.TimeDone;
-    end;
-
-    CriticalSection.Leave();
-
-    if (Suspended) then
-      SendMessage(Wnd, UpdateMessage, 0, LPARAM(@ProgressInfos))
-    else
-      PostMessage(Wnd, UpdateMessage, 0, LPARAM(@ProgressInfos));
+    Inc(ProgressInfos.RecordsDone, Items[I].RecordsDone);
+    Inc(ProgressInfos.RecordsSum, Items[I].RecordsSum);
   end;
+
+  ProgressInfos.TimeDone := Now() - StartTime;
+
+  if ((ProgressInfos.RecordsDone = 0) and (ProgressInfos.TablesDone = 0)) then
+  begin
+    ProgressInfos.Progress := 0;
+    ProgressInfos.TimeSum := 0;
+  end
+  else if (ProgressInfos.RecordsDone = 0) then
+  begin
+    ProgressInfos.Progress := Round(ProgressInfos.TablesDone / ProgressInfos.TablesSum * 100);
+    ProgressInfos.TimeSum := ProgressInfos.TimeDone / ProgressInfos.TablesDone * ProgressInfos.TablesSum;
+  end
+  else if (ProgressInfos.RecordsDone < ProgressInfos.RecordsSum) then
+  begin
+    ProgressInfos.Progress := Round(ProgressInfos.RecordsDone / ProgressInfos.RecordsSum * 100);
+    ProgressInfos.TimeSum := ProgressInfos.TimeDone / ProgressInfos.RecordsDone * ProgressInfos.RecordsSum;
+  end
+  else
+  begin
+    ProgressInfos.Progress := 100;
+    ProgressInfos.TimeSum := ProgressInfos.TimeDone;
+  end;
+
+  CriticalSection.Leave();
+
+  if (Assigned(FOnUpdate)) then
+    FOnUpdate(ProgressInfos);
 end;
 
 procedure TTImport.Execute();
@@ -1308,7 +1305,7 @@ begin
       begin
         if (Assigned(Database.TableByName(Items[I].TableName))) then
           while ((Success = daSuccess) and not Database.DeleteObject(Database.TableByName(Items[I].TableName))) do
-            DoError(DatabaseError(Database.Client), ToolsItem(Items[I]));
+            DoError(DatabaseError(Client), ToolsItem(Items[I]));
         if (Success = daSuccess) then
           ExecuteStructure(Items[I]);
       end;
@@ -1320,7 +1317,7 @@ begin
           Error.ErrorType := TE_Database;
           Error.ErrorCode := 0;
           Error.ErrorMessage := 'Table "' + Items[I].TableName + '" does not exists.';
-          DoError(DatabaseError(Database.Client), ToolsItem(Items[I]));
+          DoError(DatabaseError(Client), ToolsItem(Items[I]));
         end;
         if (Success = daSuccess) then
           ExecuteData(Items[I], Database.TableByName(Items[I].TableName));
@@ -1358,7 +1355,7 @@ begin
     if (Client.DatabaseName <> Database.Name) then
       SQL := SQL + Database.SQLUse() + #13#10;
     if (Structure and (Client.ServerVersion >= 40000)) then
-      SQL := SQL + 'ALTER TABLE ' + Database.Client.EscapeIdentifier(Table.Name) + ' DISABLE KEYS;' + #13#10;
+      SQL := SQL + 'ALTER TABLE ' + Client.EscapeIdentifier(Table.Name) + ' DISABLE KEYS;' + #13#10;
     if (SQL <> '') then
       DoExecuteSQL(Item, SQL);
 
@@ -1454,15 +1451,15 @@ begin
             if (Values <> '') then Values := Values + ',';
             Values := Values + SQLValues[I];
           end
-          else if (not Fields[I].InPrimaryIndex) then
+          else if (not Fields[I].InPrimaryKey) then
           begin
             if (Values <> '') then Values := Values + ',';
-            Values := Database.Client.EscapeIdentifier(Fields[I].Name) + '=' + SQLValues[I];
+            Values := Client.EscapeIdentifier(Fields[I].Name) + '=' + SQLValues[I];
           end
           else
           begin
             if (WhereClausel <> '') then WhereClausel := WhereClausel + ' AND ';
-            WhereClausel := Database.Client.EscapeIdentifier(Fields[I].Name) + '=' + SQLValues[I];
+            WhereClausel := Client.EscapeIdentifier(Fields[I].Name) + '=' + SQLValues[I];
           end;
 
         if (ImportType = itUpdate) then
@@ -1513,7 +1510,7 @@ begin
 
     SQL := '';
     if (Structure and (Client.ServerVersion >= 40000)) then
-      SQL := SQL + 'ALTER TABLE ' + Database.Client.EscapeIdentifier(Table.Name) + ' ENABLE KEYS;' + #13#10;
+      SQL := SQL + 'ALTER TABLE ' + Client.EscapeIdentifier(Table.Name) + ' ENABLE KEYS;' + #13#10;
     if (SQL <> '') then
       DoExecuteSQL(Item, SQL);
   end;
@@ -1588,42 +1585,37 @@ end;
 
 procedure TTImportFile.DoUpdateGUI();
 begin
-  if ((Wnd > 0) and (UpdateMessage > 0)) then
+  CriticalSection.Enter();
+
+  ProgressInfos.TablesDone := -1;
+  ProgressInfos.TablesSum := -1;
+  ProgressInfos.RecordsDone := FilePos;
+  ProgressInfos.RecordsSum := FileSize;
+  ProgressInfos.TimeDone := 0;
+  ProgressInfos.TimeSum := 0;
+
+  ProgressInfos.TimeDone := Now() - StartTime;
+
+  if ((ProgressInfos.RecordsDone = 0) or (ProgressInfos.RecordsSum = 0)) then
   begin
-    CriticalSection.Enter();
-
-    ProgressInfos.TablesDone := -1;
-    ProgressInfos.TablesSum := -1;
-    ProgressInfos.RecordsDone := FilePos;
-    ProgressInfos.RecordsSum := FileSize;
-    ProgressInfos.TimeDone := 0;
+    ProgressInfos.Progress := 0;
     ProgressInfos.TimeSum := 0;
-
-    ProgressInfos.TimeDone := Now() - StartTime;
-
-    if ((ProgressInfos.RecordsDone = 0) or (ProgressInfos.RecordsSum = 0)) then
-    begin
-      ProgressInfos.Progress := 0;
-      ProgressInfos.TimeSum := 0;
-    end
-    else if (ProgressInfos.RecordsDone < ProgressInfos.RecordsSum) then
-    begin
-      ProgressInfos.Progress := Round(ProgressInfos.RecordsDone / ProgressInfos.RecordsSum * 100);
-      ProgressInfos.TimeSum := ProgressInfos.TimeDone / ProgressInfos.RecordsDone * ProgressInfos.RecordsSum;
-    end
-    else
-    begin
-      ProgressInfos.Progress := 100;
-      ProgressInfos.TimeSum := ProgressInfos.TimeDone;
-    end;
-
-    CriticalSection.Leave();
-
-    if (Suspended) then
-      SendMessage(Wnd, UpdateMessage, 0, LPARAM(@ProgressInfos))
-    else
-      PostMessage(Wnd, UpdateMessage, 0, LPARAM(@ProgressInfos));
+  end
+  else if (ProgressInfos.RecordsDone < ProgressInfos.RecordsSum) then
+  begin
+    ProgressInfos.Progress := Round(ProgressInfos.RecordsDone / ProgressInfos.RecordsSum * 100);
+    ProgressInfos.TimeSum := ProgressInfos.TimeDone / ProgressInfos.RecordsDone * ProgressInfos.RecordsSum;
+  end
+  else
+  begin
+    ProgressInfos.Progress := 100;
+    ProgressInfos.TimeSum := ProgressInfos.TimeDone;
   end;
+
+  CriticalSection.Leave();
+
+  if (Assigned(OnUpdate)) then
+    OnUpdate(ProgressInfos);
 end;
 
 function TTImportFile.DoOpenFile(const Filename: TFileName; out Handle: THandle; out Error: TTools.TError): Boolean;
@@ -1984,9 +1976,9 @@ begin
   NewTable.Name := Item.TableName;
 
   while ((Success = daSuccess) and not Database.AddTable(NewTable)) do
-    DoError(DatabaseError(Database.Client), ToolsItem(Item));
+    DoError(DatabaseError(Client), ToolsItem(Item));
   while ((Success = daSuccess) and not Client.Update()) do
-    DoError(DatabaseError(Database.Client), ToolsItem(Item));
+    DoError(DatabaseError(Client), ToolsItem(Item));
 
   NewTable.Free();
 
@@ -1994,7 +1986,7 @@ begin
   begin
     NewTable := Database.BaseTableByName(Item.TableName);
     while ((Success = daSuccess) and not NewTable.Update()) do
-      DoError(DatabaseError(Database.Client), ToolsItem(Item));
+      DoError(DatabaseError(Client), ToolsItem(Item));
 
     SetLength(Fields, NewTable.Fields.Count);
     for I := 0 to NewTable.Fields.Count - 1 do
@@ -2897,9 +2889,9 @@ begin
     NewTable.Name := Item.TableName;
 
     while ((Success = daSuccess) and not Database.AddTable(NewTable)) do
-      DoError(DatabaseError(Database.Client), ToolsItem(Item));
+      DoError(DatabaseError(Client), ToolsItem(Item));
     while ((Success = daSuccess) and not Client.Update()) do
-      DoError(DatabaseError(Database.Client), ToolsItem(Item));
+      DoError(DatabaseError(Client), ToolsItem(Item));
   end;
 
   NewTable.Free();
@@ -3196,7 +3188,7 @@ begin
     while ((Success = daSuccess) and not Database.AddTable(NewTable)) do
       DoError(DatabaseError(Client), ToolsItem(Item));
     while ((Success = daSuccess) and not Client.Update()) do
-      DoError(DatabaseError(Database.Client), ToolsItem(Item));
+      DoError(DatabaseError(Client), ToolsItem(Item));
 
     NewTable.Free();
   end;
@@ -3369,7 +3361,6 @@ begin
     DBGrids[I].DBGrid.DataSource.DataSet.EnableControls();
 
   FClient.EndSilent();
-  FClient.EndSynchro();
 
   inherited;
 end;
@@ -3381,7 +3372,6 @@ begin
   inherited;
 
   FClient.BeginSilent();
-  FClient.BeginSynchro(); // We're still in a thread
 
   for I := 0 to Length(DBGrids) - 1 do
     DBGrids[I].DBGrid.DataSource.DataSet.DisableControls();
@@ -3411,7 +3401,7 @@ procedure TTExport.DoUpdateGUI();
 var
   I: Integer;
 begin
-  if ((Wnd > 0) and (UpdateMessage > 0)) then
+  if (Assigned(OnUpdate)) then
   begin
     CriticalSection.Enter();
 
@@ -3465,10 +3455,7 @@ begin
 
     CriticalSection.Leave();
 
-    if (Suspended) then
-      SendMessage(Wnd, UpdateMessage, 0, LPARAM(@ProgressInfos))
-    else
-      PostMessage(Wnd, UpdateMessage, 0, LPARAM(@ProgressInfos));
+    OnUpdate(ProgressInfos);
   end;
 end;
 
@@ -3481,8 +3468,18 @@ end;
 
 procedure TTExport.Execute();
 var
+  DataHandle: TMySQLConnection.TResultHandle;
   I: Integer;
+  J: Integer;
+  S: string;
+  SQL: string;
+  Table: TCTable;
 begin
+  if (not Data) then
+    DataTables := nil
+  else
+    DataTables := TList.Create();
+
   BeforeExecute();
 
   for I := 0 to Length(DBGrids) - 1 do
@@ -3493,6 +3490,7 @@ begin
     DBGrids[I].RecordsDone := 0;
   end;
 
+  SQL := '';
   for I := 0 to Length(ExportObjects) - 1 do
   begin
     if (not (ExportObjects[I].DBObject is TCBaseTable)) then
@@ -3501,6 +3499,46 @@ begin
       ExportObjects[I].RecordsSum := TCBaseTable(ExportObjects[I].DBObject).Rows;
     ExportObjects[I].RecordsDone := 0;
     ExportObjects[I].Done := False;
+
+    if (Data and (ExportObjects[I].DBObject is TCTable) and (not (ExportObjects[I].DBObject is TCBaseTable) or not TCBaseTable(ExportObjects[I].DBObject).Engine.IsMerge)) then
+      DataTables.Add(ExportObjects[I].DBObject);
+  end;
+
+  if ((Success <> daAbort) and Assigned(DataTables) and (DataTables.Count > 0)) then
+  begin
+    Success := daSuccess;
+
+    for I := 0 to DataTables.Count - 1 do
+    begin
+      Table := TCTable(DataTables[I]);
+
+      if (Length(TableFields) = 0) then
+        S := '*'
+      else
+      begin
+        S := '';
+        for J := 0 to Length(TableFields) - 1 do
+        begin
+          if (S <> '') then S := S + ',';
+          S := S + Client.EscapeIdentifier(TableFields[J].Name);
+        end;
+      end;
+
+      SQL := SQL + 'SELECT ' + S + ' FROM ' + Client.EscapeIdentifier(Table.Database.Name) + '.' + Client.EscapeIdentifier(Table.Name);
+      if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).PrimaryKey)) then
+      begin
+        SQL := SQL + ' ORDER BY ';
+        for J := 0 to TCBaseTable(Table).PrimaryKey.Columns.Count - 1 do
+        begin
+          if (J > 0) then SQL := SQL + ',';
+          SQL := SQL + Client.EscapeIdentifier(TCBaseTable(Table).PrimaryKey.Columns[J].Field.Name);
+        end;
+      end;
+      SQL := SQL + ';' + #13#10;
+    end;
+
+    while ((Success = daSuccess) and not Client.FirstResult(DataHandle, SQL)) do
+      DoError(DatabaseError(Client), EmptyToolsItem(), SQL);
   end;
 
   if (Success <> daAbort) then
@@ -3554,6 +3592,9 @@ begin
             Success := daSuccess;
           ExecuteDatabaseFooter(ExportObjects[I].DBObject.Database);
         end;
+
+        if (Data and (DataTables.IndexOf(ExportObjects[I].DBObject) + 1 < DataTables.Count) and not Client.NextResult(DataHandle)) then
+          DoError(DatabaseError(Client), EmptyToolsItem());
       end;
 
     if (Success <> daAbort) then
@@ -3562,6 +3603,12 @@ begin
   end;
 
   AfterExecute();
+
+  if (Data) then
+  begin
+    Client.CloseResult(DataHandle);
+    DataTables.Free();
+  end;
 end;
 
 procedure TTExport.ExecuteDatabaseFooter(const Database: TCDatabase);
@@ -3674,36 +3721,12 @@ var
 begin
   Table := TCTable(ExportObject.DBObject);
 
-  if (not Data or (Table is TCBaseTable) and (not Assigned(TCBaseTable(Table).Engine) or TCBaseTable(Table).Engine.IsMerge)) then
+  if (not Data or (Table is TCBaseTable) and TCBaseTable(Table).Engine.IsMerge) then
     DataSet := nil
   else
   begin
-    if (Length(TableFields) = 0) then
-      SQL := '*'
-    else
-    begin
-      SQL := '';
-      for I := 0 to Length(TableFields) - 1 do
-      begin
-        if (SQL <> '') then SQL := SQL + ',';
-        SQL := SQL + Table.Database.Client.EscapeIdentifier(TableFields[I].Name);
-      end;
-    end;
-
-    SQL := 'SELECT ' + SQL + ' FROM ' + Table.Database.Client.EscapeIdentifier(Table.Database.Name) + '.' + Table.Database.Client.EscapeIdentifier(Table.Name);
-    if ((Table is TCBaseTable) and Assigned(TCBaseTable(Table).PrimaryKey)) then
-    begin
-      SQL := SQL + ' ORDER BY ';
-      for I := 0 to TCBaseTable(Table).PrimaryKey.Columns.Count - 1 do
-      begin
-        if (I > 0) then SQL := SQL + ',';
-        SQL := SQL + Table.Database.Client.EscapeIdentifier(TCBaseTable(Table).PrimaryKey.Columns[I].Field.Name);
-      end;
-    end;
-
     DataSet := TMySQLQuery.Create(nil);
     DataSet.Connection := Client;
-    DataSet.CommandText := SQL;
     while ((Success = daSuccess) and not DataSet.Active) do
     begin
       DataSet.Open();
@@ -3745,10 +3768,11 @@ begin
     ExecuteTableFooter(Table, Fields, DataSet);
   end;
 
-  DataSet.Free();
-
   if (Success = daSuccess) then
     ExportObject.RecordsSum := ExportObject.RecordsDone;
+
+  if (Assigned(DataSet)) then
+    DataSet.Free();
 end;
 
 procedure TTExport.ExecuteTableFooter(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery);
@@ -4069,7 +4093,7 @@ begin
     Content := '';
 
     if (DisableKeys and (Table is TCBaseTable)) then
-      Content := Content + '/*!40000 ALTER TABLE ' + Table.Database.Client.EscapeIdentifier(Table.Name) + ' ENABLE KEYS */;' + #13#10;
+      Content := Content + '/*!40000 ALTER TABLE ' + Client.EscapeIdentifier(Table.Name) + ' ENABLE KEYS */;' + #13#10;
 
     if (Content <> '') then
       WriteContent(Content);
@@ -4133,7 +4157,7 @@ begin
     Content := Content + #13#10;
 
     if (DisableKeys and (Table is TCBaseTable)) then
-      Content := Content + '/*!40000 ALTER TABLE ' + Table.Database.Client.EscapeIdentifier(Table.Name) + ' DISABLE KEYS */;' + #13#10;
+      Content := Content + '/*!40000 ALTER TABLE ' + Client.EscapeIdentifier(Table.Name) + ' DISABLE KEYS */;' + #13#10;
   end;
 
   if (Content <> '') then
@@ -4147,7 +4171,7 @@ begin
     else
       SQLInsertPrefix := 'INSERT INTO ';
 
-    SQLInsertPrefix := SQLInsertPrefix + Table.Database.Client.EscapeIdentifier(Table.Name);
+    SQLInsertPrefix := SQLInsertPrefix + Client.EscapeIdentifier(Table.Name);
 
     if (not Structure and Data and Assigned(Table)) then
     begin
@@ -4155,7 +4179,7 @@ begin
       for I := 0 to Length(Fields) - 1 do
       begin
         if (I > 0) then SQLInsertPrefix := SQLInsertPrefix + ',';
-        SQLInsertPrefix := SQLInsertPrefix + Table.Database.Client.EscapeIdentifier(Fields[I].FieldName);
+        SQLInsertPrefix := SQLInsertPrefix + Client.EscapeIdentifier(Fields[I].FieldName);
       end;
       SQLInsertPrefix := SQLInsertPrefix + ')';
     end;
@@ -4257,7 +4281,7 @@ end;
 
 destructor TTExportText.Destroy();
 begin
-  SetLength(TargetFields, 0);
+  SetLength(DestinationFields, 0);
   SetLength(Fields, 0);
   SetLength(TableFields, 0);
 
@@ -4290,8 +4314,8 @@ begin
 
       if (not Assigned(Table)) then
         Value := Fields[I].DisplayName
-      else if (Length(TargetFields) > 0) then
-        Value := TargetFields[I].Name
+      else if (Length(DestinationFields) > 0) then
+        Value := DestinationFields[I].Name
       else
         Value := Table.Fields[I].Name;
 
@@ -4683,14 +4707,14 @@ begin
     Content := Content + '<th class="ObjectHeader">' + Escape(Preferences.LoadStr(71)) + '</th>';
     Content := Content + '<th class="ObjectHeader">' + Escape(Preferences.LoadStr(72)) + '</th>';
     Content := Content + '<th class="ObjectHeader">' + Escape(ReplaceStr(Preferences.LoadStr(73), '&', '')) + '</th>';
-    if (Table.Database.Client.ServerVersion >= 40100) then
+    if (Client.ServerVersion >= 40100) then
       Content := Content + '<th class="ObjectHeader">' + Escape(ReplaceStr(Preferences.LoadStr(111), '&', '')) + '</th>';
     Content := Content + '</tr>' + #13#10;
     for I := 0 to Table.Fields.Count - 1 do
     begin
-      if (Table.Fields[I].InPrimaryIndex) then
+      if (Table.Fields[I].InPrimaryKey) then
         ClassAttr := ' class="ObjectOfPrimaryKey"'
-      else if (Table.Fields[I].InUniqueIndex) then
+      else if (Table.Fields[I].InUniqueKey) then
         ClassAttr := ' class="ObjectOfUniqueKey"'
       else
         ClassAttr := ' class="Object"';
@@ -4710,7 +4734,7 @@ begin
         Content := Content + '<td' + ClassAttr + '>auto_increment</td>'
       else
         Content := Content + '<td' + ClassAttr + '>&nbsp;</td>';
-      if (Table.Database.Client.ServerVersion >= 40100) then
+      if (Client.ServerVersion >= 40100) then
         if (TCBaseTableField(Table.Fields[I]).Comment <> '') then
           Content := Content + '<td' + ClassAttr + '>' + Escape(TCBaseTableField(Table.Fields[I]).Comment) + '</td>'
         else
@@ -4750,8 +4774,8 @@ begin
       Content := Content + '<table border="0" cellspacing="0" class="TableData">' + #13#10;
     Content := Content + #9 + '<tr class="TableHeader">';
     for I := 0 to Length(Fields) - 1 do
-      if (I < Length(TargetFields)) then
-        Content := Content + '<th class="DataHeader">' + Escape(TargetFields[I].Name) + '</th>'
+      if (I < Length(DestinationFields)) then
+        Content := Content + '<th class="DataHeader">' + Escape(DestinationFields[I].Name) + '</th>'
       else
         Content := Content + '<th class="DataHeader">' + Escape(Fields[I].DisplayName) + '</th>';
     Content := Content + '</tr>' + #13#10;
@@ -5039,13 +5063,13 @@ begin
   for I := 0 to Length(Fields) - 1 do
   begin
     if (FieldAttribute = '') then
-      if (Length(TargetFields) > 0) then
-        Content := Content + #9#9 + '<' + LowerCase(Escape(TargetFields[I].Name)) + ''
+      if (Length(DestinationFields) > 0) then
+        Content := Content + #9#9 + '<' + LowerCase(Escape(DestinationFields[I].Name)) + ''
       else
         Content := Content + #9#9 + '<' + LowerCase(Escape(Fields[I].DisplayName)) + ''
     else
-      if (Length(TargetFields) > 0) then
-        Content := Content + #9#9 + '<' + FieldTag + ' ' + FieldAttribute + '="' + Escape(TargetFields[I].Name) + '"'
+      if (Length(DestinationFields) > 0) then
+        Content := Content + #9#9 + '<' + FieldTag + ' ' + FieldAttribute + '="' + Escape(DestinationFields[I].Name) + '"'
       else
         Content := Content + #9#9 + '<' + FieldTag + ' ' + FieldAttribute + '="' + Escape(Fields[I].DisplayName) + '"';
     if (Fields[I].IsNull) then
@@ -5058,8 +5082,8 @@ begin
         Content := Content + '>' + DataSet.GetAsString(Fields[I].FieldNo);
 
       if (FieldAttribute = '') then
-        if (Length(TargetFields) > 0) then
-          Content := Content + '</' + LowerCase(Escape(TargetFields[I].Name)) + '>' + #13#10
+        if (Length(DestinationFields) > 0) then
+          Content := Content + '</' + LowerCase(Escape(DestinationFields[I].Name)) + '>' + #13#10
         else
           Content := Content + '</' + LowerCase(Escape(Fields[I].DisplayName)) + '>' + #13#10
       else
@@ -5622,8 +5646,8 @@ begin
   begin
     if (I > 0) then
       SQL := SQL + ',';
-    if (Length(TargetFields) > 0) then
-      SQL := SQL + '"' + TargetFields[I].Name + '" '
+    if (Length(DestinationFields) > 0) then
+      SQL := SQL + '"' + DestinationFields[I].Name + '" '
     else if (Assigned(Table)) then
       SQL := SQL + '"' + Table.Fields[I].Name + '" '
     else
@@ -5764,13 +5788,13 @@ begin
 
 
   SQL := 'INSERT INTO "' + Table.Name + '"';
-  if (Length(TargetFields) > 0) then
+  if (Length(DestinationFields) > 0) then
   begin
     SQL := SQL + '(';
-    for I := 0 to Length(TargetFields) - 1 do
+    for I := 0 to Length(DestinationFields) - 1 do
     begin
       if (I > 0) then SQL := SQL + ',';
-      SQL := SQL + '"' + TargetFields[I].Name + '"';
+      SQL := SQL + '"' + DestinationFields[I].Name + '"';
     end;
     SQL := SQL + ')';
   end;
@@ -5866,7 +5890,7 @@ end;
 procedure TTFind.AfterExecute();
 begin
   Client.EndSilent();
-  Client.EndSynchro();
+  Client.EndSynchron();
 
   inherited;
 end;
@@ -5876,7 +5900,7 @@ begin
   inherited;
 
   Client.BeginSilent();
-  Client.BeginSynchro(); // We're still in a thread
+  Client.BeginSynchron(); // We're still in a thread
 end;
 
 constructor TTFind.Create(const AClient: TCClient);
@@ -6007,7 +6031,7 @@ begin
     begin
       SQL := '';
       for I := 0 to Table.Fields.Count - 1 do
-        if (Table.Fields[I].InPrimaryIndex) then
+        if (Table.Fields[I].InPrimaryKey) then
         begin
           if (SQL <> '') then SQL := SQL + ',';
           SQL := SQL + Client.EscapeIdentifier(Table.Fields[I].Name);
@@ -6306,7 +6330,7 @@ procedure TTFind.DoUpdateGUI();
 var
   I: Integer;
 begin
-  if ((Wnd > 0) and (UpdateMessage > 0)) then
+  if (Assigned(OnUpdate)) then
   begin
     CriticalSection.Enter();
 
@@ -6348,10 +6372,7 @@ begin
 
     CriticalSection.Leave();
 
-    if (Suspended) then
-      SendMessage(Wnd, UpdateMessage, WPARAM(FItem), LPARAM(@ProgressInfos))
-    else
-      PostMessage(Wnd, UpdateMessage, WPARAM(FItem), LPARAM(@ProgressInfos));
+    OnUpdate(ProgressInfos);
   end;
 end;
 
@@ -6386,27 +6407,32 @@ end;
 
 { TTTransfer  ******************************************************************}
 
-procedure TTTransfer.Add(const MasterClient: TCClient; const MasterDatabaseName, MasterTableName: string; const SlaveClient: TCClient; const SlaveDatabaseName, SlaveTableName: string);
+procedure TTTransfer.Add(const SourceClient: TCClient; const SourceDatabaseName, SourceTableName: string; const DestinationClient: TCClient; const DestinationDatabaseName, DestinationTableName: string);
+var
+  Element: ^TElement;
 begin
-  SetLength(Items, Length(Items) + 1);
+  GetMem(Element, SizeOf(Element^));
+  ZeroMemory(Element, SizeOf(Element^));
 
-  Items[Length(Items) - 1].Master.Client := MasterClient;
-  Items[Length(Items) - 1].Master.DatabaseName := MasterDatabaseName;
-  Items[Length(Items) - 1].Master.TableName := MasterTableName;
-  Items[Length(Items) - 1].Slave.Client := SlaveClient;
-  Items[Length(Items) - 1].Slave.DatabaseName := SlaveDatabaseName;
-  Items[Length(Items) - 1].Slave.TableName := SlaveTableName;
+  Element^.Source.Client := SourceClient;
+  Element^.Source.DatabaseName := SourceDatabaseName;
+  Element^.Source.TableName := SourceTableName;
+  Element^.Destination.Client := DestinationClient;
+  Element^.Destination.DatabaseName := DestinationDatabaseName;
+  Element^.Destination.TableName := DestinationTableName;
+
+  Elements.Add(Element);
 end;
 
 procedure TTTransfer.AfterExecute();
 begin
-  if (Length(Items) > 0) then
+  if (Elements.Count > 0) then
   begin
-    Items[0].Master.Client.EndSilent();
-    Items[0].Master.Client.EndSynchro();
+    TElement(Elements[0]^).Source.Client.EndSilent();
+    TElement(Elements[0]^).Source.Client.EndSynchron();
 
-    Items[0].Slave.Client.EndSilent();
-    Items[0].Slave.Client.EndSynchro();
+    TElement(Elements[0]^).Destination.Client.EndSilent();
+    TElement(Elements[0]^).Destination.Client.EndSynchron();
   end;
 
   inherited;
@@ -6416,26 +6442,58 @@ procedure TTTransfer.BeforeExecute();
 begin
   inherited;
 
-  if (Length(Items) > 0) then
+  if (Elements.Count > 0) then
   begin
-    Items[0].Master.Client.BeginSilent();
-    Items[0].Master.Client.BeginSynchro(); // We're still in a thread
+    TElement(Elements[0]^).Source.Client.BeginSilent();
+    TElement(Elements[0]^).Source.Client.BeginSynchron(); // We're still in a thread
 
-    Items[0].Slave.Client.BeginSilent();
-    Items[0].Slave.Client.BeginSynchro(); // We're still in a thread
+    TElement(Elements[0]^).Destination.Client.BeginSilent();
+    TElement(Elements[0]^).Destination.Client.BeginSynchron(); // We're still in a thread
   end;
+end;
+
+procedure TTTransfer.CloneTable(var Source, Destination: TItem);
+var
+  DestinationDatabase: TCDatabase;
+  SourceDatabase: TCDatabase;
+  SourceTable: TCBaseTable;
+begin
+  SourceDatabase := Source.Client.DatabaseByName(Source.DatabaseName);
+  DestinationDatabase := Destination.Client.DatabaseByName(Destination.DatabaseName);
+
+  SourceTable := SourceDatabase.BaseTableByName(Source.TableName);
+
+  while ((Success = daSuccess) and not DestinationDatabase.CloneTable(SourceTable, Destination.TableName, Data)) do
+    DoError(DatabaseError(Source.Client), ToolsItem(Destination));
+
+  if (Success = daSuccess) then
+  begin
+    Destination.Done := True;
+    if (Data) then
+    begin
+      Destination.RecordsSum := DestinationDatabase.BaseTableByName(Destination.TableName).CountRecords();
+      Destination.RecordsDone := Destination.RecordsSum;
+    end;
+  end;
+
+  DoUpdateGUI();
 end;
 
 constructor TTTransfer.Create();
 begin
   inherited;
 
-  SetLength(Items, 0);
+  Elements := TList.Create();
 end;
 
 destructor TTTransfer.Destroy();
 begin
-  SetLength(Items, 0);
+  while (Elements.Count > 0) do
+  begin
+    FreeMem(Elements[0]);
+    Elements.Delete(0);
+  end;
+  Elements.Free();
 
   inherited;
 end;
@@ -6445,10 +6503,10 @@ begin
   Result.ErrorType := TE_DifferentPrimaryIndex;
 end;
 
-function TTTransfer.DoExecuteSQL(var Element: TElement; const Database: TCDatabase; var SQL: string): Boolean;
+function TTTransfer.DoExecuteSQL(var Item: TItem; const Client: TCClient; var SQL: string): Boolean;
 begin
-  Result := (Success = daSuccess) and Database.Client.ExecuteSQL(SQL);
-  Delete(SQL, 1, Database.Client.ExecutedSQLLength);
+  Result := (Success = daSuccess) and Client.ExecuteSQL(SQL);
+  Delete(SQL, 1, Client.ExecutedSQLLength);
   SQL := Trim(SQL);
 end;
 
@@ -6456,29 +6514,23 @@ procedure TTTransfer.DoUpdateGUI();
 var
   I: Integer;
 begin
-  if ((Wnd > 0) and (UpdateMessage > 0)) then
+  if (Assigned(OnUpdate)) then
   begin
     CriticalSection.Enter();
 
     ProgressInfos.TablesDone := 0;
-    ProgressInfos.TablesSum := Length(Items);
+    ProgressInfos.TablesSum := Elements.Count;
     ProgressInfos.RecordsDone := 0;
     ProgressInfos.RecordsSum := 0;
     ProgressInfos.TimeDone := 0;
     ProgressInfos.TimeSum := 0;
 
-    for I := 0 to Length(Items) - 1 do
+    for I := 0 to Elements.Count - 1 do
     begin
-      if (Items[I].Master.Done) then
+      if (TElement(Elements[I]^).Destination.Done) then
         Inc(ProgressInfos.TablesDone);
-      if (Items[I].Slave.Done) then
-        Inc(ProgressInfos.TablesDone);
-
-      Inc(ProgressInfos.RecordsDone, Items[I].Master.RecordsDone);
-      Inc(ProgressInfos.RecordsDone, Items[I].Slave.RecordsDone);
-
-      Inc(ProgressInfos.RecordsSum, Items[I].Master.RecordsSum);
-      Inc(ProgressInfos.RecordsSum, Items[I].Slave.RecordsSum);
+      Inc(ProgressInfos.RecordsDone, TElement(Elements[I]^).Destination.RecordsDone);
+      Inc(ProgressInfos.RecordsSum, TElement(Elements[I]^).Destination.RecordsSum);
     end;
 
     ProgressInfos.TimeDone := Now() - StartTime;
@@ -6506,132 +6558,149 @@ begin
 
     CriticalSection.Leave();
 
-    if (Suspended) then
-      SendMessage(Wnd, UpdateMessage, 0, LPARAM(@ProgressInfos))
-    else
-      PostMessage(Wnd, UpdateMessage, 0, LPARAM(@ProgressInfos));
+    OnUpdate(ProgressInfos);
   end;
 end;
 
 procedure TTTransfer.Execute();
 var
+  DataHandle: TMySQLConnection.TResultHandle;
   DataSet: TMySQLQuery;
+  DestinationClient: TCClient;
   I: Integer;
-  J: Integer;
-  MasterDatabase: TCDatabase;
-  MasterTable: TCBaseTable;
   OLD_FOREIGN_KEY_CHECKS: string;
   OLD_UNIQUE_CHECKS: string;
-  SlaveDatabase: TCDatabase;
-  SlaveTable: TCBaseTable;
+  SourceClient: TCClient;
+  SourceTable: TCBaseTable;
   SQL: string;
 begin
+  SourceClient := TElement(Elements[0]^).Source.Client;
+  DestinationClient := TElement(Elements[0]^).Destination.Client;
+
   BeforeExecute();
 
-  I := 0;
-  while ((Success = daSuccess) and (I < Length(Items))) do
+  for I := 0 to Elements.Count - 1 do
   begin
-    MasterDatabase := Items[I].Master.Client.DatabaseByName(Items[I].Master.DatabaseName);
-    MasterTable := MasterDatabase.BaseTableByName(Items[I].Master.TableName);
-    SlaveDatabase := Items[I].Slave.Client.DatabaseByName(Items[I].Slave.DatabaseName);
-    if (not Assigned(SlaveDatabase)) then
-      SlaveTable := nil
-    else
-      SlaveTable := SlaveDatabase.BaseTableByName(Items[I].Master.TableName);
+    SourceTable := SourceClient.DatabaseByName(TElement(Elements[I]^).Source.DatabaseName).BaseTableByName(TElement(Elements[I]^).Source.TableName);
 
-    // Fetch Source before starting transfer to avoid a CR_Statements_OUT_OF_SYNC and make sure the Source is available
-    if ((MasterTable.Source = '') or Assigned(SlaveTable) and (SlaveTable.Source = '')) then
+    TElement(Elements[I]^).Source.Done := False;
+    TElement(Elements[I]^).Destination.Done := False;
+
+    TElement(Elements[I]^).Source.RecordsSum := 0;
+    TElement(Elements[I]^).Source.RecordsDone := 0;
+
+    TElement(Elements[I]^).Destination.RecordsSum := SourceTable.Rows;
+    TElement(Elements[I]^).Destination.RecordsDone := 0;
+
+    DoUpdateGUI();
+  end;
+
+  if (DisableKeys) then
+  begin
+    if (DestinationClient.ServerVersion >= 40014) then
     begin
-      for J := I to Length(Items) - 2 do
-        Items[J] := Items[J + 1];
-      SetLength(Items, Length(Items) - 1);
-    end
-    else
-    begin
-      Items[I].Master.Done := False;
-      Items[I].Slave.Done := False;
+      DataSet := TMySQLQuery.Create(nil);
+      DataSet.Connection := DestinationClient;
+      DataSet.CommandText := 'SELECT @@UNIQUE_CHECKS, @@FOREIGN_KEY_CHECKS';
 
-      Items[I].Master.RecordsSum := 0;
-      Items[I].Master.RecordsDone := 0;
+      while ((Success = daSuccess) and not DataSet.Active) do
+      begin
+        DataSet.Open();
+        if (DestinationClient.ErrorCode > 0) then
+          DoError(DatabaseError(DestinationClient), ToolsItem(TElement(Elements[0]^).Destination), SQL);
+      end;
 
-      Items[I].Slave.RecordsSum := MasterTable.Rows;
-      Items[I].Slave.RecordsDone := 0;
+      if (Success = daSuccess) then
+      begin
+        OLD_UNIQUE_CHECKS := DataSet.Fields[0].AsString;
+        OLD_FOREIGN_KEY_CHECKS := DataSet.Fields[1].AsString;
+        DataSet.Close();
 
-      DoUpdateGUI();
+        SQL := 'SET UNIQUE_CHECKS=0, FOREIGN_KEY_CHECKS=0;';
+        while ((Success = daSuccess) and not DestinationClient.ExecuteSQL(SQL)) do
+          DoError(DatabaseError(DestinationClient), ToolsItem(TElement(Elements[0]^).Destination), SQL);
+      end;
 
-      Inc(I);
+      FreeAndNil(DataSet);
     end;
   end;
 
-  if (Length(Items) > 0) then
+  if (SourceClient = DestinationClient) then
   begin
-    if (DisableKeys) then
-    begin
-      if (Items[0].Slave.Client.ServerVersion >= 40014) then
+
+    for I := 0 to Elements.Count - 1 do
+      if (Success <> daAbort) then
       begin
-        DataSet := TMySQLQuery.Create(nil);
-        DataSet.Connection := Items[0].Slave.Client;
-        DataSet.CommandText := 'SELECT @@UNIQUE_CHECKS, @@FOREIGN_KEY_CHECKS';
+        Success := daSuccess;
 
-        while ((Success = daSuccess) and not DataSet.Active) do
-        begin
-          DataSet.Open();
-          if (Items[0].Slave.Client.ErrorCode > 0) then
-            DoError(DatabaseError(Items[0].Slave.Client), ToolsItem(Items[0].Slave), SQL);
-        end;
-
-        if (Success = daSuccess) then
-        begin
-          OLD_UNIQUE_CHECKS := DataSet.Fields[0].AsString;
-          OLD_FOREIGN_KEY_CHECKS := DataSet.Fields[1].AsString;
-          DataSet.Close();
-
-          SQL := 'SET UNIQUE_CHECKS=0, FOREIGN_KEY_CHECKS=0;';
-          while ((Success = daSuccess) and not Items[0].Slave.Client.ExecuteSQL(SQL)) do
-            DoError(DatabaseError(Items[0].Slave.Client), ToolsItem(Items[0].Slave), SQL);
-        end;
-
-        FreeAndNil(DataSet);
+        CloneTable(TElement(Elements[I]^).Source, TElement(Elements[I]^).Destination);
       end;
+  end
+  else
+  begin
+    if (Success <> daAbort) then
+    begin
+      SQL := '';
+      if (Data) then
+        for I := 0 to Elements.Count - 1 do
+        begin
+          SourceTable := SourceClient.DatabaseByName(TElement(Elements[I]^).Source.DatabaseName).BaseTableByName(TElement(Elements[I]^).Source.TableName);
+
+          SQL := SQL + 'SELECT * FROM ' + SourceClient.EscapeIdentifier(SourceTable.Database.Name) + '.' + SourceClient.EscapeIdentifier(SourceTable.Name);
+        end;
+
+      for I := 0 to Elements.Count - 1 do
+        if (Success <> daAbort) then
+        begin
+          Success := daSuccess;
+
+          if (Data) then
+            if (I = 0) then
+              while ((Success = daSuccess) and not SourceClient.FirstResult(DataHandle, SQL)) do
+                DoError(DatabaseError(SourceClient), EmptyToolsItem(), SQL)
+            else
+              if (not SourceClient.NextResult(DataHandle)) then
+                DoError(DatabaseError(SourceClient), EmptyToolsItem());
+
+          ExecuteTable(TElement(Elements[I]^).Source, TElement(Elements[I]^).Destination);
+        end;
+
+      if (Data) then
+        SourceClient.CloseResult(DataHandle);
     end;
 
-    for I := 0 to Length(Items) - 1 do
-      if (Success <> daAbort) then
-      begin
-        Success := daSuccess;
-
-        ExecuteTable(Items[I].Master, Items[I].Slave);
-        if (Success = daFail) then Success := daSuccess;
-      end;
-
     // Handle Foreign Keys after tables executed to have more parent tables available
-    for I := 0 to Length(Items) - 1 do
+    for I := 0 to Elements.Count - 1 do
       if (Success <> daAbort) then
       begin
         Success := daSuccess;
 
-        ExecuteForeignKeys(Items[I].Master, Items[I].Slave);
+        ExecuteForeignKeys(TElement(Elements[I]^).Source, TElement(Elements[I]^).Destination);
         if (Success = daFail) then Success := daSuccess;
       end;
+  end;
 
-    if (DisableKeys) then
+  if (DisableKeys) then
+  begin
+    if (DestinationClient.ServerVersion >= 40014) then
     begin
-      if (Items[0].Slave.Client.ServerVersion >= 40014) then
-      begin
-        SQL := 'SET UNIQUE_CHECKS=' + OLD_UNIQUE_CHECKS + ', FOREIGN_KEY_CHECKS=' + OLD_FOREIGN_KEY_CHECKS + ';' + #13#10;
-        while ((Success = daSuccess) and not Items[0].Slave.Client.ExecuteSQL(SQL)) do
-          DoError(DatabaseError(Items[0].Slave.Client), ToolsItem(Items[0].Slave), SQL);
-      end;
+      SQL := 'SET UNIQUE_CHECKS=' + OLD_UNIQUE_CHECKS + ', FOREIGN_KEY_CHECKS=' + OLD_FOREIGN_KEY_CHECKS + ';' + #13#10;
+      while ((Success = daSuccess) and not DestinationClient.ExecuteSQL(SQL)) do
+        DoError(DatabaseError(DestinationClient), ToolsItem(TElement(Elements[0]^).Destination), SQL);
     end;
   end;
 
   AfterExecute();
 end;
 
-procedure TTTransfer.ExecuteData(var SourceItem, TargetItem: TElement);
+procedure TTTransfer.ExecuteData(var Source, Destination: TItem);
 var
   Buffer: TTStringBuffer;
   DBValues: RawByteString;
+  DestinationDatabase: TCDatabase;
+  DestinationFieldNames: string;
+  DestinationPrimaryIndexFieldNames: string;
+  DestinationTable: TCBaseTable;
   Error: TTools.TError;
   FieldCount: Integer;
   FieldInfo: TFieldInfo;
@@ -6651,165 +6720,59 @@ var
   SQL: string;
   SQLThread: TSQLThread;
   SQLValues: TSQLStrings;
-  TargetDatabase: TCDatabase;
-  TargetDataSet: TMySQLQuery;
-  TargetExistingDataSet: TMySQLDataSet;
-  TargetFieldNames: string;
-  TargetPrimaryIndexFieldNames: string;
-  TargetPrimaryIndexValues: array of string;
-  TargetTable: TCBaseTable;
   Update: Boolean;
   Values: string;
   WhereClausel: string;
   WrittenSize: Cardinal;
 begin
   SourceValues := ''; FilenameP[0] := #0;
-  SourceDatabase := SourceItem.Client.DatabaseByName(SourceItem.DatabaseName);
-  TargetDatabase := TargetItem.Client.DatabaseByName(TargetItem.DatabaseName);
-  SourceTable := SourceDatabase.BaseTableByName(SourceItem.TableName);
-  TargetTable := TargetDatabase.BaseTableByName(TargetItem.TableName);
+  SourceDatabase := Source.Client.DatabaseByName(Source.DatabaseName);
+  DestinationDatabase := Destination.Client.DatabaseByName(Destination.DatabaseName);
+  SourceTable := SourceDatabase.BaseTableByName(Source.TableName);
+  DestinationTable := DestinationDatabase.BaseTableByName(Destination.TableName);
 
   FieldCount := 0;
   for I := 0 to SourceTable.Fields.Count - 1 do
-    for J := 0 to TargetTable.Fields.Count - 1 do
-      if (lstrcmpi(PChar(SourceTable.Fields[I].Name), PChar(TargetTable.Fields[J].Name)) = 0) then
+    for J := 0 to DestinationTable.Fields.Count - 1 do
+      if (lstrcmpi(PChar(SourceTable.Fields[I].Name), PChar(DestinationTable.Fields[J].Name)) = 0) then
         Inc(FieldCount);
 
   if (FieldCount > 0) then
   begin
-    if ((Success = daSuccess) and DisableKeys and (TargetDatabase.Client.ServerVersion >= 40000)) then
+    if ((Success = daSuccess) and DisableKeys and (Destination.Client.ServerVersion >= 40000)) then
     begin
-      SQL := 'ALTER TABLE ' + TargetDatabase.Client.EscapeIdentifier(TargetTable.Name) + ' DISABLE KEYS;';
-      if (not TargetDatabase.Client.ExecuteSQL(SQL)) then
-        DoError(DatabaseError(TargetDatabase.Client), ToolsItem(TargetItem), SQL);
+      SQL := 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' DISABLE KEYS;';
+      if (not Destination.Client.ExecuteSQL(SQL)) then
+        DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
     end;
 
     SourceFieldNames := '';
-    WhereClausel := '';
-
-    if (SourceDatabase.Client <> TargetDatabase.Client) then
-      SourceDataSet := TMySQLQuery.Create(nil)
-    else
-      SourceDataSet := TMySQLDataSet.Create(nil);
-    SourceDataSet.Connection := SourceDatabase.Client;
 
     if (Success = daSuccess) then
     begin
-      if (not UpdateData) then
-        TargetExistingDataSet := nil
-      else
-      begin
-        SQL := '';
-        for I := 0 to TargetTable.Fields.Count - 1 do
-          if (TargetTable.Fields[I].InPrimaryIndex) then
-          begin
-            if (SQL <> '') then SQL := SQL + ',';
-            SQL := SQL + TargetDatabase.Client.EscapeIdentifier(TargetTable.Fields[I].Name);
-          end;
-        SQL := 'SELECT ' + SQL + ' FROM ' + TargetDatabase.Client.EscapeIdentifier(TargetDatabase.Name) + '.' + TargetDatabase.Client.EscapeIdentifier(TargetTable.Name);
+      SourceDataSet := TMySQLQuery.Create(nil);
+      SourceDataSet.Connection := Source.Client;
+      SourceDataSet.Open();
 
-        TargetDataSet := TMySQLQuery.Create(nil);
-        TargetDataSet.Connection := TargetDatabase.Client;
-        TargetDataSet.CommandText := SQL;
-        while ((Success = daSuccess) and not TargetDataSet.Active) do
-        begin
-          TargetDataSet.Open();
-          if (TargetDatabase.Client.ErrorCode > 0) then
-            DoError(DatabaseError(TargetDatabase.Client), ToolsItem(TargetItem), SQL);
-        end;
-
-        if ((Success <> daSuccess) or TargetDataSet.IsEmpty) then
-          TargetExistingDataSet := nil
-        else
-        begin
-          SQL := '';
-          for I := 0 to TargetTable.Fields.Count - 1 do
-            if (TargetTable.Fields[I].InPrimaryIndex) then
-            begin
-              if (SQL <> '') then SQL := SQL + ',';
-              SQL := SQL + TargetDatabase.Client.EscapeIdentifier(TargetTable.Fields[I].Name);
-            end;
-          SQL := 'SELECT ' + SQL + ' FROM ' + TargetDatabase.Client.EscapeIdentifier(TargetDatabase.Name) + '.' + TargetDatabase.Client.EscapeIdentifier(TargetTable.Name);
-          SQL := SQL + ' WHERE ';
-          if (TargetDataSet.FieldCount = 1) then
-          begin
-            SQL := SQL + TargetDatabase.Client.EscapeIdentifier(TargetDataSet.Fields[0].Name) + ' IN (';
-            repeat
-              if (TargetDataSet.RecNo > 0) then SQL := SQL + ',';
-              SQL := SQL + TargetDataSet.SQLFieldValue(TargetDataSet.Fields[0]);
-            until (not TargetDataSet.FindNext());
-            SQL := SQL + ');' + #13#10;
-          end
-          else
-          begin
-            repeat
-              if (TargetDataSet.RecNo > 0) then SQL := SQL + ' OR ';
-              SQL := SQL + '(';
-              for I := 0 to TargetDataSet.FieldCount - 1 do
-              begin
-                if (I > 0) then SQL := SQL + ' AND ';
-                SQL := SQL + TargetDatabase.Client.EscapeIdentifier(TargetDataSet.Fields[I].Name) + '=' + TargetDataSet.SQLFieldValue(TargetDataSet.Fields[I]);
-              end;
-              SQL := SQL + ')';
-            until (not TargetDataSet.FindNext());
-          end;
-
-          TargetExistingDataSet := TMySQLDataSet.Create(nil);
-          TargetExistingDataSet.Connection := TargetDatabase.Client;
-          TargetExistingDataSet.CommandText := SQL;
-          while ((Success = daSuccess) and not TargetExistingDataSet.Active) do
-          begin
-            TargetExistingDataSet.Open();
-            if (TargetDatabase.Client.ErrorCode > 0) then
-              DoError(DatabaseError(TargetDatabase.Client), ToolsItem(TargetItem), SQL);
-          end;
-
-          TargetDataSet.Close();
-        end;
-      end;
-
-      SQL := '';
-      for I := 0 to SourceTable.Fields.Count - 1 do
-        if (SourceTable.Fields[I].InPrimaryIndex or Assigned(TargetTable.FieldByName(SourceTable.Fields[I].Name))) then
-        begin
-          if (SQL <> '') then SQL := SQL + ',';
-          SQL := SQL + SourceDatabase.Client.EscapeIdentifier(SourceTable.Fields[I].Name)
-        end;
-      SQL := 'SELECT ' + SQL + ' FROM ' + SourceDatabase.Client.EscapeIdentifier(SourceItem.DatabaseName) + '.' + SourceDatabase.Client.EscapeIdentifier(SourceItem.TableName);
-      if (not UpdateData) then
-        SQL := SQL + WhereClausel;
-
-      SourceDataSet.CommandText := SQL;
-      while ((Success = daSuccess) and not SourceDataSet.Active) do
-      begin
-        SourceDataSet.Open();
-        if (SourceDatabase.Client.ErrorCode > 0) then
-          DoError(DatabaseError(SourceDatabase.Client), ToolsItem(SourceItem), SQL);
-      end;
-
-      if (Assigned(TargetExistingDataSet)) then
-        for I := 0 to TargetExistingDataSet.FieldCount - 1 do
-          TargetExistingDataSet.Fields[I].Tag := SourceDataSet.FieldByName(TargetExistingDataSet.Fields[I].Name).FieldNo - 1;
-
-      SetLength(SourceFields, TargetTable.Fields.Count);
-      for I := 0 to TargetTable.Fields.Count - 1 do
+      SetLength(SourceFields, DestinationTable.Fields.Count);
+      for I := 0 to DestinationTable.Fields.Count - 1 do
       begin
         SourceFields[Length(SourceFields) - 1] := -1;
         for J := 0 to SourceDataSet.FieldCount - 1 do
-          if (GetFieldInfo(SourceDataSet.Fields[J].Origin, FieldInfo) and (lstrcmpi(PChar(FieldInfo.OriginalFieldName), PChar(TargetTable.Fields[I].Name)) = 0)) then
+          if (GetFieldInfo(SourceDataSet.Fields[J].Origin, FieldInfo) and (lstrcmpi(PChar(FieldInfo.OriginalFieldName), PChar(DestinationTable.Fields[I].Name)) = 0)) then
           begin
             SourceFields[I] := J;
 
-            if (TargetFieldNames <> '') then TargetFieldNames := TargetFieldNames + ',';
-            TargetFieldNames := TargetFieldNames + TargetDatabase.Client.EscapeIdentifier(TargetTable.Fields[I].Name);
+            if (DestinationFieldNames <> '') then DestinationFieldNames := DestinationFieldNames + ',';
+            DestinationFieldNames := DestinationFieldNames + Destination.Client.EscapeIdentifier(DestinationTable.Fields[I].Name);
           end;
       end;
 
-      if ((Success = daSuccess) and (TargetFieldNames <> '') and not SourceDataSet.IsEmpty()) then
+      if ((Success = daSuccess) and (DestinationFieldNames <> '') and not SourceDataSet.IsEmpty()) then
       begin
-        TargetDatabase.Client.StartTransaction();
+        Destination.Client.StartTransaction();
 
-        if (TargetDatabase.Client.LoadDataFile and not Assigned(TargetExistingDataSet)) then
+        if (Destination.Client.LoadDataFile) then
         begin
           Pipename := '\\.\pipe\' + LoadStr(1000);
           Pipe := CreateNamedPipe(PChar(Pipename),
@@ -6820,40 +6783,40 @@ begin
             Error.ErrorType := TE_File;
             Error.ErrorCode := GetLastError();
             Error.ErrorMessage := SysErrorMessage(GetLastError());
-            DoError(Error, ToolsItem(TargetItem));
+            DoError(Error, ToolsItem(Destination));
             Success := daAbort;
           end
           else
           begin
             SQL := '';
-            if (TargetDatabase.Name <> TargetDatabase.Client.DatabaseName) then
-              SQL := SQL + TargetDatabase.SQLUse();
-            SQL := SQL + SQLLoadDataInfile(TargetDatabase, False, UpdateData, Pipename, TargetDatabase.Client.Charset, TargetDatabase.Name, TargetTable.Name, TargetFieldNames, '''', ',', #13#10);
+            if (DestinationDatabase.Name <> Destination.Client.DatabaseName) then
+              SQL := SQL + DestinationDatabase.SQLUse();
+            SQL := SQL + SQLLoadDataInfile(DestinationDatabase, False, False, Pipename, Destination.Client.Charset, DestinationDatabase.Name, DestinationTable.Name, DestinationFieldNames, '''', ',', #13#10);
 
-            SQLThread := TSQLThread.Create(TargetDatabase.Client, SQL);
+            SQLThread := TSQLThread.Create(Destination.Client, SQL);
 
             if (ConnectNamedPipe(Pipe, nil)) then
             begin
               repeat
                 DBValues := '';
-                for I := 0 to TargetTable.Fields.Count - 1 do
+                for I := 0 to DestinationTable.Fields.Count - 1 do
                   if (SourceFields[I] >= 0) then
                   begin
                     if (DBValues <> '') then DBValues := DBValues + ',';
                     if (not Assigned(SourceDataSet.LibRow^[SourceFields[I]])) then
                       DBValues := DBValues + 'NULL'
                     else if (BitField(SourceDataSet.Fields[SourceFields[I]])) then
-                      DBValues := DBValues + DataFileValue(SourceDataSet.Fields[SourceFields[I]].AsString, not (TargetTable.Fields[I].FieldType in NotQuotedFieldTypes))
-                    else if (TargetTable.Fields[I].FieldType in NotQuotedFieldTypes) then
+                      DBValues := DBValues + DataFileValue(SourceDataSet.Fields[SourceFields[I]].AsString, not (DestinationTable.Fields[I].FieldType in NotQuotedFieldTypes))
+                    else if (DestinationTable.Fields[I].FieldType in NotQuotedFieldTypes) then
                     begin
                       SetLength(DBValues, Length(DBValues) + SourceDataSet.LibLengths^[SourceFields[I]]);
                       MoveMemory(@DBValues[1 + Length(DBValues) - SourceDataSet.LibLengths^[SourceFields[I]]], SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]]);
                     end
-                    else if (TargetTable.Fields[I].FieldType in TextFieldTypes) then
-                      if ((TargetDatabase.Client.CodePage = SourceDataSet.Connection.CodePage) or (TargetTable.Fields[I].FieldType in BinaryFieldTypes)) then
+                    else if (DestinationTable.Fields[I].FieldType in TextFieldTypes) then
+                      if ((Destination.Client.CodePage = SourceDataSet.Connection.CodePage) or (DestinationTable.Fields[I].FieldType in BinaryFieldTypes)) then
                         DBValues := DBValues + DataFileEscape(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]])
                       else
-                        DBValues := DBValues + DataFileEscape(TargetDatabase.Client.LibEncode(SourceDataSet.GetAsString(SourceDataSet.Fields[SourceFields[I]].FieldNo)))
+                        DBValues := DBValues + DataFileEscape(Destination.Client.LibEncode(SourceDataSet.GetAsString(SourceDataSet.Fields[SourceFields[I]].FieldNo)))
                     else
                       DBValues := DBValues + DataFileEscape(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]]);
                   end;
@@ -6864,12 +6827,12 @@ begin
                   Error.ErrorType := TE_File;
                   Error.ErrorCode := GetLastError();
                   Error.ErrorMessage := SysErrorMessage(GetLastError());
-                  DoError(Error, ToolsItem(TargetItem));
+                  DoError(Error, ToolsItem(Destination));
                   Success := daAbort;
                 end;
 
-                Inc(TargetItem.RecordsDone);
-                if (TargetItem.RecordsDone mod 100 = 0) then DoUpdateGUI();
+                Inc(Destination.RecordsDone);
+                if (Destination.RecordsDone mod 100 = 0) then DoUpdateGUI();
 
                 if (WaitForSingleObject(UserAbort, 0) = WAIT_OBJECT_0) then
                   Success := daAbort;
@@ -6879,8 +6842,8 @@ begin
                 SQLThread.WaitFor();
               DisconnectNamedPipe(Pipe);
 
-              if (TargetDatabase.Client.ErrorCode <> 0) then
-                DoError(DatabaseError(TargetDatabase.Client), ToolsItem(TargetItem), SQL);
+              if (Destination.Client.ErrorCode <> 0) then
+                DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
             end;
 
             FreeAndNil(SQLThread);
@@ -6889,55 +6852,44 @@ begin
         end
         else
         begin
-          TargetPrimaryIndexFieldNames := '';
-          for I := 0 to TargetTable.Fields.Count - 1 do
-            if (TargetTable.Fields[I].InPrimaryIndex) then
+          DestinationPrimaryIndexFieldNames := '';
+          for I := 0 to DestinationTable.Fields.Count - 1 do
+            if (DestinationTable.Fields[I].InPrimaryKey) then
             begin
-              if (TargetPrimaryIndexFieldNames <> '') then TargetPrimaryIndexFieldNames := TargetPrimaryIndexFieldNames + ';';
-              TargetPrimaryIndexFieldNames := TargetPrimaryIndexFieldNames + TargetTable.Fields[I].Name;
+              if (DestinationPrimaryIndexFieldNames <> '') then DestinationPrimaryIndexFieldNames := DestinationPrimaryIndexFieldNames + ';';
+              DestinationPrimaryIndexFieldNames := DestinationPrimaryIndexFieldNames + DestinationTable.Fields[I].Name;
             end;
-          if (not Assigned(TargetExistingDataSet)) then
-            SetLength(TargetPrimaryIndexValues, 0)
-          else
-            SetLength(TargetPrimaryIndexValues, TargetExistingDataSet.FieldCount);
 
           Buffer := TTStringBuffer.Create(SQLPacketSize);
           InsertStmtInBuffer := False;
 
-          if (TargetDatabase.Name <> TargetDatabase.Client.DatabaseName) then
-            Buffer.Write(TargetDatabase.SQLUse());
+          if (DestinationDatabase.Name <> Destination.Client.DatabaseName) then
+            Buffer.Write(DestinationDatabase.SQLUse());
 
-          SetLength(SQLValues, TargetTable.Fields.Count);
+          SetLength(SQLValues, DestinationTable.Fields.Count);
           repeat
-            if (Assigned(TargetExistingDataSet)) then
-              for I := 0 to TargetExistingDataSet.FieldCount - 1 do
-                if (not Assigned(TargetExistingDataSet.LibRow^[I])) then
-                  TargetPrimaryIndexValues[I] := Null
-                else if (BitField(TargetExistingDataSet.Fields[I])) then
-                  TargetPrimaryIndexValues[I] := SourceDataSet.GetAsString(TargetExistingDataSet.Fields[I].FieldNo);
-
-            for I := 0 to TargetTable.Fields.Count - 1 do
+            for I := 0 to DestinationTable.Fields.Count - 1 do
               if (SourceFields[I] >= 0) then
                 SQLValues[I] := SourceDataSet.SQLFieldValue(SourceDataSet.Fields[SourceFields[I]]);
 
             Update := False;
             Values := ''; WhereClausel := '';
-            for I := 0 to TargetTable.Fields.Count - 1 do
+            for I := 0 to DestinationTable.Fields.Count - 1 do
               if (SourceFields[I] >= 0) then
                 if (not Update) then
                 begin
                   if (Values <> '') then Values := Values + ',';
                   Values := Values + SQLValues[I];
                 end
-                else if (not TargetTable.Fields[I].InPrimaryIndex) then
+                else if (not DestinationTable.Fields[I].InPrimaryKey) then
                 begin
                   if (Values <> '') then Values := Values + ',';
-                  Values := Values + TargetDatabase.Client.EscapeIdentifier(TargetTable.Fields[I].Name) + '=' + SQLValues[I];
+                  Values := Values + Destination.Client.EscapeIdentifier(DestinationTable.Fields[I].Name) + '=' + SQLValues[I];
                 end
                 else
                 begin
                   if (WhereClausel <> '') then WhereClausel := WhereClausel + ' AND ';
-                  WhereClausel := WhereClausel + TargetDatabase.Client.EscapeIdentifier(TargetTable.Fields[I].Name) + '=' + SQLValues[I];
+                  WhereClausel := WhereClausel + Destination.Client.EscapeIdentifier(DestinationTable.Fields[I].Name) + '=' + SQLValues[I];
                 end;
 
             if (Update) then
@@ -6947,17 +6899,14 @@ begin
                 Buffer.Write(';' + #13#10);
                 InsertStmtInBuffer := False;
               end;
-              Buffer.Write(SQLUpdate(TargetTable, Values, WhereClausel));
+              Buffer.Write(SQLUpdate(DestinationTable, Values, WhereClausel));
             end
             else if (not InsertStmtInBuffer) then
             begin
-              if (UpdateData) then
-                SQL := 'REPLACE INTO '
-              else
-                SQL := 'INSERT INTO ';
-              SQL := SQL + TargetDatabase.Client.EscapeIdentifier(TargetTable.Name);
-              if (TargetFieldNames <> '') then
-                SQL := SQL + ' (' + TargetFieldNames + ')';
+              SQL := 'INSERT INTO ';
+              SQL := SQL + Destination.Client.EscapeIdentifier(DestinationTable.Name);
+              if (DestinationFieldNames <> '') then
+                SQL := SQL + ' (' + DestinationFieldNames + ')';
               SQL := SQL + ' VALUES (' + Values + ')';
               Buffer.Write(SQL);
               InsertStmtInBuffer := True;
@@ -6965,7 +6914,7 @@ begin
             else
               Buffer.Write(',(' + Values + ')');
 
-            if ((Buffer.Size > 0) and (Update and not TargetDatabase.Client.MultiStatements or (Buffer.Size >= SQLPacketSize))) then
+            if ((Buffer.Size > 0) and (Update and not Destination.Client.MultiStatements or (Buffer.Size >= SQLPacketSize))) then
             begin
               if (InsertStmtInBuffer) then
               begin
@@ -6973,13 +6922,13 @@ begin
                 InsertStmtInBuffer := False;
               end;
               S := Buffer.Read();
-              while ((Success = daSuccess) and not DoExecuteSQL(TargetItem, TargetDatabase, S)) do
-                DoError(DatabaseError(TargetDatabase.Client), ToolsItem(TargetItem), S);
+              while ((Success = daSuccess) and not DoExecuteSQL(Destination, Destination.Client, S)) do
+                DoError(DatabaseError(Destination.Client), ToolsItem(Destination), S);
               Buffer.Write(S);
             end;
 
-            Inc(TargetItem.RecordsDone);
-            if (TargetItem.RecordsDone mod 100 = 0) then DoUpdateGUI();
+            Inc(Destination.RecordsDone);
+            if (Destination.RecordsDone mod 100 = 0) then DoUpdateGUI();
 
             if (WaitForSingleObject(UserAbort, 0) = WAIT_OBJECT_0) then
               Success := daAbort;
@@ -6988,273 +6937,220 @@ begin
           if (InsertStmtInBuffer) then
             Buffer.Write(';' + #13#10);
           S := Buffer.Read();
-          while ((Success = daSuccess) and (S <> '') and not DoExecuteSQL(TargetItem, TargetDatabase, S)) do
-            DoError(DatabaseError(TargetDatabase.Client), ToolsItem(TargetItem), S);
+          while ((Success = daSuccess) and (S <> '') and not DoExecuteSQL(Destination, Destination.Client, S)) do
+            DoError(DatabaseError(Destination.Client), ToolsItem(Destination), S);
 
           FreeAndNil(Buffer);
         end;
 
         if (Success = daSuccess) then
-          TargetDatabase.Client.CommitTransaction()
+          Destination.Client.CommitTransaction()
         else
-          TargetDatabase.Client.RollbackTransaction();
+          Destination.Client.RollbackTransaction();
       end;
 
-      if (Assigned(TargetDataSet)) then
-        FreeAndNil(TargetDataSet);
+      SourceDataSet.Free();
     end;
 
-    FreeAndNil(SourceDataSet);
-    if (Assigned(TargetExistingDataSet)) then
-      FreeAndNil(TargetExistingDataSet);
-
-    if (DisableKeys and (TargetDatabase.Client.ServerVersion >= 40000)) then
+    if (DisableKeys and (Destination.Client.ServerVersion >= 40000)) then
     begin
-      SQL := 'ALTER TABLE ' + TargetDatabase.Client.EscapeIdentifier(TargetTable.Name) + ' ENABLE KEYS;';
-      if (not TargetDatabase.Client.ExecuteSQL(SQL)) then
-        DoError(DatabaseError(TargetDatabase.Client), ToolsItem(TargetItem), SQL);
+      SQL := 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' ENABLE KEYS;';
+      if (not Destination.Client.ExecuteSQL(SQL)) then
+        DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
     end;
   end;
 end;
 
-procedure TTTransfer.ExecuteForeignKeys(var Source, Target: TElement);
+procedure TTTransfer.ExecuteForeignKeys(var Source, Destination: TItem);
 var
+  DestinationDatabase: TCDatabase;
+  DestinationTable: TCBaseTable;
   I: Integer;
   NewTable: TCBaseTable;
   ParentTable: TCBaseTable;
   SourceDatabase: TCDatabase;
   SourceTable: TCBaseTable;
-  TargetDatabase: TCDatabase;
-  TargetTable: TCBaseTable;
 begin
   SourceDatabase := Source.Client.DatabaseByName(Source.DatabaseName);
   SourceTable := SourceDatabase.BaseTableByName(Source.TableName);
-  TargetDatabase := Target.Client.DatabaseByName(Target.DatabaseName);
-  TargetTable := TargetDatabase.BaseTableByName(Target.TableName);
+  DestinationDatabase := Destination.Client.DatabaseByName(Destination.DatabaseName);
+  DestinationTable := DestinationDatabase.BaseTableByName(Destination.TableName);
   NewTable := nil;
 
-  if (Assigned(TargetTable)) then
+  if (Assigned(DestinationTable)) then
     for I := 0 to SourceTable.ForeignKeys.Count - 1 do
-      if (not Assigned(TargetTable.ForeignKeyByName(SourceTable.ForeignKeys[I].Name))) then
+      if (not Assigned(DestinationTable.ForeignKeyByName(SourceTable.ForeignKeys[I].Name))) then
       begin
         if (not Assigned(NewTable)) then
         begin
-          NewTable := TCBaseTable.Create(TargetDatabase.Tables);
-          NewTable.Assign(TargetTable);
+          NewTable := TCBaseTable.Create(DestinationDatabase.Tables);
+          NewTable.Assign(DestinationTable);
         end;
 
-        ParentTable := TargetDatabase.BaseTableByName(SourceTable.ForeignKeys[I].Parent.TableName);
+        ParentTable := DestinationDatabase.BaseTableByName(SourceTable.ForeignKeys[I].Parent.TableName);
         if (Assigned(ParentTable)) then
           NewTable.ForeignKeys.AddForeignKey(SourceTable.ForeignKeys[I]);
       end;
 
   if (Assigned(NewTable)) then
   begin
-    while ((Success = daSuccess) and not TargetDatabase.UpdateTable(TargetTable, NewTable)) do
-      DoError(DatabaseError(Target.Client), ToolsItem(Target));
+    while ((Success = daSuccess) and not DestinationDatabase.UpdateTable(DestinationTable, NewTable)) do
+      DoError(DatabaseError(Destination.Client), ToolsItem(Destination));
     FreeAndNil(NewTable);
   end;
 end;
 
-procedure TTTransfer.ExecuteStructure(const Source, Target: TElement);
+procedure TTTransfer.ExecuteStructure(const Source, Destination: TItem);
 var
   DeleteForeignKey: Boolean;
+  DestinationDatabase: TCDatabase;
+  DestinationTable: TCBaseTable;
   I: Integer;
   J: Integer;
   Modified: Boolean;
-  NewTargetTable: TCBaseTable;
+  NewDestinationTable: TCBaseTable;
   OldFieldBefore: TCTableField;
   SourceDatabase: TCDatabase;
   SourceTable: TCBaseTable;
-  TargetDatabase: TCDatabase;
-  TargetTable: TCBaseTable;
 begin
   SourceDatabase := Source.Client.DatabaseByName(Source.DatabaseName);
   SourceTable := SourceDatabase.BaseTableByName(Source.TableName);
-  TargetDatabase := Target.Client.DatabaseByName(Target.DatabaseName);
-  TargetTable := TargetDatabase.BaseTableByName(Target.TableName);
+  DestinationDatabase := Destination.Client.DatabaseByName(Destination.DatabaseName);
+  DestinationTable := DestinationDatabase.BaseTableByName(Destination.TableName);
 
-  if (Assigned(TargetTable)) then
+  if (Assigned(DestinationTable)) then
   begin
-    while ((Success = daSuccess) and not TargetDatabase.DeleteObject(TargetTable)) do
-      DoError(DatabaseError(TargetDatabase.Client), ToolsItem(Target));
-    TargetTable := nil;
+    while ((Success = daSuccess) and not DestinationDatabase.DeleteObject(DestinationTable)) do
+      DoError(DatabaseError(Destination.Client), ToolsItem(Destination));
+    DestinationTable := nil;
   end;
 
-  NewTargetTable := TCBaseTable.Create(TargetDatabase.Tables);
+  NewDestinationTable := TCBaseTable.Create(DestinationDatabase.Tables);
 
-  if (not Assigned(TargetTable)) then
+  if (not Assigned(DestinationTable)) then
   begin
-    NewTargetTable.Assign(SourceTable);
+    NewDestinationTable.Assign(SourceTable);
 
-    for I := NewTargetTable.ForeignKeys.Count - 1 downto 0 do
+    for I := NewDestinationTable.ForeignKeys.Count - 1 downto 0 do
     begin
-      DeleteForeignKey := (TargetDatabase.Client.TableNameCmp(NewTargetTable.ForeignKeys[I].Parent.DatabaseName, SourceTable.Database.Name) <> 0)
-        or not Assigned(TargetDatabase.BaseTableByName(NewTargetTable.ForeignKeys[I].Parent.TableName));
+      DeleteForeignKey := (Destination.Client.TableNameCmp(NewDestinationTable.ForeignKeys[I].Parent.DatabaseName, SourceTable.Database.Name) <> 0)
+        or not Assigned(DestinationDatabase.BaseTableByName(NewDestinationTable.ForeignKeys[I].Parent.TableName));
 
       if (not DeleteForeignKey) then
       begin
-        NewTargetTable.ForeignKeys[I].Parent.DatabaseName := NewTargetTable.Database.Name;
-        NewTargetTable.ForeignKeys[I].Parent.TableName := NewTargetTable.Database.BaseTableByName(NewTargetTable.ForeignKeys[I].Parent.TableName).Name;
-        DeleteForeignKey := not Assigned(TargetDatabase.TableByName(NewTargetTable.ForeignKeys[I].Parent.TableName));
-        for J := 0 to Length(NewTargetTable.ForeignKeys[I].Parent.FieldNames) - 1 do
+        NewDestinationTable.ForeignKeys[I].Parent.DatabaseName := NewDestinationTable.Database.Name;
+        NewDestinationTable.ForeignKeys[I].Parent.TableName := NewDestinationTable.Database.BaseTableByName(NewDestinationTable.ForeignKeys[I].Parent.TableName).Name;
+        DeleteForeignKey := not Assigned(DestinationDatabase.TableByName(NewDestinationTable.ForeignKeys[I].Parent.TableName));
+        for J := 0 to Length(NewDestinationTable.ForeignKeys[I].Parent.FieldNames) - 1 do
           if (not DeleteForeignKey) then
           begin
-            NewTargetTable.ForeignKeys[I].Parent.FieldNames[J] := TargetDatabase.TableByName(NewTargetTable.ForeignKeys[I].Parent.TableName).FieldByName(NewTargetTable.ForeignKeys[I].Parent.FieldNames[J]).Name;
-            DeleteForeignKey := not Assigned(NewTargetTable.FieldByName(NewTargetTable.ForeignKeys[I].Parent.FieldNames[J]));
+            NewDestinationTable.ForeignKeys[I].Parent.FieldNames[J] := DestinationDatabase.TableByName(NewDestinationTable.ForeignKeys[I].Parent.TableName).FieldByName(NewDestinationTable.ForeignKeys[I].Parent.FieldNames[J]).Name;
+            DeleteForeignKey := not Assigned(NewDestinationTable.FieldByName(NewDestinationTable.ForeignKeys[I].Parent.FieldNames[J]));
           end;
       end;
 
       if (DeleteForeignKey) then
-        NewTargetTable.ForeignKeys.DeleteForeignKey(NewTargetTable.ForeignKeys[I]);
+        NewDestinationTable.ForeignKeys.DeleteForeignKey(NewDestinationTable.ForeignKeys[I]);
     end;
 
-    if (not UpdateData) then
-      NewTargetTable.AutoIncrement := 0;
-    while ((Success = daSuccess) and not TargetDatabase.AddTable(NewTargetTable)) do
-      DoError(DatabaseError(TargetDatabase.Client), ToolsItem(Target));
-    while ((Success = daSuccess) and not TargetDatabase.Client.Update()) do
-      DoError(DatabaseError(TargetDatabase.Client), ToolsItem(Target));
-  end
-  else if (UpdateStructure) then
-  begin
-    Modified := False;
-
-    NewTargetTable.Assign(TargetTable);
-
-    for I := 0 to SourceTable.Fields.Count - 1 do
-      if (not Assigned(NewTargetTable.FieldByName(SourceTable.Fields[I].Name))) then
-      begin
-        NewTargetTable.Fields.AddField(SourceTable.Fields[I]);
-
-        Modified := True;
-      end
-      else if (UpdateStructure and not SourceTable.Fields[I].Equal(NewTargetTable.FieldByName(SourceTable.Fields[I].Name))) then
-      begin
-        OldFieldBefore := NewTargetTable.FieldByName(SourceTable.Fields[I].Name).FieldBefore;
-        NewTargetTable.FieldByName(SourceTable.Fields[I].Name).Assign(SourceTable.Fields[I]);
-        NewTargetTable.FieldByName(SourceTable.Fields[I].Name).FieldBefore := OldFieldBefore;
-
-        Modified := True;
-      end;
-
-    for I := 0 to SourceTable.Keys.Count - 1 do
-      if (not Assigned(NewTargetTable.IndexByName(SourceTable.Keys[I].Name))) then
-      begin
-        NewTargetTable.Keys.AddKey(SourceTable.Keys[I]);
-
-        Modified := True;
-      end
-      else if (UpdateStructure and not SourceTable.Keys[I].Equal(NewTargetTable.IndexByName(SourceTable.Keys[I].Name))) then
-      begin
-        NewTargetTable.IndexByName(SourceTable.Keys[I].Name).Assign(SourceTable.Keys[I]);
-
-        Modified := True;
-      end;
-
-    if (not UpdateData) then
-    begin
-      NewTargetTable.AutoIncrement := 0;
-
-      Modified := True;
-    end;
-
-    if (Modified) then
-      while ((Success = daSuccess) and not TargetDatabase.UpdateTable(TargetTable, NewTargetTable)) do
-        DoError(DatabaseError(TargetDatabase.Client), ToolsItem(Target));
+    NewDestinationTable.AutoIncrement := 0;
+    while ((Success = daSuccess) and not DestinationDatabase.AddTable(NewDestinationTable)) do
+      DoError(DatabaseError(Destination.Client), ToolsItem(Destination));
+    while ((Success = daSuccess) and not Destination.Client.Update()) do
+      DoError(DatabaseError(Destination.Client), ToolsItem(Destination));
   end;
 
-  NewTargetTable.Free();
+  NewDestinationTable.Free();
 end;
 
-procedure TTTransfer.ExecuteTable(var Source, Target: TElement);
+procedure TTTransfer.ExecuteTable(var Source, Destination: TItem);
 var
   I: Integer;
+  DestinationDatabase: TCDatabase;
+  DestinationTable: TCBaseTable;
   NewTrigger: TCTrigger;
   SourceDatabase: TCDatabase;
   SourceTable: TCBaseTable;
-  TargetDatabase: TCDatabase;
-  TargetTable: TCBaseTable;
 begin
-  TargetDatabase := Target.Client.DatabaseByName(Target.DatabaseName);
+  DestinationDatabase := Destination.Client.DatabaseByName(Destination.DatabaseName);
 
-  if ((Success = daSuccess) and Structure and not Assigned(TargetDatabase)) then
+  if ((Success = daSuccess) and Structure and not Assigned(DestinationDatabase)) then
   begin
-    TargetDatabase := TCDatabase.Create(Target.Client, Target.DatabaseName);
-    while ((Success = daSuccess) and not Target.Client.AddDatabase(TargetDatabase)) do
-      DoError(DatabaseError(TargetDatabase.Client), ToolsItem(Target));
-    FreeAndNil(TargetDatabase);
+    DestinationDatabase := TCDatabase.Create(Destination.Client, Destination.DatabaseName);
+    while ((Success = daSuccess) and not Destination.Client.AddDatabase(DestinationDatabase)) do
+      DoError(DatabaseError(Destination.Client), ToolsItem(Destination));
+    FreeAndNil(DestinationDatabase);
 
-    TargetDatabase := Target.Client.DatabaseByName(Target.DatabaseName);
+    DestinationDatabase := Destination.Client.DatabaseByName(Destination.DatabaseName);
   end;
 
   if (Success = daSuccess) then
   begin
-    TargetTable := TargetDatabase.BaseTableByName(Target.TableName);
+    DestinationTable := DestinationDatabase.BaseTableByName(Destination.TableName);
 
-    if (Backup and Assigned(TargetTable)) then
+    if (Backup and Assigned(DestinationTable)) then
     begin
-      BackupTable(ToolsItem(Target), True);
+      BackupTable(ToolsItem(Destination), True);
       if (Success = daFail) then Success := daSuccess;
 
-      TargetTable := TargetDatabase.BaseTableByName(Target.TableName);
+      DestinationTable := DestinationDatabase.BaseTableByName(Destination.TableName);
     end;
 
-    if (Structure and Data and not Assigned(TargetTable) and (Source.Client = Target.Client) and (Source.Client.DatabaseByName(Source.DatabaseName).BaseTableByName(Source.TableName).ForeignKeys.Count = 0)) then
+    if (Structure and Data and not Assigned(DestinationTable) and (Source.Client = Destination.Client) and (Source.Client.DatabaseByName(Source.DatabaseName).BaseTableByName(Source.TableName).ForeignKeys.Count = 0)) then
     begin
-      while ((Success = daSuccess) and not TargetDatabase.CloneTable(Source.Client.DatabaseByName(Source.DatabaseName).BaseTableByName(Source.TableName), Target.TableName, True)) do
-        DoError(DatabaseError(TargetDatabase.Client), ToolsItem(Target));
+      while ((Success = daSuccess) and not DestinationDatabase.CloneTable(Source.Client.DatabaseByName(Source.DatabaseName).BaseTableByName(Source.TableName), Destination.TableName, True)) do
+        DoError(DatabaseError(Destination.Client), ToolsItem(Destination));
 
       if (Success = daSuccess) then
       begin
-        TargetTable := TargetDatabase.BaseTableByName(Target.TableName);
+        DestinationTable := DestinationDatabase.BaseTableByName(Destination.TableName);
 
-        Target.RecordsDone := TargetTable.Rows;
+        Destination.RecordsDone := DestinationTable.Rows;
       end;
     end
     else
     begin
       if ((Success = daSuccess) and Structure) then
       begin
-        ExecuteStructure(Source, Target);
-        TargetTable := TargetDatabase.BaseTableByName(Target.TableName);
+        ExecuteStructure(Source, Destination);
+        DestinationTable := DestinationDatabase.BaseTableByName(Destination.TableName);
       end;
 
-      if ((Success = daSuccess) and Data and Assigned(TargetTable) and (TargetTable.Source <> '')) then
-        ExecuteData(Source, Target);
+      if ((Success = daSuccess) and Data and Assigned(DestinationTable) and (DestinationTable.Source <> '')) then
+        ExecuteData(Source, Destination);
     end;
 
     if (Success = daSuccess) then
-      Target.RecordsSum := Target.RecordsDone;
+      Destination.RecordsSum := Destination.RecordsDone;
 
     SourceDatabase := Source.Client.DatabaseByName(Source.DatabaseName);
     SourceTable := SourceDatabase.BaseTableByName(Source.TableName);
-    if (Assigned(SourceDatabase.Triggers) and Assigned(TargetDatabase.Triggers)) then
+    if (Assigned(SourceDatabase.Triggers) and Assigned(DestinationDatabase.Triggers)) then
       for I := 0 to SourceDatabase.Triggers.Count - 1 do
-        if ((Success = daSuccess) and (SourceDatabase.Triggers[I].Table = SourceTable) and not Assigned(TargetDatabase.TriggerByName(SourceDatabase.Triggers[I].Name))) then
+        if ((Success = daSuccess) and (SourceDatabase.Triggers[I].Table = SourceTable) and not Assigned(DestinationDatabase.TriggerByName(SourceDatabase.Triggers[I].Name))) then
         begin
-          NewTrigger := TCTrigger.Create(TargetDatabase.Tables);
+          NewTrigger := TCTrigger.Create(DestinationDatabase.Tables);
           NewTrigger.Assign(SourceDatabase.Triggers[I]);
           while (Success = daSuccess) do
           begin
-            TargetDatabase.AddTrigger(NewTrigger);
-            if (TargetDatabase.Client.ErrorCode <> 0) then
-              DoError(DatabaseError(TargetDatabase.Client), ToolsItem(Target));
+            DestinationDatabase.AddTrigger(NewTrigger);
+            if (Destination.Client.ErrorCode <> 0) then
+              DoError(DatabaseError(Destination.Client), ToolsItem(Destination));
           end;
           NewTrigger.Free();
         end;
 
-    Target.Done := Success = daSuccess;
+    Destination.Done := Success = daSuccess;
 
     DoUpdateGUI();
   end;
 end;
 
-function TTTransfer.ToolsItem(const Element: TElement): TTools.TItem;
+function TTTransfer.ToolsItem(const Item: TItem): TTools.TItem;
 begin
-  Result.Client := Element.Client;
-  Result.DatabaseName := Element.DatabaseName;
-  Result.TableName := Element.TableName;
+  Result.Client := Item.Client;
+  Result.DatabaseName := Item.DatabaseName;
+  Result.TableName := Item.TableName;
 end;
 
 end.

@@ -16,43 +16,29 @@ type
     FBCancel: TButton;
     FBDatabase: TButton;
     FBHelp: TButton;
-    FBIcon: TButton;
     FBOk: TButton;
-    FCacheSize: TEdit;
     FCharset: TComboBox_Ext;
     FConnectionType: TComboBox_Ext;
     FDatabase: TEdit;
     FHost: TEdit;
     FHTTPTunnelURI: TEdit;
-    FIcon: TImage;
-    FL2CacheSize: TLabel;
-    FLCacheSize: TLabel;
     FLCharset: TLabel;
     FLConnectionType: TLabel;
     FLDatabase: TLabel;
     FLHost: TLabel;
     FLHTTPTunnelURI: TLabel;
     FLibraryFilename: TEdit;
-    FLIcon: TLabel;
     FLLibraryFilename: TLabel;
-    FLMultiStatements: TLabel;
-    FLAsynchron: TLabel;
     FLName: TLabel;
     FLPassword: TLabel;
     FLPort: TLabel;
-    FLUseInformationSchema: TLabel;
     FLUser: TLabel;
-    FMultiStatements: TCheckBox;
-    FAsynchron: TCheckBox;
     FName: TEdit;
     FPassword: TEdit;
     FPort: TEdit;
-    FUDCacheSize: TUpDown;
     FUDPort: TUpDown;
-    FUseInformationSchema: TCheckBox;
     FUser: TEdit;
     GBasics: TGroupBox_Ext;
-    GDebug: TGroupBox_Ext;
     GLogin: TGroupBox_Ext;
     GServer: TGroupBox_Ext;
     msCopy: TMenuItem;
@@ -64,29 +50,19 @@ type
     msUndo: TMenuItem;
     N2: TMenuItem;
     OpenDialog: TOpenDialog_Ext;
-    PageControl: TPageControl;
-    PIcon: TPanel_Ext;
-    TSBasics: TTabSheet;
-    TSConnection: TTabSheet;
-    TSDebug: TTabSheet;
-    TSLogin: TTabSheet;
     procedure FBDatabaseClick(Sender: TObject);
     procedure FBHelpClick(Sender: TObject);
-    procedure FBIconClick(Sender: TObject);
     procedure FCharsetDropDown(Sender: TObject);
     procedure FConnectionTypeChange(Sender: TObject);
     procedure FEditChange(Sender: TObject);
     procedure FHostExit(Sender: TObject);
     procedure FHTTPTunnelURIChange(Sender: TObject);
     procedure FHTTPTunnelURIEnter(Sender: TObject);
-    procedure FIconClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     function GetAccountName(): string;
-    procedure TSBasicsShow(Sender: TObject);
   private
-    IconChanged: Boolean;
     function CheckConnectInfos(): Boolean;
   protected
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
@@ -133,23 +109,20 @@ begin
   Result := False;
 
   if (FHost.Text = '') then
-    begin MessageBeep(MB_ICONERROR); PageControl.ActivePage := TSConnection; ActiveControl := FHost; end
+    begin MessageBeep(MB_ICONERROR); ActiveControl := FHost; end
   else if ((FConnectionType.ItemIndex = 1) and (FLibraryFilename.Text = '')) then
-    begin MessageBeep(MB_ICONERROR); PageControl.ActivePage := TSConnection; ActiveControl := FLibraryFilename; end
+    begin MessageBeep(MB_ICONERROR); ActiveControl := FLibraryFilename; end
   else if ((FConnectionType.ItemIndex = 2) and (FHTTPTunnelURI.Text = '')) then
-    begin MessageBeep(MB_ICONERROR); PageControl.ActivePage := TSConnection; ActiveControl := FHTTPTunnelURI; end
+    begin MessageBeep(MB_ICONERROR); ActiveControl := FHTTPTunnelURI; end
   else
     Result := True;
 end;
 
 procedure TDAccount.CMChangePreferences(var Message: TMessage);
 begin
-  TSBasics.Caption := Preferences.LoadStr(108);
   GBasics.Caption := Preferences.LoadStr(85);
   FLName.Caption := Preferences.LoadStr(35) + ':';
-  FLIcon.Caption := Preferences.LoadStr(761) + ':';
 
-  TSConnection.Caption := Preferences.LoadStr(486);
   GServer.Caption := ReplaceStr(Preferences.LoadStr(37), '&', '');
   FLHost.Caption := Preferences.LoadStr(37) + ':';
   FLPort.Caption := Preferences.LoadStr(436) + ':';
@@ -160,22 +133,10 @@ begin
   FLHTTPTunnelURI.Caption := Preferences.LoadStr(652) + ':';
   FLCharset.Caption := Preferences.LoadStr(682) + ':';
 
-  TSLogin.Caption := Preferences.LoadStr(487);
   GLogin.Caption := Preferences.LoadStr(34);
   FLUser.Caption := Preferences.LoadStr(561) + ':';
   FLPassword.Caption := Preferences.LoadStr(40) + ':';
   FLDatabase.Caption := Preferences.LoadStr(38) + ':';
-
-  TSDebug.Caption := 'Debug';
-  GDebug.Caption := '';
-  FLCacheSize.Caption := 'Cache' + ':';
-  FL2CacheSize.Caption := 'MB';
-  FLMultiStatements.Caption := 'Multi Statements' + ':';
-  FMultiStatements.Caption := 'enabled';
-  FLAsynchron.Caption := 'Asynchron' + ':';
-  FAsynchron.Caption := 'enabled';
-  FLUseInformationSchema.Caption := 'Fetch informations' + ':';
-  FUseInformationSchema.Caption := 'information_schema';
 
   FBHelp.Caption := Preferences.LoadStr(167);
   FBOk.Caption := Preferences.LoadStr(29);
@@ -228,38 +189,7 @@ end;
 
 procedure TDAccount.FBHelpClick(Sender: TObject);
 begin
-  if (GetKeyState(VK_MENU) >= 0) then
-    Application.HelpContext(HelpContext)
-  else
-  begin
-    TSDebug.TabVisible := not TSDebug.TabVisible;
-    if (TSDebug.TabVisible) then
-    begin
-      PageControl.ActivePage := nil; // needed for Vista Themes
-      PageControl.ActivePage := TSDebug;
-    end;
-  end;
-end;
-
-procedure TDAccount.FBIconClick(Sender: TObject);
-begin
-  OpenDialog.FileName := '';
-
-  if (OpenDialog.Execute()) then
-  begin
-    Icon := TIcon.Create();
-    try
-      Icon.LoadFromFile(OpenDialog.FileName);
-      Preferences.SmallImages.AddIcon(Icon);
-      Preferences.SmallImages.GetIcon(Preferences.SmallImages.Count - 1, FIcon.Picture.Icon);
-      IconChanged := True;
-    except
-      MsgBox(Preferences.LoadStr(523, OpenDialog.FileName), Preferences.LoadStr(45), MB_OK + MB_ICONERROR);
-    end;
-  end;
-
-  if (FBOk.Enabled) then
-    ActiveControl := FBOk;
+  Application.HelpContext(HelpContext)
 end;
 
 procedure TDAccount.FCharsetDropDown(Sender: TObject);
@@ -348,11 +278,6 @@ begin
     FHTTPTunnelURI.Text := 'http://' + Trim(FHost.Text) + '/libMySQL.php';
 end;
 
-procedure TDAccount.FIconClick(Sender: TObject);
-begin
-  FBIcon.Click();
-end;
-
 procedure TDAccount.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   NewAccount: TAAccount;
@@ -362,9 +287,9 @@ begin
     ActiveControl := FBOk;
 
     if ((FConnectionType.ItemIndex = 1) and (FLibraryFilename.Text = '')) then
-      begin PageControl.ActivePage := TSConnection; ActiveControl := FLibraryFilename; MessageBeep(MB_ICONERROR); CanClose := False; end
+      begin ActiveControl := FLibraryFilename; MessageBeep(MB_ICONERROR); CanClose := False; end
     else if ((FConnectionType.ItemIndex = 2) and not ((Copy(FHTTPTunnelURI.Text, 1, 7) = 'http://') or (Copy(FHTTPTunnelURI.Text, 1, 8) = 'https://'))) then
-      begin PageControl.ActivePage := TSConnection; ActiveControl := FHTTPTunnelURI; MessageBeep(MB_ICONERROR); CanClose := False; end;
+      begin ActiveControl := FHTTPTunnelURI; MessageBeep(MB_ICONERROR); CanClose := False; end;
 
     if (CanClose) then
     begin
@@ -373,16 +298,6 @@ begin
         NewAccount.Assign(Account);
 
       NewAccount.Name := Trim(FName.Text);
-      if (IconChanged) then
-      begin
-        try
-          ForceDirectories(ExtractFilePath(NewAccount.IconFilename));
-          FIcon.Picture.Icon.SaveToFile(NewAccount.IconFilename);
-          NewAccount.ImageIndex := Preferences.SmallImages.Count - 1;
-        except
-          MsgBox(Preferences.LoadStr(522, NewAccount.IconFilename), Preferences.LoadStr(45), MB_OK + MB_ICONERROR);
-        end;
-      end;
       if (Trim(FHost.Text) = LOCAL_HOST_NAMEDPIPE) then
       begin
         NewAccount.Connection.Host := LOCAL_HOST;
@@ -409,11 +324,6 @@ begin
       NewAccount.Connection.SavePassword := (NewAccount.Connection.User <> '') and ((NewAccount.Connection.Password <> '') or Assigned(Account) and (Account.Connection.User = NewAccount.Connection.User) and (Account.Connection.Password = ''));
       NewAccount.Connection.Database := ReplaceStr(Trim(FDatabase.Text), ';', ',');
 
-      NewAccount.CacheSize := FUDCacheSize.Position;
-      NewAccount.Connection.ASynchron := FAsynchron.Checked;
-      NewAccount.Connection.MultiStatements := FMultiStatements.Checked;
-      NewAccount.Connection.UseInformationSchema := FUseInformationSchema.Checked;
-
       Username := NewAccount.Connection.User;
       Password := NewAccount.Connection.Password;
 
@@ -429,12 +339,6 @@ end;
 
 procedure TDAccount.FormCreate(Sender: TObject);
 begin
-  FIcon.Picture.Icon.Height := 18;
-  FIcon.Picture.Icon.Width := 18;
-
-  FBIcon.Height := 20;
-  FBIcon.Width := 20;
-
   FBDatabase.Height := FDatabase.Height; FBDatabase.Width := FBDatabase.Height;
   FBDatabase.Left := FDatabase.Left + FDatabase.Width;
 
@@ -449,8 +353,6 @@ begin
   msPaste.Action := MainAction('aEPaste'); msPaste.ShortCut := 0;
   msDelete.Action := MainAction('aEDelete'); msDelete.ShortCut := 0;
   msSelectAll.Action := MainAction('aESelectAll'); msSelectAll.ShortCut := 0;
-
-  TSDebug.TabVisible := False;
 end;
 
 procedure TDAccount.FormShow(Sender: TObject);
@@ -467,7 +369,6 @@ begin
   if (not Assigned(Account)) then
   begin
     FName.Text := '';
-    IconChanged := False;
 
     FHost.Text := '';
     FUDPort.Position := MYSQL_PORT;
@@ -479,17 +380,10 @@ begin
     FUser.Text := 'root';
     FPassword.Text := '';
     FDatabase.Text := '';
-
-    FUDCacheSize.Position := 50;
-    FMultiStatements.Checked := True;
-    FAsynchron.Checked := True;
-    FUseInformationSchema.Checked := True;
   end
   else
   begin
     FName.Text := Account.Name;
-
-    IconChanged := False;
 
     if (Account.Connection.LibraryType = ltNamedPipe) then
       FHost.Text := LOCAL_HOST_NAMEDPIPE
@@ -512,11 +406,6 @@ begin
     FUser.Text := Username;
     FPassword.Text := Password;
     FDatabase.Text := Account.Connection.Database;
-
-    FUDCacheSize.Position := Account.CacheSize;
-    FMultiStatements.Checked := Account.Connection.MultiStatements;
-    FAsynchron.Checked := Account.Connection.ASynchron;
-    FUseInformationSchema.Checked := Account.Connection.UseInformationSchema;
   end;
 
 
@@ -525,28 +414,14 @@ begin
 
   ActiveControl := FBCancel;
   if (ShowType = stLogin) then
-  begin
-    PageControl.ActivePage := TSLogin;
-    ActiveControl := FUser;
-  end
+    ActiveControl := FUser
   else
-  begin
-    PageControl.ActivePage := TSConnection;
     ActiveControl := FHost;
-  end;
 end;
 
 function TDAccount.GetAccountName(): string;
 begin
   Result := Trim(FName.Text);
-end;
-
-procedure TDAccount.TSBasicsShow(Sender: TObject);
-begin
-  if (Assigned(Account)) then
-    Preferences.SmallImages.GetIcon(Account.ImageIndex, FIcon.Picture.Icon)
-  else
-    Preferences.SmallImages.GetIcon(iiServer, FIcon.Picture.Icon);
 end;
 
 initialization

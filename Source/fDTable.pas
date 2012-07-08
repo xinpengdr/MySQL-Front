@@ -50,7 +50,7 @@ type
     FFields: TListView;
     FForeignKeys: TListView;
     FIndexSize: TLabel;
-    FIndices: TListView;
+    FKeys: TListView;
     FLAutoIncrement: TLabel;
     FLChecked: TLabel;
     FLCollation: TLabel;
@@ -136,7 +136,7 @@ type
     TSExtras: TTabSheet;
     TSFields: TTabSheet;
     TSForeignKeys: TTabSheet;
-    TSIndices: TTabSheet;
+    TSKeys: TTabSheet;
     TSInformations: TTabSheet;
     TSPartitions: TTabSheet;
     TSReferenced: TTabSheet;
@@ -175,9 +175,9 @@ type
     procedure FForeignKeysChange(Sender: TObject; Item: TListItem;
       Change: TItemChange);
     procedure FForeignKeysEnter(Sender: TObject);
-    procedure FIndicesChange(Sender: TObject; Item: TListItem;
+    procedure FKeysChange(Sender: TObject; Item: TListItem;
       Change: TItemChange);
-    procedure FIndicesEnter(Sender: TObject);
+    procedure FKeysEnter(Sender: TObject);
     procedure FLinearClick(Sender: TObject);
     procedure FLinearKeyPress(Sender: TObject; var Key: Char);
     procedure FListDblClick(Sender: TObject);
@@ -200,7 +200,7 @@ type
     procedure TSExtrasShow(Sender: TObject);
     procedure TSFieldsShow(Sender: TObject);
     procedure TSForeignKeysShow(Sender: TObject);
-    procedure TSIndicesShow(Sender: TObject);
+    procedure TSKeysShow(Sender: TObject);
     procedure TSInformationsShow(Sender: TObject);
     procedure TSPartitionsShow(Sender: TObject);
     procedure TSReferencedShow(Sender: TObject);
@@ -266,7 +266,7 @@ begin
   begin
     FFieldsRefresh(Sender);
 
-    FIndices.Items.Clear();
+    FKeys.Items.Clear();
 
     TSSource.TabVisible := False;
   end;
@@ -355,14 +355,14 @@ var
   I: Integer;
   Msg: string;
 begin
-  if (FIndices.SelCount = 1) then
-    Msg := Preferences.LoadStr(162, FIndices.Selected.Caption)
+  if (FKeys.SelCount = 1) then
+    Msg := Preferences.LoadStr(162, FKeys.Selected.Caption)
   else
     Msg := Preferences.LoadStr(413);
   if (MsgBox(Msg, Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
   begin
-    for I := FIndices.Items.Count - 1 downto 0 do
-      if (FIndices.Items.Item[I].Selected) then
+    for I := FKeys.Items.Count - 1 downto 0 do
+      if (FKeys.Items.Item[I].Selected) then
         NewTable.Keys.DeleteKey(NewTable.Keys.Key[I]);
 
     FIndicesRefresh(Sender);
@@ -486,7 +486,7 @@ procedure TDTable.aPEditIndexExecute(Sender: TObject);
 begin
   DIndex.Database := nil;
   DIndex.Table := NewTable;
-  DIndex.Key := NewTable.Keys.Key[FIndices.ItemIndex];
+  DIndex.Key := NewTable.Keys.Key[FKeys.ItemIndex];
   if (DIndex.Execute()) then
   begin
     FIndicesRefresh(Sender);
@@ -647,7 +647,7 @@ begin
 
   TSInformations.TabVisible := Assigned(Table) and (Table.DataSize >= 0) or Assigned(Tables);
   TSFields.TabVisible := not Assigned(Tables);
-  TSIndices.TabVisible := not Assigned(Tables);
+  TSKeys.TabVisible := not Assigned(Tables);
   TSTriggers.TabVisible := Assigned(Table)  and Assigned(Database.Triggers);
   TSReferenced.TabVisible := Assigned(Table) and Assigned(NewTable.Engine) and (UpperCase(NewTable.Engine.Name) = 'INNODB');
   TSPartitions.TabVisible := not Assigned(Tables) and Assigned(NewTable.Partitions);
@@ -714,13 +714,13 @@ begin
   FFields.Column[4].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
   FFields.Column[5].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
 
-  TSIndices.Caption := Preferences.LoadStr(458);
+  TSKeys.Caption := Preferences.LoadStr(458);
   tbCreateIndex.Hint := Preferences.LoadStr(160) + '...';
   tbDeleteIndex.Hint := ReplaceStr(Preferences.LoadStr(28), '&', '');
   tbPropertiesIndex.Hint := ReplaceStr(Preferences.LoadStr(97), '&', '') + '...';
-  FIndices.Column[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
-  FIndices.Column[1].Caption := Preferences.LoadStr(69);
-  FIndices.Column[2].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
+  FKeys.Column[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
+  FKeys.Column[1].Caption := Preferences.LoadStr(69);
+  FKeys.Column[2].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
 
   TSForeignKeys.Caption := Preferences.LoadStr(459);
   tbCreateForeignKey.Hint := Preferences.LoadStr(249) + '...';
@@ -1010,7 +1010,7 @@ begin
         FFields.Scroll(0, (FFields.ItemFocused.Index + 2) * (FFields.Items[1].Top - FFields.Items[0].Top) - (FFields.ClientHeight - GetSystemMetrics(SM_CYHSCROLL)));
     end;
 
-  FIndices.Items.Clear();
+  FKeys.Items.Clear();
 
   FBOkCheckEnabled(Sender);
 end;
@@ -1050,16 +1050,16 @@ begin
   FBOkCheckEnabled(Sender);
 end;
 
-procedure TDTable.FIndicesChange(Sender: TObject; Item: TListItem;
+procedure TDTable.FKeysChange(Sender: TObject; Item: TListItem;
   Change: TItemChange);
 begin
   if (ctText = Change) then
     FBOkCheckEnabled(Sender);
 end;
 
-procedure TDTable.FIndicesEnter(Sender: TObject);
+procedure TDTable.FKeysEnter(Sender: TObject);
 begin
-  FListSelectItem(FIndices, FIndices.Selected, Assigned(FIndices.Selected));
+  FListSelectItem(FKeys, FKeys.Selected, Assigned(FKeys.Selected));
 end;
 
 procedure TDTable.FIndicesRefresh(Sender: TObject);
@@ -1068,18 +1068,18 @@ var
   SelectedField: string;
 begin
   SelectedField := '';
-  if (Assigned(FIndices.Selected)) then SelectedField := FIndices.Selected.Caption;
+  if (Assigned(FKeys.Selected)) then SelectedField := FKeys.Selected.Caption;
 
-  FIndices.Items.Clear();
-  TSIndicesShow(Sender);
-  for I := 0 to FIndices.Items.Count - 1 do
-    if (FIndices.Items.Item[I].Caption = SelectedField) then
+  FKeys.Items.Clear();
+  TSKeysShow(Sender);
+  for I := 0 to FKeys.Items.Count - 1 do
+    if (FKeys.Items.Item[I].Caption = SelectedField) then
     begin
-      FIndices.Selected := FIndices.Items.Item[I];
-      FIndices.ItemFocused := FIndices.Selected;
+      FKeys.Selected := FKeys.Items.Item[I];
+      FKeys.ItemFocused := FKeys.Selected;
 
-      if (Assigned(FIndices.ItemFocused) and (FIndices.ItemFocused.Position.Y > FIndices.ClientHeight)) then
-        FIndices.Scroll(0, (FIndices.ItemFocused.Index + 2) * (FIndices.Items[1].Top - FIndices.Items[0].Top) - (FIndices.ClientHeight - GetSystemMetrics(SM_CYHSCROLL)));
+      if (Assigned(FKeys.ItemFocused) and (FKeys.ItemFocused.Position.Y > FKeys.ClientHeight)) then
+        FKeys.Scroll(0, (FKeys.ItemFocused.Index + 2) * (FKeys.Items[1].Top - FKeys.Items[0].Top) - (FKeys.ClientHeight - GetSystemMetrics(SM_CYHSCROLL)));
     end;
 
   FBOkCheckEnabled(Sender);
@@ -1123,9 +1123,9 @@ begin
   aPCreateField.Enabled := not Selected and (Page = TSFields);
   aPDeleteField.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiField) and (NewTable.Fields.Count > 1);
   aPEditField.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSFields);
-  aPCreateIndex.Enabled := not Selected and (Page = TSIndices);
+  aPCreateIndex.Enabled := not Selected and (Page = TSKeys);
   aPDeleteIndex.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiKey);
-  aPEditIndex.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSIndices);
+  aPEditIndex.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSKeys);
   aPCreateForeignKey.Enabled := not Selected and (Page = TSForeignKeys);
   aPDeleteForeignKey.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiForeignKey);
   aPEditForeignKey.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSForeignKeys);
@@ -1215,7 +1215,7 @@ begin
   Tables := nil;
 
   FFields.SmallImages := Preferences.SmallImages;
-  FIndices.SmallImages := Preferences.SmallImages;
+  FKeys.SmallImages := Preferences.SmallImages;
   FForeignKeys.SmallImages := Preferences.SmallImages;
   FTriggers.SmallImages := Preferences.SmallImages;
   FReferenced.SmallImages := Preferences.SmallImages;
@@ -1242,7 +1242,7 @@ begin
 
   SetWindowLong(FAutoIncrement.Handle, GWL_STYLE, GetWindowLong(FAutoIncrement.Handle, GWL_STYLE) or ES_NUMBER);
   FFields.RowSelect := CheckWin32Version(6);
-  FIndices.RowSelect := CheckWin32Version(6);
+  FKeys.RowSelect := CheckWin32Version(6);
   FForeignKeys.RowSelect := CheckWin32Version(6);
   FReferenced.RowSelect := CheckWin32Version(6);
   FPartitions.RowSelect := CheckWin32Version(6);
@@ -1269,9 +1269,9 @@ begin
   FFields.Items.BeginUpdate();
   FFields.Items.Clear();
   FFields.Items.EndUpdate();
-  FIndices.Items.BeginUpdate();
-  FIndices.Items.Clear();
-  FIndices.Items.EndUpdate();
+  FKeys.Items.BeginUpdate();
+  FKeys.Items.Clear();
+  FKeys.Items.EndUpdate();
   FForeignKeys.Items.BeginUpdate();
   FForeignKeys.Items.Clear();
   FForeignKeys.Items.EndUpdate();
@@ -1445,7 +1445,7 @@ begin
 
   TSInformations.TabVisible := Assigned(Table) and (Table.DataSize >= 0) or Assigned(Tables);
   TSFields.TabVisible := not Assigned(Tables);
-  TSIndices.TabVisible := not Assigned(Tables);
+  TSKeys.TabVisible := not Assigned(Tables);
   TSTriggers.TabVisible := Assigned(Table)  and Assigned(Database.Triggers);
   TSReferenced.TabVisible := Assigned(Table) and Assigned(NewTable.Engine) and (UpperCase(NewTable.Engine.Name) = 'INNODB');
   TSPartitions.TabVisible := not Assigned(Tables) and Assigned(NewTable.Partitions);
@@ -1729,7 +1729,7 @@ begin
   FForeignKeys.OnChange := TempOnChange;
 end;
 
-procedure TDTable.TSIndicesShow(Sender: TObject);
+procedure TDTable.TSKeysShow(Sender: TObject);
 var
   FieldNames: string;
   I: Integer;
@@ -1737,8 +1737,8 @@ var
   ListItem: TListItem;
   TempOnChange: TLVChangeEvent;
 begin
-  TempOnChange := FIndices.OnChange;
-  FIndices.OnChange := nil;
+  TempOnChange := FKeys.OnChange;
+  FKeys.OnChange := nil;
 
   mlDCreate.Action := aPCreateIndex;
   mlDDelete.Action := aPDeleteIndex;
@@ -1749,10 +1749,10 @@ begin
   mlDCreate.ShortCut := VK_INSERT;
   mlDDelete.ShortCut := VK_DELETE;
 
-  if (FIndices.Items.Count = 0) then
+  if (FKeys.Items.Count = 0) then
     for I := 0 to NewTable.Keys.Count - 1 do
     begin
-      ListItem := FIndices.Items.Add();
+      ListItem := FKeys.Items.Add();
       ListItem.Caption := NewTable.Keys.Key[I].Caption;
       FieldNames := '';
       for J := 0 to NewTable.Keys.Key[I].Columns.Count - 1 do
@@ -1767,9 +1767,9 @@ begin
       ListItem.ImageIndex := iiKey;
     end;
 
-  FListSelectItem(FIndices, FIndices.Selected, Assigned(FIndices.Selected));
+  FListSelectItem(FKeys, FKeys.Selected, Assigned(FKeys.Selected));
 
-  FIndices.OnChange := TempOnChange;
+  FKeys.OnChange := TempOnChange;
 end;
 
 procedure TDTable.TSInformationsShow(Sender: TObject);

@@ -13,14 +13,6 @@ type
   end;
 
 type
-  TTreeNode_Ext = class(TTreeNode)
-  private
-    function GetBold(): Boolean;
-    procedure SetBold(ABold: Boolean);
-  public
-    property Bold: Boolean read GetBold write SetBold;
-  end;
-
   TTreeView_Ext = class(TTreeView)
   private
     ShiftDownSelected: TTreeNode;
@@ -63,35 +55,6 @@ begin
   end
   else
     Result := inherited UpdateAction(Action);
-end;
-
-{ TTreeNode_Ext ***************************************************************}
-
-function TTreeNode_Ext.GetBold(): Boolean;
-var
-  Item: TTVItemW;
-begin
-  Item.mask := TVIF_STATE;
-  Item.hItem := ItemId;
-  TreeView_GetItem(TreeView.Handle, Item);
-  Result := Item.state and TVIS_BOLD <> 0;
-end;
-
-procedure TTreeNode_Ext.SetBold(ABold: Boolean);
-var
-  Item: TTVItemW;
-begin
-  Item.mask := TVIF_STATE;
-  Item.hItem := ItemId;
-  if (TreeView_GetItem(TreeView.Handle, Item)) then
-  begin
-    if (ABold) then
-      Item.state := Item.state or TVIS_BOLD
-    else
-      Item.state := Item.state and not TVIS_BOLD;
-    Item.stateMask := TVIS_BOLD;
-    TreeView_SetItem(TreeView.Handle, Item);
-  end;
 end;
 
 { TTreeView_Ext ***************************************************************}

@@ -145,6 +145,7 @@ type
     Import: TTImport;
     ODBC: SQLHDBC;
     ODBCEnv: SQLHENV;
+    ProgressInfos: TTools.TProgressInfos;
     SQLite: sqlite3_ptr;
     TableNames: TStringList;
     procedure CheckActivePageChange(const ActivePageIndex: Integer);
@@ -153,6 +154,8 @@ type
     function GetTableName(const Item: TListItem): string;
     procedure InitTSFields(Sender: TObject);
     procedure OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
+    procedure OnExecuted(const ASuccess: Boolean);
+    procedure OnUpdate(const AProgressInfos: TTools.TProgressInfos);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMExecutedDone(var Message: TMessage); message CM_EXECUTIONDONE;
     procedure CMSysFontChanged(var Message: TMessage); message CM_SYSFONTCHANGED;
@@ -1093,6 +1096,30 @@ begin
   end;
 end;
 
+procedure TDImport.OnExecuted(const ASuccess: Boolean);
+begin
+  if (not Import.Suspended) then
+    PostMessage(Handle, CM_EXECUTIONDONE, WPARAM(ASuccess), 0)
+  else
+  begin
+    Perform(CM_EXECUTIONDONE, WPARAM(ASuccess), 0);
+    Application.ProcessMessages();
+  end;
+end;
+
+procedure TDImport.OnUpdate(const AProgressInfos: TTools.TProgressInfos);
+begin
+  MoveMemory(@ProgressInfos, @AProgressInfos, SizeOf(AProgressInfos));
+
+  if (not Import.Suspended) then
+    PostMessage(Handle, CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos))
+  else
+  begin
+    Perform(CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos));
+    Application.ProcessMessages();
+  end;
+end;
+
 procedure TDImport.TSCSVOptionsHide(Sender: TObject);
 begin
   if (Length(FFields) = 0) then
@@ -1345,9 +1372,9 @@ begin
   else
   begin
     Import.Wnd := Self.Handle;
-    Import.UpdateMessage := CM_UPDATEPROGRESSINFO;
-    Import.ExecutedMessage := CM_EXECUTIONDONE;
     Import.OnError := OnError;
+    Import.OnExecuted := OnExecuted;
+    Import.OnUpdate := OnUpdate;
     if (Client.Asynchron) then
       Import.Start()
     else
@@ -1394,7 +1421,7 @@ begin
     begin
       Selected := False;
       for J := 0 to Length(FFields) - 1 do
-        if ((FSourceFields[J].Text <> '') and (FFields[J].ItemIndex > 0) and not Table.Fields[FFields[J].ItemIndex - 1].InPrimaryIndex) then
+        if ((FSourceFields[J].Text <> '') and (FFields[J].ItemIndex > 0) and not Table.Fields[FFields[J].ItemIndex - 1].InPrimaryKey) then
           Selected := True;
     end;
 

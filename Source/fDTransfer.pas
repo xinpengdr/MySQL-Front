@@ -31,24 +31,24 @@ type
     FLProgressTime: TLabel;
     FLTransferGeneral: TLabel;
     FLTransferWhat: TLabel;
-    FMaster: TTreeView_Ext;
+    FSource: TTreeView_Ext;
     FProgressBar: TProgressBar;
-    FSlave: TTreeView_Ext;
+    FDestination: TTreeView_Ext;
     FTransferData: TCheckBox;
     FTransferDisableKeys: TCheckBox;
     FTransferStructure: TCheckBox;
     GErrorMessages: TGroupBox_Ext;
-    GMaster: TGroupBox_Ext;
+    GSource: TGroupBox_Ext;
     GProgress: TGroupBox_Ext;
-    GSlave: TGroupBox_Ext;
+    GDestination: TGroupBox_Ext;
     GTransferOptions: TGroupBox_Ext;
     GTransferWhat: TGroupBox_Ext;
     miSelectAll: TMenuItem;
-    MMaster: TPopupMenu;
+    MSource: TPopupMenu;
     PageControl: TPageControl;
     PErrorMessages: TPanel_Ext;
-    PMaster: TPanel_Ext;
-    PSlave: TPanel_Ext;
+    PSource: TPanel_Ext;
+    PDestination: TPanel_Ext;
     TSExecute: TTabSheet;
     TSSelect: TTabSheet;
     TSTransferOptions: TTabSheet;
@@ -64,7 +64,7 @@ type
     procedure FTransferStructureClick(Sender: TObject);
     procedure FTransferStructureKeyPress(Sender: TObject; var Key: Char);
     procedure miSelectAllClick(Sender: TObject);
-    procedure MMasterPopup(Sender: TObject);
+    procedure MSourcePopup(Sender: TObject);
     procedure PageControlResize(Sender: TObject);
     procedure TreeViewChange(Sender: TObject; Node: TTreeNode);
     procedure TreeViewExpanding(Sender: TObject; Node: TTreeNode;
@@ -78,6 +78,7 @@ type
   private
     Clients: array of TCClient;
     MouseDownNode: TTreeNode;
+    ProgressInfos: TTools.TProgressInfos;
     Transfer: TTTransfer;
     WantedExecute: Boolean;
     WantedNodeExpand: TTreeNode;
@@ -85,16 +86,18 @@ type
     function GetClient(const Index: Integer): TCClient;
     procedure InitTSSelect(Sender: TObject);
     procedure OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
+    procedure OnExecuted(const ASuccess: Boolean);
+    procedure OnUpdate(const AProgressInfos: TTools.TProgressInfos);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMExecutedDone(var Message: TMessage); message CM_EXECUTIONDONE;
     procedure CMUpdateProgressInfo(var Message: TMessage); message CM_UPDATEPROGRESSINFO;
   public
-    MasterClient: TCClient;
-    MasterDatabaseName: string;
-    MasterTableName: string;
-    SlaveClient: TCClient;
-    SlaveDatabaseName: string;
-    SlaveTableName: string;
+    SourceClient: TCClient;
+    SourceDatabaseName: string;
+    SourceTableName: string;
+    DestinationClient: TCClient;
+    DestinationDatabaseName: string;
+    DestinationTableName: string;
     function Execute(): Boolean;
   end;
 
@@ -143,8 +146,8 @@ begin
 
   Caption := ReplaceStr(Preferences.LoadStr(753), '&', '');;
 
-  GMaster.Caption := ReplaceStr(Preferences.LoadStr(754), '&', '');
-  GSlave.Caption := ReplaceStr(Preferences.LoadStr(755), '&', '');
+  GSource.Caption := ReplaceStr(Preferences.LoadStr(754), '&', '');
+  GDestination.Caption := ReplaceStr(Preferences.LoadStr(755), '&', '');
 
   GTransferWhat.Caption := Preferences.LoadStr(227);
   FLTransferWhat.Caption := Preferences.LoadStr(227) + ':';
@@ -177,12 +180,12 @@ begin
 
   FreeAndNil(Transfer);
 
-  FMaster.Items.BeginUpdate();
-  FMaster.Items.Clear();
-  FMaster.Items.EndUpdate();
-  FSlave.Items.BeginUpdate();
-  FSlave.Items.Clear();
-  FSlave.Items.EndUpdate();
+  FSource.Items.BeginUpdate();
+  FSource.Items.Clear();
+  FSource.Items.EndUpdate();
+  FDestination.Items.BeginUpdate();
+  FDestination.Items.Clear();
+  FDestination.Items.EndUpdate();
 
   if (Success) then
   begin
@@ -278,8 +281,8 @@ begin
   Transfer := nil;
   BorderStyle := bsSizeable;
 
-  FMaster.Images := Preferences.SmallImages;
-  FSlave.Images := Preferences.SmallImages;
+  FSource.Images := Preferences.SmallImages;
+  FDestination.Images := Preferences.SmallImages;
 
   FTransferStructure.Checked := Preferences.Transfer.Structure;
   FTransferData.Checked := Preferences.Transfer.Data;
@@ -309,7 +312,7 @@ begin
     if (Assigned(Clients[I])) then
     begin
       Clients[I].UnRegisterEventProc(FormClientEvent);
-      if (Assigned(Clients[I]) and (Clients[I] <> MasterClient) and (Clients[I] <> MasterClient)) then
+      if (Assigned(Clients[I]) and (Clients[I] <> SourceClient) and (Clients[I] <> SourceClient)) then
         FreeAndNil(Clients[I]);
     end;
   SetLength(Clients, 0);
@@ -348,10 +351,10 @@ begin
   SetLength(Clients, Accounts.Count);
   for I := 0 to Accounts.Count - 1 do
   begin
-    if (Assigned(MasterClient) and (Accounts[I] = MasterClient.Account)) then
-      Clients[I] := MasterClient
-    else if (Assigned(MasterClient) and (Accounts[I] = MasterClient.Account)) then
-      Clients[I] := MasterClient
+    if (Assigned(SourceClient) and (Accounts[I] = SourceClient.Account)) then
+      Clients[I] := SourceClient
+    else if (Assigned(SourceClient) and (Accounts[I] = SourceClient.Account)) then
+      Clients[I] := SourceClient
     else
       Clients[I] := nil;
   end;
@@ -359,11 +362,11 @@ begin
   InitTSSelect(Sender);
 
   TSSelectShow(Sender);
-  if (not Assigned(SlaveClient)) then
+  if (not Assigned(DestinationClient)) then
   begin
     PageControl.ActivePage := TSSelect;
-    if (Assigned(MasterClient)) then
-      ActiveControl := FMaster
+    if (Assigned(SourceClient)) then
+      ActiveControl := FSource
     else
       ActiveControl := FBCancel;
   end
@@ -423,8 +426,8 @@ procedure TDTransfer.InitTSSelect(Sender: TObject);
 var
   DatabaseNames: TStringList;
   DatabaseNode: TTreeNode;
-  FMasterOnChange: TTVChangedEvent;
-  FSlaveOnChange: TTVChangedEvent;
+  FSourceOnChange: TTVChangedEvent;
+  FDestinationOnChange: TTVChangedEvent;
   I: Integer;
   Node: TTreeNode;
   SelectedNodes: TList;
@@ -432,44 +435,44 @@ var
   TableNames: TStringList;
   TableNode: TTreeNode;
 begin
-  FMasterOnChange := FMaster.OnChange;
-  FMaster.OnChange := nil;
-  FSlaveOnChange := FSlave.OnChange;
-  FSlave.OnChange := nil;
+  FSourceOnChange := FSource.OnChange;
+  FSource.OnChange := nil;
+  FDestinationOnChange := FDestination.OnChange;
+  FDestination.OnChange := nil;
 
-  FMaster.Items.BeginUpdate();
-  FMaster.Items.Clear();
-  FMaster.Items.EndUpdate();
-  FSlave.Items.BeginUpdate();
-  FSlave.Items.Clear();
-  FSlave.Items.EndUpdate();
+  FSource.Items.BeginUpdate();
+  FSource.Items.Clear();
+  FSource.Items.EndUpdate();
+  FDestination.Items.BeginUpdate();
+  FDestination.Items.Clear();
+  FDestination.Items.EndUpdate();
 
   for I := 0 to Accounts.Count - 1 do
   begin
-    Node := FMaster.Items.Add(nil, Accounts[I].Name);
+    Node := FSource.Items.Add(nil, Accounts[I].Name);
     Node.ImageIndex := iiServer;
     Node.HasChildren := True;
 
-    Node := FSlave.Items.Add(nil, Accounts[I].Name);
+    Node := FDestination.Items.Add(nil, Accounts[I].Name);
     Node.ImageIndex := iiServer;
     Node.HasChildren := True;
   end;
 
-  if (Assigned(MasterClient)) then
+  if (Assigned(SourceClient)) then
   begin
-    MasterClient.BeginSynchro();
+    SourceClient.BeginSynchron();
 
     SelectedNodes := TList.Create();
     DatabaseNames := TStringList.Create();
     TableNames := TStringList.Create();
 
-    DatabaseNames.Text := ReplaceStr(MasterDatabaseName, ',', #13#10);
-    TableNames.Text := ReplaceStr(MasterTableName, ',', #13#10);
+    DatabaseNames.Text := ReplaceStr(SourceDatabaseName, ',', #13#10);
+    TableNames.Text := ReplaceStr(SourceTableName, ',', #13#10);
 
-    AccountNode := FMaster.TopItem;
+    AccountNode := FSource.TopItem;
     while (Assigned(AccountNode)) do
     begin
-      if (AccountNode.Text = MasterClient.Account.Name) then
+      if (AccountNode.Text = SourceClient.Account.Name) then
       begin
         if (DatabaseNames.Count = 0) then
           AccountNode.Selected := True
@@ -500,41 +503,41 @@ begin
     end;
     if (SelectedNodes.Count = 1) then
     begin
-      FMaster.Selected := SelectedNodes[0];
-      if (Assigned(FMaster.Selected) and FMaster.AutoExpand) then
-        FMaster.Selected.Expand(False);
+      FSource.Selected := SelectedNodes[0];
+      if (Assigned(FSource.Selected) and FSource.AutoExpand) then
+        FSource.Selected.Expand(False);
     end
     else if (SelectedNodes.Count > 1) then
-      FMaster.Select(SelectedNodes);
+      FSource.Select(SelectedNodes);
 
     SelectedNodes.Free();
     DatabaseNames.Free();
     TableNames.Free();
 
-    if (Assigned(MasterClient)) then
+    if (Assigned(SourceClient)) then
     begin
-      AccountNode := FSlave.TopItem;
+      AccountNode := FDestination.TopItem;
       while (Assigned(AccountNode)) do
       begin
-        if (AccountNode.Text = MasterClient.Account.Name) then
+        if (AccountNode.Text = SourceClient.Account.Name) then
         begin
           AccountNode.Selected := True;
-          if (SlaveDatabaseName <> '') then
+          if (DestinationDatabaseName <> '') then
           begin
             AccountNode.Expand(False);
             DatabaseNode := AccountNode.getFirstChild();
             while (Assigned(DatabaseNode)) do
             begin
-              if (DatabaseNode.Text = SlaveDatabaseName) then
+              if (DatabaseNode.Text = DestinationDatabaseName) then
               begin
                 DatabaseNode.Selected := True;
-                if (SlaveTableName <> '') then
+                if (DestinationTableName <> '') then
                 begin
                   DatabaseNode.Expand(False);
                   TableNode := DatabaseNode.getFirstChild();
                   while (Assigned(TableNode)) do
                   begin
-                    if (TableNode.Text = SlaveTableName) then
+                    if (TableNode.Text = DestinationTableName) then
                       TableNode.Selected := True;
                     TableNode := DatabaseNode.getNextChild(TableNode);
                   end;
@@ -546,16 +549,16 @@ begin
         end;
         AccountNode := AccountNode.getNextSibling();
       end;
-      MasterClient.EndSynchro();
+      SourceClient.EndSynchron();
     end;
-    if (Assigned(FSlave.Selected) and FSlave.AutoExpand) then
-      FSlave.Selected.Expand(False);
+    if (Assigned(FDestination.Selected) and FDestination.AutoExpand) then
+      FDestination.Selected.Expand(False);
   end;
 
   TreeViewChange(Sender, nil);
 
-  FMaster.OnChange := FMasterOnChange;
-  FSlave.OnChange := FSlaveOnChange;
+  FSource.OnChange := FSourceOnChange;
+  FDestination.OnChange := FDestinationOnChange;
 end;
 
 procedure TDTransfer.miSelectAllClick(Sender: TObject);
@@ -567,15 +570,15 @@ begin
   if (Assigned(MouseDownNode)) then
     for I := 0 to MouseDownNode.Count - 1 do
       Nodes.Add(MouseDownNode.Item[I]);
-  FMaster.Select(Nodes);
+  FSource.Select(Nodes);
   Nodes.Free();
 end;
 
-procedure TDTransfer.MMasterPopup(Sender: TObject);
+procedure TDTransfer.MSourcePopup(Sender: TObject);
 begin
-  miSelectAll.Enabled := FMaster.MultiSelect and Assigned(MouseDownNode) and (MouseDownNode.ImageIndex <> iiBaseTable);
+  miSelectAll.Enabled := FSource.MultiSelect and Assigned(MouseDownNode) and (MouseDownNode.ImageIndex <> iiBaseTable);
 
-  ShowEnabledItems(MMaster.Items);
+  ShowEnabledItems(MSource.Items);
 end;
 
 procedure TDTransfer.OnError(const Sender: TObject; const Error: TTools.TError; const Item: TTools.TItem; var Success: TDataAction);
@@ -636,24 +639,48 @@ begin
   end;
 end;
 
+procedure TDTransfer.OnExecuted(const ASuccess: Boolean);
+begin
+  if (not Transfer.Suspended) then
+    PostMessage(Handle, CM_EXECUTIONDONE, WPARAM(ASuccess), 0)
+  else
+  begin
+    Perform(CM_EXECUTIONDONE, WPARAM(ASuccess), 0);
+    Application.ProcessMessages();
+  end;
+end;
+
+procedure TDTransfer.OnUpdate(const AProgressInfos: TTools.TProgressInfos);
+begin
+  MoveMemory(@ProgressInfos, @AProgressInfos, SizeOf(AProgressInfos));
+
+  if (not Transfer.Suspended) then
+    PostMessage(Handle, CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos))
+  else
+  begin
+    Perform(CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos));
+    Application.ProcessMessages();
+  end;
+end;
+
 procedure TDTransfer.PageControlResize(Sender: TObject);
 begin
-  GMaster.Width := PageControl.Width div 2 - 3 * GMaster.Left;
-  GSlave.Width := GMaster.Width;
-  GSlave.Left := PageControl.Width - GSlave.Width - 3 * GMaster.Left;
+  GSource.Width := PageControl.Width div 2 - 3 * GSource.Left;
+  GDestination.Width := GSource.Width;
+  GDestination.Left := PageControl.Width - GDestination.Width - 3 * GSource.Left;
 end;
 
 procedure TDTransfer.TreeViewChange(Sender: TObject; Node: TTreeNode);
 begin
   if (ModalResult = mrNone) then
   begin
-    if ((Sender = FMaster) and Assigned(Node)) then
-      FMaster.MultiSelect := Assigned(Node.Parent);
+    if ((Sender = FSource) and Assigned(Node)) then
+      FSource.MultiSelect := Assigned(Node.Parent);
 
-    FBForward.Enabled := Assigned(FMaster.Selected) and Assigned(FMaster.Selected.Parent) and Assigned(FSlave.Selected)
-      and (FMaster.Selected.Parent.Level = FSlave.Selected.Level)
-      and ((FMaster.Selected.ImageIndex <> iiDatabase) or (FMaster.Selected.Parent.Text <> FSlave.Selected.Text))
-      and ((FMaster.Selected.ImageIndex <> iiBaseTable) or (FMaster.Selected.Parent.Text <> FSlave.Selected.Text) or (FMaster.Selected.Parent.Parent.Text <> FSlave.Selected.Parent.Text));
+    FBForward.Enabled := Assigned(FSource.Selected) and Assigned(FSource.Selected.Parent) and Assigned(FDestination.Selected)
+      and (FSource.Selected.Parent.Level = FDestination.Selected.Level)
+      and ((FSource.Selected.ImageIndex <> iiDatabase) or (FSource.Selected.Parent.Text <> FDestination.Selected.Text))
+      and ((FSource.Selected.ImageIndex <> iiBaseTable) or (FSource.Selected.Parent.Text <> FDestination.Selected.Text) or (FSource.Selected.Parent.Parent.Text <> FDestination.Selected.Parent.Text));
   end;
 end;
 
@@ -693,7 +720,7 @@ begin
                   begin
                     NewNode := TreeView.Items.AddChild(Node, Client.Databases[I].Name);
                     NewNode.ImageIndex := iiDatabase;
-                    NewNode.HasChildren := TreeView = FMaster;
+                    NewNode.HasChildren := TreeView = FSource;
                   end;
                 Node.HasChildren := Assigned(Node.getFirstChild());
               end;
@@ -736,15 +763,15 @@ procedure TDTransfer.TSExecuteShow(Sender: TObject);
 var
   Answer: Integer;
 
-  procedure AddTable(const MasterClient: TCClient; const MasterDatabaseName, MasterTableName: string; const SlaveClient: TCClient; const SlaveDatabaseName, SlaveTableName: string);
+  procedure AddTable(const SourceClient: TCClient; const SourceDatabaseName, SourceTableName: string; const DestinationClient: TCClient; const DestinationDatabaseName, DestinationTableName: string);
   begin
-    if ((Answer <> IDYESALL) and Assigned(SlaveClient.DatabaseByName(SlaveDatabaseName)) and Assigned(SlaveClient.DatabaseByName(SlaveDatabaseName).TableByName(SlaveTableName))) then
-      Answer := MsgBox(Preferences.LoadStr(700, SlaveDatabaseName + '.' + SlaveTableName), Preferences.LoadStr(101), MB_YESYESTOALLNOCANCEL + MB_ICONQUESTION);
+    if ((Answer <> IDYESALL) and Assigned(DestinationClient.DatabaseByName(DestinationDatabaseName)) and Assigned(DestinationClient.DatabaseByName(DestinationDatabaseName).TableByName(DestinationTableName))) then
+      Answer := MsgBox(Preferences.LoadStr(700, DestinationDatabaseName + '.' + DestinationTableName), Preferences.LoadStr(101), MB_YESYESTOALLNOCANCEL + MB_ICONQUESTION);
 
     if (Answer in [IDYES, IDYESALL]) then
       Transfer.Add(
-        MasterClient, MasterDatabaseName, MasterTableName,
-        SlaveClient, SlaveDatabaseName, SlaveTableName
+        SourceClient, SourceDatabaseName, SourceTableName,
+        DestinationClient, DestinationDatabaseName, DestinationTableName
       )
     else if (Answer = IDCANCEL) then
       FreeAndNil(Transfer);
@@ -807,10 +834,10 @@ var
   I: Integer;
   J: Integer;
   Database: TCDatabase;
-  MasterClient: TCClient;
+  SourceClient: TCClient;
   Node: TTreeNode;
   ProgressInfos: TTools.TProgressInfos;
-  SlaveClient: TCClient;
+  DestinationClient: TCClient;
 begin
   FErrors.Caption := '0';
   FErrorMessages.Lines.Clear();
@@ -829,19 +856,19 @@ begin
   FBCancel.Default := True;
   ActiveControl := FBCancel;
 
-  Node := FMaster.Selected;
+  Node := FSource.Selected;
   while (Assigned(Node.Parent)) do Node := Node.Parent;
-  MasterClient := GetClient(Node.Index);
-  WantedExecute := InitializeNode(MasterClient, FMaster.Selected);
+  SourceClient := GetClient(Node.Index);
+  WantedExecute := InitializeNode(SourceClient, FSource.Selected);
 
   if (WantedExecute) then
-    SlaveClient := nil
+    DestinationClient := nil
   else
   begin
-    Node := FSlave.Selected;
+    Node := FDestination.Selected;
     while (Assigned(Node.Parent)) do Node := Node.Parent;
-    SlaveClient := GetClient(Node.Index);
-    WantedExecute := InitializeNode(SlaveClient, FSlave.Selected);
+    DestinationClient := GetClient(Node.Index);
+    WantedExecute := InitializeNode(DestinationClient, FDestination.Selected);
   end;
 
   if (not WantedExecute) then
@@ -850,33 +877,31 @@ begin
 
     Transfer := TTTransfer.Create();
     Transfer.Wnd := Self.Handle;
-    Transfer.UpdateMessage := CM_UPDATEPROGRESSINFO;
-    Transfer.ExecutedMessage := CM_EXECUTIONDONE;
     Transfer.Backup := False;
     Transfer.Data := FTransferData.Checked;
     Transfer.DisableKeys := FTransferDisableKeys.Checked;
     Transfer.Structure := FTransferStructure.Checked;
-    Transfer.UpdateData := False;
-    Transfer.UpdateStructure := False;
     Transfer.OnError := OnError;
+    Transfer.OnExecuted := OnExecuted;
+    Transfer.OnUpdate := OnUpdate;
 
-    for I := 0 to FMaster.Selected.Parent.Count - 1 do
-      if (FMaster.Selected.Parent[I].Selected) then
-        case (FMaster.Selected.Parent[I].ImageIndex) of
+    for I := 0 to FSource.Selected.Parent.Count - 1 do
+      if (FSource.Selected.Parent[I].Selected) then
+        case (FSource.Selected.Parent[I].ImageIndex) of
           iiDatabase:
             begin
-              Database := MasterClient.DatabaseByName(FMaster.Selected.Parent[I].Text);
+              Database := SourceClient.DatabaseByName(FSource.Selected.Parent[I].Text);
               for J := 0 to Database.Tables.Count - 1 do
                 if ((Database.Tables[J] is TCBaseTable) and Assigned(TCBaseTable(Database.Tables[J]).Engine) and not TCBaseTable(Database.Tables[J]).Engine.IsMerge and (RightStr(Database.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
                   AddTable(
-                    MasterClient, Database.Name, Database.Tables[J].Name,
-                    SlaveClient, Database.Name, Database.Tables[J].Name
+                    SourceClient, Database.Name, Database.Tables[J].Name,
+                    DestinationClient, Database.Name, Database.Tables[J].Name
                   );
             end;
           iiBaseTable:
             AddTable(
-              MasterClient, FMaster.Selected.Parent.Text, FMaster.Selected.Parent[I].Text,
-              SlaveClient, FSlave.Selected.Text, FMaster.Selected.Parent[I].Text
+              SourceClient, FSource.Selected.Parent.Text, FSource.Selected.Parent[I].Text,
+              DestinationClient, FDestination.Selected.Text, FSource.Selected.Parent[I].Text
             );
         end;
 

@@ -28,36 +28,44 @@ object DSQLHelp: TDSQLHelp
     BevelOuter = bvLowered
     ParentBackground = False
     TabOrder = 0
-    ExplicitWidth = 423
     DesignSize = (
       500
       25)
-    object FBDescription: TButton
+    object FBContent: TButton
       Left = 1
       Top = 1
       Width = 79
       Height = 25
-      Caption = 'FBDescription'
+      Caption = 'FBContent'
       TabOrder = 0
-      OnClick = FBDescriptionClick
+      OnClick = FBContentClick
     end
-    object FBExample: TButton
+    object FBDescription: TButton
       Left = 80
       Top = 1
       Width = 75
       Height = 25
-      Caption = 'FBExample'
+      Caption = 'FBDescription'
       TabOrder = 1
-      OnClick = FBExampleClick
+      OnClick = FBDescriptionClick
     end
-    object FBManual: TButton
+    object FBExample: TButton
       Tag = 2
       Left = 156
       Top = 1
       Width = 75
       Height = 25
-      Caption = 'FBManual'
+      Caption = 'FBExample'
       TabOrder = 2
+      OnClick = FBExampleClick
+    end
+    object FBManual: TButton
+      Left = 232
+      Top = 1
+      Width = 75
+      Height = 25
+      Caption = 'FBManual'
+      TabOrder = 3
       OnClick = FBManualClick
     end
     object FQuickSearch: TEdit
@@ -69,7 +77,7 @@ object DSQLHelp: TDSQLHelp
       AutoSize = False
       Ctl3D = True
       ParentCtl3D = False
-      TabOrder = 3
+      TabOrder = 4
       OnKeyPress = FQuickSearchKeyPress
     end
     object TBQuickSearchEnabled: TToolBar
@@ -80,7 +88,7 @@ object DSQLHelp: TDSQLHelp
       Align = alNone
       Anchors = [akTop, akRight]
       AutoSize = True
-      TabOrder = 4
+      TabOrder = 5
       Transparent = False
       object FQuickSearchEnabled: TToolButton
         Left = 0

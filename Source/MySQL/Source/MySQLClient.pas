@@ -285,7 +285,7 @@ const
 implementation {***************************************************************}
 
 uses
-  Windows,
+  Windows, Classes,
   ZLib, StrUtils;
 
 const
@@ -342,7 +342,7 @@ var
   E: Longint;
   I: Integer;
   J: Integer;
-  temp: Longint;
+  Temp: Longint;
   W: array [0..79] of Longint;
 begin
   for I := 0 to 15 do
@@ -365,39 +365,39 @@ begin
   E := context.FInterimHash[4];
   for I := 0 to 19 do
   begin
-    temp := ((A shl 5) or (A shr 27)) + ((B and C) or ((not B) and D)) + E + W[I] + ctKeys[0];
+    Temp := ((A shl 5) or (A shr 27)) + ((B and C) or ((not B) and D)) + E + W[I] + ctKeys[0];
     E := D;
     D := C;
     C := (B shl 30) or (B shr 2);
     B := A;
-    A := temp;
+    A := Temp;
   end;
   for I := 20 to 39 do
   begin
-    temp := ((A shl 5) or (A shr 27)) + (B xor C xor D) + E + W[I] + ctKeys[1];
+    Temp := ((A shl 5) or (A shr 27)) + (B xor C xor D) + E + W[I] + ctKeys[1];
     E := D;
     D := C;
     C := (B shl 30) or (B shr 2);
     B := A;
-    A := temp;
+    A := Temp;
   end;
   for I := 40 to 59 do
   begin
-    temp := ((A shl 5) or (A shr 27)) + ((B and C) or (B and D) or (C and D)) + E + W[I] + ctKeys[2];
+    Temp := ((A shl 5) or (A shr 27)) + ((B and C) or (B and D) or (C and D)) + E + W[I] + ctKeys[2];
     E := D;
     D := C;
     C := (B shl 30) or (B shr 2);
     B := A;
-    A := temp;
+    A := Temp;
   end;
   for I := 60 to 79 do
   begin
-    temp := ((A shl 5) or (A shr 27)) + (B xor C xor D) + E + W[I] + ctKeys[3];
+    Temp := ((A shl 5) or (A shr 27)) + (B xor C xor D) + E + W[I] + ctKeys[3];
     E := D;
     D := C;
     C := (B shl 30) or (B shr 2);
     B := A;
-    A := temp;
+    A := Temp;
   end;
   context.FInterimHash[0] := context.FInterimHash[0] + A;
   context.FInterimHash[1] := context.FInterimHash[1] + B;
@@ -633,7 +633,7 @@ end;
 
 function mysql_error(mysql: MYSQL): my_char; stdcall;
 begin
-  Result := my_char(RawByteString(mysql.error()));
+  Result := my_char(mysql.error());
 end;
 
 // function mysql_escape_string(_to: my_char; const from: my_char; from_length: my_uint): my_uint; stdcall;
