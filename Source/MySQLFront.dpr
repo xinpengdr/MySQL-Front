@@ -1,4 +1,4 @@
-﻿program MySQLFront;
+program MySQLFront;
 
 uses
   {$IFDEF Debug}
