@@ -773,7 +773,11 @@ begin
     Result := ''''''
   else
   begin
+try
     SetLength(Result, 2 * Length + 2); // reserve space
+except
+    SetLength(Result, 2 * Length + 2); // reserve space
+end;
 
     asm
         PUSH ES
@@ -3725,7 +3729,7 @@ begin
     DataSet := nil
   else
   begin
-    DataSet := TMySQLQuery.Create(nil);
+    DataSet := TMySQLBuffer.Create(nil);
     DataSet.Connection := Client;
     while ((Success = daSuccess) and not DataSet.Active) do
     begin
@@ -6750,7 +6754,7 @@ begin
 
     if (Success = daSuccess) then
     begin
-      SourceDataSet := TMySQLQuery.Create(nil);
+      SourceDataSet := TMySQLBuffer.Create(nil);
       SourceDataSet.Connection := Source.Client;
       SourceDataSet.Open();
 

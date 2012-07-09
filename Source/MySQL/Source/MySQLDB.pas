@@ -16,6 +16,7 @@ type
   TMySQLMonitor = class;
   TMySQLConnection = class;                      
   TMySQLQuery = class;
+  TMySQLBuffer = class;
   TMySQLDataSet = class;
 
   TMySQLLibrary = class
@@ -168,7 +169,7 @@ type
       Time: TDateTime;
       function GetIsRunning(): Boolean;
     protected
-      DataSet: TMySQLDataSet;
+      DataSet: TMySQLBuffer;
       ErrorCode: Integer;
       ErrorMessage: string;
       LibHandle: MySQLConsts.MYSQL;
@@ -185,10 +186,10 @@ type
       SQLUseStmts: TList;
       State: TState;
       Success: Boolean;
-      procedure BindDataSet(const ADataSet: TMySQLDataSet); virtual;
+      procedure BindDataSet(const ADataSet: TMySQLBuffer); virtual;
       procedure Execute(); override;
-      procedure ReleaseDataSet(const ADataSet: TMySQLDataSet); virtual;
-      procedure RunAction(const AState: TState; Synchron: Boolean = False); virtual;
+      procedure ReleaseDataSet(const ADataSet: TMySQLBuffer); virtual;
+      procedure RunAction(const AState: TState; Synchron: Boolean); virtual;
       procedure Synchronize(); virtual;
       property Connection: TMySQLConnection read FConnection;
       property IsRunning: Boolean read GetIsRunning;
@@ -306,7 +307,7 @@ type
     procedure SyncHandledResult(const SynchroThread: TSynchroThread); virtual;
     procedure SyncHandlingResult(const SynchroThread: TSynchroThread); virtual;
     procedure SyncNextResult(const SynchroThread: TSynchroThread); virtual;
-    procedure SyncOpenDataSet(const SynchroThread: TSynchroThread; const DataSet: TMySQLDataSet); virtual;
+    procedure SyncOpenBuffer(const SynchroThread: TSynchroThread; const DataSet: TMySQLBuffer); virtual;
     procedure SyncOpenQuery(const SynchroThread: TSynchroThread; const DataSet: TMySQLQuery); virtual;
     procedure SyncPing(const SynchroThread: TSynchroThread); virtual;
     procedure SyncReceivingData(const SynchroThread: TSynchroThread); virtual;
@@ -482,7 +483,51 @@ type
     property OnNewRecord;
   end;
 
-  TMySQLDataSet = class(TMySQLQuery)
+  TMySQLBuffer = class(TMySQLQuery)
+  type
+    PInternRecordBuffer = ^TInternRecordBuffer;
+    TInternRecordBuffer = record
+      DataSize: Integer;
+      LibLengths: MYSQL_LENGTHS;
+      LibRow: MYSQL_ROW;
+      MemSize: Integer;
+    end;
+    TInternRecordBuffers = class(TList)
+    private
+      FCriticalSection: TCriticalSection;
+      FDataSet: TMySQLBuffer;
+      function Get(Index: Integer): PInternRecordBuffer; inline;
+      procedure Put(Index: Integer; Buffer: PInternRecordBuffer); inline;
+    protected
+      DataSize: Integer;
+      Index: Integer;
+      MemSize: Integer;
+      property DataSet: TMySQLBuffer read FDataSet;
+    public
+      procedure Clear(); override;
+      constructor Create(const ADataSet: TMySQLBuffer);
+      destructor Destroy(); override;
+      property Buffers[Index: Integer]: PInternRecordBuffer read Get write Put; default;
+      property CriticalSection: TCriticalSection read FCriticalSection;
+    end;
+  private
+    FCursorOpen: Boolean;
+    InternRecordBuffers: TInternRecordBuffers;
+  protected
+    RecordReceived: TEvent;
+    RecordUsed: TEvent;
+    function GetRecord(Buffer: TRecordBuffer; GetMode: TGetMode; DoCheck: Boolean): TGetResult; override;
+    procedure InternAddRecord(const LibRow: MYSQL_ROW; const LibLengths: MYSQL_LENGTHS; const Index: Integer = -1); virtual;
+    procedure InternalClose(); override;
+    procedure InternalOpen(); override;
+    function InternalOpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean; override;
+    function IsCursorOpen(): Boolean; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy(); override;
+  end;
+
+  TMySQLDataSet = class(TMySQLBuffer)
   type
     TTextWidth = function (const Text: string): Integer of object;
     PInternRecordBuffer = ^TInternRecordBuffer;
@@ -517,20 +562,16 @@ type
     DeleteBookmarks: array of TBookmark;
     FCachedUpdates: Boolean;
     FCanModify: Boolean;
-    FCursorOpen: Boolean;
     FDataSize: Int64;
     FilterParser: TExprParser;
     FLocateNext: Boolean;
     FReadOnly: Boolean;
-    FRecordReceived: TEvent;
     FSortDef: TIndexDef;
     InternRecordBuffers: TInternRecordBuffers;
     function AllocInternRecordBuffer(): PInternRecordBuffer;
     function BookmarkToInternBufferIndex(const Bookmark: TBookmark): Integer;
     procedure FreeInternRecordBuffer(const InternRecordBuffer: PInternRecordBuffer);
     procedure InternActivateFilter();
-    procedure InternAddRecord(const LibRow: MYSQL_ROW; const LibLengths: MYSQL_LENGTHS; const Index: Integer = -1);
-    procedure MoveRecordBufferData(var DestData: TMySQLQuery.PRecordBufferData; const SourceData: TMySQLQuery.PRecordBufferData);
     function VisibleInFilter(const InternRecordBuffer: PInternRecordBuffer): Boolean;
   protected
     procedure ActivateFilter(); virtual;
@@ -547,6 +588,7 @@ type
     function GetRecord(Buffer: TRecordBuffer; GetMode: TGetMode; DoCheck: Boolean): TGetResult; override;
     function GetRecordCount(): Integer; override;
     function GetUniDirectional(): Boolean; override;
+    procedure InternAddRecord(const LibRow: MYSQL_ROW; const LibLengths: MYSQL_LENGTHS; const Index: Integer = -1); override;
     procedure InternalAddRecord(Buffer: Pointer; Append: Boolean); override;
     procedure InternalCancel(); override;
     procedure InternalClose(); override;
@@ -556,13 +598,12 @@ type
     procedure InternalInitRecord(Buffer: TRecordBuffer); override;
     procedure InternalInsert(); override;
     procedure InternalLast(); override;
-    procedure InternalOpen(); override;
     function InternalOpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean; override;
     procedure InternalPost(); override;
     procedure InternalRefresh(); override;
     function InternalRefreshEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean; virtual;
     procedure InternalSetToRecord(Buffer: TRecordBuffer); override;
-    function IsCursorOpen(): Boolean; override;
+    procedure MoveRecordBufferData(var DestData: TMySQLQuery.PRecordBufferData; const SourceData: TMySQLQuery.PRecordBufferData);
     procedure SetActive(Value: Boolean); override;
     procedure SetBookmarkData(Buffer: TRecordBuffer; Data: Pointer); override;
     procedure SetBookmarkFlag(Buffer: TRecordBuffer; Value: TBookmarkFlag); override;
@@ -576,7 +617,6 @@ type
     function SQLTableClausel(): string; virtual;
     function SQLUpdate(Buffer: TRecordBuffer = nil): string; virtual;
     procedure UpdateIndexDefs(); override;
-    property RecordReceived: TEvent read FRecordReceived;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy(); override;
@@ -1741,7 +1781,7 @@ end;
 
 { TMySQLConnection.TSynchroThread *********************************************}
 
-procedure TMySQLConnection.TSynchroThread.BindDataSet(const ADataSet: TMySQLDataSet);
+procedure TMySQLConnection.TSynchroThread.BindDataSet(const ADataSet: TMySQLBuffer);
 begin
   DataSet := ADataSet;
   ADataSet.SynchroThread := Self;
@@ -1845,20 +1885,20 @@ begin
   Result := (ExecuteE.WaitFor(IGNORE) = wrSignaled) or not (State in [ssClose, ssReady]);
 end;
 
-procedure TMySQLConnection.TSynchroThread.ReleaseDataSet(const ADataSet: TMySQLDataSet);
+procedure TMySQLConnection.TSynchroThread.ReleaseDataSet(const ADataSet: TMySQLBuffer);
 begin
   ADataSet.FHandle := nil;
   ADataSet.SynchroThread := nil;
   DataSet := nil;
 end;
 
-procedure TMySQLConnection.TSynchroThread.RunAction(const AState: TState; Synchron: Boolean = False);
+procedure TMySQLConnection.TSynchroThread.RunAction(const AState: TState; Synchron: Boolean);
 begin
   Assert(ExecuteE.WaitFor(IGNORE) <> wrSignaled);
 
   State := AState;
 
-  if (Synchron or not Connection.UseSynchroThread()) then
+  if (Synchron) then
     case (State) of
       ssConnecting:
         begin
@@ -1989,7 +2029,7 @@ begin
   if (not Assigned(FSynchroThread)) then
     FSynchroThread := TSynchroThread.Create(Self);
 
-  SynchroThread.RunAction(ssConnecting);
+  SynchroThread.RunAction(ssConnecting, not UseSynchroThread());
 end;
 
 procedure TMySQLConnection.DoConvertError(const Sender: TObject; const Text: string; const Error: EConvertError);
@@ -2014,7 +2054,7 @@ begin
   if (not Assigned(SynchroThread)) then
     SyncDisconncted(nil)
   else
-    SynchroThread.RunAction(ssDisconnecting);
+    SynchroThread.RunAction(ssDisconnecting, not UseSynchroThread());
 end;
 
 procedure TMySQLConnection.DoError(const AErrorCode: Integer; const AErrorMessage: string);
@@ -2030,7 +2070,7 @@ begin
     if (not Assigned(SynchroThread)) then
       SyncDisconncted(nil)
     else
-      SynchroThread.RunAction(ssDisconnecting);
+      SynchroThread.RunAction(ssDisconnecting, not UseSynchroThread());
 
   FErrorCode := AErrorCode; FErrorMessage := AErrorMessage;
 
@@ -2661,7 +2701,7 @@ begin
     end
     else
     begin
-      SynchroThread.RunAction(ssExecutingSQL, Synchron);
+      SynchroThread.RunAction(ssExecutingSQL, Synchron or not UseSynchroThread());
       if ((Synchron or not UseSynchroThread()) and Assigned(SynchroThread.LibHandle)) then
         Result := ErrorCode = 0
       else
@@ -2902,10 +2942,10 @@ begin
   SynchroThread.ErrorMessage := ErrorMsg(SynchroThread.LibHandle);
 end;
 
-procedure TMySQLConnection.SyncOpenDataSet(const SynchroThread: TSynchroThread; const DataSet: TMySQLDataSet);
+procedure TMySQLConnection.SyncOpenBuffer(const SynchroThread: TSynchroThread; const DataSet: TMySQLBuffer);
 begin
   SynchroThread.BindDataSet(DataSet);
-  SynchroThread.RunAction(ssReceivingData);
+  SynchroThread.RunAction(ssReceivingData, False);
 end;
 
 procedure TMySQLConnection.SyncOpenQuery(const SynchroThread: TSynchroThread; const DataSet: TMySQLQuery);
@@ -2975,7 +3015,7 @@ end;
 
 function TMySQLConnection.UseCompression(): Boolean;
 begin
-  Result := ((LibraryType = ltHTTP) or (lstrcmpi(PChar(Host), LOCAL_HOST) <> 0));
+  Result := (LibraryType = ltHTTP) or not ((lstrcmpi(PChar(Host), LOCAL_HOST) = 0) or (Host = '127.0.0.1') or (Host = '::1'));
 end;
 
 function TMySQLConnection.UseSynchroThread(): Boolean;
@@ -4084,11 +4124,11 @@ end;
 
 function TMySQLQuery.GetRecord(Buffer: TRecordBuffer; GetMode: TGetMode; DoCheck: Boolean): TGetResult;
 begin
-  PRecordBufferData(ActiveBuffer)^.LibRow := Connection.Lib.mysql_fetch_row(Handle);
+  PRecordBufferData(ActiveBuffer())^.LibRow := Connection.Lib.mysql_fetch_row(Handle);
 
   if (Assigned(PRecordBufferData(ActiveBuffer())^.LibRow)) then
   begin
-    PRecordBufferData(ActiveBuffer)^.LibLengths := Connection.Lib.mysql_fetch_lengths(Handle);
+    PRecordBufferData(ActiveBuffer())^.LibLengths := Connection.Lib.mysql_fetch_lengths(Handle);
 
     Inc(FRecNo);
     Result := grOk;
@@ -4516,13 +4556,8 @@ begin
           Connection.SendSQL(TMySQLTable(Self).SQLSelect(), InternalOpenEvent);
         end;
 
-try
         if ((State <> dsOpening) and (Connection.Lib.mysql_errno(SynchroThread.LibHandle) = 0) and (FieldCount > 0)) then
           inherited;
-except
-        if ((State <> dsOpening) and (Connection.Lib.mysql_errno(SynchroThread.LibHandle) = 0) and (FieldCount > 0)) then
-          inherited;
-end;
       end
       else
       begin
@@ -4684,6 +4719,264 @@ begin
     end;
 end;
 
+{ TMySQLBuffer.TInternalBuffers ***********************************************}
+
+procedure TMySQLBuffer.TInternRecordBuffers.Clear();
+begin
+  while (Count > 0) do
+  begin
+    FreeMem(Buffers[0]);
+    Delete(0);
+  end;
+
+  inherited;
+end;
+
+constructor TMySQLBuffer.TInternRecordBuffers.Create(const ADataSet: TMySQLBuffer);
+begin
+  inherited Create();
+
+  FDataSet := ADataSet;
+
+  FCriticalSection := TCriticalSection.Create();
+  DataSize := 0;
+  Index := 0;
+end;
+
+destructor TMySQLBuffer.TInternRecordBuffers.Destroy();
+begin
+  FCriticalSection.Free();
+
+  inherited;
+end;
+
+function TMySQLBuffer.TInternRecordBuffers.Get(Index: Integer): PInternRecordBuffer;
+begin
+  Result := PInternRecordBuffer(Items[Index]);
+end;
+
+procedure TMySQLBuffer.TInternRecordBuffers.Put(Index: Integer; Buffer: PInternRecordBuffer);
+begin
+  Items[Index] := Buffer;
+end;
+
+{ TMySQLBuffer ****************************************************************}
+
+constructor TMySQLBuffer.Create(AOwner: TComponent);
+begin
+  inherited;
+
+  FCursorOpen := False;
+  InternRecordBuffers := TInternRecordBuffers.Create(Self);
+  RecordReceived := nil;
+  RecordUsed := nil;
+end;
+
+destructor TMySQLBuffer.Destroy();
+begin
+  inherited;
+
+  InternRecordBuffers.Free();
+end;
+
+function TMySQLBuffer.GetRecord(Buffer: TRecordBuffer; GetMode: TGetMode; DoCheck: Boolean): TGetResult;
+var
+  WaitFor: Boolean;
+begin
+  if (GetMode <> gmNext) then
+    Result := grError
+  else
+  begin
+    InternRecordBuffers.CriticalSection.Enter();
+    if Assigned(PRecordBufferData(ActiveBuffer())^.LibRow) then
+    begin
+      PRecordBufferData(ActiveBuffer())^.LibRow := nil;
+      PRecordBufferData(ActiveBuffer())^.LibLengths := nil;
+
+      InternRecordBuffers.Move(0, InternRecordBuffers.Count - 1);
+      Dec(InternRecordBuffers.Index);
+      RecordUsed.SetEvent();
+    end;
+    RecordReceived.ResetEvent();
+    WaitFor := InternRecordBuffers.Index = 0;
+    InternRecordBuffers.CriticalSection.Leave();
+
+    if (WaitFor) then
+      RecordReceived.WaitFor();
+
+    if (not Assigned(InternRecordBuffers[0]^.LibRow)) then
+      Result := grEOF
+    else
+    begin
+      PRecordBufferData(ActiveBuffer())^.LibRow := InternRecordBuffers[0]^.LibRow;
+      PRecordBufferData(ActiveBuffer())^.LibLengths := InternRecordBuffers[0]^.LibLengths;
+
+
+      Inc(FRecNo);
+      Result := grOk;
+    end;
+  end;
+end;
+
+procedure TMySQLBuffer.InternAddRecord(const LibRow: MYSQL_ROW; const LibLengths: MYSQL_LENGTHS; const Index: Integer = -1);
+var
+  Buffer: PInternRecordBuffer;
+  DataSize: Integer;
+  I: Integer;
+  MemSize: Integer;
+  Pos: Integer;
+  WaitForRecord: Boolean;
+begin
+  MemSize := SizeOf(Buffer^);
+  DataSize := 0;
+
+  if (Assigned(LibRow)) then
+  begin
+    for I := 0 to Fields.Count - 1 do
+      Inc(DataSize, LibLengths[I]);
+    Inc(MemSize, Fields.Count * (SizeOf(LibLengths^[0]) + SizeOf(LibRow^[0])) + DataSize);
+  end;
+
+  while ((InternRecordBuffers.DataSize > 8 * NET_BUFFER_LENGTH) and (InternRecordBuffers.Count > 2)) do
+  begin
+    InternRecordBuffers.CriticalSection.Enter();
+    WaitForRecord := InternRecordBuffers.Index = InternRecordBuffers.Count;
+    InternRecordBuffers.CriticalSection.Leave();
+    if (WaitForRecord) then
+    begin
+      RecordUsed.ResetEvent();
+      RecordUsed.WaitFor();
+    end;
+
+    Dec(InternRecordBuffers.DataSize, Buffer^.DataSize);
+    Dec(InternRecordBuffers.MemSize, Buffer^.MemSize);
+    FreeMem(InternRecordBuffers[InternRecordBuffers.Count - 1]);
+    InternRecordBuffers.Delete(InternRecordBuffers.Count - 1);
+  end;
+
+  InternRecordBuffers.CriticalSection.Enter();
+  if ((InternRecordBuffers.DataSize < 4 * NET_BUFFER_LENGTH) and (InternRecordBuffers.Index = InternRecordBuffers.Count)) then
+  begin
+    GetMem(Buffer, MemSize);
+    Buffer^.MemSize := MemSize;
+    Buffer^.DataSize := 0;
+    Inc(InternRecordBuffers.MemSize, MemSize);
+    InternRecordBuffers.Add(Buffer);
+
+    WaitForRecord := False;
+  end
+  else
+  begin
+    WaitForRecord := InternRecordBuffers.Index = InternRecordBuffers.Count;
+    if (not WaitForRecord) then
+      Buffer := InternRecordBuffers[InternRecordBuffers.Index]
+    else
+      Buffer := InternRecordBuffers[0];
+  end;
+  InternRecordBuffers.CriticalSection.Leave();
+
+  if (WaitForRecord) then
+  begin
+    RecordUsed.ResetEvent();
+    RecordUsed.WaitFor();
+  end;
+
+  if (Buffer^.MemSize < MemSize) then
+  begin
+    InternRecordBuffers.CriticalSection.Enter();
+    I := InternRecordBuffers.IndexOf(Buffer);
+    Dec(InternRecordBuffers.MemSize, Buffer^.MemSize);
+    ReallocMem(Buffer, MemSize);
+    Buffer^.MemSize := MemSize;
+    Inc(InternRecordBuffers.MemSize, MemSize);
+    InternRecordBuffers[I] := Buffer;
+    InternRecordBuffers.CriticalSection.Leave();
+  end;
+
+  Dec(InternRecordBuffers.DataSize, Buffer^.DataSize);
+
+  Pos := SizeOf(Buffer^);
+  Buffer^.DataSize := DataSize;
+  if (not Assigned(LibRow)) then
+  begin
+    Buffer^.LibLengths := nil;
+    Buffer^.LibRow := nil;
+  end
+  else
+  begin
+    Buffer^.LibLengths := @PAnsiChar(Buffer)[Pos]; Inc(Pos, FieldCount * SizeOf(Buffer^.LibLengths^[0]));
+    Buffer^.LibRow := @PAnsiChar(Buffer)[Pos]; Inc(Pos, FieldCount * SizeOf(Buffer^.LibRow^[0]));
+    for I := 0 to FieldCount - 1 do
+    begin
+      Buffer^.LibLengths^[I] := LibLengths^[I];
+      if (not Assigned(LibRow^[I])) then
+        Buffer^.LibRow^[I] := nil
+      else
+      begin
+        Buffer^.LibRow^[I] := @PAnsiChar(Buffer)[Pos]; Inc(Pos, LibLengths^[I]);
+        MoveMemory(Buffer^.LibRow^[I], LibRow^[I], LibLengths^[I]);
+      end;
+    end;
+  end;
+
+  Inc(InternRecordBuffers.DataSize, DataSize);
+
+  InternRecordBuffers.CriticalSection.Enter();
+  Inc(InternRecordBuffers.Index);
+  InternRecordBuffers.CriticalSection.Leave();
+
+  if (Assigned(RecordReceived)) then RecordReceived.SetEvent();
+end;
+
+procedure TMySQLBuffer.InternalClose();
+begin
+  Connection.TerminateCS.Enter();
+  if (IsCursorOpen() and Assigned(RecordReceived) and Assigned(SynchroThread) and (SynchroThread.DataSet = Self)) then
+    SynchroThread.ReleaseDataSet(SynchroThread.DataSet);
+  Connection.TerminateCS.Leave();
+
+  FCursorOpen := False;
+
+  inherited;
+
+  if (Assigned(RecordReceived)) then
+    FreeAndNil(RecordReceived);
+  if (Assigned(RecordUsed)) then
+    FreeAndNil(RecordUsed);
+end;
+
+procedure TMySQLBuffer.InternalOpen();
+begin
+  Assert(not IsCursorOpen());
+
+
+  inherited;
+
+  FCursorOpen := True;
+end;
+
+function TMySQLBuffer.InternalOpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+begin
+  inherited;
+
+  SynchroThread.BindDataSet(Self);
+
+  RecordReceived := TEvent.Create(nil, True, False, '');
+  RecordUsed := TEvent.Create(nil, True, False, '');
+
+  Connection.SyncOpenBuffer(SynchroThread, Self);
+
+  if (Connection.UseSynchroThread() and (State = dsOpening)) then
+    OpenCursorComplete();
+
+  Result := False;
+end;
+
+function TMySQLBuffer.IsCursorOpen(): Boolean;
+begin
+  Result := FCursorOpen;
+end;
+
 { TMySQLDataSetBlobStream *****************************************************}
 
 constructor TMySQLDataSetBlobStream.Create(const AField: TBlobField; AMode: TBlobStreamMode);
@@ -4725,7 +5018,7 @@ begin
   Result := inherited Write(Buffer, Len);
 end;
 
-{ TMySQLDataSet ***************************************************************}
+{ TMySQLDataSet.TInternRecordBuffers ******************************************}
 
 procedure TMySQLDataSet.TInternRecordBuffers.Clear();
 var
@@ -4764,6 +5057,8 @@ procedure TMySQLDataSet.TInternRecordBuffers.Put(Index: Integer; Buffer: PIntern
 begin
   Items[Index] := Buffer;
 end;
+
+{ TMySQLDataSet ***************************************************************}
 
 function TMySQLDataSet.AllocInternRecordBuffer(): PInternRecordBuffer;
 begin
@@ -4855,40 +5150,6 @@ begin
   end;
 
   if (Assigned(RecordReceived)) then RecordReceived.SetEvent();
-end;
-
-procedure TMySQLDataSet.MoveRecordBufferData(var DestData: TMySQLQuery.PRecordBufferData; const SourceData: TMySQLQuery.PRecordBufferData);
-var
-  I: Integer;
-  Index: Integer;
-  MemSize: Integer;
-begin
-  Assert(Assigned(SourceData));
-  Assert(Assigned(SourceData^.LibLengths));
-
-
-  if (Assigned(DestData)) then
-    FreeMem(DestData);
-
-  MemSize := SizeOf(DestData^) + FieldCount * (SizeOf(DestData^.LibLengths^[0]) + SizeOf(DestData^.LibRow^[0]));
-  for I := 0 to FieldCount - 1 do
-    Inc(MemSize, SourceData^.LibLengths^[I]);
-  GetMem(DestData, MemSize);
-
-  DestData^.LibLengths := Pointer(@PAnsiChar(DestData)[SizeOf(DestData^)]);
-  DestData^.LibRow := Pointer(@PAnsiChar(DestData)[SizeOf(DestData^) + FieldCount * SizeOf(DestData^.LibLengths^[0])]);
-
-  MoveMemory(DestData^.LibLengths, SourceData^.LibLengths, FieldCount * SizeOf(DestData^.LibLengths^[0]));
-  Index := SizeOf(DestData^) + FieldCount * (SizeOf(DestData^.LibLengths^[0]) + SizeOf(DestData^.LibRow^[0]));
-  for I := 0 to FieldCount - 1 do
-    if (not Assigned(SourceData^.LibRow^[I])) then
-      DestData^.LibRow^[I] := nil
-    else
-    begin
-      DestData^.LibRow^[I] := @PAnsiChar(DestData)[Index];
-      MoveMemory(DestData^.LibRow^[I], SourceData^.LibRow^[I], DestData^.LibLengths^[I]);
-      Inc(Index, DestData^.LibLengths^[I]);
-    end;
 end;
 
 function TMySQLDataSet.VisibleInFilter(const InternRecordBuffer: PInternRecordBuffer): Boolean;
@@ -5462,7 +5723,7 @@ begin
 
         if (Assigned(RecordReceived)) then
           if (Result = grEOF) then
-            FreeAndNil(FRecordReceived)
+            FreeAndNil(RecordReceived)
           else
             RecordReceived.ResetEvent();
       end;
@@ -5547,23 +5808,13 @@ end;
 
 procedure TMySQLDataSet.InternalClose();
 begin
-  Connection.TerminateCS.Enter();
-  if (IsCursorOpen() and Assigned(RecordReceived) and Assigned(SynchroThread) and (SynchroThread.DataSet = Self)) then
-    SynchroThread.ReleaseDataSet(SynchroThread.DataSet);
-  Connection.TerminateCS.Leave();
-
   FSortDef.Fields := '';
-
-  FCursorOpen := False;
 
   inherited;
 
   InternRecordBuffers.Clear();
   InternRecordBuffers.FilteredRecordCount := 0;
   FDataSize := 0;
-
-  if (Assigned(RecordReceived)) then
-    FreeAndNil(FRecordReceived);
 end;
 
 procedure TMySQLDataSet.InternalDelete();
@@ -5676,21 +5927,9 @@ begin
   InternRecordBuffers.Index := InternRecordBuffers.Count;
 end;
 
-procedure TMySQLDataSet.InternalOpen();
-begin
-  Assert(not IsCursorOpen());
-
-
-  inherited;
-
-  FCursorOpen := True;
-end;
-
 function TMySQLDataSet.InternalOpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
 begin
-  inherited;
-
-  SynchroThread.BindDataSet(Self);
+  Result := inherited;
 
   SetFieldsSortTag();
 
@@ -5705,15 +5944,6 @@ begin
 
     InternRecordBuffers.Index := -1;
   end;
-
-  FRecordReceived := TEvent.Create(nil, False, False, '');
-
-  Connection.SyncOpenDataSet(SynchroThread, Self);
-
-  if (Connection.UseSynchroThread() and (State = dsOpening)) then
-    OpenCursorComplete();
-
-  Result := False;
 end;
 
 procedure TMySQLDataSet.InternalPost();
@@ -5786,12 +6016,12 @@ begin
   SynchroThread := Connection.SynchroThread;
   FHandle := SynchroThread.ResultHandle;
 
-  if (not Assigned(FRecordReceived)) then
-    FRecordReceived := TEvent.Create(nil, False, False, '');
+  if (not Assigned(RecordReceived)) then
+    RecordReceived := TEvent.Create(nil, False, False, '');
   RecordReceived.ResetEvent();
 
   SynchroThread.BindDataSet(Self);
-  SynchroThread.RunAction(ssReceivingData);
+  SynchroThread.RunAction(ssReceivingData, False);
 
   Result := False;
 end;
@@ -5819,9 +6049,38 @@ begin
     Inc(InternRecordBuffers.Index, Direction);
 end;
 
-function TMySQLDataSet.IsCursorOpen(): Boolean;
+procedure TMySQLDataSet.MoveRecordBufferData(var DestData: TMySQLQuery.PRecordBufferData; const SourceData: TMySQLQuery.PRecordBufferData);
+var
+  I: Integer;
+  Index: Integer;
+  MemSize: Integer;
 begin
-  Result := FCursorOpen;
+  Assert(Assigned(SourceData));
+  Assert(Assigned(SourceData^.LibLengths));
+
+
+  if (Assigned(DestData)) then
+    FreeMem(DestData);
+
+  MemSize := SizeOf(DestData^) + FieldCount * (SizeOf(DestData^.LibLengths^[0]) + SizeOf(DestData^.LibRow^[0]));
+  for I := 0 to FieldCount - 1 do
+    Inc(MemSize, SourceData^.LibLengths^[I]);
+  GetMem(DestData, MemSize);
+
+  DestData^.LibLengths := Pointer(@PAnsiChar(DestData)[SizeOf(DestData^)]);
+  DestData^.LibRow := Pointer(@PAnsiChar(DestData)[SizeOf(DestData^) + FieldCount * SizeOf(DestData^.LibLengths^[0])]);
+
+  MoveMemory(DestData^.LibLengths, SourceData^.LibLengths, FieldCount * SizeOf(DestData^.LibLengths^[0]));
+  Index := SizeOf(DestData^) + FieldCount * (SizeOf(DestData^.LibLengths^[0]) + SizeOf(DestData^.LibRow^[0]));
+  for I := 0 to FieldCount - 1 do
+    if (not Assigned(SourceData^.LibRow^[I])) then
+      DestData^.LibRow^[I] := nil
+    else
+    begin
+      DestData^.LibRow^[I] := @PAnsiChar(DestData)[Index];
+      MoveMemory(DestData^.LibRow^[I], SourceData^.LibRow^[I], DestData^.LibLengths^[I]);
+      Inc(Index, DestData^.LibLengths^[I]);
+    end;
 end;
 
 procedure TMySQLDataSet.SetActive(Value: Boolean);
@@ -6179,13 +6438,11 @@ begin
 
   FCanModify := False;
   FCommandType := ctQuery;
-  FCursorOpen := False;
   FDataSize := 0;
   FilterParser := nil;
   FLocateNext := False;
   FSortDef := TIndexDef.Create(nil, 'SortDef', '', []);
   InternRecordBuffers := TInternRecordBuffers.Create(Self);
-  FRecordReceived := nil;
 
   BookmarkSize := SizeOf(BookmarkCounter);
 

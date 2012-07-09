@@ -71,8 +71,7 @@ uses
   fDView in 'fDView.pas' {DView},
   fCWorkbench in 'fCWorkbench.pas',
   fFClient in 'fFClient.pas' {FClient},
-  fWWindow in 'fWWindow.pas' {WWindow},
-  fWForeignKeySelect in 'fWForeignKeySelect.pas' {WForeignKeySelect};
+  fWWindow in 'fWWindow.pas' {WWindow};
 
 {$R *.res}
 
