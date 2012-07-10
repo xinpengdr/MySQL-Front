@@ -3737,7 +3737,7 @@ begin
     DataSet := nil
   else
   begin
-    DataSet := TMySQLBuffer.Create(nil);
+    DataSet := TMySQLQuery.Create(nil);
     DataSet.Connection := Client;
     while ((Success = daSuccess) and not DataSet.Active) do
     begin
@@ -6761,7 +6761,7 @@ begin
 
     if (Success = daSuccess) then
     begin
-      SourceDataSet := TMySQLBuffer.Create(nil);
+      SourceDataSet := TMySQLQuery.Create(nil);
       SourceDataSet.Connection := Source.Client;
       SourceDataSet.Open(DataHandle);
 
