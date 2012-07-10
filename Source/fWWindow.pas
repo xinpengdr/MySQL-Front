@@ -17,6 +17,11 @@ uses
 const
   cWindowClassName = 'MySQL-Front.Application';
 
+const
+  CM_ACTIVATETAB = WM_USER + 600;
+  CM_UPDATEAVAILABLE = WM_USER + 601;
+  CM_MYSQLCONNECTION_SYNCHRONIZE = WM_USER + 602;
+
 type
   TCMAddTab = packed record
     Msg: Cardinal;
@@ -264,6 +269,7 @@ type
     miFImportXML: TMenuItem;
     miFOpen: TMenuItem;
     miFPrint: TMenuItem;
+    miFReopen: TMenuItem;
     miFSave: TMenuItem;
     miFSaveAs: TMenuItem;
     miHelp: TMenuItem;
@@ -450,9 +456,6 @@ type
     procedure TBAddressBarResize(Sender: TObject);
     procedure tbPropertiesClick(Sender: TObject);
   const
-    CM_ACTIVATETAB = WM_USER + 600;
-    CM_UPDATEAVAILABLE = WM_USER + 601;
-    CM_MYSQLCONNECTION_SYNCHRONIZE = WM_USER + 602;
     tiDeactivate = 1;
   private
     CaptureTabIndex: Integer;
@@ -487,6 +490,7 @@ type
     function GetActiveTab(): TFClient;
     function GetNewTabIndex(Sender: TObject; X, Y: Integer): Integer;
     procedure InformUpdateAvailable();
+//    procedure miFReopenClick(Sender: TObject);
     procedure MNextItemClick(Sender: TObject);
     procedure MPrevItemClick(Sender: TObject);
     procedure mtTabsClick(Sender: TObject);
@@ -528,6 +532,7 @@ implementation {***************************************************************}
 
 uses
   ShellApi, ShlObj, DBConsts, CommCtrl, StrUtils, ShLwApi, IniFiles, Themes,
+  Variants, WinINet,
   acQBLocalizer,
   MySQLConsts,
   HTTPTunnel,
@@ -988,6 +993,7 @@ begin
   aFOpen.Caption := Preferences.LoadStr(581) + '...';
   aFSave.Caption := Preferences.LoadStr(582);
   aFSaveAs.Caption := Preferences.LoadStr(583) + '...';
+  miFReopen.Caption := Preferences.LoadStr(885) + '...';
   miFImport.Caption := Preferences.LoadStr(371);
   aFImportSQL.Caption := Preferences.LoadStr(409) + '...';
   aFImportText.Caption := Preferences.LoadStr(410) + '...';
@@ -1414,7 +1420,7 @@ begin
     tbProperties.ImageIndex := 11;
 
     FAddress.Items.Clear();
-    FAddress.Text := Tab.ToolBarData.Address;
+    FAddress.Text := UnescapeURL(Tab.ToolBarData.Address);
 
     aVPrev.Enabled := Tab.ToolBarData.CurrentAddress > 0;
     aVNext.Enabled := Assigned(Tab.ToolBarData.Addresses) and (Tab.ToolBarData.CurrentAddress < Tab.ToolBarData.Addresses.Count - 1);
@@ -1472,6 +1478,11 @@ begin
     Found := Found or ToolBar.Buttons[I].Visible and (ToolBar.Buttons[I].ImageIndex >= 0) and (ToolBar.Buttons[I].Width <> ToolBar.ButtonWidth);
   if (Found) then
     Toolbar.ButtonWidth := 0; // Without this, the Buttons are too small. Why??? A Delphi bug?
+
+//  while (miFReopen.Count > 1) do
+//    miFReopen.Delete(0);
+//  miFReopen.Enabled := Assigned(Tab) and (Tab.ToolBarData.View = vEditor) and (Tab.Client.Account.Desktop.FilesMRU.Count > 0);
+  miFReopen.Visible := False;
 end;
 
 constructor TWWindow.Create(AOwner: TComponent);
@@ -1854,6 +1865,19 @@ begin
   if (MsgBox(Preferences.LoadStr(506) + #10#10 + Preferences.LoadStr(845), Preferences.LoadStr(43), MB_ICONQUESTION + MB_YESNOCANCEL) = ID_YES) then
     aHUpdate.Execute();
 end;
+
+//procedure TWWindow.miFReopenClick(Sender: TObject);
+//var
+//  CodePage: Integer;
+//  Filename: TFileName;
+//  URI: TUURI;
+//begin
+//  URI := TUURI.Create(ActiveTab.Client.Account.Desktop.FilesMRU[TMenuItem(Sender).Tag]);
+//  Filename := URIToPath(URI.ParamEncode(URI.Param['file']));
+//  if ((URI.Param['cp'] = Null) or not TryStrToInt(URI.Param['cp'], CodePage)) then CodePage := 0;
+//  ActiveTab.OpenSQLFile(Filename, CodePage);
+//  URI.Free();
+//end;
 
 procedure TWWindow.MNextItemClick(Sender: TObject);
 var

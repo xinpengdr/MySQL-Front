@@ -595,7 +595,7 @@ begin
         Msg := Preferences.LoadStr(165, IntToStr(Item.Client.ErrorCode), Item.Client.ErrorMessage);
         ErrorMsg := SQLUnwrapStmt(Item.Client.ErrorMessage);
         if (Item.Client.ErrorCode > 0) then
-          ErrorMsg := ErrorMsg + ' (' + IntToStr(Item.Client.ErrorCode) + ')';
+          ErrorMsg := ErrorMsg + ' (#' + IntToStr(Item.Client.ErrorCode) + ')';
         ErrorMsg := ErrorMsg + '  -  ' + SQLUnwrapStmt(Item.Client.CommandText);
       end;
     TE_File:
@@ -905,11 +905,7 @@ begin
             );
         end;
 
-    {$IFNDEF Debug}
-      Transfer.Start();
-    {$ELSE}
-      Transfer.Execute();
-    {$ENDIF}
+    Transfer.Start();
   end;
 end;
 

@@ -122,7 +122,9 @@ begin
   PageControl.Visible := True;
   PSQLWait.Visible := not PageControl.Visible;
 
-  ActiveControl := FName;
+  ActiveControl := FBCancel;
+  if (PageControl.Visible) then
+    ActiveControl := FName;
 end;
 
 procedure TDRoutine.CMChangePreferences(var Message: TMessage);

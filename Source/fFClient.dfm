@@ -216,6 +216,7 @@ object FClient: TFClient
         PopupMenu = MNavigator
         RightClickSelect = True
         ShowLines = False
+        ShowRoot = False
         TabOrder = 0
         OnAdvancedCustomDrawItem = FNavigatorAdvancedCustomDrawItem
         OnChange = FNavigatorChange

@@ -1007,7 +1007,6 @@ type
     function NavigatorNodeToAddress(const Node: TTreeNode): string;
     procedure OnConvertError(Sender: TObject; Text: string);
     procedure OpenInNewTabExecute(const DatabaseName, TableName: string; const OpenNewWindow: Boolean = False; const Filename: TFileName = '');
-    procedure OpenSQLFile(const AFilename: TFileName; const Insert: Boolean = False);
     procedure PasteExecute(const Node: TTreeNode; const Objects: string);
     procedure PContentChange(Sender: TObject);
     function PostObject(Sender: TObject): Boolean;
@@ -1074,6 +1073,7 @@ type
     procedure aETransferExecute(Sender: TObject);
     procedure CrashRescue();
     procedure MoveToAddress(const ADiff: Integer);
+    procedure OpenSQLFile(const AFilename: TFileName; const CodePage: Cardinal = 0; const Insert: Boolean = False);
     procedure StatusBarRefresh(const Immediately: Boolean = False);
     property Address: string read FAddress write SetAddress;
     property Path: TFileName read GetPath write SetPath;
@@ -2713,9 +2713,9 @@ begin
   begin
     S := URI.Path;
     if (URI.Database <> '') then
-      Delete(S, 1, 1 + Length(URI.ParamEncode(URI.Database)));
+      Delete(S, 1, 1 + Length(EscapeURL(URI.Database)));
     if (URI.Table <> '') then
-      Delete(S, 1, 1 + Length(URI.ParamEncode(URI.Table)));
+      Delete(S, 1, 1 + Length(EscapeURL(URI.Table)));
     if ((S <> '') and (S <> '/')) then
       AllowChange := False;
   end;
@@ -2818,7 +2818,9 @@ begin
     Result := ReplaceStr(Preferences.LoadStr(22), '&', '');
 
   if ((URI.Param['view'] = 'editor') and (URI.Param['file'] <> Null)) then
-    Result := Result + ' - ' + URIToPath(URI.ParamEncode(URI.Param['file']));
+    Result := Result + ' - ' + EscapeURL(URI.Param['file']);
+
+  Result := UnescapeURL(Result);
 
   URI.Free();
 end;
@@ -3387,7 +3389,7 @@ procedure TFClient.aEPasteFromExecute(Sender: TObject);
 begin
   Wanted.Clear();
 
-  OpenSQLFile('', True);
+  OpenSQLFile('', 0, True);
 end;
 
 procedure TFClient.aEPasteFromFileExecute(Sender: TObject);
@@ -5241,7 +5243,8 @@ begin
     URI.Param['system'] := Null;
     URI.Param['filter'] := Null;
     URI.Param['offset'] := Null;
-    URI.Param['file'] := URI.ParamEncode(PathToURI(Param));
+    URI.Param['file'] := EscapeURL(Param);
+    URI.Param['cp'] := Null;
     Address := URI.Address;
     URI.Free();
   end
@@ -6950,7 +6953,8 @@ begin
   Client.Account.Desktop.LogVisible := PLog.Visible;
   Client.Account.Desktop.LogHeight := PLog.Height;
   URI := TUURI.Create(Address);
-  URI.Param['file'] := '';
+  URI.Param['file'] := Null;
+  URI.Param['cp'] := Null;
   Client.Account.Desktop.Address := URI.Address;
   FreeAndNil(URI);
 
@@ -12190,8 +12194,12 @@ begin
             URI.Param['filter'] := Desktop(TCTable(FNavigator.Selected.Data)).Table.DataSet.FilterSQL;
         end;
       if (URI.Param['view'] = 'editor') then
+      begin
         if (SQLEditor.Filename <> '') then
-          URI.Param['file'] := URI.ParamDecode(PathToURI(SQLEditor.Filename));
+          URI.Param['file'] := UnescapeURL(SQLEditor.Filename);
+        if (SQLEditor.FileCodePage <> 0) then
+          URI.Param['cp'] := IntToStr(SQLEditor.FileCodePage);
+      end;
     end;
   end;
 
@@ -12231,7 +12239,7 @@ begin
   begin
     URI.Param['view'] := 'editor';
     URI.Database := DatabaseName;
-    URI.Param['file'] := URI.ParamEncode(PathToURI(Filename));
+    URI.Param['file'] := EscapeURL(Filename);
   end;
 
   if (not OpenNewWindow) then
@@ -12242,7 +12250,7 @@ begin
   URI.Free();
 end;
 
-procedure TFClient.OpenSQLFile(const AFilename: TFileName; const Insert: Boolean = False);
+procedure TFClient.OpenSQLFile(const AFilename: TFileName; const CodePage: Cardinal = 0; const Insert: Boolean = False);
 var
   Answer: Integer;
   FileSize: TLargeInteger;
@@ -12262,7 +12270,10 @@ begin
   OpenDialog.DefaultExt := 'sql';
   OpenDialog.Filter := FilterDescription('sql') + ' (*.sql)|*.sql|' + FilterDescription('*') + ' (*.*)|*.*';
   OpenDialog.Encodings.Text := EncodingCaptions();
-  OpenDialog.EncodingIndex := OpenDialog.Encodings.IndexOf(CodePageToEncoding(Client.CodePage));
+  if (CodePage <> 0) then
+    OpenDialog.EncodingIndex := OpenDialog.Encodings.IndexOf(CodePageToEncoding(CodePage))
+  else
+    OpenDialog.EncodingIndex := OpenDialog.Encodings.IndexOf(CodePageToEncoding(Client.CodePage));
 
   if ((OpenDialog.FileName <> '') or OpenDialog.Execute()) then
   begin
@@ -12315,7 +12326,11 @@ begin
           SQLEditor.Filename := Import.Filename;
           SQLEditor.FileCodePage := Import.CodePage;
           URI := TUURI.Create(Address);
-          URI.Param['file'] := URI.ParamEncode(PathToURI(SQLEditor.Filename));
+          URI.Param['file'] := EscapeURL(SQLEditor.Filename);
+          if (SQLEditor.FileCodePage = 0) then
+            URI.Param['cp'] := Null
+          else
+            URI.Param['cp'] := IntToStr(SQLEditor.FileCodePage);
           FAddress := URI.Address;
           AddressChanged(nil);
           URI.Free();
@@ -13275,7 +13290,6 @@ end;
 procedure TFClient.SaveSQLFile(Sender: TObject);
 var
   BytesWritten: DWord;
-  CodePage: Cardinal;
   FileBuffer: PAnsiChar;
   Handle: THandle;
   Len: Cardinal;
@@ -13293,7 +13307,7 @@ begin
       SaveDialog.FileName := ReplaceStr(Preferences.LoadStr(6), '&', '') + '.sql'
     else
     begin
-      SaveDialog.FileName := SQLEditor.Filename;
+      SaveDialog.FileName := ExtractFileName(SQLEditor.Filename);
       SaveDialog.EncodingIndex := SaveDialog.Encodings.IndexOf(CodePageToEncoding(SQLEditor.FileCodePage));
     end;
     Text := ActiveSynMemo.Text;
@@ -13335,25 +13349,26 @@ begin
       MsgBox(SysErrorMessage(GetLastError()), Preferences.LoadStr(45), MB_OK + MB_ICONERROR)
     else
     begin
-      CodePage := EncodingToCodePage(SaveDialog.Encodings[SaveDialog.EncodingIndex]);
+      SQLEditor.Filename := SaveDialog.FileName;
+      SQLEditor.FileCodePage := EncodingToCodePage(SaveDialog.Encodings[SaveDialog.EncodingIndex]);
 
-      case (CodePage) of
+      case (SQLEditor.FileCodePage) of
         CP_UNICODE: Success := WriteFile(Handle, BOM_UNICODE^, Length(BOM_UNICODE), BytesWritten, nil);
         CP_UTF8: Success := WriteFile(Handle, BOM_UTF8^, Length(BOM_UTF8), BytesWritten, nil);
         else Success := True;
       end;
 
       if (Success) then
-        case (CodePage) of
+        case (SQLEditor.FileCodePage) of
           CP_UNICODE: Success := WriteFile(Handle, Text[1], Length(Text), BytesWritten, nil);
           else
             if (Text <> '') then
             begin
-              Len := WideCharToMultiByte(CodePage, 0, PChar(Text), Length(Text), nil, 0, nil, nil);
+              Len := WideCharToMultiByte(SQLEditor.FileCodePage, 0, PChar(Text), Length(Text), nil, 0, nil, nil);
               if (Len > 0) then
               begin
                 GetMem(FileBuffer, Len);
-                WideCharToMultiByte(CodePage, 0, PChar(Text), Length(Text), FileBuffer, Len, nil, nil);
+                WideCharToMultiByte(SQLEditor.FileCodePage, 0, PChar(Text), Length(Text), FileBuffer, Len, nil, nil);
                 Success := WriteFile(Handle, FileBuffer^, Len, BytesWritten, nil);
                 FreeMem(FileBuffer);
               end
@@ -13368,9 +13383,12 @@ begin
       begin
         if ((Sender = MainAction('aFSave')) or (Sender = MainAction('aFSaveAs'))) then
           ActiveSynMemo.Modified := False;
-
         URI := TUURI.Create(Address);
-        URI.Param['file'] := URI.ParamEncode(PathToURI(SQLEditor.Filename));
+        URI.Param['file'] := EscapeURL(SQLEditor.Filename);
+        if (SQLEditor.FileCodePage = 0) then
+          URI.Param['cp'] := Null
+        else
+          URI.Param['cp'] := IntToStr(SQLEditor.FileCodePage);
         FAddress := URI.Address;
         AddressChanged(nil);
         URI.Free();
@@ -13471,7 +13489,11 @@ begin
         begin
           URI.Param['view'] := 'editor';
           if (SQLEditor.Filename <> '') then
-            URI.Param['file'] := URI.ParamEncode(PathToURI(SQLEditor.Filename));
+            URI.Param['file'] := EscapeURL(SQLEditor.Filename);
+          if (SQLEditor.FileCodePage = 0) then
+            URI.Param['cp'] := Null
+          else
+            URI.Param['cp'] := IntToStr(SQLEditor.FileCodePage);
         end;
       vDiagram: URI.Param['view'] := 'diagram';
     end;
@@ -13503,6 +13525,7 @@ begin
       URI.Param['filter'] := Null;
       URI.Param['offset'] := Null;
       URI.Param['file'] := Null;
+      URI.Param['cp'] := Null;
     end
     else if ((AView = vDiagram) and not (SelectedImageIndex in [iiDatabase, iiSystemDatabase])) then
     begin
@@ -13513,6 +13536,7 @@ begin
       URI.Param['filter'] := Null;
       URI.Param['offset'] := Null;
       URI.Param['file'] := Null;
+      URI.Param['cp'] := Null;
     end;
 
     Address := URI.Address;
@@ -13525,6 +13549,7 @@ var
   AllowChange: Boolean;
   ChangeEvent: TTVChangedEvent;
   ChangingEvent: TTVChangingEvent;
+  CodePage: Integer;
   FileName: string;
   NewView: TView;
   NewAddress: string;
@@ -13600,11 +13625,14 @@ begin
       vEditor:
         if (URI.Param['file'] <> Null) then
         begin
-          FileName := URIToPath(URI.ParamEncode(URI.Param['file']));
+          FileName := UnescapeURL(URI.Param['file']);
           if (ExtractFilePath(FileName) = '') then
             FileName := ExpandFilename(FileName);
           if ((FileName <> SQLEditor.Filename) and FileExists(FileName)) then
-            OpenSQLFile(FileName);
+            if ((URI.Param['cp'] = Null) or not TryStrToInt(URI.Param['cp'], CodePage)) then
+              OpenSQLFile(FileName)
+            else
+              OpenSQLFile(FileName, CodePage);
         end;
     end;
 

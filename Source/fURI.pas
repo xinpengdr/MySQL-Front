@@ -30,8 +30,6 @@ type
     Port: INTERNET_PORT;
     procedure Clear(); virtual;
     constructor Create(const AAddress: string = ''); virtual;
-    function ParamDecode(const AParam: string): string;
-    function ParamEncode(const AParam: string): string;
     property Address: string read GetAddress write SetAddress;
     property Database: string read FDatabase write SetDatabase;
     property ExtraInfos: string read FExtraInfos;
@@ -42,6 +40,8 @@ type
     property Table: string read FTable write SetTable;
   end;
 
+function EscapeURL(const AParam: string): string;
+function UnescapeURL(const AParam: string): string;
 function PathToURI(const APath: TFileName): string;
 function URIToPath(const AURI: string): TFileName;
 function ExtractURIHost(const AURI: string): string;
@@ -112,6 +112,54 @@ begin
   URI.Free();
 end;
 
+function UnescapeURL(const AParam: string): string;
+var
+  Size: DWord;
+  UnescapedURL: PChar;
+begin
+  Size := Length(AParam) + 1;
+  GetMem(UnescapedURL, Size * SizeOf(UnescapedURL[0]));
+
+  try
+    if (UrlUnescape(PChar(AParam), UnescapedURL, @Size, 0) <> S_OK) then
+      raise EConvertError.CreateFmt(SConvStrParseError, [AParam]);
+
+    Result := UnescapedURL;
+  finally
+    if (Assigned(UnescapedURL)) then
+      FreeMem(UnescapedURL);
+  end;
+end;
+
+function EscapeURL(const AParam: string): string;
+var
+  EscapedURL: PChar;
+  S: string;
+  Size: DWord;
+begin
+  if (AParam = '') then
+    Result := ''
+  else
+  begin
+    S := ReplaceStr(AParam, '#', '%23');
+    S := ReplaceStr(S, '.', '%2e');
+    S := ReplaceStr(S, '?', '%3f');
+    S := ReplaceStr(S, '@', '%40');
+
+    Size := Length(AParam) * 10 + 1;
+    GetMem(EscapedURL, Size * SizeOf(EscapedURL[0]));
+
+    try
+      if (UrlEscape(PChar(S), EscapedURL, @Size, 0) <> S_OK) then
+        raise EConvertError.CreateFmt(SConvStrParseError, [AParam]);
+
+      Result := EscapedURL;
+    finally
+      FreeMem(EscapedURL);
+    end;
+  end;
+end;
+
 { TUURI ***********************************************************************}
 
 procedure TUURI.Clear();
@@ -149,17 +197,17 @@ begin
     URLComponents.nPort := Port;
   if (Username <> '') then
   begin
-    URLComponents.lpszUserName := PChar(ParamEncode(Username));
+    URLComponents.lpszUserName := PChar(EscapeURL(Username));
     URLComponents.dwUserNameLength := StrLen(URLComponents.lpszUserName);
     if (Password <> '') then
     begin
-      URLComponents.lpszPassword := PChar(ParamEncode(Password));
+      URLComponents.lpszPassword := PChar(EscapeURL(Password));
       URLComponents.dwPasswordLength := StrLen(URLComponents.lpszPassword);
     end;
   end;
-  URLComponents.lpszUrlPath := PChar(ParamEncode(Path));
+  URLComponents.lpszUrlPath := PChar(EscapeURL(Path));
   URLComponents.dwUrlPathLength := StrLen(URLComponents.lpszUrlPath);
-  URLComponents.lpszExtraInfo := PChar(Copy(FExtraInfos, 1, 1) + ParamEncode(Copy(FExtraInfos, 2, Length(FExtraInfos) - 1)));
+  URLComponents.lpszExtraInfo := PChar(Copy(FExtraInfos, 1, 1) + EscapeURL(Copy(FExtraInfos, 2, Length(FExtraInfos) - 1)));
   URLComponents.dwExtraInfoLength := StrLen(URLComponents.lpszExtraInfo);
 
   Size := SizeOf(Buffer);
@@ -212,54 +260,6 @@ begin
   end;
 end;
 
-function TUURI.ParamDecode(const AParam: string): string;
-var
-  Size: DWord;
-  UnescapedURL: PChar;
-begin
-  Size := Length(AParam) + 1;
-  GetMem(UnescapedURL, Size * SizeOf(UnescapedURL[0]));
-
-  try
-    if (UrlUnescape(PChar(AParam), UnescapedURL, @Size, 0) <> S_OK) then
-      raise EConvertError.CreateFmt(SConvStrParseError, [AParam]);
-
-    Result := UnescapedURL;
-  finally
-    if (Assigned(UnescapedURL)) then
-      FreeMem(UnescapedURL);
-  end;
-end;
-
-function TUURI.ParamEncode(const AParam: string): string;
-var
-  EscapedURL: PChar;
-  S: string;
-  Size: DWord;
-begin
-  if (AParam = '') then
-    Result := ''
-  else
-  begin
-    S := ReplaceStr(AParam, '#', '%23');
-    S := ReplaceStr(S, '.', '%2e');
-    S := ReplaceStr(S, '?', '%3f');
-    S := ReplaceStr(S, '@', '%40');
-
-    Size := Length(AParam) * 10 + 1;
-    GetMem(EscapedURL, Size * SizeOf(EscapedURL[0]));
-
-    try
-      if (UrlEscape(PChar(S), EscapedURL, @Size, 0) <> S_OK) then
-        raise EConvertError.CreateFmt(SConvStrParseError, [AParam]);
-
-      Result := EscapedURL;
-    finally
-      FreeMem(EscapedURL);
-    end;
-  end;
-end;
-
 procedure TUURI.SetAddress(const AAddress: string);
 var
   URLComponents: TURLComponents;
@@ -289,18 +289,18 @@ begin
         raise EConvertError.CreateFmt(SConvStrParseError, [AAddress]);
 
       Scheme := URLComponents.lpszScheme;
-      Username := ParamDecode(URLComponents.lpszUserName);
-      Password := ParamDecode(URLComponents.lpszPassword);
+      Username := UnescapeURL(URLComponents.lpszUserName);
+      Password := UnescapeURL(URLComponents.lpszPassword);
       Host := URLComponents.lpszHostName;
       if (URLComponents.nPort = 0) then
         Port := MYSQL_PORT
       else
         Port := URLComponents.nPort;
-      Path := ParamDecode(URLComponents.lpszUrlPath);
+      Path := UnescapeURL(URLComponents.lpszUrlPath);
       if (URLComponents.dwExtraInfoLength = 0) then
         FExtraInfos := ''
       else
-        FExtraInfos := Copy(URLComponents.lpszExtraInfo, 1, 1) + ParamDecode(Copy(URLComponents.lpszExtraInfo, 2, URLComponents.dwExtraInfoLength - 1));
+        FExtraInfos := Copy(URLComponents.lpszExtraInfo, 1, 1) + UnescapeURL(Copy(URLComponents.lpszExtraInfo, 2, URLComponents.dwExtraInfoLength - 1));
     finally
       FreeMem(URLComponents.lpszScheme);
       FreeMem(URLComponents.lpszHostName);
@@ -317,14 +317,14 @@ var
   S: string;
 begin
   S := Path;
-  if (Database <> '') and (Pos('/' + ParamEncode(Database), S) = 1) then
-    Delete(S, 1, 1 + Length(ParamEncode(Database)));
+  if (Database <> '') and (Pos('/' + EscapeURL(Database), S) = 1) then
+    Delete(S, 1, 1 + Length(EscapeURL(Database)));
 
   FDatabase := ADatabase;
   FTable := '';
 
   if (ADatabase <> '') then
-    S := '/' + ParamEncode(ADatabase) + S;
+    S := '/' + EscapeURL(ADatabase) + S;
 
   FPath := S;
 end;
@@ -368,8 +368,8 @@ begin
       FTable := Copy(FDatabase, Pos('/', FDatabase) + 1, Length(FDatabase) - Pos('/', FDatabase));
       Delete(FDatabase, Pos('/', FDatabase), Length(FDatabase) - Pos('/', FDatabase) + 1);
     end;
-    FDatabase := ParamDecode(FDatabase);
-    FTable := ParamDecode(FTable);
+    FDatabase := UnescapeURL(FDatabase);
+    FTable := UnescapeURL(FTable);
     FPath := APath;
   end;
 end;
@@ -385,9 +385,9 @@ begin
 
   FPath := '/';
   if (FTable <> '') then
-    FPath := '/' + ParamEncode(FTable) + FPath;
+    FPath := '/' + EscapeURL(FTable) + FPath;
   if (FDatabase <> '') then
-    FPath := '/' + ParamEncode(FDatabase) + FPath;
+    FPath := '/' + EscapeURL(FDatabase) + FPath;
 end;
 
 end.

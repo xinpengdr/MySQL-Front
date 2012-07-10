@@ -22,7 +22,7 @@ type
   public
     property Count: Integer read GetCount;
     property MaxCount: Integer read FMaxCount;
-    property Values[Index: Integer]: string read GetValue;
+    property Values[Index: Integer]: string read GetValue; default;
     procedure Add(const Value: string); virtual;
     procedure Assign(const Source: TMRUList); virtual;
     procedure Clear(); virtual;

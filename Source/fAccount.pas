@@ -84,6 +84,7 @@ type
     EditorContent: string;
     ExplorerVisible: Boolean;
     FilesFilter: string;
+    FilesMRU: TMRUList;
     FoldersHeight: Integer;
     LogHeight: Integer;
     LogVisible: Boolean;
@@ -573,6 +574,7 @@ begin
   FAccount := AAccount;
   FXML := nil;
 
+  AddressMRU := TMRUList.Create(10);
   BlobHeight := 100;
   BookmarksVisible := False;
   for Kind := lkServer to lkVariables do
@@ -582,6 +584,7 @@ begin
   EditorContent := '';
   ExplorerVisible := False;
   FilesFilter := '*.sql';
+  FilesMRU := TMRUList.Create(10);
   FoldersHeight := 100;
   NavigatorVisible := True;
   LogHeight := 80;
@@ -590,14 +593,13 @@ begin
   SelectorWitdth := 150;
   SQLHistoryVisible := False;
 
-  AddressMRU := TMRUList.Create(10);
-
   FBookmarks := TABookmarks.Create(Self);
 end;
 
 destructor TADesktop.Destroy();
 begin
   AddressMRU.Free();
+  FilesMRU.Free();
   FBookmarks.Free();
 
   inherited;
@@ -686,7 +688,6 @@ begin
   except
     XMLNode(XML, 'editor/content').Text := '';
   end;
-  XMLNode(XML, 'editor/filename/mru').ChildNodes.Clear();
   XMLNode(XML, 'log/height').Text := IntToStr(LogHeight);
   XMLNode(XML, 'log/visible').Text := BoolToStr(LogVisible, True);
   XMLNode(XML, 'objects/server/widths/name').Text := IntToStr(ColumnWidths[lkServer][0]);
@@ -741,6 +742,7 @@ begin
     XMLNode(XML, 'sidebar/visible').Text := BoolToStr(False, True);
 
   Bookmarks.SaveToXML();
+  FilesMRU.SaveToXML(XMLNode(XML, 'editor/files'), 'file');
 
   XML.OwnerDocument.Options := XML.OwnerDocument.Options - [doNodeAutoCreate];
 end;

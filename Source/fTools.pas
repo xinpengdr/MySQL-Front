@@ -310,7 +310,7 @@ type
     procedure ExecuteFooter(); virtual;
     procedure ExecuteHeader(); virtual;
     procedure ExecuteRoutine(const Routine: TCRoutine); virtual;
-    procedure ExecuteTable(var ExportObject: TExportObject); virtual;
+    procedure ExecuteTable(var ExportObject: TExportObject; const ResultHandle: TMySQLConnection.TResultHandle); virtual;
     procedure ExecuteTableFooter(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery); virtual;
     procedure ExecuteTableHeader(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery); virtual;
     procedure ExecuteTableRecord(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery); virtual; abstract;
@@ -575,6 +575,7 @@ type
       Destination: TItem;
     end;
   private
+    DataHandle: TMySQLConnection.TResultHandle;
     Elements: TList;
   protected
     procedure AfterExecute(); override;
@@ -1368,7 +1369,7 @@ begin
       Pipename := '\\.\pipe\' + LoadStr(1000);
       Pipe := CreateNamedPipe(PChar(Pipename),
                               PIPE_ACCESS_OUTBOUND, PIPE_TYPE_MESSAGE or PIPE_READMODE_BYTE or PIPE_WAIT,
-                              1, 2 * NET_BUFFER_LENGTH, 0, NMPWAIT_USE_DEFAULT_WAIT, nil);
+                              1, NET_BUFFER_LENGTH, 0, NMPWAIT_USE_DEFAULT_WAIT, nil);
       if (Pipe = INVALID_HANDLE_VALUE) then
       begin
         Error.ErrorType := TE_File;
@@ -3472,8 +3473,9 @@ end;
 
 procedure TTExport.Execute();
 var
-  DataHandle: TMySQLConnection.TResultHandle;
+  ResultHandle: TMySQLConnection.TResultHandle;
   I: Integer;
+  Index: Integer;
   J: Integer;
   S: string;
   SQL: string;
@@ -3540,9 +3542,6 @@ begin
       end;
       SQL := SQL + ';' + #13#10;
     end;
-
-    while ((Success = daSuccess) and not Client.FirstResult(DataHandle, SQL)) do
-      DoError(DatabaseError(Client), EmptyToolsItem(), SQL);
   end;
 
   if (Success <> daAbort) then
@@ -3566,6 +3565,18 @@ begin
     if (Success = daSuccess) then
       for I := 0 to Length(ExportObjects) - 1 do
       begin
+        if (Data) then
+        begin
+          Index := DataTables.IndexOf(ExportObjects[I].DBObject);
+          if (Index >= 0) then
+            if (Index = 0) then
+              while ((Success = daSuccess) and not Client.FirstResult(ResultHandle, SQL)) do
+                DoError(DatabaseError(Client), EmptyToolsItem(), SQL)
+            else
+              if ((Success = daSuccess) and not Client.NextResult(ResultHandle)) then
+                DoError(DatabaseError(Client), EmptyToolsItem());
+        end;
+
         if ((Success <> daAbort) and ((I = 0) or (ExportObjects[I - 1].DBObject.Database <> ExportObjects[I].DBObject.Database))) then
         begin
           Success := daSuccess;
@@ -3577,7 +3588,7 @@ begin
           Success := daSuccess;
 
           if (ExportObjects[I].DBObject is TCTable) then
-            ExecuteTable(ExportObjects[I])
+            ExecuteTable(ExportObjects[I], ResultHandle)
           else if (ExportObjects[I].DBObject is TCRoutine) then
             ExecuteRoutine(TCRoutine(ExportObjects[I].DBObject))
           else if (ExportObjects[I].DBObject is TCEvent) then
@@ -3596,9 +3607,6 @@ begin
             Success := daSuccess;
           ExecuteDatabaseFooter(ExportObjects[I].DBObject.Database);
         end;
-
-        if (Data and (DataTables.IndexOf(ExportObjects[I].DBObject) + 1 < DataTables.Count) and not Client.NextResult(DataHandle)) then
-          DoError(DatabaseError(Client), EmptyToolsItem());
       end;
 
     if (Success <> daAbort) then
@@ -3610,7 +3618,7 @@ begin
 
   if (Data) then
   begin
-    Client.CloseResult(DataHandle);
+    Client.CloseResult(ResultHandle);
     DataTables.Free();
   end;
 end;
@@ -3715,7 +3723,7 @@ procedure TTExport.ExecuteRoutine(const Routine: TCRoutine);
 begin
 end;
 
-procedure TTExport.ExecuteTable(var ExportObject: TExportObject);
+procedure TTExport.ExecuteTable(var ExportObject: TExportObject; const ResultHandle: TMySQLConnection.TResultHandle);
 var
   DataSet: TMySQLQuery;
   Fields: array of TField;
@@ -3733,7 +3741,7 @@ begin
     DataSet.Connection := Client;
     while ((Success = daSuccess) and not DataSet.Active) do
     begin
-      DataSet.Open();
+      DataSet.Open(ResultHandle);
       if (not DataSet.Active) then
         DoError(DatabaseError(Client), ToolsItem(ExportObject), SQL);
     end;
@@ -6568,7 +6576,6 @@ end;
 
 procedure TTTransfer.Execute();
 var
-  DataHandle: TMySQLConnection.TResultHandle;
   DataSet: TMySQLQuery;
   DestinationClient: TCClient;
   I: Integer;
@@ -6650,7 +6657,7 @@ begin
         begin
           SourceTable := SourceClient.DatabaseByName(TElement(Elements[I]^).Source.DatabaseName).BaseTableByName(TElement(Elements[I]^).Source.TableName);
 
-          SQL := SQL + 'SELECT * FROM ' + SourceClient.EscapeIdentifier(SourceTable.Database.Name) + '.' + SourceClient.EscapeIdentifier(SourceTable.Name);
+          SQL := SQL + 'SELECT * FROM ' + SourceClient.EscapeIdentifier(SourceTable.Database.Name) + '.' + SourceClient.EscapeIdentifier(SourceTable.Name) + ';' + #13#10;
         end;
 
       for I := 0 to Elements.Count - 1 do
@@ -6661,10 +6668,10 @@ begin
           if (Data) then
             if (I = 0) then
               while ((Success = daSuccess) and not SourceClient.FirstResult(DataHandle, SQL)) do
-                DoError(DatabaseError(SourceClient), EmptyToolsItem(), SQL)
+                DoError(DatabaseError(SourceClient), ToolsItem(TElement(Elements[I]^).Source), SQL)
             else
               if (not SourceClient.NextResult(DataHandle)) then
-                DoError(DatabaseError(SourceClient), EmptyToolsItem());
+                DoError(DatabaseError(SourceClient), ToolsItem(TElement(Elements[I]^).Source));
 
           ExecuteTable(TElement(Elements[I]^).Source, TElement(Elements[I]^).Destination);
         end;
@@ -6756,7 +6763,7 @@ begin
     begin
       SourceDataSet := TMySQLBuffer.Create(nil);
       SourceDataSet.Connection := Source.Client;
-      SourceDataSet.Open();
+      SourceDataSet.Open(DataHandle);
 
       SetLength(SourceFields, DestinationTable.Fields.Count);
       for I := 0 to DestinationTable.Fields.Count - 1 do
@@ -6781,7 +6788,7 @@ begin
           Pipename := '\\.\pipe\' + LoadStr(1000);
           Pipe := CreateNamedPipe(PChar(Pipename),
                                   PIPE_ACCESS_OUTBOUND, PIPE_TYPE_MESSAGE or PIPE_READMODE_BYTE or PIPE_WAIT,
-                                  1, 2 * NET_BUFFER_LENGTH, 0, NMPWAIT_USE_DEFAULT_WAIT, nil);
+                                  1, NET_BUFFER_LENGTH, 0, NMPWAIT_USE_DEFAULT_WAIT, nil);
           if (Pipe = INVALID_HANDLE_VALUE) then
           begin
             Error.ErrorType := TE_File;

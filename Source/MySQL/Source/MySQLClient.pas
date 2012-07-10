@@ -1779,7 +1779,7 @@ end;
 
 procedure TMySQL_File.SetFileAccess(ADirection: TMySQL_IO.TDirection);
 const
-  ReducedBufferSized = 4 * NET_BUFFER_LENGTH;
+  ReducedBufferSized = 2 * NET_BUFFER_LENGTH;
 begin
   if (ADirection <> Direction) then
   begin
@@ -1976,13 +1976,19 @@ function MYSQL.GetCodePage(): Cardinal;
 var
   I: Integer;
 begin
-  Result := 0;
+  Result := CP_ACP;
 
+try
   for I := 0 to Length(MySQL_Collations) - 1 do
     if (lstrcmpa(MySQL_Collations[I].CharsetName, PAnsiChar(fcharacter_set_name)) = 0) then
       Result := MySQL_Collations[I].CodePage;
+except
+  for I := 0 to Length(MySQL_Collations) - 1 do
+    if (lstrcmpa(MySQL_Collations[I].CharsetName, PAnsiChar(fcharacter_set_name)) = 0) then
+      Result := MySQL_Collations[I].CodePage;
+end;
 
-  if (Result = 0) then
+  if (Result = CP_ACP) then
     inherited GetCodePage();
 end;
 
@@ -2592,7 +2598,7 @@ end;
 function MYSQL.SendFile(const Filename: RawByteString): Boolean;
 // send file, initiated by LOAD DATA LOCAL INFILE
 const
-  MaxFileBufferSize = 2 * NET_BUFFER_LENGTH;
+  MaxFileBufferSize = NET_BUFFER_LENGTH;
 var
   Buffer: PAnsiChar;
   BufferSize: DWord;
@@ -2741,14 +2747,7 @@ procedure MYSQL.Seterror(const AErrNo: my_uint; const AError: RawByteString = ''
 begin
   inherited;
 
-  FillChar(FSQLState, SizeOf(FSQLState), #0);
-
-  {$IFDEF EurekaLog}
-    if (AErrNo = CR_COMMANDS_OUT_OF_SYNC) then
-      raise Exception.Create(DecodeString(error()) + ' (' + IntToStr(Byte(fclient_status)) + ')')
-    else if (AErrNo = CR_OUT_OF_MEMORY) then
-      raise Exception.Create(DecodeString(error()));
-  {$ENDIF}
+  ZeroMemory(@FSQLState, SizeOf(FSQLState));
 end;
 
 function MYSQL.set_character_set(const csname: my_char): my_int;

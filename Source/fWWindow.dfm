@@ -79,7 +79,6 @@ object WWindow: TWWindow
       Left = 0
       Top = 0
       Width = 691
-      Height = 29
       AutoSize = True
       BorderWidth = 2
       EdgeBorders = [ebBottom]
@@ -1432,6 +1431,13 @@ object WWindow: TWWindow
       object miFSaveAs: TMenuItem
         Action = aFSaveAs
         GroupIndex = 1
+      end
+      object miFReopen: TMenuItem
+        Caption = 'miFOpenRecent'
+        Enabled = False
+        GroupIndex = 1
+        object TMenuItem
+        end
       end
       object N18: TMenuItem
         Caption = '-'

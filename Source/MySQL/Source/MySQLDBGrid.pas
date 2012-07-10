@@ -297,8 +297,6 @@ var
   ClipboardData: HGLOBAL;
   Content: string;
   FormatSettings: TFormatSettings;
-  I: Integer;
-  J: Integer;
   Len: Cardinal;
   OldRecNo: Integer;
 begin
@@ -332,54 +330,7 @@ begin
       OldRecNo := DataLink.DataSet.RecNo;
 
 
-      Content := '';
-      for I := 0 to SelectedRows.Count - 1 do
-      begin
-        DataLink.DataSet.Bookmark := SelectedRows.Items[I];
-        for J := 0 to Columns.Count - 1 do
-          if (Columns[J].Visible) then
-          begin
-            if (Content <> '') then Content := Content + FormatSettings.ListSeparator;
-
-            if (Columns[J].Field.IsNull) then
-              // NULL values are empty in MS Text files
-            else if (Columns[J].Field.DataType in UnquotedDataTypes) then
-              Content := Content + TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo)
-            else if (Columns[J].Field.DataType in BinaryDataTypes) then
-              Content := Content + CSVEscape(TMySQLDataSet(DataLink.DataSet).LibRow^[Columns[J].Field.FieldNo - 1], TMySQLDataSet(DataLink.DataSet).LibLengths^[Columns[J].Field.FieldNo - 1])
-            else
-              Content := Content + CSVEscape(TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo));
-          end;
-        Content := Content + #13#10;
-      end;
-
-      Len := WideCharToMultiByte(GetACP(), 0, PChar(Content), Length(Content), nil, 0, nil, nil);
-      ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, (Len + 1));
-      WideCharToMultiByte(GetACP(), 0, PChar(Content), Length(Content), GlobalLock(ClipboardData), Len, nil, nil);
-      PAnsiChar(GlobalLock(ClipboardData))[Len] := #0;
-      SetClipboardData(49581, ClipboardData);
-      GlobalUnlock(ClipboardData);
-
-
-      Content := '';
-      for I := 0 to SelectedRows.Count - 1 do
-      begin
-        DataLink.DataSet.Bookmark := SelectedRows.Items[I];
-        for J := 0 to Columns.Count - 1 do
-          if (Columns[J].Visible) then
-          begin
-            if (Content <> '') then Content := Content + #9;
-            if (Columns[J].Field.IsNull) then
-              // NULL values are empty in MS Text files
-            else if (Columns[J].Field.DataType in UnquotedDataTypes) then
-              Content := Content + TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo)
-            else if (Columns[J].Field.DataType in BinaryDataTypes) then
-              Content := Content + CSVEscape(TMySQLDataSet(DataLink.DataSet).LibRow^[Columns[J].Field.FieldNo - 1], TMySQLDataSet(DataLink.DataSet).LibLengths^[Columns[J].Field.FieldNo - 1])
-            else
-              Content := Content + CSVEscape(TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo));
-          end;
-        Content := Content + #13#10;
-      end;
+      Content := SelText;
 
       Len := WideCharToMultiByte(GetACP(), 0, PChar(Content), Length(Content), nil, 0, nil, nil);
       ClipboardData := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, (Len + 1));
@@ -700,14 +651,7 @@ begin
         if (Columns[J].Visible and not (Columns[J].Field.DataType = ftBlob)) then
         begin
           if (J > 0) then Result := Result + #9;
-          if (Columns[J].Field.IsNull) then
-            // NULL values are empty in MS Text files
-          else if (Columns[J].Field.DataType in UnquotedDataTypes) then
-            Result := Result + TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo)
-          else if (Columns[J].Field.DataType in BinaryDataTypes) then
-            Result := Result + CSVEscape(TMySQLDataSet(DataLink.DataSet).LibRow^[Columns[J].Field.FieldNo - 1], TMySQLDataSet(DataLink.DataSet).LibLengths^[Columns[J].Field.FieldNo - 1])
-          else
-            Result := Result + CSVEscape(TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo));
+          Result := Result + TMySQLDataSet(DataLink.DataSet).GetAsString(Columns[J].Field.FieldNo);
         end;
       Result := Result + #13#10;
     end;
@@ -920,21 +864,38 @@ var
   Index: Integer;
   RecNo: Integer;
   S: string;
+  Str: PAnsiChar;
   Values: TCSVValues;
 begin
   Result := not ReadOnly;
+
   if (Result) then
     if (EditorMode and Assigned(InplaceEditor)) then
     begin
       InplaceEditor.PasteFromClipboard();
       Result := True;
     end
-    else if ((DataLink.DataSet is TMySQLDataSet) and Clipboard.HasFormat(CF_UNICODETEXT) and OpenClipboard(Handle)) then
+    else if ((DataLink.DataSet is TMySQLDataSet) and (Clipboard.HasFormat(CF_TEXT) or Clipboard.HasFormat(CF_UNICODETEXT)) and OpenClipboard(Handle)) then
     begin
-      ClipboardData := GetClipboardData(CF_UNICODETEXT);
-      S := PChar(GlobalLock(ClipboardData)); // Make sure no error occurs before CloseClipboard
-      GlobalUnlock(ClipboardData);
-      CloseClipboard();
+      try
+        if (not Clipboard.HasFormat(CF_UNICODETEXT)) then
+        begin
+          ClipboardData := GetClipboardData(CF_TEXT);
+          Str := PAnsiChar(GlobalLock(ClipboardData));
+          SetLength(S, MultiByteToWideChar(CP_ACP, 0, Str, StrLen(Str), nil, 0));
+          if (Length(S) > 0) then
+            SetLength(S, MultiByteToWideChar(CP_ACP, 0, Str, StrLen(Str), PChar(S), Length(S)));
+          GlobalUnlock(ClipboardData);
+        end
+        else
+        begin
+          ClipboardData := GetClipboardData(CF_UNICODETEXT);
+          S := PChar(GlobalLock(ClipboardData));
+          GlobalUnlock(ClipboardData);
+        end;
+      finally
+        CloseClipboard();
+      end;
 
       Index := 1;
       if (CSVSplitValues(S, Index, #9, '"', Values) and ((Length(Values) > 1) or (Index <= Length(S)))) then

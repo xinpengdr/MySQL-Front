@@ -3933,7 +3933,7 @@ begin
     if (ValidSource and (Source <> '')) then
       ParseCreateTable(Source);
 
-    if (not Assigned(FEngine)) then
+    if (not Assigned(FEngine) and not Client.InUse) then
     begin
       Client.BeginSynchron();
       Update();
@@ -10721,6 +10721,7 @@ procedure TCClient.FirstConnect();
 begin
   Connected := False;
 
+  Asynchron := True;
   if (Account.Connection.Charset <> '') then
     Charset := Account.Connection.Charset;
   FDatabaseName := Account.GetDefaultDatabase();
