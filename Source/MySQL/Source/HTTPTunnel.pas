@@ -42,7 +42,8 @@ type
     function ExecuteHTTPRequest(const Connect: Boolean; const Timeout: Integer): Boolean;
   protected
     procedure Close(); override;
-    function ExecuteCommand(const Command: enum_server_command; const Bin: my_char; const Size: my_int; const Retry: Boolean): my_int; override;
+    function ExecuteCommand(const Command: enum_server_command;
+      const Bin: my_char; const Size: my_int; const Retry: Boolean): my_int; override;
     function Open(const AType: TMYSQL_IO.TType; const AHost, AUnixSocket: RawByteString;
       const APort, ATimeout: my_uint): Boolean; override;
     function Receive(var Buffer; const BytesToRead: my_uint; out BytesRead: my_uint): Boolean; override;

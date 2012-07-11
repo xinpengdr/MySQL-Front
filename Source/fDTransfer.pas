@@ -720,6 +720,7 @@ begin
                   begin
                     NewNode := TreeView.Items.AddChild(Node, Client.Databases[I].Name);
                     NewNode.ImageIndex := iiDatabase;
+                    NewNode.Data := Client.Databases[I];
                     NewNode.HasChildren := TreeView = FSource;
                   end;
                 Node.HasChildren := Assigned(Node.getFirstChild());
@@ -738,6 +739,7 @@ begin
                 begin
                   NewNode := TreeView.Items.AddChild(Node, Database.Tables[I].Name);
                   NewNode.ImageIndex := iiBaseTable;
+                  NewNode.Data := Database.Tables[I];
                 end;
             end;
           end;
@@ -818,10 +820,9 @@ var
         end;
       iiBaseTable:
         begin
-          Database := Client.DatabaseByName(Node.Parent.Text);
-          for J := 0 to Database.Tables.Count - 1 do
+          for J := 0 to Node.Parent.Count - 1 do
             if (Node.Parent.Item[J].Selected) then
-              Objects.Add(Database.Tables[J]);
+              Objects.Add(Node.Parent.Item[J].Data);
           Result := not Client.Update(Objects);
         end;
       else

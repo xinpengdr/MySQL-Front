@@ -458,6 +458,8 @@ begin
       Description := Preferences.LoadStr(452)
     else if (LowerCase(Ext) = 'bmp') then
       Description := Preferences.LoadStr(868)
+    else if (LowerCase(Ext) = 'zip') then
+      Description := Preferences.LoadStr(886)
     else if (LowerCase(Ext) = '*') then
       Description := Preferences.LoadStr(190);
 

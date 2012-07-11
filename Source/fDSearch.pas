@@ -653,6 +653,7 @@ begin
                   begin
                     NewNode := TreeView.Items.AddChild(Node, Client.Databases[I].Name);
                     NewNode.ImageIndex := iiDatabase;
+                    NewNode.Data := Client.Databases[I];
                     NewNode.HasChildren := True;
                   end;
                 Node.HasChildren := Assigned(Node.getFirstChild());
@@ -671,6 +672,7 @@ begin
                 begin
                   NewNode := TreeView.Items.AddChild(Node, Database.Tables[I].Name);
                   NewNode.ImageIndex := iiBaseTable;
+                  NewNode.Data := Database.Tables[I];
                   NewNode.HasChildren := True;
                 end;
               Node.HasChildren := Assigned(Node.getFirstChild());
@@ -689,6 +691,7 @@ begin
               begin
                 NewNode := TreeView.Items.AddChild(Node, Table.Fields[I].Name);
                 NewNode.ImageIndex := iiField;
+                NewNode.Data := Table.Fields[I];
               end;
               Node.HasChildren := Assigned(Node.getFirstChild());
             end;
@@ -900,10 +903,9 @@ procedure TDSearch.TSExecuteShow(Sender: TObject);
         end;
       iiBaseTable:
         begin
-          Database := Client.DatabaseByName(Node.Parent.Text);
-          for J := 0 to Database.Tables.Count - 1 do
+          for J := 0 to Node.Parent.Count - 1 do
             if (Node.Parent.Item[J].Selected) then
-              Objects.Add(Database.Tables[J]);
+              Objects.Add(Node.Parent.Item[J].Data);
           WantedExecute := not Client.Update(Objects);
         end;
     end;

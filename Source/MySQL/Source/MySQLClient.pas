@@ -2395,7 +2395,6 @@ begin
     else
     begin
       ReadFile(RBS); ReallocMem(fserver_info, Length(RBS) + 1); StrPCopy(fserver_info, RBS);
-MessageBoxA(0, fserver_info, 'Debug', MB_OK);
       ReadFile(fthread_id, 4);
       ReadFile(Salt);
       ReadFile(fserver_capabilities, 2);

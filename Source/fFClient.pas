@@ -3739,16 +3739,6 @@ begin
       DExport.ExportType := etPrint;
       DExport.Execute();
     end
-    else if ((ExportType in [etTextFile]) and (DExport.DBObjects.Count > 1)) then
-    begin
-      FolderName := Path;
-      if (SelectDirectory(Preferences.LoadStr(351) + ':', '', FolderName, [sdNewFolder, sdShowEdit, sdShowShares, sdNewUI, sdValidateDir], Self)) then
-      begin
-        DExport.Filename := FolderName + PathDelim;
-        DExport.CodePage := CodePage;
-        DExport.Execute();
-      end;
-    end
     else if (ExportType = etODBC) then
     begin
       DExport.Execute();
@@ -3767,9 +3757,18 @@ begin
           end;
         etTextFile:
           begin
-            SaveDialog.Filter := FilterDescription('txt') + ' (*.txt;*.csv;*.tab;*.asc)|*.txt;*.csv;*.tab;*.asc';
-            SaveDialog.DefaultExt := 'csv';
-            SaveDialog.Encodings.Text := EncodingCaptions();
+            if (DExport.DBObjects.Count = 1) then
+            begin
+              SaveDialog.Filter := FilterDescription('txt') + ' (*.txt;*.csv;*.tab;*.asc)|*.txt;*.csv;*.tab;*.asc';
+              SaveDialog.DefaultExt := 'csv';
+              SaveDialog.Encodings.Text := EncodingCaptions();
+            end
+            else
+            begin
+              SaveDialog.Filter := FilterDescription('zip') + ' (*.zip)|*.zip';
+              SaveDialog.DefaultExt := 'zip';
+              SaveDialog.Encodings.Clear();
+            end;
           end;
         etExcelFile:
           begin
