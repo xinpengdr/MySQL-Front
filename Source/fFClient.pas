@@ -1463,7 +1463,7 @@ begin
 
     FXML := nil;
     for I := 0 to Node.ChildNodes.Count - 1 do
-      if ((Node.ChildNodes[I].NodeName = 'database') and (lstrcmpi(PChar(string(Node.ChildNodes[I].Attributes['name'])), PChar(Database.Name)) = 0)) then
+      if ((Node.ChildNodes[I].NodeName = 'database') and (FClient.Client.Databases.NameCmp(Node.ChildNodes[I].Attributes['name'], Database.Name) = 0)) then
         FXML := Node.ChildNodes[I];
 
     if (not Assigned(FXML)) then
@@ -12334,6 +12334,8 @@ begin
           FAddress := URI.Address;
           AddressChanged(nil);
           URI.Free();
+          Client.Account.Desktop.Files.Add(SQLEditor.Filename, SQLEditor.FileCodePage);
+          Window.Perform(CM_UPDATETOOLBAR, 0, LPARAM(Self));
         end;
         if (Length(FSQLEditorSynMemo.Lines.Text) < LargeSQLScriptSize) then
           FSQLEditorSynMemo.Options := FSQLEditorSynMemo.Options - [eoScrollPastEol];  // Slow down the performance on large content
@@ -13392,6 +13394,8 @@ begin
         FAddress := URI.Address;
         AddressChanged(nil);
         URI.Free();
+        Client.Account.Desktop.Files.Add(SQLEditor.Filename, SQLEditor.FileCodePage);
+        Window.Perform(CM_UPDATETOOLBAR, 0, LPARAM(Self));
       end;
 
       CloseHandle(Handle);

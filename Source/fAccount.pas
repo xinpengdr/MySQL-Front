@@ -8,6 +8,7 @@ uses
 
 type
   TABookmarks = class;
+  TAFiles = class;
   TADesktop = class;
   TAConnection = class;
   TAAccount = class;
@@ -20,6 +21,7 @@ type
     FXML: IXMLNode;
     function GetXML(): IXMLNode;
   protected
+    property Bookmarks: TABookmarks read FBookmarks;
     property XML: IXMLNode read GetXML;
   public
     Caption: string;
@@ -27,7 +29,6 @@ type
     constructor Create(const ABookmarks: TABookmarks; const AXML: IXMLNode = nil); virtual;
     procedure LoadFromXML(); virtual;
     procedure SaveToXML(); virtual;
-    property Bookmarks: TABookmarks read FBookmarks;
     property URI: string read FURI write FURI;
   end;
 
@@ -59,12 +60,48 @@ type
     property DataPath: TFileName read GetDataPath;
   end;
 
+  TAFile = class(TList)
+  private
+    FFiles: TAFiles;
+  protected
+    FCodePage: Cardinal;
+    FFilename: TFileName;
+    procedure LoadFromXML(const XML: IXMLNode); virtual;
+    procedure SaveToXML(const XML: IXMLNode); virtual;
+    property Files: TAFiles read FFiles;
+  public
+    constructor Create(const AFiles: TAFiles);
+    property CodePage: Cardinal read FCodePage write FCodePage;
+    property Filename: TFileName read FFilename write FFilename;
+  end;
+
+  TAFiles = class(TList)
+  private
+    FDesktop: TADesktop;
+    FMaxCount: Integer;
+    FXML: IXMLNode;
+    function Get(Index: Integer): TAFile; inline;
+    function GetXML(): IXMLNode;
+  protected
+    procedure LoadFromXML(); virtual;
+    procedure SaveToXML(); virtual;
+    property Desktop: TADesktop read FDesktop;
+    property MaxCount: Integer read FMaxCount;
+    property XML: IXMLNode read GetXML;
+  public
+    procedure Add(const AFilename: TFileName; const ACodePage: Cardinal); reintroduce; virtual;
+    procedure Clear(); override;
+    constructor Create(const ADesktop: TADesktop; const AMaxCount: Integer);
+    property Files[Index: Integer]: TAFile read Get; default;
+  end;
+
   TADesktop = class
   type
     TListViewKind = (lkServer, lkDatabase, lkTable, lkHosts, lkProcesses, lkStati, lkUsers, lkVariables);
   private
     FAccount: TAAccount;
     FBookmarks: TABookmarks;
+    FFiles: TAFiles;
     FPath: string;
     FXML: IXMLNode;
     function GetAddress(): string;
@@ -84,7 +121,6 @@ type
     EditorContent: string;
     ExplorerVisible: Boolean;
     FilesFilter: string;
-    FilesMRU: TMRUList;
     FoldersHeight: Integer;
     LogHeight: Integer;
     LogVisible: Boolean;
@@ -95,6 +131,7 @@ type
     destructor Destroy(); override;
     property Address: string read GetAddress write SetAddress;
     property Bookmarks: TABookmarks read FBookmarks;
+    property Files: TAFiles read FFiles;
   end;
 
   TAConnection = class
@@ -539,6 +576,136 @@ begin
   end;
 end;
 
+{ TAFile **********************************************************************}
+
+constructor TAFile.Create(const AFiles: TAFiles);
+begin
+  inherited Create();
+
+  FFiles := AFiles;
+end;
+
+procedure TAFile.LoadFromXML(const XML: IXMLNode);
+var
+  CodePage: Integer;
+begin
+  if (Assigned(XML)) then
+  begin
+    FFilename := XML.Text;
+    if ((XML.Attributes['codepage'] <> Null) and TryStrToInt(XML.Attributes['codepage'], CodePage)) then FCodePage := CodePage;
+  end;
+end;
+
+procedure TAFile.SaveToXML(const XML: IXMLNode);
+begin
+  XML.OwnerDocument.Options := XML.OwnerDocument.Options + [doNodeAutoCreate];
+
+  XML.Text := Filename;
+  if (CodePage <> CP_ACP) then
+    XML.Attributes['codepage'] := IntToStr(CodePage)
+  else if (XML.Attributes['codepage'] <> Null) then
+    XML.Attributes['codepage'] := Null;
+
+  XML.OwnerDocument.Options := XML.OwnerDocument.Options - [doNodeAutoCreate];
+end;
+
+{ TAFiles *********************************************************************}
+
+procedure TAFiles.Add(const AFilename: TFileName; const ACodePage: Cardinal);
+var
+  I: Integer;
+  Index: Integer;
+begin
+  Index := -1;
+
+  I := 0;
+  while ((I < Count) and (Index < 0)) do
+    if (lstrcmpi(PChar(AFilename), PChar(Files[I].Filename)) = 0) then
+      Index := I
+    else
+      Inc(I);
+
+  if (Index < 0) then
+  begin
+    Index := 0;
+    Insert(Index, TAFile.Create(Self));
+
+    while (Count > MaxCount) do
+    begin
+      Files[Count - 1].Free();
+      Delete(Count - 1);
+    end;
+  end
+  else if (Index <> 0) then
+    Move(Index, 0);
+
+  Files[0].FFilename := AFilename;
+  Files[0].FCodePage := ACodePage
+end;
+
+procedure TAFiles.Clear();
+begin
+  while (Count > 0) do
+  begin
+    Files[0].Free();
+    Delete(0);
+  end;
+
+  inherited;
+end;
+
+constructor TAFiles.Create(const ADesktop: TADesktop; const AMaxCount: Integer);
+begin
+  inherited Create();
+
+  FDesktop := ADesktop;
+
+  FMaxCount := AMaxCount;
+  FXML := nil;
+end;
+
+function TAFiles.Get(Index: Integer): TAFile;
+begin
+  Result := TAFile(Items[Index]);
+end;
+
+function TAFiles.GetXML(): IXMLNode;
+begin
+  if (not Assigned(FXML) and Assigned(Desktop.XML)) then
+    FXML := XMLNode(Desktop.XML, 'editor/files', True);
+
+  Result := FXML;
+end;
+
+procedure TAFiles.LoadFromXML();
+var
+  I: Integer;
+begin
+  Clear();
+
+  for I := 0 to XML.ChildNodes.Count - 1 do
+    if (XML.ChildNodes[I].NodeName = 'file') then
+    begin
+      inherited Add(TAFile.Create(Self));
+      Files[Count - 1].LoadFromXML(XML.ChildNodes[I]);
+    end;
+end;
+
+procedure TAFiles.SaveToXML();
+var
+  I: Integer;
+  Node: IXMLNode;
+begin
+  while (XML.ChildNodes.Count > 0) do
+    XML.ChildNodes.Delete(0);
+
+  for I := 0 to Count - 1 do
+  begin
+    Node := XML.AddChild('file');
+    Files[I].SaveToXML(Node);
+  end;
+end;
+
 { TADesktop *******************************************************************}
 
 procedure TADesktop.Assign(const Source: TADesktop);
@@ -584,7 +751,6 @@ begin
   EditorContent := '';
   ExplorerVisible := False;
   FilesFilter := '*.sql';
-  FilesMRU := TMRUList.Create(10);
   FoldersHeight := 100;
   NavigatorVisible := True;
   LogHeight := 80;
@@ -594,13 +760,14 @@ begin
   SQLHistoryVisible := False;
 
   FBookmarks := TABookmarks.Create(Self);
+  FFiles := TAFiles.Create(Self, 10);
 end;
 
 destructor TADesktop.Destroy();
 begin
   AddressMRU.Free();
-  FilesMRU.Free();
   FBookmarks.Free();
+  FFiles.Free();
 
   inherited;
 end;
@@ -674,6 +841,7 @@ begin
     end;
 
     Bookmarks.LoadFromXML();
+    Files.LoadFromXML();
   end;
 end;
 
@@ -742,7 +910,7 @@ begin
     XMLNode(XML, 'sidebar/visible').Text := BoolToStr(False, True);
 
   Bookmarks.SaveToXML();
-  FilesMRU.SaveToXML(XMLNode(XML, 'editor/files'), 'file');
+  Files.SaveToXML();
 
   XML.OwnerDocument.Options := XML.OwnerDocument.Options - [doNodeAutoCreate];
 end;
@@ -1023,7 +1191,6 @@ end;
 
 function TAAccount.GetDesktopXML(): IXMLNode;
 var
-  I: Integer;
   Node: IXMLNode;
 begin
   if (not Assigned(FDesktopXMLDocument)) then
@@ -1039,26 +1206,28 @@ begin
     begin
       FDesktopXMLDocument := NewXMLDocument();
       FDesktopXMLDocument.Encoding := 'utf-8';
-      FDesktopXMLDocument.Node.AddChild('desktop').Attributes['version'] := '1.3';
+      FDesktopXMLDocument.Node.AddChild('desktop').Attributes['version'] := '1.3.1';
     end;
 
-    if (FDesktopXMLDocument.DocumentElement.Attributes['version'] = '1.1') then
-    begin
-      Node := FDesktopXMLDocument.DocumentElement;
-      if (Assigned(Node)) then
-        for I := Node.ChildNodes.Count - 1 downto 0 do
-          if (Node.ChildNodes[I].NodeName = 'browser') then
-            Node.ChildNodes.Delete(I);
-      FDesktopXMLDocument.DocumentElement.Attributes['version'] := '1.2';
-    end;
-
-    if (FDesktopXMLDocument.DocumentElement.Attributes['version'] = '1.2') then
+    if (VersionStrToVersion(FDesktopXMLDocument.DocumentElement.Attributes['version']) < 10300)  then
     begin
       Node := FDesktopXMLDocument.DocumentElement;
       if (Assigned(Node) and Assigned(XMLNode(Node, 'address'))) then
         Node.ChildNodes.Remove(XMLNode(Node, 'address'));
 
       FDesktopXMLDocument.DocumentElement.Attributes['version'] := '1.3';
+    end;
+
+    if (VersionStrToVersion(FDesktopXMLDocument.DocumentElement.Attributes['version']) < 10301)  then
+    begin
+      Node := FDesktopXMLDocument.DocumentElement;
+      if (Assigned(XMLNode(Node, 'browser'))) then
+        Node.ChildNodes.Remove(XMLNode(Node, 'browser'));
+      Node := XMLNode(Node, 'editor');
+      if (Assigned(XMLNode(Node, 'filename'))) then
+        Node.ChildNodes.Remove(XMLNode(Node, 'filename'));
+
+      FDesktopXMLDocument.DocumentElement.Attributes['version'] := '1.3.1';
     end;
 
     FDesktopXMLDocument.Options := FDesktopXMLDocument.Options - [doAttrNull, doNodeAutoCreate];

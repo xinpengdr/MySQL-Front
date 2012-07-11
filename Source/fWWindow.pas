@@ -490,7 +490,7 @@ type
     function GetActiveTab(): TFClient;
     function GetNewTabIndex(Sender: TObject; X, Y: Integer): Integer;
     procedure InformUpdateAvailable();
-//    procedure miFReopenClick(Sender: TObject);
+    procedure miFReopenClick(Sender: TObject);
     procedure MNextItemClick(Sender: TObject);
     procedure MPrevItemClick(Sender: TObject);
     procedure mtTabsClick(Sender: TObject);
@@ -993,7 +993,7 @@ begin
   aFOpen.Caption := Preferences.LoadStr(581) + '...';
   aFSave.Caption := Preferences.LoadStr(582);
   aFSaveAs.Caption := Preferences.LoadStr(583) + '...';
-  miFReopen.Caption := Preferences.LoadStr(885) + '...';
+  miFReopen.Caption := Preferences.LoadStr(885);
   miFImport.Caption := Preferences.LoadStr(371);
   aFImportSQL.Caption := Preferences.LoadStr(409) + '...';
   aFImportText.Caption := Preferences.LoadStr(410) + '...';
@@ -1397,6 +1397,7 @@ procedure TWWindow.CMUpdateToolbar(var Message: TCMUpdateToolBar);
 var
   Found: Boolean;
   I: Integer;
+  MenuItem: TMenuItem;
   S: string;
   Tab: TFClient;
 begin
@@ -1479,10 +1480,22 @@ begin
   if (Found) then
     Toolbar.ButtonWidth := 0; // Without this, the Buttons are too small. Why??? A Delphi bug?
 
-//  while (miFReopen.Count > 1) do
-//    miFReopen.Delete(0);
-//  miFReopen.Enabled := Assigned(Tab) and (Tab.ToolBarData.View = vEditor) and (Tab.Client.Account.Desktop.FilesMRU.Count > 0);
-  miFReopen.Visible := False;
+  while (miFReopen.Count > 1) do
+    miFReopen.Delete(0);
+  miFReopen.Enabled := Assigned(Tab) and (Tab.ToolBarData.View = vEditor) and (Tab.Client.Account.Desktop.Files.Count > 0);
+  if (miFReopen.Enabled) then
+  begin
+    for I := 0 to Tab.Client.Account.Desktop.Files.Count - 1 do
+    begin
+      MenuItem := TMenuItem.Create(Owner);
+      MenuItem.Caption := '&' + IntToStr(miFReopen.Count) + ' ' + Tab.Client.Account.Desktop.Files[I].Filename;
+      MenuItem.Enabled := FileExists(Tab.Client.Account.Desktop.Files[I].Filename);
+      MenuItem.OnClick := miFReopenClick;
+      MenuItem.Tag := I;
+      miFReopen.Add(MenuItem);
+    end;
+    miFReopen.Delete(0);
+  end;
 end;
 
 constructor TWWindow.Create(AOwner: TComponent);
@@ -1866,18 +1879,10 @@ begin
     aHUpdate.Execute();
 end;
 
-//procedure TWWindow.miFReopenClick(Sender: TObject);
-//var
-//  CodePage: Integer;
-//  Filename: TFileName;
-//  URI: TUURI;
-//begin
-//  URI := TUURI.Create(ActiveTab.Client.Account.Desktop.FilesMRU[TMenuItem(Sender).Tag]);
-//  Filename := URIToPath(URI.ParamEncode(URI.Param['file']));
-//  if ((URI.Param['cp'] = Null) or not TryStrToInt(URI.Param['cp'], CodePage)) then CodePage := 0;
-//  ActiveTab.OpenSQLFile(Filename, CodePage);
-//  URI.Free();
-//end;
+procedure TWWindow.miFReopenClick(Sender: TObject);
+begin
+  ActiveTab.OpenSQLFile(ActiveTab.Client.Account.Desktop.Files[TMenuItem(Sender).Tag].Filename, ActiveTab.Client.Account.Desktop.Files[TMenuItem(Sender).Tag].CodePage);
+end;
 
 procedure TWWindow.MNextItemClick(Sender: TObject);
 var
