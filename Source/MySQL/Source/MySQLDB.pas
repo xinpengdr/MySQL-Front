@@ -298,6 +298,7 @@ type
     procedure SetAutoCommit(const AAutoCommit: Boolean); virtual;
     procedure SetCharset(const ACharset: string); virtual;
     procedure SetConnected(Value: Boolean); override;
+    procedure SyncCancel(const SynchroThread: TSynchroThread); virtual;
     procedure SyncConnecting(const SynchroThread: TSynchroThread); virtual;
     procedure SyncConnected(const SynchroThread: TSynchroThread); virtual;
     procedure SyncDisconncting(const SynchroThread: TSynchroThread); virtual;
@@ -1855,18 +1856,7 @@ begin
           ssNextResult:
             Connection.SyncNextResult(Self);
           ssCancel:
-            begin
-              repeat
-                while (not Terminated and Assigned(ResultHandle) and Assigned(Connection.Lib.mysql_fetch_row(ResultHandle))) do ;
-                if (not Terminated) then
-                  Connection.SyncNextResult(Self);
-              until (not Success);
-              if (not Terminated) then
-              begin
-                Connection.SyncExecutedSQL(Self);
-                State := ssReady;
-              end;
-            end;
+            Connection.SyncCancel(Self);
           ssDisconnecting:
             Connection.SyncDisconncting(Self);
         end;
@@ -1958,6 +1948,11 @@ begin
           else
             Connection.SyncHandledResult(Self);
         end;
+      ssCancel:
+        begin
+          Connection.SyncCancel(Self);
+          Connection.SyncExecutedSQL(Self);
+        end;
       ssDisconnecting:
         begin
           Connection.SyncDisconncting(Self);
@@ -2000,6 +1995,8 @@ begin
           else if (State in [ssReady, ssError]) then
             Connection.SyncExecutedSQL(Self);
         end;
+      ssCancel:
+        Connection.SyncExecutedSQL(Self);
       ssDisconnecting:
         Connection.SyncDisconncted(Self);
     end;
@@ -2376,6 +2373,22 @@ begin
   FUserName := AUserName;
 end;
 
+procedure TMySQLConnection.SyncCancel(const SynchroThread: TSynchroThread);
+begin
+  if (Assigned(SynchroThread.DataSet)) then
+    SynchroThread.ReleaseDataSet(SynchroThread.DataSet);
+  repeat
+    if (not SynchroThread.Terminated and not Assigned(SynchroThread.ResultHandle)) then
+      SynchroThread.ResultHandle := Lib.mysql_use_result(SynchroThread.LibHandle);
+    if (Assigned(SynchroThread.ResultHandle)) then
+    begin
+      while (not SynchroThread.Terminated and Assigned(Lib.mysql_fetch_row(SynchroThread.ResultHandle))) do ;
+      if (not SynchroThread.Terminated) then
+        begin Lib.mysql_free_result(SynchroThread.ResultHandle); SynchroThread.ResultHandle := nil; end;
+    end;
+  until (SynchroThread.Terminated or not MultiStatements {or (Lib.mysql_more_results(SynchroThread.LibHandle) = 0) }or (Lib.mysql_next_result(SynchroThread.LibHandle) > 0));
+end;
+
 procedure TMySQLConnection.SyncConnecting(const SynchroThread: TSynchroThread);
 var
   ClientFlag: my_uint;
@@ -2725,6 +2738,8 @@ begin
   if (FErrorCode = 0) then
     SynchroThread.SQL := '';
 
+  SynchroThread.State := ssReady;
+
   DoAfterExecuteSQL();
 
   if ((FErrorCode = CR_SERVER_HANDSHAKE_ERR)) then
@@ -3032,7 +3047,7 @@ end;
 
 function TMySQLConnection.UseCompression(): Boolean;
 begin
-  Result := (LibraryType = ltHTTP) or not ((lstrcmpi(PChar(Host), LOCAL_HOST) = 0) or (Host = '127.0.0.1') or (Host = '::1'));
+  Result := True or (LibraryType = ltHTTP) or not ((lstrcmpi(PChar(Host), LOCAL_HOST) = 0) or (Host = '127.0.0.1') or (Host = '::1'));
 end;
 
 function TMySQLConnection.UseSynchroThread(): Boolean;
@@ -4169,7 +4184,7 @@ procedure TMySQLQuery.InternalClose();
 begin
   if (not (Self is TMySQLBuffer)) then
   begin
-    if (Assigned(SynchroThread)) then
+    if (Assigned(Handle)) then
     begin
       Connection.SyncHandledResult(SynchroThread);
       if (OpenByCommandText) then
@@ -4848,8 +4863,12 @@ begin
       Result := grEOF
     else
     begin
-      PRecordBufferData(ActiveBuffer())^.LibRow := InternRecordBuffers[0]^.LibRow;
+try
       PRecordBufferData(ActiveBuffer())^.LibLengths := InternRecordBuffers[0]^.LibLengths;
+except
+      PRecordBufferData(ActiveBuffer())^.LibRow := InternRecordBuffers[0]^.LibRow;
+end;
+      PRecordBufferData(ActiveBuffer())^.LibRow := InternRecordBuffers[0]^.LibRow;
 
 
       Inc(FRecNo);

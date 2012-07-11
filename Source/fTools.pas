@@ -1113,7 +1113,7 @@ begin
 
   FErrorCount := 0;
 
-  FUserAbort := CreateEvent(nil, False, False, 'UserAbort');
+  FUserAbort := CreateEvent(nil, False, False, '');
   CriticalSection := TCriticalSection.Create();
 end;
 
@@ -3565,7 +3565,7 @@ begin
     if (Success = daSuccess) then
       for I := 0 to Length(ExportObjects) - 1 do
       begin
-        if (Data) then
+        if ((Success <> daAbort) and Data) then
         begin
           Index := DataTables.IndexOf(ExportObjects[I].DBObject);
           if (Index >= 0) then
@@ -3783,7 +3783,7 @@ begin
   if (Success = daSuccess) then
     ExportObject.RecordsSum := ExportObject.RecordsDone;
 
-  if (Assigned(DataSet)) then
+  if ((Success <> daAbort) and Assigned(DataSet)) then
     DataSet.Free();
 end;
 
