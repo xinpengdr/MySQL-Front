@@ -392,8 +392,8 @@ type
     TempFilename: string;
     Zip: TZipFile;
   protected
-    procedure ExecuteFooter(); override;
-    procedure ExecuteHeader(); override;
+    procedure AfterExecute(); override;
+    procedure BeforeExecute(); override;
     procedure ExecuteTableFooter(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery); override;
     procedure ExecuteTableHeader(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery); override;
     procedure ExecuteTableRecord(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery); override;
@@ -4303,6 +4303,30 @@ end;
 
 { TTExportText ****************************************************************}
 
+procedure TTExportText.AfterExecute();
+begin
+  if (Assigned(Zip)) then
+    Zip.Free();
+end;
+
+procedure TTExportText.BeforeExecute();
+begin
+  if (Length(ExportObjects) + Length(DBGrids) > 1) then
+  begin
+    Zip := TZipFile.Create();
+
+    while ((Success = daSuccess) and (Zip.Mode <> zmWrite)) do
+    begin
+      try
+        Zip.Open(Filename, zmWrite);
+      except
+        on E: EZipException do
+          DoError(ZipError(Zip, E.Message), EmptyToolsItem());
+      end;
+    end;
+  end;
+end;
+
 constructor TTExportText.Create(const AClient: TCClient; const AFilename: TFileName; const ACodePage: Cardinal);
 begin
   inherited;
@@ -4321,30 +4345,6 @@ begin
   SetLength(TableFields, 0);
 
   inherited;
-end;
-
-procedure TTExportText.ExecuteFooter();
-begin
-  if (Assigned(Zip)) then
-    Zip.Free();
-end;
-
-procedure TTExportText.ExecuteHeader();
-begin
-  if (Length(ExportObjects) + Length(DBGrids) > 1) then
-  begin
-    Zip := TZipFile.Create();
-
-    while ((Success = daSuccess) and (Zip.Mode <> zmWrite)) do
-    begin
-      try
-        Zip.Open(Filename, zmWrite);
-      except
-        on E: EZipException do
-          DoError(ZipError(Zip, E.Message), EmptyToolsItem());
-      end;
-    end;
-  end;
 end;
 
 procedure TTExportText.ExecuteTableFooter(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery);
