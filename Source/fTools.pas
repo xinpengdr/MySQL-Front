@@ -389,6 +389,7 @@ type
 
   TTExportText = class(TTExportFile)
   private
+    TempFilename: string;
     Zip: TZipFile;
   protected
     procedure ExecuteFooter(); override;
@@ -4324,17 +4325,13 @@ end;
 
 procedure TTExportText.ExecuteFooter();
 begin
-  if (Length(ExportObjects) + Length(DBGrids) = 1) then
-    CloseFile()
-  else
+  if (Assigned(Zip)) then
     Zip.Free();
 end;
 
 procedure TTExportText.ExecuteHeader();
 begin
-  if (Length(ExportObjects) + Length(DBGrids) = 1) then
-    DoFileCreate(Filename)
-  else
+  if (Length(ExportObjects) + Length(DBGrids) > 1) then
   begin
     Zip := TZipFile.Create();
 
@@ -4352,8 +4349,20 @@ end;
 
 procedure TTExportText.ExecuteTableFooter(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery);
 begin
-  if ((Success = daSuccess) and Assigned(Zip)) then
-    Zip.Close();
+  if (Success = daSuccess) then
+  begin
+    CloseFile();
+    if (Length(ExportObjects) + Length(DBGrids) > 1) then
+    begin
+      try
+        Zip.Add(TempFilename, Table.Name + '.csv');
+      except
+        on E: EZipException do
+          DoError(ZipError(Zip, E.Message), EmptyToolsItem());
+      end;
+      DeleteFile(TempFilename);
+    end;
+  end;
 end;
 
 procedure TTExportText.ExecuteTableHeader(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery);
@@ -4362,8 +4371,13 @@ var
   I: Integer;
   Value: string;
 begin
-  if ((Success = daSuccess) and Assigned(Zip)) then
-    Zip.Add(Table.Name + '.csv');
+  if (Length(ExportObjects) + Length(DBGrids) = 1) then
+    DoFileCreate(Filename)
+  else
+  begin
+    TempFilename := GetTempFileName();
+    DoFileCreate(TempFilename);
+  end;
 
   if ((Success = daSuccess) and Structure) then
   begin
