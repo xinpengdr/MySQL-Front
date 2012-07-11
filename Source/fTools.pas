@@ -3890,12 +3890,19 @@ begin
 end;
 
 function TTExportFile.FileCreate(const Filename: TFileName; out Error: TTools.TError): Boolean;
+var
+  Attributes: DWord;
 begin
+  if ((Self is TTExportText) and Assigned(TTExportText(Self).Zip)) then
+    Attributes := FILE_ATTRIBUTE_TEMPORARY
+  else
+    Attributes := FILE_ATTRIBUTE_NORMAL;
+
   Handle := CreateFile(PChar(Filename),
                        GENERIC_WRITE,
                        FILE_SHARE_READ,
                        nil,
-                       CREATE_ALWAYS, 0, 0);
+                       CREATE_ALWAYS, Attributes, 0);
   Result := Handle <> INVALID_HANDLE_VALUE;
 
   if (not Result) then
@@ -4307,10 +4314,14 @@ procedure TTExportText.AfterExecute();
 begin
   if (Assigned(Zip)) then
     Zip.Free();
+
+  inherited;
 end;
 
 procedure TTExportText.BeforeExecute();
 begin
+  inherited;
+
   if (Length(ExportObjects) + Length(DBGrids) > 1) then
   begin
     Zip := TZipFile.Create();
@@ -4349,19 +4360,18 @@ end;
 
 procedure TTExportText.ExecuteTableFooter(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery);
 begin
-  if (Success = daSuccess) then
+  CloseFile();
+
+  if (Length(ExportObjects) + Length(DBGrids) > 1) then
   begin
-    CloseFile();
-    if (Length(ExportObjects) + Length(DBGrids) > 1) then
-    begin
+    if (Success = daSuccess) then
       try
         Zip.Add(TempFilename, Table.Name + '.csv');
       except
         on E: EZipException do
           DoError(ZipError(Zip, E.Message), EmptyToolsItem());
       end;
-      DeleteFile(TempFilename);
-    end;
+    DeleteFile(TempFilename);
   end;
 end;
 
