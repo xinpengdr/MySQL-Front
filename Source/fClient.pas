@@ -1840,7 +1840,7 @@ function TCEntities.Build(const DataSet: TMySQLQuery; const UseInformationSchema
 begin
   FValid := True;
 
-  Result := (Client.ErrorCode = ER_DBACCESS_DENIED_ERROR) or (Client.ErrorCode = ER_TABLEACCESS_DENIED_ERROR);
+  Result := False;
 end;
 
 constructor TCEntities.Create(const AClient: TCClient);
@@ -6350,7 +6350,7 @@ begin
       end;
     until (not DataSet.FindNext());
 
-  Result := inherited;
+  Result := inherited or (Client.ErrorCode = ER_EVENTS_DB_ERROR);
 
   if (not Filtered) then
     while (DeleteList.Count > 0) do
@@ -9422,7 +9422,7 @@ begin
         Add(TCUser.Create(Self, Name));
     until (not DataSet.FindNext());
 
-  Result := inherited;
+  Result := inherited or (Client.ErrorCode = ER_DBACCESS_DENIED_ERROR) or (Client.ErrorCode = ER_TABLEACCESS_DENIED_ERROR);
 
   if (not Filtered) then
     while (DeleteList.Count > 0) do
@@ -9710,7 +9710,7 @@ begin
       FreeAndNil(NewHostDatabase);
     until (not DataSet.FindNext());
 
-  Result := inherited;
+  Result := inherited or (Client.ErrorCode = ER_DBACCESS_DENIED_ERROR) or (Client.ErrorCode = ER_TABLEACCESS_DENIED_ERROR);
 
   if (not Filtered) then
     while (DeleteList.Count > 0) do

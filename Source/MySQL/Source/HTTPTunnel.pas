@@ -496,7 +496,7 @@ end;
 
 function MYSQL.Send(const Buffer; const BytesToWrite: my_uint): Boolean;
 begin
-  Result := (SendBuffer.Size + BytesToWrite <= SendBuffer.TotalSize) or ReallocBuffer(SendBuffer, SendBuffer.Size + BytesToWrite);
+  Result := (SendBuffer.Size + BytesToWrite <= SendBuffer.MemSize) or ReallocBuffer(SendBuffer, SendBuffer.Size + BytesToWrite);
 
   if (Result) then
   begin

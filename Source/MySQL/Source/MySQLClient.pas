@@ -3,7 +3,7 @@ unit MySQLClient;
 interface {********************************************************************}
 
 uses
-  SyncObjs, WinSock,
+  SyncObjs, WinSock, Classes,
   SysUtils,
   MySQLConsts;
 
@@ -24,9 +24,7 @@ type
   protected
     IOType: TType;
     function GetCodePage(): Cardinal; virtual;
-    property CodePage: Cardinal read GetCodePage;
     procedure SetFileAccess(ADirection: TDirection); virtual;
-    property Direction: TDirection read FDirection write SetFileAccess;
     procedure Close(); virtual;
     function DecodeString(const Str: RawByteString): string; virtual;
     function EncodeString(const Str: string): RawByteString; virtual;
@@ -35,6 +33,8 @@ type
     function Receive(var Buffer; const BytesToRead: my_uint; out BytesRead: my_uint): Boolean; virtual;
     function Send(const Buffer; const BytesToWrite: my_uint): Boolean; virtual;
     procedure Seterror(const AErrNo: my_uint; const AError: RawByteString = ''); virtual;
+    property CodePage: Cardinal read GetCodePage;
+    property Direction: TDirection read FDirection write SetFileAccess;
   public
     constructor Create(); virtual;
     destructor Destroy(); override;
@@ -46,25 +46,39 @@ type
   type
     TFileBuffer = record
       Mem: my_char;
+      MemSize: my_uint;
       Offset: my_uint;
       Size: my_uint;
-      TotalSize: my_uint;
     end;
     TClientStatus = (
       MYSQL_STATUS_READY,
       MYSQL_STATUS_GET_RESULT,
       MYSQL_STATUS_USE_RESULT
     );
+//    TReceiver = class(TThread)
+//    private
+//      Buffer: TFileBuffer;
+//      BufferRead: TEvent;
+//      FFile: TMySQL_File;
+//      PacketReceived: TEvent;
+//      PacketSize: my_uint;
+//    protected
+//      property MySQL_File: TMySQL_File read FFile;
+//    public
+//      constructor Create(const AFile: TMySQL_File);
+//      destructor Destroy(); override;
+//      procedure Execute(); override;
+//      function ReceivePacket(var FileBuffer: TFileBuffer): Boolean;
+//    end;
   private
     CompPacketNr: Byte;
     FCompress: Boolean;
     FReadFileBuffer: TFileBuffer;
     PacketBuffer: TFileBuffer;
     PacketNr: Byte;
+//    Receiver: TReceiver;
     function ReceivePacket(): Boolean;
   protected
-    property Compress: Boolean read FCompress write FCompress;
-    property ReadFileBuffer: TFileBuffer read FReadFileBuffer;
     function CreateFile(const AIOType: TMySQL_IO.TType;
       const Host, UnixSocket: RawByteString; const Port, Timeout: my_uint): Boolean; virtual;
     procedure CloseFile(); virtual;
@@ -83,6 +97,8 @@ type
     function WriteFile(const Buffer: my_char; const Size: my_uint): Boolean; overload; virtual;
     function WriteFile(const Value: my_ulonglong; const Size: my_uint): Boolean; overload; virtual;
     function WriteFile(const Value: RawByteString; const NTS: Boolean = True): Boolean; overload; virtual;
+    property Compress: Boolean read FCompress write FCompress;
+    property ReadFileBuffer: TFileBuffer read FReadFileBuffer;
   public
     constructor Create(); override;
   end;
@@ -285,7 +301,7 @@ const
 implementation {***************************************************************}
 
 uses
-  Windows, Classes,
+  Windows,
   ZLib, StrUtils;
 
 const
@@ -961,7 +977,7 @@ begin
             Seterror(CR_NAMEDPIPEWAIT_ERROR, EncodeString(Format(CLIENT_ERRORS[CR_NAMEDPIPEWAIT_ERROR - CR_MIN_ERROR], [LOCAL_HOST, PipeName, GetLastError()])))
         else
         begin
-          Pipe := CreateFile(PChar(Filename), GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, FILE_FLAG_WRITE_THROUGH, 0);
+          Pipe := CreateFile(PChar(Filename), GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, 0, 0);
           if (Pipe = INVALID_HANDLE_VALUE) then
             if (GetLastError() = ERROR_PIPE_BUSY) then
               Seterror(CR_NAMEDPIPEWAIT_ERROR, EncodeString(Format(CLIENT_ERRORS[CR_NAMEDPIPEWAIT_ERROR - CR_MIN_ERROR], [LOCAL_HOST, PipeName, GetLastError()])))
@@ -1179,15 +1195,29 @@ begin
     FError := EncodeString(CLIENT_ERRORS[FErrNo - CR_MIN_ERROR])
   else
     FError := '';
+
+  if (AErrNo = CR_COMMANDS_OUT_OF_SYNC) then
+    raise Exception.Create(DecodeString(FError));
 end;
 
 procedure TMySQL_IO.SetFileAccess(ADirection: TMySQL_IO.TDirection);
 var
   arg: Integer;
+//  CollectDataTimeout: DWord;
+//  Mode: ULONG;
 begin
   if (ADirection <> FDirection) then
   begin
     case (IOType) of
+//      itNamedPipe:
+//        begin
+//          CollectDataTimeout := 0;
+//          if (ADirection = idRead) then
+//            Mode := PIPE_READMODE_BYTE or PIPE_WAIT // disable Nonblocking mode
+//          else
+//            Mode := PIPE_READMODE_BYTE; // enable Nonblocking mode
+//          SetNamedPipeHandleState(Pipe, Mode, nil, @CollectDataTimeout);
+//        end;
       itTCPIP:
         begin
           if (ADirection = idRead) then
@@ -1201,6 +1231,107 @@ begin
     FDirection := ADirection;
   end;
 end;
+
+{ TMySQL_File.TReceiver *******************************************************}
+
+//constructor TMySQL_File.TReceiver.Create(const AFile: TMySQL_File);
+//begin
+//  inherited Create(False);
+//
+//  FFile := AFile;
+//
+//  BufferRead := TEvent.Create(nil, False, False, '');
+//  PacketReceived := TEvent.Create(nil, False, False, '');
+//end;
+//
+//destructor TMySQL_File.TReceiver.Destroy();
+//begin
+//  BufferRead.Free();
+//  PacketReceived.Free();
+//
+//  inherited;
+//end;
+//
+//procedure TMySQL_File.TReceiver.Execute();
+//var
+//  BytesRead: DWord;
+//  PacketNr: Byte;
+//  Success: Boolean;
+//begin
+//  Buffer.Mem := nil;
+//  Buffer.Size := 0;
+//  Buffer.Offset := 0;
+//
+//  repeat
+//    if (Buffer.Size + NET_HEADER_SIZE > Buffer.MemSize) then
+//      FFile.ReallocBuffer(Buffer, NET_HEADER_SIZE);
+//    Success := FFile.Receive(Buffer.Mem[Buffer.Size], NET_HEADER_SIZE, BytesRead);
+//    if (Success) then
+//    begin
+//      Inc(Buffer.Size, BytesRead);
+//
+//      if (Buffer.Size - Buffer.Offset >= NET_HEADER_SIZE) then
+//      begin
+//        ZeroMemory(@PacketSize, SizeOf(PacketSize));
+//        MoveMemory(@PacketSize, @Buffer.Mem[Buffer.Offset + 0], 3);
+//        MoveMemory(@PacketNr, @Buffer.Mem[Buffer.Offset + 3], 1);
+//
+//        if (not FFile.Compress and (PacketNr <> FFile.PacketNr) or FFile.Compress and (PacketNr <> FFile.CompPacketNr)) then
+//          FFile.Seterror(CR_SERVER_LOST)
+//        else if (PacketSize > MAX_PACKET_LENGTH) then
+//          FFile.Seterror(CR_NET_PACKET_TOO_LARGE)
+//        else
+//        begin
+//          if (FFile.Compress) then
+//          begin
+//            if (Buffer.Size + COMP_HEADER_SIZE > Buffer.MemSize) then
+//              FFile.ReallocBuffer(Buffer, COMP_HEADER_SIZE);
+//            Success := FFile.Receive(Buffer.Mem[Buffer.Size], COMP_HEADER_SIZE, BytesRead);
+//            if (Success) then
+//              Inc(Buffer.Size, BytesRead);
+//          end;
+//
+//          FFile.PacketNr := (FFile.PacketNr + 1) and $FF;
+//
+//          if (Buffer.MemSize < Buffer.Offset + NET_HEADER_SIZE + PacketSize) then
+//            Success := FFile.ReallocBuffer(Buffer, Buffer.Offset + NET_HEADER_SIZE + PacketSize);
+//
+//          if (Success) then
+//          begin
+//            Success := FFile.Receive(Buffer.Mem[Buffer.Size], PacketSize - (Buffer.Size - Buffer.Offset - NET_HEADER_SIZE), BytesRead);
+//            if (Success) then
+//              Inc(Buffer.Size, BytesRead);
+//          end;
+//
+//          if (Success and (Buffer.Size - Buffer.Offset >= PacketSize)) then
+//          begin
+//            PacketReceived.SetEvent();
+//            BufferRead.WaitFor();
+//          end;
+//        end;
+//      end;
+//    end;
+//  until (Terminated);
+//end;
+//
+//function TMySQL_File.TReceiver.ReceivePacket(var FileBuffer: TFileBuffer): Boolean;
+//begin
+//  PacketReceived.WaitFor();
+//
+//  Inc(Buffer.Offset, NET_HEADER_SIZE);
+//
+//  if (FileBuffer.Size + PacketSize > FileBuffer.MemSize) then
+//    FFile.ReallocBuffer(FileBuffer, FileBuffer.Size + PacketSize);
+//
+//  MoveMemory(@FileBuffer.Mem[FileBuffer.Size], @Buffer.Mem[Buffer.Offset], PacketSize);
+//
+//  Inc(Buffer.Offset, PacketSize);
+//  Inc(FileBuffer.Size, PacketSize);
+//
+//  BufferRead.SetEvent();
+//
+//  Result := True;
+//end;
 
 { TMySQL_File *****************************************************************}
 
@@ -1244,6 +1375,9 @@ begin
     CompPacketNr := 0;
 
     Result := Open(AIOType, Host, UnixSocket, Port, Timeout);
+
+//    if (Result) then
+//      Receiver := TReceiver.Create(Self);
   end;
 end;
 
@@ -1287,7 +1421,7 @@ begin
         if (Result) then
           if (my_uint(CompressedSize) >= Size) then
           begin
-            if (Offset + NET_HEADER_SIZE + COMP_HEADER_SIZE + Size > PacketBuffer.TotalSize) then
+            if (Offset + NET_HEADER_SIZE + COMP_HEADER_SIZE + Size > PacketBuffer.MemSize) then
               ReallocBuffer(PacketBuffer, Offset + NET_HEADER_SIZE + COMP_HEADER_SIZE + Size);
 
             Move(PacketBuffer.Mem[Offset], PacketBuffer.Mem[Offset + NET_HEADER_SIZE + COMP_HEADER_SIZE], Size);
@@ -1493,7 +1627,7 @@ function TMySQL_File.ReallocBuffer(var Buffer: TFileBuffer; const Size: my_uint)
 var
   NewSize: my_uint;
 begin
-  Result := (errno() = 0) or (Size <= Buffer.TotalSize);
+  Result := (errno() = 0) or (Size <= Buffer.MemSize);
 
   if (Result) then
     if (Size > 0) then
@@ -1512,7 +1646,7 @@ begin
 
       try
         ReallocMem(Buffer.Mem, NewSize);
-        Buffer.TotalSize := NewSize;
+        Buffer.MemSize := NewSize;
       except
         on E: EOutOfMemory do
         begin
@@ -1529,18 +1663,23 @@ begin
     end
 end;
 
+//function TMySQL_File.ReceivePacket(): Boolean;
+//begin
+//  Result := Receiver.ReceivePacket(FReadFileBuffer);
+//end;
+
 function TMySQL_File.ReceivePacket(): Boolean;
 
   function ReceivePacketBuffer(const BytesToRead: my_uint; out BytesRead: my_uint): Boolean;
   begin
-    if (PacketBuffer.Size + BytesToRead > PacketBuffer.TotalSize) then
+    if (PacketBuffer.Size + BytesToRead > PacketBuffer.MemSize) then
     begin
       Move(PacketBuffer.Mem[PacketBuffer.Offset], PacketBuffer.Mem[0], PacketBuffer.Size - PacketBuffer.Offset);
       Dec(PacketBuffer.Size, PacketBuffer.Offset);
       PacketBuffer.Offset := 0;
     end;
 
-    if (PacketBuffer.Size + BytesToRead > PacketBuffer.TotalSize) then
+    if (PacketBuffer.Size + BytesToRead > PacketBuffer.MemSize) then
       ReallocBuffer(PacketBuffer, PacketBuffer.Size + BytesToRead);
 
     Result := Receive(PacketBuffer.Mem[PacketBuffer.Size], BytesToRead, BytesRead);
@@ -1593,7 +1732,7 @@ function TMySQL_File.ReceivePacket(): Boolean;
           end
           else
           begin
-            if (PacketOffset + UncompressedSize > PacketBuffer.TotalSize) then
+            if (PacketOffset + UncompressedSize > PacketBuffer.MemSize) then
               Result := Result and ReallocBuffer(PacketBuffer, PacketOffset + UncompressedSize);
 
             try
@@ -1670,7 +1809,7 @@ begin
           begin
             PacketNr := (PacketNr + 1) and $FF;
 
-            if (Offset + NET_HEADER_SIZE + Size > PacketBuffer.TotalSize) then
+            if (Offset + NET_HEADER_SIZE + Size > PacketBuffer.MemSize) then
               ReallocBuffer(PacketBuffer, Offset + NET_HEADER_SIZE + Size);
 
             if (Offset + NET_HEADER_SIZE + Size > PacketBuffer.Size) then
@@ -1783,7 +1922,7 @@ const
 begin
   if (ADirection <> Direction) then
   begin
-    if (PacketBuffer.TotalSize > ReducedBufferSized) then
+    if (PacketBuffer.MemSize > ReducedBufferSized) then
       ReallocBuffer(PacketBuffer, ReducedBufferSized);
 
     PacketBuffer.Offset := 0;
@@ -1810,7 +1949,7 @@ begin
     if (PartSize > NET_HEADER_SIZE + MAX_PACKET_LENGTH - (PacketBuffer.Size - PacketBuffer.Offset)) then
       PartSize := NET_HEADER_SIZE + MAX_PACKET_LENGTH - (PacketBuffer.Size - PacketBuffer.Offset);
 
-    if (PacketBuffer.Size + PartSize > PacketBuffer.TotalSize) then
+    if (PacketBuffer.Size + PartSize > PacketBuffer.MemSize) then
       ReallocBuffer(PacketBuffer, PacketBuffer.Size + PartSize);
 
     if (errno() = 0) then
