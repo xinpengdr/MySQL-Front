@@ -636,6 +636,28 @@ const
 
   STR_LEN = 128;
 
+type
+  TTDataFileBuffer = class
+  private
+    CodePage: Cardinal;
+    Temp1Mem: Pointer;
+    Temp1Size: Integer;
+    Temp2Mem: Pointer;
+    Temp2Size: Integer;
+  public
+    Mem: PAnsiChar;
+    MemSize: Integer;
+    Write: PAnsiChar;
+    procedure Clear();
+    constructor Create(const ACodePage: Cardinal);
+    destructor Destroy(); override;
+    function Length(): Integer; inline;
+    procedure Put(const Buffer: Pointer; const Length: Integer);
+    procedure PutEncoded(const Value: my_char; const Length: Integer; const CodePage: Cardinal = CP_ACP);
+    procedure PutEscaped(const Value: my_char; const Length: Integer);
+    procedure Resize(const NeededSize: Integer);
+  end;
+
 function UMLEncoding(const Codepage: Cardinal): string;
 var
   Reg: TRegistry;
@@ -1035,7 +1057,224 @@ begin
   Result.ErrorMessage := ErrorMessage;
 end;
 
-{ TTStringBuffer *****************************************************************}
+{ TTBuffer ********************************************************************}
+
+procedure TTDataFileBuffer.Clear();
+begin
+  Write := Mem;
+end;
+
+constructor TTDataFileBuffer.Create(const ACodePage: Cardinal);
+begin
+  inherited Create();
+
+  CodePage := ACodePage;
+  Mem := nil;
+  MemSize := 0;
+  Temp1Mem := nil;
+  Temp1Size := 0;
+  Temp1Mem := nil;
+  Temp1Size := 0;
+  Write := Mem;
+
+  Resize(NET_BUFFER_LENGTH);
+end;
+
+destructor TTDataFileBuffer.Destroy();
+begin
+  if (Assigned(Mem)) then FreeMem(Mem);
+  if (Assigned(Temp1Mem)) then FreeMem(Temp1Mem);
+  if (Assigned(Temp2Mem)) then FreeMem(Temp2Mem);
+
+  inherited;
+end;
+
+function TTDataFileBuffer.Length(): Integer;
+begin
+  Result := Integer(Write) - Integer(Mem);
+end;
+
+procedure TTDataFileBuffer.Put(const Buffer: Pointer; const Length: Integer);
+begin
+  Resize(Length);
+  MoveMemory(Write, Buffer, Length);
+  Write := @Write[Length];
+end;
+
+procedure TTDataFileBuffer.PutEncoded(const Value: my_char; const Length: Integer; const CodePage: Cardinal = CP_ACP);
+var
+  Len: Integer;
+  Size: Integer;
+begin
+  if (CodePage <> Self.CodePage) then
+  begin
+    Size := SizeOf(Char) * Length;
+    if (Size < Temp1Size) then
+    begin
+      ReallocMem(Temp1Mem, Size);
+      Temp1Size := Size;
+    end;
+    Len := MultiByteToWideChar(CodePage, MB_ERR_INVALID_CHARS, Value, Length, Temp1Mem, Temp1Size div SizeOf(Char));
+    if (Len = 0) then raise EInOutError.Create(SysErrorMessage(GetLastError()));
+
+    Size := 3 * Len;
+    if (Size < Temp2Size) then
+    begin
+      ReallocMem(Temp2Mem, Size);
+      Temp2Size := Size;
+    end;
+    Len := WideCharToMultiByte(Self.CodePage, WC_ERR_INVALID_CHARS, PChar(Temp1Mem), Len, Temp2Mem, Size, nil, nil);
+
+    PutEscaped(Temp2Mem, Len);
+  end
+  else if (Length > 0) then
+    PutEscaped(Value, Length);
+end;
+
+procedure TTDataFileBuffer.PutEscaped(const Value: my_char; const Length: Integer);
+label
+  StartL,
+  StringL, String2,
+  PositionL, PositionE,
+  FindPos, FindPos2,
+  Finish;
+const
+  SearchLen = 7;
+  Search: array [0 .. SearchLen - 1] of AnsiChar = (#0, #9, #10, #13, '''', '"', '\');
+  Replace: array [0 .. 2 * SearchLen - 1] of AnsiChar = ('\','0', '\','t', '\','n', '\','r', '\','''', '\','"', '\','\');
+var
+  W: Pointer;
+  Positions: packed array [0 .. SearchLen - 1] of Cardinal;
+begin
+  if (Length > 0) then
+  begin
+    Resize(1 + 2 * Length + 1);
+    W := Write;
+
+    asm
+        PUSH ES
+        PUSH ESI
+        PUSH EDI
+        PUSH EBX
+
+        PUSH DS                          // string operations uses ES
+        POP ES
+        CLD                              // string operations uses forward direction
+
+        MOV ESI,Value                    // Copy characters from Value
+        MOV EDI,W                        //   to Write
+        MOV ECX,Length                   // Length of Value string
+
+        MOV AL,''''                      // Start quoting
+        STOSB
+
+      // -------------------
+
+        MOV EBX,0                        // Numbers of characters in Search
+      StartL:
+        CALL FindPos                     // Find Search character position
+        INC EBX                          // Next character in Search
+        CMP EBX,SearchLen                // All Search characters handled?
+        JNE StartL                       // No!
+
+      // -------------------
+
+      StringL:
+        PUSH ECX
+
+        MOV ECX,0                        // Numbers of characters in Search
+        MOV EBX,-1                       // Index of first position
+        MOV EAX,0                        // Last character
+        LEA EDX,Positions
+      PositionL:
+        CMP [EDX + ECX * 4],EAX          // Position before other positions?
+        JB PositionE                     // No!
+        MOV EBX,ECX                      // Index of first position
+        MOV EAX,[EDX + EBX * 4]          // Value of first position
+      PositionE:
+        INC ECX                          // Next Position
+        CMP ECX,SearchLen                // All Positions compared?
+        JNE PositionL                    // No!
+
+        POP ECX
+
+        SUB ECX,EAX                      // Copy normal characters from Value
+        CMP ECX,0                        // Is there something to copy?
+        JE String2                       // No!
+        REPNE MOVSB                      //   to Result
+
+      String2:
+        MOV ECX,EAX
+
+        CMP ECX,0                        // Is there a character to replace?
+        JE Finish                        // No!
+
+        ADD ESI,1                        // Step of Search character
+        LEA EDX,Replace                  // Insert Replace characters
+        MOV AX,[EDX + EBX * 2]
+        STOSW
+
+        DEC ECX                          // Ignore Search character
+        JZ Finish                        // All character in Value handled!
+        CALL FindPos                     // Find Search character
+        JMP StringL
+
+      // -------------------
+
+      FindPos:
+        PUSH ECX
+        PUSH EDI
+        LEA EDI,Search                   // Character to Search
+        MOV AL,[EDI + EBX * 1]
+        MOV EDI,ESI                      // Search in Value
+        REPNE SCASB                      // Find Search character
+        JNE FindPos2                     // Search character not found!
+        INC ECX
+      FindPos2:
+        LEA EDI,Positions
+        MOV [EDI + EBX * 4],ECX          // Store found position
+        POP EDI
+        POP ECX
+        RET
+
+      // -------------------
+
+      Finish:
+        MOV AL,''''                      // End quoting
+        STOSB
+
+        MOV W,EDI
+
+        POP EBX
+        POP EDI
+        POP ESI
+        POP ES
+    end;
+
+    Write := W;
+  end;
+end;
+
+procedure TTDataFileBuffer.Resize(const NeededSize: Integer);
+var
+  Len: Integer;
+begin
+  if (MemSize = 0) then
+  begin
+    GetMem(Mem, NeededSize);
+    MemSize := NeededSize;
+    Write := Mem;
+  end
+  else if (MemSize - Length() < NeededSize) then
+  begin
+    Len := Length();
+    ReallocMem(Mem, Len + NeededSize);
+    MemSize := Len + NeededSize;
+    Write := @Mem[Len];
+  end;
+end;
+
+{ TTStringBuffer **************************************************************}
 
 procedure TTStringBuffer.Clear();
 begin
@@ -6596,6 +6835,10 @@ destructor TTTransfer.Destroy();
 begin
   while (Elements.Count > 0) do
   begin
+    TElement(Elements[0]^).Source.DatabaseName := '';
+    TElement(Elements[0]^).Source.TableName := '';
+    TElement(Elements[0]^).Destination.DatabaseName := '';
+    TElement(Elements[0]^).Destination.TableName := '';
     FreeMem(Elements[0]);
     Elements.Delete(0);
   end;
@@ -6732,7 +6975,6 @@ begin
 
   if (SourceClient = DestinationClient) then
   begin
-
     for I := 0 to Elements.Count - 1 do
       if (Success <> daAbort) then
       begin
@@ -6799,8 +7041,13 @@ begin
 end;
 
 procedure TTTransfer.ExecuteData(var Source, Destination: TItem);
+const
+  DBComma: PAnsiChar = ',';
+  DBNull: PAnsiChar = 'NULL';
+  DBTerminator: PAnsiChar = #13#10;
 var
   Buffer: TTStringBuffer;
+  DBBuffer: TTDataFileBuffer;
   DBValues: RawByteString;
   DestinationDatabase: TCDatabase;
   DestinationFieldNames: string;
@@ -6902,39 +7149,37 @@ begin
 
             if (ConnectNamedPipe(Pipe, nil)) then
             begin
+              DBBuffer := TTDataFileBuffer.Create(Destination.Client.CodePage);
+
               repeat
-                DBValues := '';
                 for I := 0 to DestinationTable.Fields.Count - 1 do
                   if (SourceFields[I] >= 0) then
                   begin
-                    if (DBValues <> '') then DBValues := DBValues + ',';
+                    if (DBBuffer.Length() > 0) then DBBuffer.Put(DBComma, 1);
                     if (not Assigned(SourceDataSet.LibRow^[SourceFields[I]])) then
-                      DBValues := DBValues + 'NULL'
+                      DBBuffer.Put(DBNull, 4)
                     else if (BitField(SourceDataSet.Fields[SourceFields[I]])) then
-                      DBValues := DBValues + DataFileValue(SourceDataSet.Fields[SourceFields[I]].AsString, not (DestinationTable.Fields[I].FieldType in NotQuotedFieldTypes))
+                      DBBuffer.PutEscaped(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]])
                     else if (DestinationTable.Fields[I].FieldType in NotQuotedFieldTypes) then
-                    begin
-                      SetLength(DBValues, Length(DBValues) + SourceDataSet.LibLengths^[SourceFields[I]]);
-                      MoveMemory(@DBValues[1 + Length(DBValues) - SourceDataSet.LibLengths^[SourceFields[I]]], SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]]);
-                    end
+                      DBBuffer.Put(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]])
                     else if (DestinationTable.Fields[I].FieldType in TextFieldTypes) then
-                      if ((Destination.Client.CodePage = SourceDataSet.Connection.CodePage) or (DestinationTable.Fields[I].FieldType in BinaryFieldTypes)) then
-                        DBValues := DBValues + DataFileEscape(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]])
-                      else
-                        DBValues := DBValues + DataFileEncode(Destination.Client.CodePage, SourceDataSet.GetAsString(SourceDataSet.Fields[SourceFields[I]].FieldNo))
+                      DBBuffer.PutEncoded(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]], Source.Client.CodePage)
                     else
-                      DBValues := DBValues + DataFileEscape(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]]);
+                      DBBuffer.PutEscaped(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]]);
                   end;
-                DBValues := DBValues + #13#10;
+                DBBuffer.Put(DBTerminator, 2);
 
-                if (not WriteFile(Pipe, PAnsiChar(DBValues)^, Length(DBValues), WrittenSize, nil) or (Abs(WrittenSize) < Length(DBValues))) then
-                begin
-                  Error.ErrorType := TE_File;
-                  Error.ErrorCode := GetLastError();
-                  Error.ErrorMessage := SysErrorMessage(GetLastError());
-                  DoError(Error, ToolsItem(Destination));
-                  Success := daAbort;
-                end;
+                if (DBBuffer.Length() > NET_BUFFER_LENGTH) then
+                  if (not WriteFile(Pipe, DBBuffer.Mem^, DBBuffer.Length(), WrittenSize, nil) or (Abs(WrittenSize) < Length(DBValues))) then
+                  begin
+                    Error.ErrorType := TE_File;
+                    Error.ErrorCode := GetLastError();
+                    Error.ErrorMessage := SysErrorMessage(GetLastError());
+                    DoError(Error, ToolsItem(Destination));
+                    Success := daAbort;
+                  end
+                  else
+                   DBBuffer.Clear();
 
                 Inc(Destination.RecordsDone);
                 if (Destination.RecordsDone mod 100 = 0) then DoUpdateGUI();
@@ -6942,6 +7187,20 @@ begin
                 if (WaitForSingleObject(UserAbort, 0) = WAIT_OBJECT_0) then
                   Success := daAbort;
               until ((Success <> daSuccess) or not SourceDataSet.FindNext());
+
+              if (DBBuffer.Length() > 0) then
+                if (not WriteFile(Pipe, DBBuffer.Mem^, DBBuffer.Length(), WrittenSize, nil) or (Abs(WrittenSize) < Length(DBValues))) then
+                begin
+                  Error.ErrorType := TE_File;
+                  Error.ErrorCode := GetLastError();
+                  Error.ErrorMessage := SysErrorMessage(GetLastError());
+                  DoError(Error, ToolsItem(Destination));
+                  Success := daAbort;
+                end
+                else
+                 DBBuffer.Clear();
+
+              DBBuffer.Free();
 
               if (FlushFileBuffers(Pipe) and WriteFile(Pipe, PAnsiChar(DBValues)^, 0, WrittenSize, nil) and FlushFileBuffers(Pipe)) then
                 SQLThread.WaitFor();

@@ -2796,10 +2796,8 @@ var
 begin
   if (not Assigned(NewField.FieldBefore)) then
     Index := 0
-  else if (Assigned(FieldByName(NewField.FieldBefore.Name))) then
-    Index := FieldByName(NewField.FieldBefore.Name).Index + 1
   else
-    Index := TList(Self).Count;
+    Index := NewField.FieldBefore.Index + 1;
 
   if (NewField is TCBaseTableField) then
   begin
@@ -3239,9 +3237,7 @@ begin
   if (Assigned(FDataSet)) then
     FreeAndNil(FDataSet);
 
-  FFields.Clear();
-  for I := 0 to Source.Fields.Count - 1 do
-    FFields.AddField(Source.Fields[I]);
+  FFields.Assign(Source.Fields);
 end;
 
 function TCTable.CountRecords(): Integer;
