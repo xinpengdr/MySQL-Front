@@ -3251,8 +3251,6 @@ begin
 end;
 
 function TMySQLConnection.LibEncode(const Value: string): RawByteString;
-label
-  StringL;
 var
   Len: Integer;
 begin
@@ -4512,10 +4510,11 @@ begin
   InternalInitFieldDefs();
   BindFields(True);
 
-  if (not (Self is TMySQLDataSet)) then
-    SynchroThread.State := ssReceivingResult
-  else
-    SynchroThread.BindDataSet(TMySQLDataSet(Self));
+  if (Assigned(Handle)) then
+    if (not (Self is TMySQLDataSet)) then
+      SynchroThread.State := ssReceivingResult
+    else
+      SynchroThread.BindDataSet(TMySQLDataSet(Self));
 
   Result := False;
 end;

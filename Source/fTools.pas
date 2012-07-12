@@ -779,11 +779,7 @@ begin
     Result := ''''''
   else
   begin
-try
     SetLength(Result, 2 * Length + 2); // reserve space
-except
-    SetLength(Result, 2 * Length + 2); // reserve space
-end;
 
     asm
         PUSH ES
@@ -949,6 +945,31 @@ begin
         POP ESI
         POP ES
     end;
+end;
+
+function DataFileEncode(const CodePage: Cardinal; const Value: PChar; const Length: Integer): RawByteString; overload;
+var
+  Len: Integer;
+begin
+  if (Value = '') then
+    Result := ''
+  else
+  begin
+    Len := WideCharToMultiByte(CodePage, 0, Value, Length, nil, 0, nil, nil);
+    if ((Len = 0) and (GetLastError() <> 0)) then
+      DatabaseError(SysErrorMessage(GetLastError()));
+
+    SetLength(Result, Len);
+    if (Len > 0) then
+      SetLength(Result, WideCharToMultiByte(CodePage, 0, Value, Length, PAnsiChar(Result), Len, nil, nil));
+
+    DataFileEscape(Result);
+  end;
+end;
+
+function DataFileEncode(const CodePage: Cardinal; const Value: string): RawByteString; overload;
+begin
+  Result := DataFileEncode(CodePage, PChar(Value), Length(Value));
 end;
 
 function ODBCError(const HandleType: SQLSMALLINT; const Handle: SQLHSTMT): TTools.TError;
@@ -2122,7 +2143,7 @@ begin
         else if (Fields[I].FieldType in BinaryFieldTypes) then
           Values := Values + DataFileEscape(CSVBinary(CSVValues[CSVColumns[I]].Data, CSVValues[CSVColumns[I]].Length, Quoter))
         else
-          Values := Values + DataFileEscape(Client.LibEncode(CSVUnescape(CSVValues[CSVColumns[I]].Data, CSVValues[CSVColumns[I]].Length, Quoter)));
+          Values := Values + DataFileEncode(Client.CodePage, CSVUnescape(CSVValues[CSVColumns[I]].Data, CSVValues[CSVColumns[I]].Length, Quoter));
       end;
     Values := Values + #13#10;
   end;
@@ -2531,7 +2552,7 @@ begin
             else if (cbData = SQL_NULL_DATA) then
               Values := Values + 'NULL'
             else
-              Values := Values + DataFileEscape(Client.LibEncode(S));
+              Values := Values + DataFileEncode(Client.CodePage, S);
           end;
         SQL_BINARY,
         SQL_VARBINARY,
@@ -3034,7 +3055,7 @@ begin
       else
       begin
         SetString(RBS, sqlite3_column_text(Stmt, I), sqlite3_column_bytes(Stmt, I));
-        Values := Values + DataFileEscape(Client.LibEncode(UTF8ToString(RBS)));
+        Values := Values + DataFileEncode(Client.CodePage, UTF8ToString(RBS));
       end;
     end;
     Values := Values + #13#10;
@@ -3321,7 +3342,7 @@ begin
       else if (Fields[I].FieldType in BinaryFieldTypes) then
         Values := Values + DataFileValue(XMLValueNode.text, True)
       else
-        Values := Values + DataFileEscape(Client.LibEncode(XMLValueNode.text));
+        Values := Values + DataFileEncode(Client.CodePage, XMLValueNode.text);
     end;
     Values := Values + #13#10;
 
@@ -6900,7 +6921,7 @@ begin
                       if ((Destination.Client.CodePage = SourceDataSet.Connection.CodePage) or (DestinationTable.Fields[I].FieldType in BinaryFieldTypes)) then
                         DBValues := DBValues + DataFileEscape(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]])
                       else
-                        DBValues := DBValues + DataFileEscape(Destination.Client.LibEncode(SourceDataSet.GetAsString(SourceDataSet.Fields[SourceFields[I]].FieldNo)))
+                        DBValues := DBValues + DataFileEncode(Destination.Client.CodePage, SourceDataSet.GetAsString(SourceDataSet.Fields[SourceFields[I]].FieldNo))
                     else
                       DBValues := DBValues + DataFileEscape(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]]);
                   end;
