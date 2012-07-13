@@ -334,6 +334,8 @@ end;
 
 procedure TDImport.CMSysFontChanged(var Message: TMessage);
 begin
+  inherited;
+
   FDelimiter.Left := FDelimiterChar.Left + Sizer.Width + PageControl.Canvas.TextWidth(FDelimiterChar.Caption);
   FQuoteChar.Left := FStringQuote.Left + Sizer.Width + PageControl.Canvas.TextWidth(FStringQuote.Caption);
 end;
@@ -545,7 +547,7 @@ var
 begin
   if (Visible) then
   begin
-    if (not FDelimiterTab.Checked and (FDelimiter.Text = '') or not FStringQuote.Checked or (FQuoteChar.Text = '')) then
+    if (not FDelimiterTab.Checked and (FDelimiter.Text = '') or not FNoQuote.Checked and (FQuoteChar.Text = '')) then
     begin
       TSFields.Enabled := False;
       TSODBCOptions.Enabled := False;
@@ -637,9 +639,14 @@ begin
   FCollation.Items.Add('');
   if (Assigned(Client.Collations)) then
     for I := 0 to Client.Collations.Count - 1 do
+    begin
       if (lstrcmpi(PChar(Client.Collations[I].Charset.Name), PChar(FDefaultCharset.Text)) = 0) then
+      begin
         FCollation.Items.Add(Client.Collations[I].Name);
-
+        if (Client.Collations[I].Default) then
+          FCollation.ItemIndex := FCollation.Items.Count - 1;
+      end;
+    end;
   FCollation.Enabled := FDefaultCharset.Text <> ''; FLCollation.Enabled := FCollation.Enabled;
 end;
 

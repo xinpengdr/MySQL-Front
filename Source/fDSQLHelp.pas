@@ -181,6 +181,8 @@ end;
 
 procedure TDSQLHelp.CMSysFontChanged(var Message: TMessage);
 begin
+  inherited;
+
   FBContent.Width := Canvas.TextWidth(FBContent.Caption) + FBContent.Height - Canvas.TextHeight(FBContent.Caption);
   FBDescription.Left := FBContent.Left + FBContent.Width;
   FBDescription.Width := Canvas.TextWidth(FBDescription.Caption) + FBDescription.Height - Canvas.TextHeight(FBDescription.Caption);

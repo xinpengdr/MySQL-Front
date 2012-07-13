@@ -535,6 +535,7 @@ type
     procedure ActivateFilter(); virtual;
     function AllocRecordBuffer(): TRecordBuffer; override;
     procedure DeactivateFilter(); virtual;
+    function FindRecord(Restart, GoForward: Boolean): Boolean; override;
     procedure FreeRecordBuffer(var Buffer: TRecordBuffer); override;
     procedure GetBookmarkData(Buffer: TRecordBuffer; Data: Pointer); override;
     function GetBookmarkFlag(Buffer: TRecordBuffer): TBookmarkFlag; override;
@@ -2903,11 +2904,23 @@ end;
 
 procedure TMySQLConnection.SyncHandlingResult(const SynchroThread: TSynchroThread);
 begin
+{$IFDEF Debug}
+try
+{$ENDIF}
   InOnResult := True;
   if ((not Assigned(SynchroThread.OnResult) or not SynchroThread.OnResult(Self, Assigned(SynchroThread.ResultHandle)))
     and (FErrorCode > 0)) then
     DoError(FErrorCode, FErrorMessage);
   InOnResult := False;
+{$IFDEF Debug}
+except
+  InOnResult := True;
+  if ((not Assigned(SynchroThread.OnResult) or not SynchroThread.OnResult(Self, Assigned(SynchroThread.ResultHandle)))
+    and (FErrorCode > 0)) then
+    DoError(FErrorCode, FErrorMessage);
+  InOnResult := False;
+end;
+{$ENDIF}
 
   if (SynchroThread.State = ssResult) then
     SyncHandledResult(SynchroThread);
@@ -3990,27 +4003,11 @@ begin
 end;
 
 function TMySQLQuery.FindRecord(Restart, GoForward: Boolean): Boolean;
-var
-  Distance: Integer;
 begin
-  CheckBrowseMode();
-  if (Restart) then
-  begin
-    Result := RecordCount > 0;
-    if (Result) then
-      if (GoForward) then
-        First()
-      else
-        Last();
-  end
+  if (Restart or not GoForward) then
+    Result := False
   else
-  begin
-    if (GoForward) then
-      Distance := +1
-    else
-      Distance := -1;
-    Result := MoveBy(Distance) <> 0;
-  end;
+    Result := MoveBy(1) <> 0;
 
   SetFound(Result);
 end;
@@ -4095,19 +4092,23 @@ end;
 
 function TMySQLQuery.GetRecord(Buffer: TRecordBuffer; GetMode: TGetMode; DoCheck: Boolean): TGetResult;
 begin
-  PRecordBufferData(ActiveBuffer())^.LibRow := Connection.Lib.mysql_fetch_row(Handle);
-
-  if (Assigned(PRecordBufferData(ActiveBuffer())^.LibRow)) then
-  begin
-    PRecordBufferData(ActiveBuffer())^.LibLengths := Connection.Lib.mysql_fetch_lengths(Handle);
-
-    Inc(FRecNo);
-    Result := grOk;
-  end
-  else if (Connection.Lib.mysql_errno(Connection.Handle) <> 0) then
+  if (GetMode <> gmNext) then
     Result := grError
   else
-    Result := grEOF
+  begin
+    PRecordBufferData(ActiveBuffer())^.LibRow := Connection.Lib.mysql_fetch_row(Handle);
+    if (Assigned(PRecordBufferData(ActiveBuffer())^.LibRow)) then
+    begin
+      PRecordBufferData(ActiveBuffer())^.LibLengths := Connection.Lib.mysql_fetch_lengths(Handle);
+
+      Inc(FRecNo);
+      Result := grOk;
+    end
+    else if (Connection.Lib.mysql_errno(Connection.Handle) <> 0) then
+      Result := grError
+    else
+      Result := grEOF;
+  end;
 end;
 
 function TMySQLQuery.GetRecordCount(): Integer;
@@ -4938,6 +4939,31 @@ begin
   Connection := nil; // UnRegister Connection
 
   inherited;
+end;
+
+function TMySQLDataSet.FindRecord(Restart, GoForward: Boolean): Boolean;
+var
+  Distance: Integer;
+begin
+  if (Restart) then
+  begin
+    Result := RecordCount > 0;
+    if (Result) then
+      if (GoForward) then
+        First()
+      else
+        Last();
+  end
+  else
+  begin
+    if (GoForward) then
+      Distance := +1
+    else
+      Distance := -1;
+    Result := MoveBy(Distance) <> 0;
+  end;
+
+  SetFound(Result);
 end;
 
 procedure TMySQLDataSet.FreeInternRecordBuffer(const InternRecordBuffer: PInternRecordBuffer);

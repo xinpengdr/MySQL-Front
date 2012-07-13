@@ -568,11 +568,11 @@ asm
         JE Unquote                       // Yes!
 
       Copy:
-        MOV Result,QuotedLength
         CMP UnquotedLength,QuotedLength  // Enough space in Unquoted?
         JB Finish                        // No!
         TEST EDI,-1                      // Unquoted = nil?
         JZ Finish                        // Yes!
+        MOV Result,ECX
         REPNE MOVSW                      // Copy normal characters to Result
         JMP Finish
 
@@ -586,7 +586,7 @@ asm
         CMP AX,Quoter                    // Previous character = Quoter?
         JNE UnquoteS                     // No!
         DEC ECX                          // Ignore Quoter
-        JZ Finish                        // End of Data!
+        JZ UnquoteE                      // End of Data!
         MOV AX,[ESI]
         CMP AX,Quoter                    // Second Quoter?
         JNE UnquoteE                     // No!

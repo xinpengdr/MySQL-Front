@@ -3894,7 +3894,7 @@ var
 begin
   CItem := FocusedCItem;
 
-  if ((Sender is TAction) and ((CItem is TCDatabase) and TCDatabase(CItem).Update()) or ((CItem is TCTable) and TCTable(CItem).Update())) then
+  if ((Sender is TAction) and ((CItem is TCDatabase) and not TCDatabase(CItem).Update()) or ((CItem is TCTable) and not TCTable(CItem).Update())) then
     Wanted.Action := TAction(Sender)
   else
   begin
@@ -9323,8 +9323,8 @@ begin
 
   if (Assigned(Result)) then
   begin
-    aDDeleteRecord.DataSource := Result.DataSource;
-    aDInsertRecord.DataSource := Result.DataSource;
+//    aDDeleteRecord.DataSource := Result.DataSource;
+//    aDInsertRecord.DataSource := Result.DataSource;
     Result.DataSource.OnDataChange := DBGridDataSourceDataChange;
   end;
 
@@ -9507,10 +9507,10 @@ begin
       Result := TCDatabase(FNavigator.Selected.Data)
   else if ((Window.ActiveControl = ActiveListView) and not Assigned(ActiveListView.Selected) or (Window.ActiveControl = ActiveWorkbench) and (not Assigned(ActiveWorkbench) or not Assigned(ActiveWorkbench.Selected))) then
     Result := TCItem(FNavigator.Selected.Data)
-  else if ((Window.ActiveControl = FNavigator) and Assigned(FNavigator.Selected)) then
-    Result := TCItem(FNavigator.Selected.Data)
   else if (Assigned(FNavigatorMenuNode)) then
     Result := TCItem(FNavigatorMenuNode.Data)
+  else if ((Window.ActiveControl = FNavigator) and Assigned(FNavigator.Selected)) then
+    Result := TCItem(FNavigator.Selected.Data)
   else
     Result := nil;
 end;
