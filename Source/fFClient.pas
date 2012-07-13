@@ -9323,8 +9323,8 @@ begin
 
   if (Assigned(Result)) then
   begin
-//    aDDeleteRecord.DataSource := Result.DataSource;
-//    aDInsertRecord.DataSource := Result.DataSource;
+    aDDeleteRecord.DataSource := Result.DataSource;
+    aDInsertRecord.DataSource := Result.DataSource;
     Result.DataSource.OnDataChange := DBGridDataSourceDataChange;
   end;
 

@@ -1497,13 +1497,15 @@ function TMySQL_File.ReceivePacket(): Boolean;
 
   function ReceiveCompressed(const BytesToRead: my_uint; out BytesRead: my_uint): Boolean;
   var
-    PacketOffset, Size, VIOSize: my_uint;
-    UncompressedSize: my_uint;
-    Nr: Byte;
     DecompressBuffer: record
       Mem: Pointer;
       Size: Integer;
     end;
+    Nr: Byte;
+    PacketOffset: my_uint;
+    Size: my_uint;
+    VIOSize: my_uint;
+    UncompressedSize: my_uint;
   begin
     BytesRead := 0;
 
