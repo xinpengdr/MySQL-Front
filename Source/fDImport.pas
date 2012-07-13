@@ -505,7 +505,7 @@ procedure TDImport.FBCancelClick(Sender: TObject);
 begin
   if (Assigned(Import)) then
   begin
-    SetEvent(Import.UserAbort);
+    Import.UserAbort.SetEvent();
     if (Client.Asynchron) then
     begin
       Import.WaitFor();

@@ -7,7 +7,7 @@ uses
   SysUtils, DB, Classes, Graphics, SyncObjs,
   ODBCAPI,
   DISQLite3Api,
-  MySQLDB, SQLUtils, CSVUtils,
+  MySQLConsts, MySQLDB, SQLUtils, CSVUtils,
   fClient;
 
 const
@@ -16,6 +16,30 @@ const
   BOM_UNICODE: PAnsiChar = Chr($FF) + Chr($FE);
 
 type
+  TTDataFileBuffer = class
+  private
+    CodePage: Cardinal;
+    MaxCharSize: Integer;
+    MemSize: Integer;
+    Temp1Mem: Pointer;
+    Temp1Size: Integer;
+    Temp2Mem: Pointer;
+    Temp2Size: Integer;
+    Write: PAnsiChar;
+    procedure Resize(const NeededSize: Integer);
+  public
+    Mem: PAnsiChar;
+    procedure Clear();
+    constructor Create(const ACodePage: Cardinal);
+    destructor Destroy(); override;
+    function Length(): Integer; inline;
+    procedure Put(const Buffer: Pointer; const Size: Integer); overload;
+//    procedure Put(const Text: PChar; const Length: Integer; const Quote: Boolean = False); overload;
+    procedure PutEncoded(const Value: my_char; const Length: Integer; const CodePage: Cardinal);
+    procedure PutEscaped(const Value: my_char; const Length: Integer);
+    procedure PutQuoted(const Value: my_char; const Length: Integer);
+  end;
+
   TTStringBuffer = class
   private
     FBuffer: PChar;
@@ -68,7 +92,7 @@ type
     FErrorCount: Integer;
     FOnError: TErrorEvent;
     FOnUpdate: TOnUpdate;
-    FUserAbort: THandle;
+    FUserAbort: TEvent;
     ProgressInfos: TProgressInfos;
   protected
     StartTime: TDateTime;
@@ -90,7 +114,7 @@ type
     property ErrorCount: Integer read FErrorCount;
     property OnExecuted: TOnExecuted read FOnExecuted write FOnExecuted;
     property OnUpdate: TOnUpdate read FOnUpdate write FOnUpdate;
-    property UserAbort: THandle read FUserAbort;
+    property UserAbort: TEvent read FUserAbort;
   end;
 
   TTImport = class(TTools)
@@ -104,6 +128,7 @@ type
       SourceTableName: string;
     end;
   private
+    DataFileBuffer: TTDataFileBuffer;
     FClient: TCClient;
     FDatabase: TCDatabase;
     FieldNames: string;
@@ -119,6 +144,7 @@ type
     procedure ExecuteData(var Item: TItem; const Table: TCTable); virtual;
     procedure ExecuteStructure(var Item: TItem); virtual;
     function GetValues(const Item: TItem; out Values: RawByteString): Boolean; overload; virtual;
+    function GetValues(const Item: TItem; const DataFileBuffer: TTDataFileBuffer): Boolean; overload; virtual;
     function GetValues(const Item: TItem; var Values: TSQLStrings): Boolean; overload; virtual;
     procedure Open(); virtual;
     function ToolsItem(const Item: TItem): TTools.TItem; virtual;
@@ -186,6 +212,8 @@ type
       Name: string;
       FieldTypes: set of Byte;
     end;
+    CSVUnquoteMem: PChar;
+    CSVUnquoteMemSize: Integer;
     function GetHeadlineNameCount(): Integer;
     function GetHeadlineName(Index: Integer): string;
   protected
@@ -193,6 +221,7 @@ type
     procedure BeforeExecuteData(var Item: TTImport.TItem); override;
     procedure ExecuteStructure(var Item: TTImport.TItem); override;
     function GetValues(const Item: TTImport.TItem; out Values: RawByteString): Boolean; overload; override;
+    function GetValues(const Item: TTImport.TItem; const DataFileBuffer: TTDataFileBuffer): Boolean; override;
     function GetValues(const Item: TTImport.TItem; var Values: TSQLStrings): Boolean; overload; override;
   public
     Charset: string;
@@ -580,6 +609,7 @@ type
       Destination: TItem;
     end;
   private
+    DataFileBuffer: TTDataFileBuffer;
     DataHandle: TMySQLConnection.TResultHandle;
     Elements: TList;
   protected
@@ -620,7 +650,7 @@ uses
   ActiveX,
   Forms, Consts, DBConsts, Registry, DBCommon, StrUtils, Math, Variants,
   PerlRegEx,
-  MySQLConsts,
+  UInt64Lib,
   fPreferences;
 
 resourcestring
@@ -635,28 +665,6 @@ const
   daSuccess = daRetry;
 
   STR_LEN = 128;
-
-type
-  TTDataFileBuffer = class
-  private
-    CodePage: Cardinal;
-    Temp1Mem: Pointer;
-    Temp1Size: Integer;
-    Temp2Mem: Pointer;
-    Temp2Size: Integer;
-  public
-    Mem: PAnsiChar;
-    MemSize: Integer;
-    Write: PAnsiChar;
-    procedure Clear();
-    constructor Create(const ACodePage: Cardinal);
-    destructor Destroy(); override;
-    function Length(): Integer; inline;
-    procedure Put(const Buffer: Pointer; const Length: Integer);
-    procedure PutEncoded(const Value: my_char; const Length: Integer; const CodePage: Cardinal = CP_ACP);
-    procedure PutEscaped(const Value: my_char; const Length: Integer);
-    procedure Resize(const NeededSize: Integer);
-  end;
 
 function UMLEncoding(const Codepage: Cardinal): string;
 var
@@ -1050,6 +1058,13 @@ begin
     Result := '';
 end;
 
+function SysError(): TTools.TError;
+begin
+  Result.ErrorType := TE_File;
+  Result.ErrorCode := GetLastError();
+  Result.ErrorMessage := SysErrorMessage(GetLastError());
+end;
+
 function ZipError(const Zip: TZipFile; const ErrorMessage: string): TTools.TError;
 begin
   Result.ErrorType := TE_File;
@@ -1065,6 +1080,8 @@ begin
 end;
 
 constructor TTDataFileBuffer.Create(const ACodePage: Cardinal);
+var
+  CPInfoEx: TCpInfoEx;
 begin
   inherited Create();
 
@@ -1077,7 +1094,12 @@ begin
   Temp1Size := 0;
   Write := Mem;
 
-  Resize(NET_BUFFER_LENGTH);
+  if (not GetCPInfoEx(CodePage, 0, CPInfoEx)) then
+    RaiseLastOSError()
+  else
+    MaxCharSize := CPInfoEx.MaxCharSize;
+
+  Resize(2 * NET_BUFFER_LENGTH);
 end;
 
 destructor TTDataFileBuffer.Destroy();
@@ -1094,14 +1116,67 @@ begin
   Result := Integer(Write) - Integer(Mem);
 end;
 
-procedure TTDataFileBuffer.Put(const Buffer: Pointer; const Length: Integer);
+procedure TTDataFileBuffer.Put(const Buffer: Pointer; const Size: Integer);
 begin
-  Resize(Length);
-  MoveMemory(Write, Buffer, Length);
-  Write := @Write[Length];
+  Resize(Size);
+  MoveMemory(Write, Buffer, Size);
+  Write := @Write[Size];
 end;
 
-procedure TTDataFileBuffer.PutEncoded(const Value: my_char; const Length: Integer; const CodePage: Cardinal = CP_ACP);
+//procedure TTDataFileBuffer.Put(const Text: PChar; const Length: Integer; const Quote: Boolean = False);
+//label
+//  StringL,
+//  Finish;
+//begin
+//  Resize((1 + Length + 1) * SizeOf(Text[0]));
+//
+//end;
+//  asm
+//        PUSH ES
+//        PUSH ESI
+//        PUSH EDI
+//
+//        PUSH DS                          // string operations uses ES
+//        POP ES
+//        CLD                              // string operations uses forward direction
+//
+//
+//  Len := Length(Value);
+//  if (not Quote) then
+//    SetLength(Result, Len)
+//  else
+//    SetLength(Result, Len + 2);
+//  if (Len > 0) then
+//    asm
+//        MOV ESI,PChar(Value)             // Copy characters from Value
+//        MOV EAX,Result                   //   to Result
+//        MOV EDI,[EAX]
+//
+//        MOV ECX,Len
+//
+//        CMP Quote,False                  // Quote Value?
+//        JE StringL                       // No!
+//        MOV AL,''''
+//        STOSB
+//
+//      StringL:
+//        LODSW                            // Load WideChar from Value
+//        STOSB                            // Store AnsiChar into Result
+//        LOOP StringL                     // Repeat for all characters
+//
+//        CMP Quote,False                  // Quote Value?
+//        JE Finish                        // No!
+//        MOV AL,''''
+//        STOSB
+//
+//      Finish:
+//        POP EDI
+//        POP ESI
+//        POP ES
+//    end;
+//end;
+
+procedure TTDataFileBuffer.PutEncoded(const Value: my_char; const Length: Integer; const CodePage: Cardinal);
 var
   Len: Integer;
   Size: Integer;
@@ -1115,9 +1190,9 @@ begin
       Temp1Size := Size;
     end;
     Len := MultiByteToWideChar(CodePage, MB_ERR_INVALID_CHARS, Value, Length, Temp1Mem, Temp1Size div SizeOf(Char));
-    if (Len = 0) then raise EInOutError.Create(SysErrorMessage(GetLastError()));
+    if (Len = 0) then RaiseLastOSError();
 
-    Size := 3 * Len;
+    Size := MaxCharSize * Len;
     if (Size < Temp2Size) then
     begin
       ReallocMem(Temp2Mem, Size);
@@ -1255,21 +1330,29 @@ begin
   end;
 end;
 
+procedure TTDataFileBuffer.PutQuoted(const Value: my_char; const Length: Integer);
+begin
+  Resize(1 + Length + 1);
+  Put(PAnsiChar('''_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
+  Put(Value, Length);
+  Put(PAnsiChar('''_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
+end;
+
 procedure TTDataFileBuffer.Resize(const NeededSize: Integer);
 var
   Len: Integer;
 begin
   if (MemSize = 0) then
   begin
-    GetMem(Mem, NeededSize);
     MemSize := NeededSize;
+    GetMem(Mem, MemSize);
     Write := Mem;
   end
-  else if (MemSize - Length() < NeededSize) then
+  else if (Length() + NeededSize > MemSize) then
   begin
     Len := Length();
-    ReallocMem(Mem, Len + NeededSize);
-    MemSize := Len + NeededSize;
+    MemSize := MemSize + 2 * (Len + NeededSize - MemSize);
+    ReallocMem(Mem, MemSize);
     Write := @Mem[Len];
   end;
 end;
@@ -1395,7 +1478,7 @@ begin
 
   FErrorCount := 0;
 
-  FUserAbort := CreateEvent(nil, False, False, '');
+  FUserAbort := TEvent.Create(nil, False, False, '');
   CriticalSection := TCriticalSection.Create();
 end;
 
@@ -1409,7 +1492,7 @@ end;
 destructor TTools.Destroy();
 begin
   CriticalSection.Free();
-  CloseHandle(FUserAbort);
+  FUserAbort.Free();
 
   inherited;
 end;
@@ -1470,6 +1553,7 @@ end;
 
 procedure TTImport.AfterExecuteData(var Item: TItem);
 begin
+  DataFileBuffer.Free();
 end;
 
 procedure TTImport.BeforeExecute();
@@ -1479,6 +1563,8 @@ begin
   Client.BeginSilent();
   Client.BeginSynchron(); // We're still in a thread
   Client.StartTransaction();
+
+  DataFileBuffer := TTDataFileBuffer.Create(Client.CodePage);
 end;
 
 procedure TTImport.BeforeExecuteData(var Item: TItem);
@@ -1651,15 +1737,9 @@ begin
       Pipename := '\\.\pipe\' + LoadStr(1000);
       Pipe := CreateNamedPipe(PChar(Pipename),
                               PIPE_ACCESS_OUTBOUND, PIPE_TYPE_MESSAGE or PIPE_READMODE_BYTE or PIPE_WAIT,
-                              1, NET_BUFFER_LENGTH, 0, NMPWAIT_USE_DEFAULT_WAIT, nil);
+                              1, 2 * NET_BUFFER_LENGTH, 0, NMPWAIT_USE_DEFAULT_WAIT, nil);
       if (Pipe = INVALID_HANDLE_VALUE) then
-      begin
-        Error.ErrorType := TE_File;
-        Error.ErrorCode := GetLastError();
-        Error.ErrorMessage := SysErrorMessage(GetLastError());
-        DoError(Error, ToolsItem(Item));
-        Success := daAbort;
-      end
+        DoError(SysError(), ToolsItem(Item))
       else
       begin
         SQL := '';
@@ -1676,18 +1756,12 @@ begin
           begin
             BytesToWrite := Length(DBValues);
             if (not WriteFile(Pipe, PAnsiChar(DBValues)^, BytesToWrite, BytesWritten, nil) or (BytesWritten < BytesToWrite)) then
-            begin
-              Error.ErrorType := TE_File;
-              Error.ErrorCode := GetLastError();
-              Error.ErrorMessage := SysErrorMessage(GetLastError());
-              DoError(Error, ToolsItem(Item));
-              Success := daAbort;
-            end;
+              DoError(SysError(), ToolsItem(Item));
 
             Inc(Item.RecordsDone);
             if (Item.RecordsDone mod 100 = 0) then DoUpdateGUI();
 
-            if (WaitForSingleObject(UserAbort, 0) = WAIT_OBJECT_0) then
+            if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
               Success := daAbort;
           end;
 
@@ -1778,7 +1852,7 @@ begin
         Inc(Item.RecordsDone);
         if (Item.RecordsDone mod 100 = 0) then DoUpdateGUI();
 
-        if (WaitForSingleObject(UserAbort, 0) = WAIT_OBJECT_0) then
+        if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
           Success := daAbort;
       end;
       SetLength(SQLValues, 0);
@@ -1810,6 +1884,11 @@ begin
 end;
 
 function TTImport.GetValues(const Item: TItem; out Values: RawByteString): Boolean;
+begin
+  Result := False;
+end;
+
+function TTImport.GetValues(const Item: TItem; const DataFileBuffer: TTDataFileBuffer): Boolean;
 begin
   Result := False;
 end;
@@ -1921,12 +2000,7 @@ begin
                          OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, 0);
 
     if (Handle = INVALID_HANDLE_VALUE) then
-    begin
-      Error.ErrorType := TE_File;
-      Error.ErrorCode := 0;
-      Error.ErrorMessage := SysErrorMessage(GetLastError());
-      DoError(Error, EmptyToolsItem());
-    end
+      DoError(SysError(), EmptyToolsItem())
     else
     begin
       FFileSize := GetFileSize(Handle, nil);
@@ -1935,7 +2009,7 @@ begin
       else
       begin
         if (not GetDiskFreeSpace(PChar(ExtractFileDrive(Filename)), SectorsPerCluser, BytesPerSector, NumberofFreeClusters, TotalNumberOfClusters)) then
-          raise EInOutError.Create(SysErrorMessage(GetLastError()));
+          RaiseLastOSError();
         FileBuffer.Size := BytesPerSector + Min(FFileSize, FilePacketSize);
         Inc(FileBuffer.Size, BytesPerSector - FileBuffer.Size mod BytesPerSector);
         FileBuffer.Mem := VirtualAlloc(nil, FileBuffer.Size, MEM_COMMIT, PAGE_READWRITE);
@@ -1945,9 +2019,7 @@ begin
       end;
     end;
   except
-    Error.ErrorType := TE_File;
-    Error.ErrorCode := GetLastError();
-    Error.ErrorMessage := SysErrorMessage(GetLastError());
+    Error := SysError();
 
     Result := False;
   end;
@@ -1956,7 +2028,6 @@ end;
 function TTImportFile.ReadContent(const NewFilePos: TLargeInteger = -1): Boolean;
 var
   DistanceToMove: TLargeInteger;
-  Error: TTools.TError;
   Index: Integer;
   Len: Integer;
   ReadSize: DWord;
@@ -1971,12 +2042,7 @@ begin
 
     DistanceToMove := NewFilePos - NewFilePos mod BytesPerSector;
     if ((SetFilePointer(Handle, LARGE_INTEGER(DistanceToMove).LowPart, @LARGE_INTEGER(DistanceToMove).HighPart, FILE_BEGIN) = INVALID_FILE_SIZE) and (GetLastError() <> 0)) then
-    begin
-      Error.ErrorType := TE_File;
-      Error.ErrorCode := GetLastError();
-      Error.ErrorMessage := SysErrorMessage(GetLastError());
-      DoError(Error, EmptyToolsItem());
-    end;
+      DoError(SysError(), EmptyToolsItem());
     FileBuffer.Index := BytesPerSector + NewFilePos mod BytesPerSector;
 
     FilePos := NewFilePos;
@@ -2034,12 +2100,7 @@ begin
             MultiByteToWideChar(CodePage, 0, @FileBuffer.Mem[FileBuffer.Index], BytesPerSector + ReadSize - FileBuffer.Index, @FileContent.Str[Length(FileContent.Str) - Len + 1], Len)
           end
           else if (GetLastError() <> 0) then
-          begin
-            Error.ErrorType := TE_File;
-            Error.ErrorCode := GetLastError();
-            Error.ErrorMessage := SysErrorMessage(GetLastError());
-            DoError(Error, EmptyToolsItem());
-          end;
+            DoError(SysError(), EmptyToolsItem());
 
           if (UTF8Bytes > 0) then
             MoveMemory(@FileBuffer.Mem[BytesPerSector - UTF8Bytes], @FileBuffer.Mem[BytesPerSector + ReadSize - UTF8Bytes], UTF8Bytes);
@@ -2152,7 +2213,7 @@ begin
       end;
     end;
 
-    if (WaitForSingleObject(UserAbort, 0) = WAIT_OBJECT_0) then
+    if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
       Success := daAbort;
   end;
 
@@ -2172,6 +2233,15 @@ begin
 end;
 
 { TTImportText ****************************************************************}
+
+procedure TTImportText.Add(const TableName: string);
+begin
+  SetLength(Items, Length(Items) + 1);
+  Items[Length(Items) - 1].TableName := TableName;
+  Items[Length(Items) - 1].RecordsDone := 0;
+  Items[Length(Items) - 1].RecordsSum := 0;
+  Items[Length(Items) - 1].Done := False;
+end;
 
 procedure TTImportText.AfterExecuteData(var Item: TTImport.TItem);
 begin
@@ -2204,15 +2274,6 @@ begin
   SetLength(FileFields, 0);
 end;
 
-procedure TTImportText.Add(const TableName: string);
-begin
-  SetLength(Items, Length(Items) + 1);
-  Items[Length(Items) - 1].TableName := TableName;
-  Items[Length(Items) - 1].RecordsDone := 0;
-  Items[Length(Items) - 1].RecordsSum := 0;
-  Items[Length(Items) - 1].Done := False;
-end;
-
 constructor TTImportText.Create(const AFilename: TFileName; const ACodePage: Cardinal; const AClient: TCClient; const ADatabase: TCDatabase);
 begin
   inherited Create(AFilename, ACodePage, AClient, ADatabase);
@@ -2221,11 +2282,14 @@ begin
   Data := True;
   Delimiter := ',';
   Quoter := '"';
+  CSVUnquoteMemSize := NET_BUFFER_LENGTH;
+  GetMem(CSVUnquoteMem, CSVUnquoteMemSize);
 end;
 
 destructor TTImportText.Destroy();
 begin
   SetLength(Fields, 0);
+  FreeMem(CSVUnquoteMem);
 
   inherited;
 end;
@@ -2320,7 +2384,7 @@ begin
         else
           Values[I] := '<NULL>'
       else
-        Values[I] := CSVUnescape(CSVValues[I].Data, CSVValues[I].Length, Quoter);
+        Values[I] := CSVUnescape(CSVValues[I].Text, CSVValues[I].Length, Quoter);
   end;
 end;
 
@@ -2331,6 +2395,7 @@ var
   I: Integer;
   OldFileContentIndex: Integer;
   RecordComplete: Boolean;
+  S: string;
 begin
   RecordComplete := False; EOF := False; OldFileContentIndex := FileContent.Index;
   while ((Success = daSuccess) and not RecordComplete and not EOF) do
@@ -2376,16 +2441,98 @@ begin
         if (CSVValues[CSVColumns[I]].Length = 0) then
           Values := Values + 'NULL'
         else if (Fields[I].FieldType = mfBit) then
-          Values := Values + DataFileValue(IntToStr(BitStringToInt(CSVUnescape(CSVValues[CSVColumns[I]].Data, CSVValues[CSVColumns[I]].Length, Quoter))))
+        begin
+          S := CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter);
+          Values := Values + DataFileValue(IntToStr(BitStringToInt(PChar(S), Length(S))));
+        end
         else if (Fields[I].FieldType in NotQuotedFieldTypes) then
-          Values := Values + DataFileValue(CSVUnescape(CSVValues[CSVColumns[I]].Data, CSVValues[CSVColumns[I]].Length, Quoter))
+          Values := Values + DataFileValue(CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter))
         else if (Fields[I].FieldType in BinaryFieldTypes) then
-          Values := Values + DataFileEscape(CSVBinary(CSVValues[CSVColumns[I]].Data, CSVValues[CSVColumns[I]].Length, Quoter))
+          Values := Values + DataFileEscape(CSVBinary(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter))
         else
-          Values := Values + DataFileEncode(Client.CodePage, CSVUnescape(CSVValues[CSVColumns[I]].Data, CSVValues[CSVColumns[I]].Length, Quoter));
+          Values := Values + DataFileEncode(Client.CodePage, CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter));
       end;
     Values := Values + #13#10;
   end;
+end;
+
+function TTImportText.GetValues(const Item: TTImport.TItem; const DataFileBuffer: TTDataFileBuffer): Boolean;
+var
+  EOF: Boolean;
+  Error: TTools.TError;
+  I: Integer;
+  Len: Integer;
+  OldFileContentIndex: Integer;
+  RecordComplete: Boolean;
+begin
+  RecordComplete := False; EOF := False; OldFileContentIndex := FileContent.Index;
+  while ((Success = daSuccess) and not RecordComplete and not EOF) do
+  begin
+    RecordComplete := CSVSplitValues(FileContent.Str, FileContent.Index, Delimiter, Quoter, CSVValues);
+    if (not RecordComplete) then
+    begin
+      FileContent.Index := OldFileContentIndex;
+      EOF := not ReadContent();
+    end;
+  end;
+
+  if (FileContent.Index - OldFileContentIndex > 0) then
+    case (CodePage) of
+      CP_UNICODE: Inc(FilePos, (FileContent.Index - OldFileContentIndex) * SizeOf(FileContent.Str[1]));
+      else
+        Inc(FilePos, WideCharToMultiByte(CodePage, 0,
+          PChar(@FileContent.Str[OldFileContentIndex]), FileContent.Index - OldFileContentIndex, nil, 0, nil, nil));
+    end;
+
+  Result := RecordComplete;
+  if (Result) then
+    if (Length(CSVValues) < HeadlineNameCount) then
+    begin
+      Error.ErrorType := TE_Warning;
+      Error.ErrorCode := ER_WARN_TOO_FEW_RECORDS;
+      Error.ErrorMessage := Format(ER_WARN_TOO_FEW_RECORDS_MSG, [Item.RecordsDone]);
+      DoError(Error, ToolsItem(Item))
+    end
+    else if (Length(CSVValues) > HeadlineNameCount) then
+    begin
+      Error.ErrorType := TE_Warning;
+      Error.ErrorCode := ER_WARN_TOO_MANY_RECORDS;
+      Error.ErrorMessage := Format(ER_WARN_TOO_MANY_RECORDS_MSG, [Item.RecordsDone]);
+      DoError(Error, ToolsItem(Item))
+    end
+    else
+    begin
+      for I := 0 to Length(Fields) - 1 do
+      begin
+        if (I > 0) then
+          DataFileBuffer.Put(PAnsiChar(',_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
+        if (CSVValues[CSVColumns[I]].Length = 0) then
+          DataFileBuffer.Put(PAnsiChar('NULL'), 4)
+        else
+        begin
+          if (not Assigned(CSVValues[CSVColumns[I]].Text) or (CSVValues[CSVColumns[I]].Length = 0)) then
+            Len := 0
+          else
+          begin
+            if (CSVValues[CSVColumns[I]].Length > CSVUnquoteMemSize) then
+            begin
+              CSVUnquoteMemSize := CSVUnquoteMemSize + 2 * (CSVValues[CSVColumns[I]].Length - CSVUnquoteMemSize);
+              ReallocMem(CSVUnquoteMem, CSVUnquoteMemSize);
+            end;
+            Len := CSVUnquote(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, CSVUnquoteMem, CSVUnquoteMemSize, Quoter);
+          end;
+
+          if (Fields[I].FieldType in NotQuotedFieldTypes) then
+            DataFileBuffer.Put(CSVUnquoteMem, Len)
+//          else if (Fields[I].FieldType in TextFieldTypes) then
+//            DataFileBuffer.PutEncoded(CSVUnquoteMem, Len)
+//          else if (Fields[I].FieldType in BinaryFieldTypes) then
+//            DataFileBuffer.PutEscaped(CSVUnquoteMem, Len)
+//          else
+//            DataFileBuffer.PutQuoted(CSVUnquoteMem, Len);
+        end;
+      end;
+    end;
 end;
 
 function TTImportText.GetValues(const Item: TTImport.TItem; var Values: TSQLStrings): Boolean;
@@ -2395,6 +2542,7 @@ var
   I: Integer;
   OldFileContentIndex: Integer;
   RecordComplete: Boolean;
+  S: string;
 begin
   RecordComplete := False; Eof := False; OldFileContentIndex := FileContent.Index;
   while ((Success = daSuccess) and not RecordComplete and not Eof) do
@@ -2434,13 +2582,16 @@ begin
         if (CSVValues[CSVColumns[I]].Length = 0) then
           Values[I] := 'NULL'
         else if (Fields[I].FieldType = mfBit) then
-          Values[I] := IntToStr(BitStringToInt(CSVUnescape(CSVValues[CSVColumns[I]].Data, CSVValues[CSVColumns[I]].Length, Quoter)))
+        begin
+          S := CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter);
+          Values[I] := IntToStr(BitStringToInt(PChar(S), Length(S)));
+        end
         else if (Fields[I].FieldType in NotQuotedFieldTypes) then
-          Values[I] := CSVUnescape(CSVValues[CSVColumns[I]].Data, CSVValues[CSVColumns[I]].Length, Quoter)
+          Values[I] := CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter)
         else if (Fields[I].FieldType in BinaryFieldTypes) then
-          Values[I] := SQLEscape(CSVUnescape(CSVValues[CSVColumns[I]].Data, CSVValues[CSVColumns[I]].Length, Quoter), Client.ServerVersion <= 40000)
+          Values[I] := SQLEscape(CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter), Client.ServerVersion <= 40000)
         else
-          Values[I] := SQLEscape(CSVUnescape(CSVValues[CSVColumns[I]].Data, CSVValues[CSVColumns[I]].Length, Quoter));
+          Values[I] := SQLEscape(CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter));
 end;
 
 procedure TTImportText.Open();
@@ -2484,7 +2635,7 @@ begin
     FirstRecordFilePos := FilePos;
     SetLength(FileFields, Length(CSVValues));
     for I := 0 to Length(FileFields) - 1 do
-      FileFields[I].Name := CSVUnescape(CSVValues[I].Data, CSVValues[I].Length, Quoter);
+      FileFields[I].Name := CSVUnescape(CSVValues[I].Text, CSVValues[I].Length, Quoter);
   end
   else
   begin
@@ -2512,7 +2663,7 @@ begin
       for I := 0 to Length(CSVValues) - 1 do
         if (CSVValues[I].Length > 0) then
         begin
-          Value := CSVUnescape(CSVValues[I].Data, CSVValues[I].Length, Quoter);
+          Value := CSVUnescape(CSVValues[I].Text, CSVValues[I].Length, Quoter);
           if ((SQL_INTEGER in FileFields[I].FieldTypes) and not TryStrToInt(Value, Int)) then
             Exclude(FileFields[I].FieldTypes, SQL_INTEGER);
           if ((SQL_FLOAT in FileFields[I].FieldTypes) and not TryStrToFloat(Value, F, Client.FormatSettings)) then
@@ -3969,7 +4120,7 @@ begin
         Inc(ExportDBGrid.RecordsDone);
         if (ExportDBGrid.RecordsDone mod 100 = 0) then DoUpdateGUI();
 
-        if (WaitForSingleObject(UserAbort, 0) = WAIT_OBJECT_0) then
+        if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
           Success := daAbort;
       until ((Success <> daSuccess) or ((ExportDBGrid.DBGrid.SelectedRows.Count < 1) and not DataSet.FindNext()) or (ExportDBGrid.DBGrid.SelectedRows.Count >= 1) and (Index = ExportDBGrid.DBGrid.SelectedRows.Count));
 
@@ -4053,7 +4204,7 @@ begin
           or ((ExportObject.RecordsDone mod 100 = 0) and ((Self is TTExportSQLite) or (Self is TTExportODBC)))) then
           DoUpdateGUI();
 
-        if (WaitForSingleObject(UserAbort, 0) = WAIT_OBJECT_0) then
+        if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
           Success := daAbort;
       until ((Success <> daSuccess) or not DataSet.FindNext());
 
@@ -4065,8 +4216,11 @@ begin
   if (Success = daSuccess) then
     ExportObject.RecordsSum := ExportObject.RecordsDone;
 
-  if ((Success <> daAbort) and Assigned(DataSet)) then
+  if (Assigned(DataSet)) then
+  begin
+    if (Success = daAbort) then while DataSet.FindNext() do ;
     DataSet.Free();
+  end;
 end;
 
 procedure TTExport.ExecuteTableFooter(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery);
@@ -4166,11 +4320,7 @@ begin
   Result := Handle <> INVALID_HANDLE_VALUE;
 
   if (not Result) then
-  begin
-    Error.ErrorType := TE_File;
-    Error.ErrorCode := GetLastError();
-    Error.ErrorMessage := SysErrorMessage(GetLastError());
-  end;
+    Error := SysError();
 end;
 
 procedure TTExportFile.Flush();
@@ -4178,7 +4328,6 @@ var
   Buffer: PAnsiChar;
   BytesToWrite: DWord;
   BytesWritten: DWord;
-  Error: TTools.TError;
   Size: DWord;
 begin
   case (CodePage) of
@@ -4204,12 +4353,7 @@ begin
   BytesWritten := 0;
   while ((Success = daSuccess) and (BytesWritten < BytesToWrite)) do
     if (not WriteFile(Handle, Buffer[BytesWritten], BytesToWrite - BytesWritten, Size, nil)) then
-    begin
-      Error.ErrorType := TE_File;
-      Error.ErrorCode := GetLastError();
-      Error.ErrorMessage := SysErrorMessage(GetLastError());
-      DoError(Error, EmptyToolsItem());
-    end
+      DoError(SysError(), EmptyToolsItem())
     else
       Inc(BytesWritten, Size);
 
@@ -4560,11 +4704,7 @@ begin
     end;
 
     if (not Result) then
-    begin
-      Error.ErrorType := TE_File;
-      Error.ErrorCode := GetLastError();
-      Error.ErrorMessage := SysErrorMessage(GetLastError());
-    end;
+      Error := SysError();
   end;
 end;
 
@@ -4707,11 +4847,7 @@ begin
     end;
 
     if (not Result) then
-    begin
-      Error.ErrorType := TE_File;
-      Error.ErrorCode := GetLastError();
-      Error.ErrorMessage := SysErrorMessage(GetLastError());
-    end;
+      Error := SysError();
   end;
 end;
 
@@ -5891,12 +6027,7 @@ begin
   ConnStrIn := 'Driver={Microsoft Access Driver (*.mdb)};' + 'DBQ=' + Filename + ';' + 'READONLY=FALSE';
 
   if (FileExists(Filename) and not DeleteFile(Filename)) then
-  begin
-    Error.ErrorType := TE_File;
-    Error.ErrorCode := GetLastError();
-    Error.ErrorMessage := SysErrorMessage(GetLastError());
-    DoError(Error, EmptyToolsItem());
-  end
+    DoError(SysError(), EmptyToolsItem())
   else if (not SQL_SUCCEEDED(SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, @ODBC))) then
     DoError(ODBCError(0, SQL_NULL_HANDLE), EmptyToolsItem())
   else if (not SQL_SUCCEEDED(SQLSetEnvAttr(ODBC, SQL_ATTR_ODBC_VERSION, SQLPOINTER(SQL_OV_ODBC3), SQL_IS_UINTEGER))) then
@@ -5943,17 +6074,11 @@ end;
 procedure TTExportExcel.ExecuteHeader();
 var
   ConnStrIn: WideString;
-  Error: TTools.TError;
 begin
   ConnStrIn := 'Driver={Microsoft Excel Driver (*.xls)};' + 'DBQ=' + Filename + ';' + 'READONLY=FALSE';
 
   if (FileExists(Filename) and not DeleteFile(Filename)) then
-  begin
-    Error.ErrorType := TE_File;
-    Error.ErrorCode := GetLastError();
-    Error.ErrorMessage := SysErrorMessage(GetLastError());
-    DoError(Error, EmptyToolsItem());
-  end
+    DoError(SysError(), EmptyToolsItem())
   else if (not SQL_SUCCEEDED(SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, @ODBC))
     or not SQL_SUCCEEDED(SQLSetEnvAttr(ODBC, SQL_ATTR_ODBC_VERSION, SQLPOINTER(SQL_OV_ODBC3), SQL_IS_UINTEGER))) then
     DoError(ODBCError(0, SQL_NULL_HANDLE), EmptyToolsItem())
@@ -6058,12 +6183,7 @@ var
   Error: TTools.TError;
 begin
   if (FileExists(Filename) and not DeleteFile(Filename)) then
-  begin
-    Error.ErrorType := TE_File;
-    Error.ErrorCode := GetLastError();
-    Error.ErrorMessage := SysErrorMessage(GetLastError());
-    DoError(Error, EmptyToolsItem());
-  end
+    DoError(SysError(), EmptyToolsItem())
   else if ((sqlite3_open_v2(PAnsiChar(UTF8Encode(Filename)), @Handle, SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE, nil) <> SQLITE_OK)
     or (sqlite3_exec(Handle, PAnsiChar(UTF8Encode('BEGIN TRANSACTION;')), nil, nil, nil) <> SQLITE_OK)) then
   begin
@@ -6542,7 +6662,7 @@ begin
           Inc(Item.RecordsDone);
           if (Item.RecordsDone mod 100 = 0) then DoUpdateGUI();
 
-          if (WaitForSingleObject(UserAbort, 0) = WAIT_OBJECT_0) then
+          if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
             Success := daAbort;
         until ((Success <> daSuccess) or not DataSet.FindNext());
 
@@ -6778,6 +6898,8 @@ begin
 
     TElement(Elements[0]^).Destination.Client.EndSilent();
     TElement(Elements[0]^).Destination.Client.EndSynchron();
+
+    DataFileBuffer.Free();
   end;
 
   inherited;
@@ -6794,6 +6916,8 @@ begin
 
     TElement(Elements[0]^).Destination.Client.BeginSilent();
     TElement(Elements[0]^).Destination.Client.BeginSynchron(); // We're still in a thread
+
+    DataFileBuffer := TTDataFileBuffer.Create(TElement(Elements[0]^).Destination.Client.CodePage);
   end;
 end;
 
@@ -7041,25 +7165,20 @@ begin
 end;
 
 procedure TTTransfer.ExecuteData(var Source, Destination: TItem);
-const
-  DBComma: PAnsiChar = ',';
-  DBNull: PAnsiChar = 'NULL';
-  DBTerminator: PAnsiChar = #13#10;
 var
   Buffer: TTStringBuffer;
-  DBBuffer: TTDataFileBuffer;
-  DBValues: RawByteString;
   DestinationDatabase: TCDatabase;
   DestinationFieldNames: string;
   DestinationPrimaryIndexFieldNames: string;
   DestinationTable: TCBaseTable;
-  Error: TTools.TError;
   FieldCount: Integer;
   FieldInfo: TFieldInfo;
   FilenameP: array [0 .. MAX_PATH] of Char;
   I: Integer;
   InsertStmtInBuffer: Boolean;
   J: Integer;
+  LibLengths: MYSQL_LENGTHS;
+  LibRow: MYSQL_ROW;
   Pipe: THandle;
   Pipename: string;
   S: string;
@@ -7129,15 +7248,9 @@ begin
           Pipename := '\\.\pipe\' + LoadStr(1000);
           Pipe := CreateNamedPipe(PChar(Pipename),
                                   PIPE_ACCESS_OUTBOUND, PIPE_TYPE_MESSAGE or PIPE_READMODE_BYTE or PIPE_WAIT,
-                                  1, NET_BUFFER_LENGTH, 0, NMPWAIT_USE_DEFAULT_WAIT, nil);
+                                  1, 2 * NET_BUFFER_LENGTH, 0, NMPWAIT_USE_DEFAULT_WAIT, nil);
           if (Pipe = INVALID_HANDLE_VALUE) then
-          begin
-            Error.ErrorType := TE_File;
-            Error.ErrorCode := GetLastError();
-            Error.ErrorMessage := SysErrorMessage(GetLastError());
-            DoError(Error, ToolsItem(Destination));
-            Success := daAbort;
-          end
+            DoError(SysError(), ToolsItem(Destination))
           else
           begin
             SQL := '';
@@ -7149,61 +7262,53 @@ begin
 
             if (ConnectNamedPipe(Pipe, nil)) then
             begin
-              DBBuffer := TTDataFileBuffer.Create(Destination.Client.CodePage);
-
               repeat
-                for I := 0 to DestinationTable.Fields.Count - 1 do
-                  if (SourceFields[I] >= 0) then
-                  begin
-                    if (DBBuffer.Length() > 0) then DBBuffer.Put(DBComma, 1);
-                    if (not Assigned(SourceDataSet.LibRow^[SourceFields[I]])) then
-                      DBBuffer.Put(DBNull, 4)
-                    else if (BitField(SourceDataSet.Fields[SourceFields[I]])) then
-                      DBBuffer.PutEscaped(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]])
-                    else if (DestinationTable.Fields[I].FieldType in NotQuotedFieldTypes) then
-                      DBBuffer.Put(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]])
-                    else if (DestinationTable.Fields[I].FieldType in TextFieldTypes) then
-                      DBBuffer.PutEncoded(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]], Source.Client.CodePage)
-                    else
-                      DBBuffer.PutEscaped(SourceDataSet.LibRow^[SourceFields[I]], SourceDataSet.LibLengths^[SourceFields[I]]);
-                  end;
-                DBBuffer.Put(DBTerminator, 2);
+                LibLengths := SourceDataSet.LibLengths;
+                LibRow := SourceDataSet.LibRow;
 
-                if (DBBuffer.Length() > NET_BUFFER_LENGTH) then
-                  if (not WriteFile(Pipe, DBBuffer.Mem^, DBBuffer.Length(), WrittenSize, nil) or (Abs(WrittenSize) < Length(DBValues))) then
-                  begin
-                    Error.ErrorType := TE_File;
-                    Error.ErrorCode := GetLastError();
-                    Error.ErrorMessage := SysErrorMessage(GetLastError());
-                    DoError(Error, ToolsItem(Destination));
-                    Success := daAbort;
-                  end
+                for I := 0 to DestinationTable.Fields.Count - 1 do
+                begin
+                  if (DataFileBuffer.Length() > 0) then
+                    DataFileBuffer.Put(PAnsiChar(',_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
+                  if (not Assigned(LibRow^[SourceFields[I]])) then
+                    DataFileBuffer.Put(PAnsiChar('NULL'), 4)
+                  else if (BitField(SourceDataSet.Fields[SourceFields[I]])) then
+                    DataFileBuffer.PutEscaped(LibRow^[SourceFields[I]], LibLengths^[SourceFields[I]])
+                  else if (DestinationTable.Fields[I].FieldType in NotQuotedFieldTypes) then
+                    DataFileBuffer.Put(LibRow^[SourceFields[I]], LibLengths^[SourceFields[I]])
+                  else if (DestinationTable.Fields[I].FieldType in TextFieldTypes) then
+                    DataFileBuffer.PutEncoded(LibRow^[SourceFields[I]], LibLengths^[SourceFields[I]], Source.Client.CodePage)
+                  else if (DestinationTable.Fields[I].FieldType in BinaryFieldTypes) then
+                    DataFileBuffer.PutEscaped(LibRow^[SourceFields[I]], LibLengths^[SourceFields[I]])
                   else
-                   DBBuffer.Clear();
+                    DataFileBuffer.PutQuoted(LibRow^[SourceFields[I]], LibLengths^[SourceFields[I]]);
+                end;
+                DataFileBuffer.Put(PAnsiChar(#13#10), 2);
+
+                if (DataFileBuffer.Length() > NET_BUFFER_LENGTH) then
+                  if (not WriteFile(Pipe, DataFileBuffer.Mem^, DataFileBuffer.Length(), WrittenSize, nil) or (Abs(WrittenSize) < DataFileBuffer.Length())) then
+                    DoError(SysError(), ToolsItem(Destination))
+                  else
+                   DataFileBuffer.Clear();
 
                 Inc(Destination.RecordsDone);
                 if (Destination.RecordsDone mod 100 = 0) then DoUpdateGUI();
 
-                if (WaitForSingleObject(UserAbort, 0) = WAIT_OBJECT_0) then
+                if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
                   Success := daAbort;
               until ((Success <> daSuccess) or not SourceDataSet.FindNext());
 
-              if (DBBuffer.Length() > 0) then
-                if (not WriteFile(Pipe, DBBuffer.Mem^, DBBuffer.Length(), WrittenSize, nil) or (Abs(WrittenSize) < Length(DBValues))) then
-                begin
-                  Error.ErrorType := TE_File;
-                  Error.ErrorCode := GetLastError();
-                  Error.ErrorMessage := SysErrorMessage(GetLastError());
-                  DoError(Error, ToolsItem(Destination));
-                  Success := daAbort;
-                end
+              if (DataFileBuffer.Length() > 0) then
+                if (not WriteFile(Pipe, DataFileBuffer.Mem^, DataFileBuffer.Length(), WrittenSize, nil) or (Abs(WrittenSize) < DataFileBuffer.Length())) then
+                  DoError(SysError(), ToolsItem(Destination))
                 else
-                 DBBuffer.Clear();
+                  DataFileBuffer.Clear();
 
-              DBBuffer.Free();
-
-              if (FlushFileBuffers(Pipe) and WriteFile(Pipe, PAnsiChar(DBValues)^, 0, WrittenSize, nil) and FlushFileBuffers(Pipe)) then
+              if (not FlushFileBuffers(Pipe) or not WriteFile(Pipe, DataFileBuffer.Mem^, 0, WrittenSize, nil) or not FlushFileBuffers(Pipe)) then
+                DoError(SysError(), ToolsItem(Destination))
+              else
                 SQLThread.WaitFor();
+
               DisconnectNamedPipe(Pipe);
 
               if (Destination.Client.ErrorCode <> 0) then
@@ -7294,7 +7399,7 @@ begin
             Inc(Destination.RecordsDone);
             if (Destination.RecordsDone mod 100 = 0) then DoUpdateGUI();
 
-            if (WaitForSingleObject(UserAbort, 0) = WAIT_OBJECT_0) then
+            if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
               Success := daAbort;
           until ((Success <> daSuccess) or not SourceDataSet.FindNext());
 
@@ -7304,7 +7409,7 @@ begin
           while ((Success = daSuccess) and (S <> '') and not DoExecuteSQL(Destination, Destination.Client, S)) do
             DoError(DatabaseError(Destination.Client), ToolsItem(Destination), S);
 
-          FreeAndNil(Buffer);
+          Buffer.Free();
         end;
 
         if (Success = daSuccess) then
@@ -7313,6 +7418,7 @@ begin
           Destination.Client.RollbackTransaction();
       end;
 
+      if (Success = daAbort) then while SourceDataSet.FindNext() do ;
       SourceDataSet.Free();
     end;
 

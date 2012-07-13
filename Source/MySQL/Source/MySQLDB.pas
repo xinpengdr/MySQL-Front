@@ -163,7 +163,6 @@ type
       TState = (ssClose, ssConnecting, ssReady, ssExecutingSQL, ssResult, ssReceivingResult, ssNextResult, ssCancel, ssDisconnecting, ssError);
     private
       FConnection: TMySQLConnection;
-      FResultReceived: TEvent;
       RunExecute: TEvent;
       SynchronizeStarted: TEvent;
       Time: TDateTime;
@@ -188,12 +187,11 @@ type
       Success: Boolean;
       procedure BindDataSet(const ADataSet: TMySQLDataSet); virtual;
       procedure Execute(); override;
-      procedure ReleaseDataSet(const ADataSet: TMySQLDataSet); virtual;
+      procedure ReleaseDataSet(); virtual;
       procedure RunAction(const AState: TState; Synchron: Boolean); virtual;
       procedure Synchronize(); virtual;
       property Connection: TMySQLConnection read FConnection;
       property IsRunning: Boolean read GetIsRunning;
-      property ResultHandled: TEvent read FResultReceived;
     public
       constructor Create(const AConnection: TMySQLConnection); overload; virtual;
       destructor Destroy(); override;
@@ -1761,7 +1759,6 @@ begin
 
   FConnection := AConnection;
 
-  FResultReceived := TEvent.Create(nil, True, False, '');
   RunExecute := TEvent.Create(nil, True, False, '');
   SynchronizeStarted := TEvent.Create(nil, False, False, '');
   SQLStmtLengths := TList.Create();
@@ -1776,7 +1773,6 @@ destructor TMySQLConnection.TSynchroThread.Destroy();
 begin
   Assert(not Assigned(DataSet));
 
-  FResultReceived.Free();
   RunExecute.Free();
   SynchronizeStarted.Free();
   SQLStmtLengths.Free();
@@ -1855,11 +1851,11 @@ begin
   Result := (RunExecute.WaitFor(IGNORE) = wrSignaled) or not (State in [ssClose, ssReady]);
 end;
 
-procedure TMySQLConnection.TSynchroThread.ReleaseDataSet(const ADataSet: TMySQLDataSet);
+procedure TMySQLConnection.TSynchroThread.ReleaseDataSet();
 begin
   Assert(State = ssReceivingResult);
 
-  ADataSet.FHandle := nil;
+  DataSet.FHandle := nil;
   DataSet := nil;
 end;
 
@@ -1941,7 +1937,9 @@ begin
       ssReceivingResult:
         begin
           Connection.SyncHandledResult(Self);
-          if (not (State in [ssNextResult, ssExecutingSQL])) then
+          if (State in [ssNextResult, ssExecutingSQL]) then
+            RunExecute.SetEvent()
+          else
             Connection.SyncExecutedSQL(Self);
         end;
       ssNextResult:
@@ -2151,7 +2149,7 @@ begin
     if (Len > 0) then
       SetLength(Result, MultiByteToWideChar(CodePage, 0, Data, Len, PChar(Result), System.Length(Result)))
     else if (GetLastError() <> 0) then
-      DatabaseError(SysErrorMessage(GetLastError()));
+      RaiseLastOSError();
   end;
 end;
 
@@ -2334,7 +2332,7 @@ end;
 procedure TMySQLConnection.SyncCancel(const SynchroThread: TSynchroThread);
 begin
   if (Assigned(SynchroThread.DataSet)) then
-    SynchroThread.ReleaseDataSet(SynchroThread.DataSet);
+    SynchroThread.ReleaseDataSet();
   repeat
     if (not SynchroThread.Terminated and not Assigned(SynchroThread.ResultHandle)) then
       SynchroThread.ResultHandle := Lib.mysql_use_result(SynchroThread.LibHandle);
@@ -2734,7 +2732,7 @@ begin
         Dec(TrimmedPacketLength);
 
     LibLength := WideCharToMultiByte(CodePage, 0, PChar(@SynchroThread.SQL[SynchroThread.SQLStmtIndex]), TrimmedPacketLength, nil, 0, nil, nil);
-    if (LibLength < 0) then DatabaseError(SysErrorMessage(GetLastError()));
+    if (LibLength < 0) then RaiseLastOSError();
     SetLength(LibSQL, LibLength);
     WideCharToMultiByte(CodePage, 0, PChar(@SynchroThread.SQL[SynchroThread.SQLStmtIndex]), TrimmedPacketLength, PAnsiChar(LibSQL), LibLength, nil, nil);
 
@@ -2825,8 +2823,6 @@ begin
         end;
       end;
     end;
-
-    SynchroThread.ResultHandled.ResetEvent();
   end;
 
   if (FErrorCode > 0) then
@@ -2847,10 +2843,6 @@ begin
   begin
     if (Assigned(SynchroThread.ResultHandle)) then
       while (Assigned(Lib.mysql_fetch_row(SynchroThread.ResultHandle))) do ;
-  end
-  else if (Assigned(SynchroThread.DataSet)) then
-  begin
-    SynchroThread.ReleaseDataSet(SynchroThread.DataSet);
   end;
 
   if (not SynchroThread.Terminated) then
@@ -2906,8 +2898,6 @@ begin
       else
         SynchroThread.State := ssReady;
     end;
-
-    SynchroThread.ResultHandled.SetEvent();
   end;
 end;
 
@@ -2972,15 +2962,12 @@ begin
   SynchroThread.ErrorCode := Lib.mysql_errno(SynchroThread.LibHandle);
   SynchroThread.ErrorMessage := ErrorMsg(SynchroThread.LibHandle);
 
-  if (Assigned(SynchroThread.DataSet)) then
+  if (SynchroThread.DataSet is TMySQLTable) then
   begin
-    if (SynchroThread.DataSet is TMySQLTable) then
-    begin
-      TerminateCS.Enter();
-      if (not SynchroThread.Terminated) then
-        TMySQLTable(SynchroThread.DataSet).FLimitedDataReceived := not SynchroThread.Success or (Lib.mysql_num_rows(SynchroThread.ResultHandle) = TMySQLTable(SynchroThread.DataSet).RequestedRecordCount);
-      TerminateCS.Leave();
-    end;
+    TerminateCS.Enter();
+    if (not SynchroThread.Terminated) then
+      TMySQLTable(SynchroThread.DataSet).FLimitedDataReceived := not SynchroThread.Success or (Lib.mysql_num_rows(SynchroThread.ResultHandle) = TMySQLTable(SynchroThread.DataSet).RequestedRecordCount);
+    TerminateCS.Leave();
   end;
 end;
 
@@ -3260,7 +3247,7 @@ begin
   begin
     Len := WideCharToMultiByte(CodePage, 0, PChar(Value), Length(Value), nil, 0, nil, nil);
     if ((Len = 0) and (GetLastError() <> 0)) then
-      DatabaseError(SysErrorMessage(GetLastError()));
+      RaiseLastOSError();
 
     SetLength(Result, Len);
     if (Len > 0) then
@@ -3331,7 +3318,7 @@ begin
     LocalFree(HLOCAL(Buffer));
   end
   else if (GetLastError() = 0) then
-    DatabaseError(SysErrorMessage(GetLastError()));
+    RaiseLastOSError();
   Result := local_infile^.ErrorCode;
 end;
 
@@ -3510,9 +3497,6 @@ begin
   begin
     S := '----> Connection Terminated <----';
     WriteMonitor(PChar(S), Length(S), ttInfo);
-    if (Assigned(SynchroThread.DataSet)) then
-      SynchroThread.ReleaseDataSet(SynchroThread.DataSet);
-
     SynchroThread.Terminate();
     FSynchroThread := nil;
   end;
@@ -3550,7 +3534,7 @@ end;
 
 procedure TMySQLBitField.SetAsString(const Value: string);
 begin
-  SetAsLargeInt(BitStringToInt(Value));
+  SetAsLargeInt(BitStringToInt(PChar(Value), Length(Value)));
 end;
 
 { TLargeWordField *************************************************************}
@@ -5176,7 +5160,7 @@ var
   InternRecordBuffer: PInternRecordBuffer;
 begin
   if (not Assigned(LibRow)) then
-    SynchroThread.ReleaseDataSet(Self)
+    SynchroThread.ReleaseDataSet()
   else
   begin
     Data.LibLengths := LibLengths;
@@ -5230,12 +5214,8 @@ end;
 procedure TMySQLDataSet.InternalClose();
 begin
   Connection.TerminateCS.Enter();
-  if (IsCursorOpen() and Assigned(SynchroThread)) then
-  begin
-    if (Assigned(Handle)) then
-      SynchroThread.ReleaseDataSet(Self);
-    SynchroThread.ResultHandled.WaitFor(INFINITE);
-  end;
+  if (IsCursorOpen() and Assigned(SynchroThread) and Assigned(Handle)) then
+    SynchroThread.ReleaseDataSet();
   Connection.TerminateCS.Leave();
 
   FSortDef.Fields := '';

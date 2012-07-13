@@ -3222,8 +3222,6 @@ end;
 { TCTable *********************************************************************}
 
 procedure TCTable.Assign(const Source: TCTable);
-var
-  I: Integer;
 begin
   Assert(Assigned(Source.Fields));
 

@@ -28,7 +28,6 @@ const
   COMP_HEADER_SIZE      = 3;
   RETRY_COUNT           = 2;
   PACKET_ERROR          = -1;
-  IO_SIZE               = $1000;
 
   // Server Status Flags
   SERVER_STATUS_IN_TRANS             = $0001;   // Transaction has started

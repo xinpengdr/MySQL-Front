@@ -1582,12 +1582,7 @@ end;
 
 procedure TDTable.msCopyClick(Sender: TObject);
 begin
-  try
-    FSource.CopyToClipboard();
-  except
-    on E: Exception do
-      raise Exception.Create(E.Message + ' - ' + SysErrorMessage(GetLastError()));
-  end;
+  FSource.CopyToClipboard();
 end;
 
 procedure TDTable.TSExtrasShow(Sender: TObject);

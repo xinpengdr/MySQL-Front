@@ -4066,7 +4066,7 @@ procedure TFClient.AfterConnect(Sender: TObject);
 begin
   MainAction('aDCancel').Enabled := False;
 
-  StatusBar.Panels.Items[sbMessage].Text := Preferences.LoadStr(382);
+  StatusBar.Panels[sbMessage].Text := Preferences.LoadStr(382);
   SetTimer(Handle, tiStatusBar, 5000, nil);
 end;
 
@@ -4093,7 +4093,7 @@ begin
   else if (Client.ExecutionTime >= 0) then
     Msg := Msg + '  (' + Preferences.LoadStr(520) + ': ' + Format('%2.2f', [Second + MSec / 1000]) + ')';
 
-  StatusBar.Panels.Items[sbMessage].Text := Msg;
+  StatusBar.Panels[sbMessage].Text := Msg;
   SetTimer(Handle, tiStatusBar, 5000, nil);
 
   if (not Wanted.Nothing) then
@@ -4576,7 +4576,7 @@ end;
 
 procedure TFClient.BeforeConnect(Sender: TObject);
 begin
-  StatusBar.Panels.Items[sbMessage].Text := Preferences.LoadStr(195) + '...';
+  StatusBar.Panels[sbMessage].Text := Preferences.LoadStr(195) + '...';
   KillTimer(Handle, tiStatusBar);
 
   MainAction('aDCancel').Enabled := True;
@@ -4584,7 +4584,7 @@ end;
 
 procedure TFClient.BeforeExecuteSQL(Sender: TObject);
 begin
-  StatusBar.Panels.Items[sbMessage].Text := Preferences.LoadStr(196) + '...';
+  StatusBar.Panels[sbMessage].Text := Preferences.LoadStr(196) + '...';
   KillTimer(Handle, tiStatusBar);
 
   MainAction('aDCancel').Enabled := True;
@@ -7844,7 +7844,7 @@ begin
   if ((FocusedCItem is TCDatabase) and (Sender is TAction)) then
   begin
     Database := TCDatabase(FocusedCItem);
-    if (Database.Update()) then
+    if (not Database.Update()) then
       Wanted.Action := TAction(Sender)
     else if (MsgBox(Preferences.LoadStr(374, Database.Name), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
       Database.EmptyTables();
@@ -9507,6 +9507,8 @@ begin
       Result := TCDatabase(FNavigator.Selected.Data)
   else if ((Window.ActiveControl = ActiveListView) and not Assigned(ActiveListView.Selected) or (Window.ActiveControl = ActiveWorkbench) and (not Assigned(ActiveWorkbench) or not Assigned(ActiveWorkbench.Selected))) then
     Result := TCItem(FNavigator.Selected.Data)
+  else if ((Window.ActiveControl = FNavigator) and Assigned(FNavigator.Selected)) then
+    Result := TCItem(FNavigator.Selected.Data)
   else if (Assigned(FNavigatorMenuNode)) then
     Result := TCItem(FNavigatorMenuNode.Data)
   else
@@ -10294,7 +10296,7 @@ begin
           for I := 0 to ActiveListView.Items.Count - 1 do
             if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex in [iiDatabase, iiSystemDatabase])) then
               List.Add(ActiveListView.Items[I].Data);
-          if (Client.Update(List)) then
+          if (not Client.Update(List)) then
             Wanted.Action := TAction(Sender)
           else if (MsgBox(Preferences.LoadStr(405), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
             Client.EmptyDatabases(List);
@@ -10304,7 +10306,7 @@ begin
           for I := 0 to ActiveListView.Items.Count - 1 do
             if (ActiveListView.Items[I].Selected and (ActiveListView.Items[I].ImageIndex in [iiBaseTable])) then
               List.Add(ActiveListView.Items[I].Data);
-          if (Client.Update(List)) then
+          if (not Client.Update(List)) then
             Wanted.Action := TAction(Sender)
           else if (MsgBox(Preferences.LoadStr(406), Preferences.LoadStr(101), MB_YESNOCANCEL + MB_ICONQUESTION) = IDYES) then
             Client.DatabaseByName(SelectedDatabase).EmptyTables(List);
@@ -13374,7 +13376,7 @@ begin
                 FreeMem(FileBuffer);
               end
               else if (GetLastError() <> 0) then
-                raise Exception.Create(SysErrorMessage(GetLastError()));
+                RaiseLastOSError();
             end;
         end;
 
@@ -13811,13 +13813,13 @@ begin
       Text := Preferences.LoadStr(687, IntToStr(Count))
     else
       Text := '';
-    StatusBar.Panels.Items[sbSummarize].Text := Text;
+    StatusBar.Panels[sbSummarize].Text := Text;
 
 
     if (not Client.Connected) then
-      StatusBar.Panels.Items[sbConnected].Text := ''
+      StatusBar.Panels[sbConnected].Text := ''
     else
-      StatusBar.Panels.Items[sbConnected].Text := Preferences.LoadStr(519) + ': ' + FormatDateTime(FormatSettings.ShortTimeFormat, Client.LatestConnect);
+      StatusBar.Panels[sbConnected].Text := Preferences.LoadStr(519) + ': ' + FormatDateTime(FormatSettings.ShortTimeFormat, Client.LatestConnect);
 
     if (Assigned(Window.ActiveControl)) then
       if (Window.ActiveControl = ActiveSynMemo) then
@@ -13830,7 +13832,7 @@ begin
         Text := IntToStr(ActiveDBGrid.DataSource.DataSet.RecNo + 1) + ':' + IntToStr(ActiveDBGrid.SelectedField.FieldNo)
       else
         Text := '';
-      StatusBar.Panels.Items[sbItem].Text := Text;
+      StatusBar.Panels[sbItem].Text := Text;
   end;
 end;
 
@@ -14389,7 +14391,7 @@ begin
       FNavigatorChange2(FNavigator, FNavigator.Selected);
     tiStatusBar:
       begin
-        StatusBar.Panels.Items[sbMessage].Text := '';
+        StatusBar.Panels[sbMessage].Text := '';
         StatusBarRefresh();
       end;
   end;
@@ -14512,7 +14514,7 @@ end;
 
 procedure TFClient.WorkbenchCursorMove(Sender: TObject; X, Y: Integer);
 begin
-  StatusBar.Panels.Items[sbItem].Text := IntToStr(X) + ':' + IntToStr(Y);
+  StatusBar.Panels[sbItem].Text := IntToStr(X) + ':' + IntToStr(Y);
 end;
 
 procedure TFClient.WorkbenchDragDrop(Sender, Source: TObject; X, Y: Integer);

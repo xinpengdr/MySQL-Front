@@ -1210,6 +1210,7 @@ begin
       Result := Send(PacketBuffer.Mem[0], PacketBuffer.Size)
     else
     begin
+      Result := True;
       Offset := 0;
 
       repeat
@@ -1217,50 +1218,54 @@ begin
         if (Size > MAX_PACKET_LENGTH) then
           Size := MAX_PACKET_LENGTH;
 
-        if (Size < MIN_COMPRESS_LENGTH) then
-          CompressBuffer := nil
-        else
+        CompressBuffer := nil;
+        CompressedSize := Size;
+        if (Size >= MIN_COMPRESS_LENGTH) then
           try
             ZCompress(@PacketBuffer.Mem[Offset], Size, CompressBuffer, CompressedSize);
           except
-            CompressBuffer := nil;
+            on E: EOutOfMemory do
+              begin Seterror(CR_OUT_OF_MEMORY); Result := False; end;
+            else
+              begin Seterror(CR_UNKNOWN_ERROR); Result := False; end;
           end;
 
-        if (not Assigned(CompressBuffer) or (Size <= my_uint(CompressedSize))) then
-        begin
-          if (Offset + NET_HEADER_SIZE + COMP_HEADER_SIZE + Size > PacketBuffer.MemSize) then
-            ReallocBuffer(PacketBuffer, Offset + NET_HEADER_SIZE + COMP_HEADER_SIZE + Size);
-
-          Move(PacketBuffer.Mem[Offset], PacketBuffer.Mem[Offset + NET_HEADER_SIZE + COMP_HEADER_SIZE], Size);
-          Inc(PacketBuffer.Size, NET_HEADER_SIZE + COMP_HEADER_SIZE);
-
-          Move(Size, PacketBuffer.Mem[Offset + 0], 3);
-          Move(CompPacketNr, PacketBuffer.Mem[Offset + 3], 1);
-          FillChar(PacketBuffer.Mem[Offset + NET_HEADER_SIZE], COMP_HEADER_SIZE, #0);
-
-          Result := Send(PacketBuffer.Mem[Offset], NET_HEADER_SIZE + COMP_HEADER_SIZE + Size);
-
-          Inc(Offset, NET_HEADER_SIZE + COMP_HEADER_SIZE + Size);
-        end
-        else
-        begin
-          Move(CompressedSize, PacketBuffer.Mem[Offset + 0], 3);
-          Move(CompPacketNr, PacketBuffer.Mem[Offset + 3], 1);
-          Move(Size, PacketBuffer.Mem[Offset + NET_HEADER_SIZE], 3);
-
-          if (NET_HEADER_SIZE + COMP_HEADER_SIZE + my_uint(CompressedSize) > Size) then
+        if (Result) then
+          if (my_uint(CompressedSize) >= Size) then
           begin
-            Result := Send(PacketBuffer.Mem[Offset], NET_HEADER_SIZE + COMP_HEADER_SIZE);
-            Result := Result and Send(CompressBuffer^, CompressedSize);
+            if (Offset + NET_HEADER_SIZE + COMP_HEADER_SIZE + Size > PacketBuffer.MemSize) then
+              ReallocBuffer(PacketBuffer, Offset + NET_HEADER_SIZE + COMP_HEADER_SIZE + Size);
+
+            Move(PacketBuffer.Mem[Offset], PacketBuffer.Mem[Offset + NET_HEADER_SIZE + COMP_HEADER_SIZE], Size);
+            Inc(PacketBuffer.Size, NET_HEADER_SIZE + COMP_HEADER_SIZE);
+
+            Move(Size, PacketBuffer.Mem[Offset + 0], 3);
+            Move(CompPacketNr, PacketBuffer.Mem[Offset + 3], 1);
+            FillChar(PacketBuffer.Mem[Offset + NET_HEADER_SIZE], COMP_HEADER_SIZE, #0);
+
+            Result := Send(PacketBuffer.Mem[Offset], NET_HEADER_SIZE + COMP_HEADER_SIZE + Size);
+
+            Inc(Offset, NET_HEADER_SIZE + COMP_HEADER_SIZE + Size);
           end
           else
           begin
-            Move(CompressBuffer^, PacketBuffer.Mem[Offset + NET_HEADER_SIZE + COMP_HEADER_SIZE], CompressedSize);
-            Result := Send(PacketBuffer.Mem[Offset], NET_HEADER_SIZE + COMP_HEADER_SIZE + CompressedSize);
-          end;
+            Move(CompressedSize, PacketBuffer.Mem[Offset + 0], 3);
+            Move(CompPacketNr, PacketBuffer.Mem[Offset + 3], 1);
+            Move(Size, PacketBuffer.Mem[Offset + NET_HEADER_SIZE], 3);
 
-          Inc(Offset, Size);
-        end;
+            if (NET_HEADER_SIZE + COMP_HEADER_SIZE + my_uint(CompressedSize) > Size) then
+            begin
+              Result := Send(PacketBuffer.Mem[Offset], NET_HEADER_SIZE + COMP_HEADER_SIZE);
+              Result := Result and Send(CompressBuffer^, CompressedSize);
+            end
+            else
+            begin
+              Move(CompressBuffer^, PacketBuffer.Mem[Offset + NET_HEADER_SIZE + COMP_HEADER_SIZE], CompressedSize);
+              Result := Send(PacketBuffer.Mem[Offset], NET_HEADER_SIZE + COMP_HEADER_SIZE + CompressedSize);
+            end;
+
+            Inc(Offset, Size);
+          end;
 
         CompPacketNr := (CompPacketNr + 1) and $FF;
 
@@ -1492,15 +1497,13 @@ function TMySQL_File.ReceivePacket(): Boolean;
 
   function ReceiveCompressed(const BytesToRead: my_uint; out BytesRead: my_uint): Boolean;
   var
+    PacketOffset, Size, VIOSize: my_uint;
+    UncompressedSize: my_uint;
+    Nr: Byte;
     DecompressBuffer: record
       Mem: Pointer;
       Size: Integer;
     end;
-    Nr: Byte;
-    PacketOffset: my_uint;
-    Size: my_uint;
-    VIOSize: my_uint;
-    UncompressedSize: my_uint;
   begin
     BytesRead := 0;
 
@@ -1919,19 +1922,13 @@ function MYSQL.GetCodePage(): Cardinal;
 var
   I: Integer;
 begin
-  Result := CP_ACP;
+  Result := 0;
 
-try
   for I := 0 to Length(MySQL_Collations) - 1 do
     if (lstrcmpa(MySQL_Collations[I].CharsetName, PAnsiChar(fcharacter_set_name)) = 0) then
       Result := MySQL_Collations[I].CodePage;
-except
-  for I := 0 to Length(MySQL_Collations) - 1 do
-    if (lstrcmpa(MySQL_Collations[I].CharsetName, PAnsiChar(fcharacter_set_name)) = 0) then
-      Result := MySQL_Collations[I].CodePage;
-end;
 
-  if (Result = CP_ACP) then
+  if (Result = 0) then
     inherited GetCodePage();
 end;
 
@@ -2694,7 +2691,14 @@ procedure MYSQL.Seterror(const AErrNo: my_uint; const AError: RawByteString = ''
 begin
   inherited;
 
-  ZeroMemory(@FSQLState, SizeOf(FSQLState));
+  FillChar(FSQLState, SizeOf(FSQLState), #0);
+
+  {$IFDEF EurekaLog}
+    if (AErrNo = CR_COMMANDS_OUT_OF_SYNC) then
+      raise Exception.Create(DecodeString(error()) + ' (' + IntToStr(Byte(fclient_status)) + ')')
+    else if (AErrNo = CR_OUT_OF_MEMORY) then
+      raise Exception.Create(DecodeString(error()));
+  {$ENDIF}
 end;
 
 function MYSQL.set_character_set(const csname: my_char): my_int;

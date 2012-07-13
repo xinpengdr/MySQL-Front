@@ -245,7 +245,7 @@ procedure TDTransfer.FBCancelClick(Sender: TObject);
 begin
   if (Assigned(Transfer)) then
   begin
-    SetEvent(Transfer.UserAbort);
+    Transfer.UserAbort.SetEvent();
     if (not Transfer.Suspended) then
       Transfer.WaitFor();
   end;
@@ -869,7 +869,7 @@ begin
     Node := FDestination.Selected;
     while (Assigned(Node.Parent)) do Node := Node.Parent;
     DestinationClient := GetClient(Node.Index);
-    WantedExecute := InitializeNode(DestinationClient, FDestination.Selected);
+    WantedExecute := not Assigned(DestinationClient) or InitializeNode(DestinationClient, FDestination.Selected);
   end;
 
   if (not WantedExecute) then

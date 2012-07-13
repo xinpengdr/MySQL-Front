@@ -292,7 +292,7 @@ procedure TDSearch.FBCancelClick(Sender: TObject);
 begin
   if (Assigned(Find)) then
   begin
-    SetEvent(Find.UserAbort);
+    Find.UserAbort.SetEvent();
     if (not Find.Suspended) then
       Find.WaitFor();
   end;

@@ -41,7 +41,7 @@ type
     Start: PChar;                        // Complete parsed SQL
   end;
 
-function BitStringToInt(const BitString: string): UInt64;
+function BitStringToInt(const BitString: PChar; const Length: Integer; const Error: PBoolean = nil): UInt64;
 function IntToBitString(const Value: UInt64; const Width: Integer = 1): string;
 function SQLCreateParse(out Handle: TSQLParse; const SQL: PChar; const Len: Integer; const Version: Integer; const InCondCode: Boolean = False): Boolean;
 function SQLEscape(const Value: string; const ODBCEncoding: Boolean): string; overload;
@@ -582,16 +582,85 @@ end;
 
 {******************************************************************************}
 
-function BitStringToInt(const BitString: string): UInt64;
+function BitStringToInt(const BitString: PChar; const Length: Integer; const Error: PBoolean = nil): UInt64;
+label
+  Init,
+  StringL, String1, StringLE, StringLE2,
+  Err, Finish;
 var
-  I: Integer;
+  P: Pointer;
 begin
-  Result := 0;
-  for I := 1 to Length(BitString) do
-    if (BitString[I] = '1') then
-      Result := Result + 1 shl (Length(BitString) - I)
-    else if (BitString[I] <> '0') then
-      raise EConvertError.CreateFmt(SConvStrParseError, [BitString]);
+  P := @Result; // How can I get the address of Result into EDI???
+
+  asm
+        PUSH ES
+        PUSH EAX
+        PUSH EBX
+        PUSH ECX
+        PUSH EDX
+        PUSH ESI
+        PUSH EDI
+
+        PUSH DS                          // string operations uses ES
+        POP ES
+
+        MOV EDI,Error                    // Error = nil?
+        TEST EDI,-1
+        JZ Init                          // Yes!
+        MOV BYTE PTR [EDI],False
+
+      Init:
+        MOV ESI,BitString
+        MOV EDI,P
+        MOV ECX,Length
+
+        STD                              // string operation uses backward direction
+        ADD ESI,ECX                      // End of BitString
+        ADD ESI,ECX
+        SUB ESI,2
+
+        MOV DWORD PTR [EDI],0            // Clear Result
+        ADD EDI,4
+        MOV DWORD PTR [EDI],0
+        SUB EDI,4
+
+        MOV EDX,0                        // Bit
+      StringL:
+        LODSW                            // Character of BitString
+        CMP AX,'0'                       // '0' in BitString?
+        JE StringLE                      // Yes!
+        CMP AX,'1'                       // '1' in BitString?
+        JNE Err                          // No!
+        PUSH ECX
+        MOV ECX,EDX
+        MOV EBX,1
+        SHL EBX,CL                       // Result := Result or 1 shl Bit
+        POP ECX
+        OR DWORD PTR [EDI],EBX
+      StringLE:
+        INC DX                           // Inc(Bit)
+        CMP EDX,32                       // We're using 32 Bit compiler
+        JNE StringLE2
+        ADD EDI,4                        // Highter QWORD of Result
+        MOV EDX,0
+      StringLE2:
+        LOOP StringL
+
+      Err:
+        MOV EDI,Error                    // Error = nil?
+        TEST EDI,-1
+        JZ Finish                        // Yes!
+        MOV BYTE PTR [EDI],True
+
+      Finish:
+        POP EDI
+        POP ESI
+        POP EDX
+        POP ECX
+        POP EBX
+        POP EAX
+        POP ES
+  end;
 end;
 
 function IntToBitString(const Value: UInt64; const Width: Integer = 1): string;

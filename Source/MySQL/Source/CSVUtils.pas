@@ -5,7 +5,7 @@ interface {********************************************************************}
 type
   TCSVStrings = array of string;
   TCSVValues = array of record
-    Data: PChar;
+    Text: PChar;
     Length: Integer;
   end;
 
@@ -15,8 +15,12 @@ function CSVEscape(const Value: string; const Quoter: Char = '"'; const Quote: B
 procedure CSVSplitValues(const TextLine: string; const Delimiter, Quoter: Char; var Values: TCSVStrings); overload;
 function CSVSplitValues(const Text: string; var Index: Integer; const Delimiter, Quoter: Char; var Values: TCSVValues): Boolean; overload;
 function CSVUnescape(const Data: PChar; const Length: Integer; const Quoter: Char = '"'): string;
+function CSVUnquote(const Quoted: PChar; const QuotedLength: Integer; const Unquoted: PChar; const UnquotedLength: Integer; const Quoter: Char = '"'): Integer;
 
 implementation {***************************************************************}
+
+uses
+  Windows;
 
 function CSVBinary(const Data: PChar; const Length: Integer; const Quoter: Char = '"'): RawByteString;
 label
@@ -264,7 +268,7 @@ begin
   CSVSplitValues(TextLine, Index, Delimiter, Quoter, CSVValues);
   SetLength(Values, Length(CSVValues));
   for I := 0 to Length(Values) - 1 do
-    Values[I] := CSVUnescape(CSVValues[I].Data, CSVValues[I].Length);
+    Values[I] := CSVUnescape(CSVValues[I].Text, CSVValues[I].Length);
 end;
 
 function CSVSplitValues(const Text: string; var Index: Integer; const Delimiter, Quoter: Char; var Values: TCSVValues): Boolean; overload;
@@ -454,7 +458,7 @@ begin
 
       if (not EOF) then
       begin
-        Values[Value].Data := ValueData;
+        Values[Value].Text := ValueData;
         Values[Value].Length := ValueLength;
         Inc(Value);
       end;
@@ -530,6 +534,88 @@ begin
     if (Len <> Length - 2) then
       SetLength(Result, Len);
   end;
+end;
+
+function CSVUnquote(const Quoted: PChar; const QuotedLength: Integer; const Unquoted: PChar; const UnquotedLength: Integer; const Quoter: Char = '"'): Integer;
+label
+  Copy,
+  Unquote, UnquoteL, UnquoteS, UnquoteLE, UnquoteE,
+  Finish;
+asm
+        PUSH ES
+        PUSH ECX
+        PUSH EAX
+        PUSH EDX
+        PUSH ESI
+        PUSH EDI
+
+        MOV ESI,Quoted                   // Copy characters from Quoted
+        MOV EDI,Unquoted                 //   to Unquoted
+        MOV ECX,QuotedLength             // Number of characters of Quoted
+        MOV EDX,UnquotedLength           // Number of characters of Unquoted
+
+        PUSH DS                          // string operations uses ES
+        POP ES
+        CLD                              // string operations uses forward direction
+
+        MOV Result,0
+        TEST ESI,-1                      // Quoted = nil?
+        JZ Finish                        // Yes!
+        TEST QuotedLength,-1             // QuotedLength = 0?
+        JZ Finish                        // Yes!
+        MOV AX,[ESI]                     // Quoted[0] = Quoter?
+        CMP AX,Quoter
+        JE Unquote                       // Yes!
+
+      Copy:
+        MOV Result,QuotedLength
+        CMP UnquotedLength,QuotedLength  // Enough space in Unquoted?
+        JB Finish                        // No!
+        TEST EDI,-1                      // Unquoted = nil?
+        JZ Finish                        // Yes!
+        REPNE MOVSW                      // Copy normal characters to Result
+        JMP Finish
+
+      Unquote:
+        ADD ESI,2                        // Step over starting Quoter
+        DEC ECX                          // Ignore the starting Quoter
+        JZ Finish                        // No characters left!
+
+      UnquoteL:
+        LODSW                            // Load character from Data
+        CMP AX,Quoter                    // Previous character = Quoter?
+        JNE UnquoteS                     // No!
+        DEC ECX                          // Ignore Quoter
+        JZ Finish                        // End of Data!
+        MOV AX,[ESI]
+        CMP AX,Quoter                    // Second Quoter?
+        JNE UnquoteE                     // No!
+        ADD ESI,2                        // Step over second Quoter
+      UnquoteS:
+        TEST EDI,-1                      // Unquoted = nil?
+        JZ UnquoteLE                     // Yes!
+        CMP EDX,0                        // Space left in Unquoted?
+        JE Finish                        // No!
+        STOSW                            // Store character into Unquoted
+        DEC EDX
+      UnquoteLE:
+        LOOP UnquoteL                    // Next character
+
+      UnquoteE:
+        CMP ECX,0                        // All characters handled?
+        JNE Finish                       // No!
+
+        MOV EAX,UnquotedLength           // Calculate new Unquoted Length
+        SUB EAX,EDX
+        MOV Result,EAX
+
+      Finish:
+        POP EDI
+        POP ESI
+        POP EDX
+        POP ECX
+        POP EAX
+        POP ES
 end;
 
 end.
