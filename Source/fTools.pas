@@ -6818,6 +6818,7 @@ var
   DataSet: TMySQLQuery;
   DestinationClient: TCClient;
   I: Integer;
+  J: Integer;
   OLD_FOREIGN_KEY_CHECKS: string;
   OLD_UNIQUE_CHECKS: string;
   SourceClient: TCClient;
@@ -6895,7 +6896,17 @@ begin
         begin
           SourceTable := SourceClient.DatabaseByName(TElement(Elements[I]^).Source.DatabaseName).BaseTableByName(TElement(Elements[I]^).Source.TableName);
 
-          SQL := SQL + 'SELECT * FROM ' + SourceClient.EscapeIdentifier(SourceTable.Database.Name) + '.' + SourceClient.EscapeIdentifier(SourceTable.Name) + ';' + #13#10;
+          SQL := SQL + 'SELECT * FROM ' + SourceClient.EscapeIdentifier(SourceTable.Database.Name) + '.' + SourceClient.EscapeIdentifier(SourceTable.Name);
+          if (Assigned(SourceTable.PrimaryKey)) then
+          begin
+            SQL := SQL + ' ORDER BY ';
+            for J := 0 to SourceTable.PrimaryKey.Columns.Count - 1 do
+            begin
+              if (J > 0) then SQL := SQL + ',';
+              SQL := SQL + SourceClient.EscapeIdentifier(SourceTable.PrimaryKey.Columns[J].Field.Name);
+            end;
+          end;
+          SQL := SQL + ';' + #13#10;
         end;
 
       for I := 0 to Elements.Count - 1 do

@@ -4448,15 +4448,12 @@ begin
         end;
       until (not Assigned(LibField));
 
+      if (UniqueDatabaseName and (DName <> '')) then
+        FDatabaseName := DName;
       if (Self is TMySQLTable) then
         FTableName := CommandText
-      else
-      begin
-        if (UniqueDatabaseName and (DName <> '')) then
-          FDatabaseName := DName;
-        if (not UniqueTableName) then
-          FTableName := '';
-      end;
+      else if (not UniqueTableName) then
+        FTableName := '';
     end;
   end;
 end;
