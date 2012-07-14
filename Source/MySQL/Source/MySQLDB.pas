@@ -301,7 +301,7 @@ type
     procedure SyncDisconncting(const SynchroThread: TSynchroThread); virtual;
     procedure SyncDisconncted(const SynchroThread: TSynchroThread); virtual;
     procedure SyncExecutedSQL(const SynchroThread: TSynchroThread); virtual;
-    function SyncExecuteSQL(const SynchroThread: TSynchroThread; const SQL: string; const OnResult: TResultEvent; const Synchron: Boolean; const DirectExecute: Boolean = False): Boolean; virtual;
+    function SyncExecuteSQL(const SQL: string; const OnResult: TResultEvent; const Synchron: Boolean; const DirectExecute: Boolean = False): Boolean; virtual;
     procedure SyncExecutingSQL(const SynchroThread: TSynchroThread); virtual;
     procedure SyncHandleResult(const SynchroThread: TSynchroThread); virtual;
     procedure SyncHandledResult(const SynchroThread: TSynchroThread); virtual;
@@ -619,7 +619,6 @@ type
 
   TMySQLTable = class(TMySQLDataSet)
   private
-    FAsynchron: Boolean;
     FAutomaticLoadNextRecords: Boolean;
     FLimit: Integer;
     FLimitedDataReceived: Boolean;
@@ -634,7 +633,6 @@ type
     procedure InternalRefresh(); override;
     procedure SetCommandText(const ACommandText: string); override;
     function SQLSelect(const IgnoreLimit: Boolean = False): string; virtual;
-    property Asynchron: Boolean read FAsynchron write FAsynchron;
   public
     constructor Create(AOwner: TComponent); override;
     function LoadNextRecords(const AllRecords: Boolean = False): Boolean; virtual;
@@ -2537,7 +2535,7 @@ begin
   if Assigned(AfterDisconnect) then AfterDisconnect(Self);
 end;
 
-function TMySQLConnection.SyncExecuteSQL(const SynchroThread: TSynchroThread; const SQL: string; const OnResult: TResultEvent; const Synchron: Boolean; const DirectExecute: Boolean = False): Boolean;
+function TMySQLConnection.SyncExecuteSQL(const SQL: string; const OnResult: TResultEvent; const Synchron: Boolean; const DirectExecute: Boolean = False): Boolean;
 var
   AlterTableAfterCreateTable: Boolean;
   AlterTableAfterCreateTableFix: Boolean;
@@ -3217,12 +3215,12 @@ end;
 
 function TMySQLConnection.ExecuteSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean;
 begin
-  Result := SyncExecuteSQL(SynchroThread, SQL, OnResult, True);
+  Result := SyncExecuteSQL(SQL, OnResult, True);
 end;
 
 function TMySQLConnection.FirstResult(out ResultHandle: TResultHandle; const SQL: string): Boolean;
 begin
-  Result := SyncExecuteSQL(SynchroThread, SQL, nil, True, True);
+  Result := SyncExecuteSQL(SQL, nil, True, True);
   SyncHandleResult(SynchroThread);
 
   ResultHandle := SynchroThread;
@@ -3410,7 +3408,7 @@ end;
 
 function TMySQLConnection.SendSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean;
 begin
-  Result := SyncExecuteSQL(SynchroThread, SQL, OnResult, False) and not UseSynchroThread();
+  Result := SyncExecuteSQL(SQL, OnResult, False) and not UseSynchroThread();
 end;
 
 function TMySQLConnection.Shutdown(): Boolean;
@@ -4522,9 +4520,7 @@ begin
       end
       else
       begin
-        if (Self is TMySQLTable) then
-          TMySQLTable(Self).Asynchron := False
-        else if (not (Self is TMySQLDataSet) or not TMySQLDataSet(Self).CachedUpdates) then
+        if (not (Self is TMySQLDataSet) or not TMySQLDataSet(Self).CachedUpdates) then
         begin
           FDatabaseName := Connection.DatabaseName;
           FCommandText := Connection.CommandText;
@@ -6660,7 +6656,6 @@ constructor TMySQLTable.Create(AOwner: TComponent);
 begin
   inherited;
 
-  FAsynchron := False;
   FAutomaticLoadNextRecords := False;
   SetLength(DeleteBookmarks, 0);
   FCommandType := ctTable;
@@ -6711,8 +6706,6 @@ end;
 
 procedure TMySQLTable.Open(const OnResult: TMySQLConnection.TResultEvent);
 begin
-  FAsynchron := True;
-
   Connection.SendSQL(SQLSelect(), OnResult);
 end;
 
