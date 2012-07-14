@@ -145,6 +145,8 @@ type
     TResultEvent = function (const Connection: TMySQLConnection; const Data: Boolean): Boolean of object;
     TSynchronizeEvent = procedure (const Data: Pointer) of object;
 
+    TExecuteType = (etSynchron, etAsynchron, etDirect);
+
     TLibraryDataType = (ldtConnecting, ldtExecutingSQL, ldtDisconnecting);
     Plocal_infile = ^Tlocal_infile;
     Tlocal_infile = record
@@ -283,6 +285,7 @@ type
     procedure DoDisconnect(); override;
     procedure DoError(const AErrorCode: Integer; const AErrorMessage: string); virtual;
     function ErrorMsg(const AHandle: MySQLConsts.MYSQL): string; virtual;
+    function ExecuteSQL(const ExecuteType: TExecuteType; const SQL: string; const OnResult: TResultEvent = nil): Boolean; overload; virtual;
     function GetAutoCommit(): Boolean; virtual;
     function GetConnected(): Boolean; override;
     function GetInsertId(): my_ulonglong; virtual;
@@ -301,7 +304,6 @@ type
     procedure SyncDisconncting(const SynchroThread: TSynchroThread); virtual;
     procedure SyncDisconncted(const SynchroThread: TSynchroThread); virtual;
     procedure SyncExecutedSQL(const SynchroThread: TSynchroThread); virtual;
-    function SyncExecuteSQL(const SQL: string; const OnResult: TResultEvent; const Synchron: Boolean; const DirectExecute: Boolean = False): Boolean; virtual;
     procedure SyncExecutingSQL(const SynchroThread: TSynchroThread); virtual;
     procedure SyncHandleResult(const SynchroThread: TSynchroThread); virtual;
     procedure SyncHandledResult(const SynchroThread: TSynchroThread); virtual;
@@ -332,7 +334,7 @@ type
     procedure EndSilent(); virtual;
     procedure EndSynchron(); virtual;
     function EscapeIdentifier(const Identifier: string): string; virtual;
-    function ExecuteSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean; virtual;
+    function ExecuteSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean; overload; virtual;
     function FirstResult(out ResultHandle: TResultHandle; const SQL: string): Boolean; virtual;
     function InUse(): Boolean; virtual;
     function LibEncode(const Value: string): RawByteString; virtual;
@@ -1992,6 +1994,179 @@ end;
 
 { TMySQLConnection ************************************************************}
 
+procedure TMySQLConnection.BeginSilent();
+begin
+  Inc(FSilentCount);
+end;
+
+procedure TMySQLConnection.BeginSynchron();
+begin
+  Inc(FSynchronCount);
+end;
+
+function TMySQLConnection.CanShutdown(): Boolean;
+begin
+  Result := Assigned(Lib.mysql_shutdown) and not InUse();
+end;
+
+function TMySQLConnection.CharsetToCodePage(const Charset: string): Cardinal;
+var
+  I: Integer;
+begin
+  Result := GetACP();
+
+  if (ServerVersion < 40101) then
+  begin
+    for I := 0 to Length(MySQL_Character_Sets) - 1 do
+      if (lstrcmpiA(PAnsiChar(AnsiString(Charset)), MySQL_Character_Sets[I].CharsetName) = 0) then
+        Result := MySQL_Character_Sets[I].CodePage;
+  end
+  else
+  begin
+    for I := 0 to Length(MySQL_Collations) - 1 do
+      if (lstrcmpiA(PAnsiChar(AnsiString(Charset)), MySQL_Collations[I].CharsetName) = 0) then
+        Result := MySQL_Collations[I].CodePage;
+  end;
+end;
+
+function TMySQLConnection.CharsetToCodePage(const Charset: Byte): Cardinal;
+var
+  Found: Boolean;
+  I: Integer;
+begin
+  if (ServerVersion < 40101) then
+    if (Charset < Length(MySQL_Character_Sets)) then
+      Result := MySQL_Character_Sets[Charset].CodePage
+    else
+      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['CodePage'])
+  else
+  begin
+    Found := False;
+    Result := 0;
+    for I := 0 to Length(MySQL_Collations) - 1 do
+      if (MySQL_Collations[I].CharsetNr = Charset) then
+      begin
+        Result := MySQL_Collations[I].CodePage;
+        Found := True;
+      end;
+    if (not Found) then
+      raise ERangeError.CreateFmt(SInvalidCodePage + ' (%d)', [Charset]);
+  end;
+end;
+
+procedure TMySQLConnection.CloseResult(const ResultHandle: TResultHandle);
+begin
+  if (Asynchron and (ResultHandle.State <> ssReady)) then
+    ResultHandle.RunAction(ssCancel, False)
+  else
+    SyncExecutedSQL(ResultHandle);
+end;
+
+function TMySQLConnection.CodePageToCharset(const CodePage: Cardinal): string;
+var
+  I: Integer;
+begin
+  Result := '';
+
+  if (ServerVersion < 40101) then
+  begin
+    for I := 0 to Length(MySQL_Character_Sets) - 1 do
+      if ((Result = '') and (MySQL_Character_Sets[I].CodePage = CodePage)) then
+        Result := string(StrPas(MySQL_Character_Sets[I].CharsetName));
+  end
+  else
+  begin
+    for I := 0 to Length(MySQL_Collations) - 1 do
+      if ((Result = '') and (MySQL_Collations[I].CodePage = CodePage)) then
+        Result := string(StrPas(MySQL_Collations[I].CharsetName));
+  end;
+end;
+
+procedure TMySQLConnection.CommitTransaction();
+begin
+  if (Lib.LibraryType <> ltHTTP) then
+  begin
+    Assert(InTransaction);
+
+    ExecuteSQL('COMMIT;');
+
+    FInTransaction := False;
+  end;
+end;
+
+constructor TMySQLConnection.Create(AOwner: TComponent);
+begin
+  inherited;
+
+  FFormatSettings := TFormatSettings.Create(GetSystemDefaultLCID());
+  FFormatSettings.ThousandSeparator := #0;
+  FFormatSettings.DecimalSeparator := '.';
+  FFormatSettings.ShortDateFormat := 'yyyy/MM/dd';
+  FFormatSettings.LongDateFormat := FFormatSettings.ShortDateFormat;
+  FFormatSettings.LongTimeFormat := 'hh:mm:ss';
+  FFormatSettings.DateSeparator := '-';
+  FFormatSettings.TimeSeparator := ':';
+
+  ExecuteSQLDone := TEvent.Create(nil, False, False, 'ExecuteSQLDone');
+  FAfterExecuteSQL := nil;
+  FAsynchron := False;
+  FAutoCommit := True;
+  FBeforeExecuteSQL := nil;
+  FCharset := 'utf8';
+  FCodePage := CP_UTF8;
+  FConnected := False;
+  FDatabaseName := '';
+  FExecutionTime := 0;
+  FHost := '';
+  FHTTPAgent := '';
+  FIdentifierQuoted := True;
+  FIdentifierQuoter := '`';
+  FInTransaction := False;
+  FLatestConnect := 0;
+  FLib := nil;
+  FSynchroThread := nil;
+  FLibraryType := ltBuiltIn;
+  FMultiStatements := True;
+  FOnConvertError := nil;
+  FOnSQLError := nil;
+  FOnUpdateIndexDefs := nil;
+  FPassword := '';
+  FPort := MYSQL_PORT;
+  FSilentCount := 0;
+  FTerminateCS := TCriticalSection.Create();
+  FTerminatedThreads := TTerminatedThreads.Create();
+  FThreadDeep := 0;
+  FThreadId := 0;
+  FUserName := '';
+  InMonitor := False;
+  InOnResult := False;
+  local_infile := nil;
+  TimeDiff := 0;
+end;
+
+destructor TMySQLConnection.Destroy();
+begin
+  Asynchron := False;
+  Close();
+
+  while (DataSetCount > 0) do
+    DataSets[0].Free();
+
+  if (Assigned(SynchroThread)) then
+  begin
+    SynchroThread.FreeOnTerminate := False;
+    SynchroThread.Terminate();
+    SynchroThread.WaitFor();
+    SynchroThread.Free();
+  end;
+  TerminatedThreads.Free();
+
+  ExecuteSQLDone.Free();
+  TerminateCS.Free();
+
+  inherited;
+end;
+
 procedure TMySQLConnection.DoAfterExecuteSQL();
 begin
   if (Assigned(AfterExecuteSQL)) then AfterExecuteSQL(Self);
@@ -2066,9 +2241,204 @@ begin
       FOnSQLError(Self, AErrorCode, AErrorMessage);
 end;
 
+procedure TMySQLConnection.EndSilent();
+begin
+  if (FSilentCount > 0) then
+    Dec(FSilentCount);
+end;
+
+procedure TMySQLConnection.EndSynchron();
+begin
+  if (FSynchronCount > 0) then
+    Dec(FSynchronCount);
+end;
+
 function TMySQLConnection.ErrorMsg(const AHandle: MySQLConsts.MYSQL): string;
 begin
   Result := LibDecode(my_char(SQLUnescape(Lib.mysql_error(AHandle))));
+end;
+
+function TMySQLConnection.EscapeIdentifier(const Identifier: string): string;
+begin
+  Result := IdentifierQuoter + ReplaceStr(Identifier, IdentifierQuoter, IdentifierQuoter + IdentifierQuoter) + IdentifierQuoter;
+end;
+
+function TMySQLConnection.ExecuteSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean;
+begin
+  Result := ExecuteSQL(etSynchron, SQL, OnResult);
+end;
+
+function TMySQLConnection.ExecuteSQL(const ExecuteType: TExecuteType; const SQL: string; const OnResult: TResultEvent = nil): Boolean;
+var
+  AlterTableAfterCreateTable: Boolean;
+  AlterTableAfterCreateTableFix: Boolean;
+  CLStmt: TSQLCLStmt;
+  CreateTableInPacket: Boolean;
+  DDLStmt: TSQLDDLStmt;
+  OldStmt: Integer;
+  PacketComplete: (pcNo, pcExclusiveCurrentStmt, pcInclusiveCurrentStmt, pcStmtTooLarge);
+  ProcedureName: string;
+  S: string;
+  SetNames: Boolean;
+  SQLPacketIndex: Integer;
+  StmtLength: Integer;
+begin
+  if (InOnResult) then
+    raise Exception.Create(SOutOfSync + ' (in OnResult): ' + CommandText);
+  if (InMonitor) then
+    raise Exception.Create(SOutOfSync + ' (in Monitor): ' + CommandText);
+
+  if (Assigned(SynchroThread) and not (SynchroThread.State in [ssClose, ssReady])) then
+    Terminate();
+  if (not Assigned(SynchroThread)) then
+    FSynchroThread := TSynchroThread.Create(Self);
+
+  SynchroThread.SQL := SQL;
+  SynchroThread.OnResult := OnResult;
+
+  FErrorCode := CR_ASYNCHRON; FErrorMessage := '';
+  FExecutedSQLLength := 0; FExecutedStmts := 0; FResultCount := 0;
+  FRowsAffected := -1; FWarningCount := -1; FExecutionTime := 0;
+
+  SynchroThread.SQLStmtLengths.Clear();
+  SynchroThread.SQLStmtsInPackets.Clear();
+  SynchroThread.SQLUseStmts.Clear();
+  SynchroThread.Time := 0;
+
+  SynchroThread.SQLStmtIndex := 1;
+  while (SynchroThread.SQLStmtIndex < Length(SynchroThread.SQL)) do
+  begin
+    StmtLength := SQLStmtLength(SynchroThread.SQL, SynchroThread.SQLStmtIndex);
+    SynchroThread.SQLStmtLengths.Add(Pointer(StmtLength));
+    Inc(SynchroThread.SQLStmtIndex, StmtLength);
+  end;
+
+  SQLPacketIndex := 1;
+  SetNames := False; CreateTableInPacket := False; AlterTableAfterCreateTable := False;
+  AlterTableAfterCreateTableFix := 50100 <= ServerVersion;
+  PacketComplete := pcNo;
+  SynchroThread.SQLStmt := 0; OldStmt := 0; SynchroThread.SQLStmtIndex := 1;
+  while ((SynchroThread.SQLStmt < SynchroThread.SQLStmtLengths.Count) and not SetNames and (PacketComplete <> pcStmtTooLarge)) do
+  begin
+    SetNames := False;
+    if (SQLParseCLStmt(CLStmt, @SynchroThread.SQL[SynchroThread.SQLStmtIndex], Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]), ServerVersion)) then
+      case (CLStmt.CommandType) of
+        ctSetNames,
+        ctSetCharacterSet:
+          SetNames := True;
+        ctUse:
+          SynchroThread.SQLUseStmts.Add(Pointer(SynchroThread.SQLStmt));
+      end;
+    if (AlterTableAfterCreateTableFix) then
+      if (not CreateTableInPacket) then
+        CreateTableInPacket := SQLParseDDLStmt(DDLStmt, @SynchroThread.SQL[SynchroThread.SQLStmtIndex], Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]), ServerVersion) and (DDLStmt.DefinitionType = dtCreate) and (DDLStmt.ObjectType = otTable)
+      else
+        AlterTableAfterCreateTable := SQLParseDDLStmt(DDLStmt, @SynchroThread.SQL[SynchroThread.SQLStmtIndex], Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]), ServerVersion) and (DDLStmt.DefinitionType = dtAlter) and (DDLStmt.ObjectType = otTable);
+
+    StmtLength := Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]);
+
+    if ((SynchroThread.SQLStmtIndex > 0) and not SetNames) then
+    begin
+      if (SetNames or AlterTableAfterCreateTable) then
+        PacketComplete := pcExclusiveCurrentStmt
+      else if ((SizeOf(COM_QUERY) + SynchroThread.SQLStmtIndex - 1 + StmtLength > MaxAllowedPacket) and (SizeOf(COM_QUERY) + WideCharToMultiByte(CodePage, 0, PChar(@SynchroThread.SQL[SQLPacketIndex]), SynchroThread.SQLStmtIndex - SQLPacketIndex + StmtLength, nil, 0, nil, nil) > MaxAllowedPacket)) then
+        if (SynchroThread.SQLStmt > 0) then
+          PacketComplete := pcExclusiveCurrentStmt
+        else
+          PacketComplete := pcStmtTooLarge
+      else if (not MultiStatements or (SynchroThread.SQLStmtIndex - 1 + StmtLength = Length(SynchroThread.SQL))) then
+        PacketComplete := pcInclusiveCurrentStmt
+      else
+        PacketComplete := pcNo;
+      if ((PacketComplete = pcNo) and SQLParseCallStmt(@SynchroThread.SQL[SynchroThread.SQLStmtIndex], Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]), ProcedureName, ServerVersion) and (ProcedureName <> '')) then
+        PacketComplete := pcInclusiveCurrentStmt;
+    end;
+
+    case (PacketComplete) of
+      pcNo:
+        begin
+          Inc(SynchroThread.SQLStmt);
+          Inc(SynchroThread.SQLStmtIndex, StmtLength);
+        end;
+      pcExclusiveCurrentStmt:
+        begin
+          if (SynchroThread.SQLStmt > OldStmt) then
+            SynchroThread.SQLStmtsInPackets.Add(Pointer(SynchroThread.SQLStmt - OldStmt));
+          OldStmt := SynchroThread.SQLStmt;
+          SQLPacketIndex := SynchroThread.SQLStmtIndex;
+          CreateTableInPacket := False;
+          AlterTableAfterCreateTable := False;
+        end;
+      pcInclusiveCurrentStmt:
+        begin
+          Inc(SynchroThread.SQLStmt);
+          Inc(SynchroThread.SQLStmtIndex, StmtLength);
+          SynchroThread.SQLStmtsInPackets.Add(Pointer(SynchroThread.SQLStmt - OldStmt));
+          OldStmt := SynchroThread.SQLStmt;
+          SQLPacketIndex := SynchroThread.SQLStmtIndex;
+          CreateTableInPacket := False;
+          AlterTableAfterCreateTable := False;
+        end;
+    end;
+  end;
+  if (PacketComplete in [pcNo, pcExclusiveCurrentStmt]) then
+    SynchroThread.SQLStmtsInPackets.Add(Pointer(SynchroThread.SQLStmt > OldStmt));
+
+  if (SynchroThread.SQLStmtLengths.Count = 0) then
+  begin
+    DoError(ER_EMPTY_QUERY, ER_EMPTY_QUERY_MSG);
+    Result := False;
+  end
+  else if (SetNames) then
+  begin
+    DoError(CR_SET_NAMES, CR_SET_NAMES_MSG);
+    Result := False;
+  end
+  else if (PacketComplete = pcStmtTooLarge) then
+  begin
+    DoError(ER_NET_PACKET_TOO_LARGE, ER_NET_PACKET_TOO_LARGE_MSG);
+    Result := False;
+  end
+  else
+  begin
+    DoBeforeExecuteSQL();
+
+    SynchroThread.SQLStmt := 0;
+    SynchroThread.SQLStmtIndex := 1;
+    SynchroThread.SQLPacket := 0;
+    SynchroThread.SQLStmtInPacket := 0;
+    SynchroThread.SQLLastStmtInPacket := Integer(SynchroThread.SQLStmtsInPackets[SynchroThread.SQLPacket]) - 1;
+
+    S := '# ' + SysUtils.DateTimeToStr(Now() + TimeDiff, FormatSettings);
+    WriteMonitor(PChar(S), Length(S), ttTime);
+
+    StmtLength := Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]);
+    WriteMonitor(@SynchroThread.SQL[SynchroThread.SQLStmtIndex], StmtLength, ttRequest);
+
+    if (ExecuteType = etDirect) then
+    begin
+      SyncExecutingSQL(SynchroThread);
+      FErrorCode := SynchroThread.ErrorCode;
+      FErrorMessage := SynchroThread.ErrorMessage;
+      Result := ErrorCode = 0;
+    end
+    else
+    begin
+      SynchroThread.RunAction(ssExecutingSQL, (ExecuteType = etSynchron) or not UseSynchroThread());
+      if (((ExecuteType = etSynchron) or not UseSynchroThread()) and Assigned(SynchroThread.LibHandle)) then
+        Result := ErrorCode = 0
+      else
+        Result := False;
+    end;
+  end;
+end;
+
+function TMySQLConnection.FirstResult(out ResultHandle: TResultHandle; const SQL: string): Boolean;
+begin
+  Result := ExecuteSQL(etDirect, SQL);
+  SyncHandleResult(SynchroThread);
+
+  ResultHandle := SynchroThread;
 end;
 
 function TMySQLConnection.GetAutoCommit(): Boolean;
@@ -2140,6 +2510,11 @@ begin
   Result := 1 * 1024 * 1024 - 1;
 end;
 
+function TMySQLConnection.InUse(): Boolean;
+begin
+  Result := Assigned(SynchroThread) and SynchroThread.IsRunning;
+end;
+
 function TMySQLConnection.LibDecode(const Data: my_char; const Length: my_int = -1): string;
 label
   StringL;
@@ -2161,6 +2536,62 @@ begin
       SetLength(Result, MultiByteToWideChar(CodePage, 0, Data, Len, PChar(Result), System.Length(Result)))
     else if (GetLastError() <> 0) then
       RaiseLastOSError();
+  end;
+end;
+
+function TMySQLConnection.LibEncode(const Value: string): RawByteString;
+var
+  Len: Integer;
+begin
+  if (Value = '') then
+    Result := ''
+  else
+  begin
+    Len := WideCharToMultiByte(CodePage, 0, PChar(Value), Length(Value), nil, 0, nil, nil);
+    if ((Len = 0) and (GetLastError() <> 0)) then
+      RaiseLastOSError();
+
+    SetLength(Result, Len);
+    if (Len > 0) then
+      SetLength(Result, WideCharToMultiByte(CodePage, 0, PChar(Value), Length(Value), PAnsiChar(Result), Len, nil, nil));
+  end;
+end;
+
+function TMySQLConnection.LibPack(const Value: string): RawByteString;
+label
+  StringL;
+var
+  Len: Integer;
+begin
+  if (Value = '') then
+    Result := ''
+  else
+  begin
+    Len := Length(Value);
+    SetLength(Result, Len);
+    asm
+        PUSH ES
+        PUSH ESI
+        PUSH EDI
+
+        PUSH DS                          // string operations uses ES
+        POP ES
+        CLD                              // string operations uses forward direction
+
+        MOV ESI,PChar(Value)             // Copy characters from Value
+        MOV EAX,Result                   //   to Result
+        MOV EDI,[EAX]
+
+        MOV ECX,Len
+      StringL:
+        LODSW                            // Load WideChar from Value
+        STOSB                            // Store AnsiChar into Result
+        LOOP StringL                     // Repeat for all characters
+
+        POP EDI
+        POP ESI
+        POP ES
+    end;
   end;
 end;
 
@@ -2206,6 +2637,105 @@ begin
   end;
 end;
 
+procedure TMySQLConnection.local_infile_end(const local_infile: Plocal_infile);
+begin
+  if (local_infile^.Handle <> INVALID_HANDLE_VALUE) then
+    CloseHandle(local_infile^.Handle);
+  if (Assigned(local_infile^.Buffer)) then
+    VirtualFree(local_infile^.Buffer, local_infile^.BufferSize, MEM_RELEASE);
+
+  Self.local_infile := nil;
+  FreeMem(local_infile);
+end;
+
+function TMySQLConnection.local_infile_error(const local_infile: Plocal_infile; const error_msg: my_char; const error_msg_len: my_uint): my_int;
+var
+  Buffer: PChar;
+  Len: Integer;
+begin
+  Buffer := nil;
+  Len := FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER or FORMAT_MESSAGE_FROM_SYSTEM or FORMAT_MESSAGE_IGNORE_INSERTS, nil, local_infile^.LastError, 0, @Buffer, 0, nil);
+  if (Len > 0) then
+  begin
+    Len := WideCharToMultiByte(CodePage, 0, Buffer, Len, error_msg, error_msg_len, nil, nil);
+    error_msg[Len] := #0;
+    LocalFree(HLOCAL(Buffer));
+  end
+  else if (GetLastError() = 0) then
+    RaiseLastOSError();
+  Result := local_infile^.ErrorCode;
+end;
+
+function TMySQLConnection.local_infile_init(var local_infile: Plocal_infile; const filename: my_char): my_int;
+begin
+  GetMem(local_infile, SizeOf(local_infile^));
+  Self.local_infile := local_infile;
+
+  ZeroMemory(local_infile, SizeOf(local_infile^));
+  local_infile^.Buffer := nil;
+  local_infile^.Connection := Self;
+  local_infile^.Position := 0;
+
+  if ((MultiByteToWideChar(CodePage, 0, filename, lstrlenA(filename), @local_infile^.Filename, Length(local_infile^.Filename)) = 0) and (GetLastError() <> 0)) then
+  begin
+    local_infile^.LastError := GetLastError();
+    local_infile^.ErrorCode := EE_FILENOTFOUND;
+  end
+  else
+  begin
+    local_infile^.Handle := CreateFile(@local_infile^.Filename, GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, 0);
+    if (local_infile^.Handle = INVALID_HANDLE_VALUE) then
+    begin
+      local_infile^.ErrorCode := EE_FILENOTFOUND;
+      local_infile^.LastError := GetLastError();
+    end
+    else
+    begin
+      local_infile^.ErrorCode := 0;
+      local_infile^.LastError := 0;
+    end;
+  end;
+
+  Result := local_infile^.ErrorCode;
+end;
+
+function TMySQLConnection.local_infile_read(const local_infile: Plocal_infile; buf: my_char; const buf_len: my_uint): my_int;
+var
+  BytesPerSector: DWord;
+  NumberofFreeClusters: DWord;
+  SectorsPerCluser: DWord;
+  Size: DWord;
+  TotalNumberOfClusters: DWord;
+begin
+  if (not Assigned(local_infile^.Buffer)) then
+  begin
+    local_infile^.BufferSize := buf_len;
+    if (GetFileSize(local_infile^.Handle, nil) > 0) then
+      local_infile^.BufferSize := Min(GetFileSize(local_infile^.Handle, nil), local_infile^.BufferSize);
+
+    if (GetDiskFreeSpace(PChar(ExtractFileDrive(local_infile^.Filename)), SectorsPerCluser, BytesPerSector, NumberofFreeClusters, TotalNumberOfClusters)
+      and (local_infile^.BufferSize mod BytesPerSector > 0)) then
+      Inc(local_infile^.BufferSize, BytesPerSector - local_infile^.BufferSize mod BytesPerSector);
+    local_infile^.Buffer := VirtualAlloc(nil, local_infile^.BufferSize, MEM_COMMIT, PAGE_READWRITE);
+
+    if (not Assigned(local_infile^.Buffer)) then
+      local_infile^.ErrorCode := EE_OUTOFMEMORY;
+  end;
+
+  if (not ReadFile(local_infile^.Handle, local_infile^.Buffer^, Min(buf_len, local_infile^.BufferSize), Size, nil)) then
+  begin
+    local_infile^.LastError := GetLastError();
+    local_infile^.ErrorCode := EE_READ;
+    Result := -1;
+  end
+  else
+  begin
+    MoveMemory(buf, local_infile^.Buffer, Size);
+    Inc(local_infile^.Position, Size);
+    Result := Size;
+  end;
+end;
+
 function TMySQLConnection.NextCommandText(): string;
 var
   EndingCommentLength: Integer;
@@ -2223,11 +2753,31 @@ begin
   end;
 end;
 
+function TMySQLConnection.NextResult(const ResultHandle: TResultHandle): Boolean;
+begin
+  SyncNextResult(ResultHandle);
+  SyncHandleResult(ResultHandle);
+
+  Result := ResultHandle.Success;
+end;
+
 procedure TMySQLConnection.RegisterSQLMonitor(const AMySQLMonitor: TMySQLMonitor);
 begin
   SetLength(FSQLMonitors, Length(FSQLMonitors) + 1);
 
   FSQLMonitors[Length(FSQLMonitors) - 1] := AMySQLMonitor;
+end;
+
+procedure TMySQLConnection.RollbackTransaction();
+begin
+  if (InTransaction and (Lib.LibraryType <> ltHTTP)) then
+  begin
+    Assert(InTransaction);
+
+    ExecuteSQL('ROLLBACK;');
+
+    FInTransaction := False;
+  end;
 end;
 
 procedure TMySQLConnection.SetAutoCommit(const AAutoCommit: Boolean);
@@ -2316,6 +2866,11 @@ begin
   FLibraryType := ALibraryType;
 end;
 
+function TMySQLConnection.SendSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean;
+begin
+  Result := ExecuteSQL(etAsynchron, SQL, OnResult) and not UseSynchroThread();
+end;
+
 procedure TMySQLConnection.SetPassword(const APassword: string);
 begin
   Assert(not Connected);
@@ -2338,6 +2893,68 @@ begin
 
 
   FUserName := AUserName;
+end;
+
+function TMySQLConnection.Shutdown(): Boolean;
+var
+  Retry: Integer;
+begin
+  Assert(Connected and Assigned(Lib.mysql_shutdown));
+
+  if (InOnResult) then
+    raise Exception.Create(SOutOfSync);
+  if (InMonitor) then
+    raise Exception.Create(SOutOfSync);
+
+  if (Assigned(SynchroThread) and (SynchroThread.State <> ssReady)) then
+    Terminate();
+
+  if (not Assigned(SynchroThread)) then
+    FSynchroThread := TSynchroThread.Create(Self);
+
+  Retry := 0;
+  while (not Assigned(SynchroThread.LibHandle) and (Retry < RETRY_COUNT)) do
+  begin
+    SyncConnecting(SynchroThread);
+    Inc(Retry);
+  end;
+
+  SendConnectEvent(False);
+
+  if (not Assigned(SynchroThread.LibHandle)) then
+    Result := False
+  else if (Lib.mysql_shutdown(SynchroThread.LibHandle, SHUTDOWN_DEFAULT) <> 0) then
+  begin
+    FErrorCode := Lib.mysql_errno(SynchroThread.LibHandle);
+    FErrorMessage := ErrorMsg(SynchroThread.LibHandle);
+    DoError(FErrorCode, FErrorMessage);
+    Result := False;
+  end
+  else
+  begin
+    SyncDisconncted(nil);
+    Result := True;
+  end;
+end;
+
+function TMySQLConnection.SQLUse(const DatabaseName: string): string;
+begin
+  Result := 'USE ' + EscapeIdentifier(DatabaseName) + ';' + #13#10;
+end;
+
+procedure TMySQLConnection.StartTransaction();
+begin
+  if (Lib.LibraryType <> ltHTTP) then
+  begin
+    Assert(not InTransaction);
+
+    if (ServerVersion < 40011) then
+      ExecuteSQL('BEGIN;')
+    else
+      ExecuteSQL('START TRANSACTION;');
+
+    FInTransaction := True;
+  end;
 end;
 
 procedure TMySQLConnection.SyncCancel(const SynchroThread: TSynchroThread);
@@ -2533,171 +3150,6 @@ begin
   end;
 
   if Assigned(AfterDisconnect) then AfterDisconnect(Self);
-end;
-
-function TMySQLConnection.SyncExecuteSQL(const SQL: string; const OnResult: TResultEvent; const Synchron: Boolean; const DirectExecute: Boolean = False): Boolean;
-var
-  AlterTableAfterCreateTable: Boolean;
-  AlterTableAfterCreateTableFix: Boolean;
-  CLStmt: TSQLCLStmt;
-  CreateTableInPacket: Boolean;
-  DDLStmt: TSQLDDLStmt;
-  OldStmt: Integer;
-  PacketComplete: (pcNo, pcExclusiveCurrentStmt, pcInclusiveCurrentStmt, pcStmtTooLarge);
-  ProcedureName: string;
-  S: string;
-  SetNames: Boolean;
-  SQLPacketIndex: Integer;
-  StmtLength: Integer;
-begin
-  if (InOnResult) then
-    raise Exception.Create(SOutOfSync + ' (in OnResult): ' + CommandText);
-  if (InMonitor) then
-    raise Exception.Create(SOutOfSync + ' (in Monitor): ' + CommandText);
-
-  if (Assigned(SynchroThread) and not (SynchroThread.State in [ssClose, ssReady])) then
-    Terminate();
-  if (not Assigned(SynchroThread)) then
-    FSynchroThread := TSynchroThread.Create(Self);
-
-  SynchroThread.SQL := SQL;
-  SynchroThread.OnResult := OnResult;
-
-  FErrorCode := CR_ASYNCHRON; FErrorMessage := '';
-  FExecutedSQLLength := 0; FExecutedStmts := 0; FResultCount := 0;
-  FRowsAffected := -1; FWarningCount := -1; FExecutionTime := 0;
-
-  SynchroThread.SQLStmtLengths.Clear();
-  SynchroThread.SQLStmtsInPackets.Clear();
-  SynchroThread.SQLUseStmts.Clear();
-  SynchroThread.Time := 0;
-
-  SynchroThread.SQLStmtIndex := 1;
-  while (SynchroThread.SQLStmtIndex < Length(SynchroThread.SQL)) do
-  begin
-    StmtLength := SQLStmtLength(SynchroThread.SQL, SynchroThread.SQLStmtIndex);
-    SynchroThread.SQLStmtLengths.Add(Pointer(StmtLength));
-    Inc(SynchroThread.SQLStmtIndex, StmtLength);
-  end;
-
-  SQLPacketIndex := 1;
-  SetNames := False; CreateTableInPacket := False; AlterTableAfterCreateTable := False;
-  AlterTableAfterCreateTableFix := 50100 <= ServerVersion;
-  PacketComplete := pcNo;
-  SynchroThread.SQLStmt := 0; OldStmt := 0; SynchroThread.SQLStmtIndex := 1;
-  while ((SynchroThread.SQLStmt < SynchroThread.SQLStmtLengths.Count) and not SetNames and (PacketComplete <> pcStmtTooLarge)) do
-  begin
-    SetNames := False;
-    if (SQLParseCLStmt(CLStmt, @SynchroThread.SQL[SynchroThread.SQLStmtIndex], Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]), ServerVersion)) then
-      case (CLStmt.CommandType) of
-        ctSetNames,
-        ctSetCharacterSet:
-          SetNames := True;
-        ctUse:
-          SynchroThread.SQLUseStmts.Add(Pointer(SynchroThread.SQLStmt));
-      end;
-    if (AlterTableAfterCreateTableFix) then
-      if (not CreateTableInPacket) then
-        CreateTableInPacket := SQLParseDDLStmt(DDLStmt, @SynchroThread.SQL[SynchroThread.SQLStmtIndex], Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]), ServerVersion) and (DDLStmt.DefinitionType = dtCreate) and (DDLStmt.ObjectType = otTable)
-      else
-        AlterTableAfterCreateTable := SQLParseDDLStmt(DDLStmt, @SynchroThread.SQL[SynchroThread.SQLStmtIndex], Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]), ServerVersion) and (DDLStmt.DefinitionType = dtAlter) and (DDLStmt.ObjectType = otTable);
-
-    StmtLength := Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]);
-
-    if ((SynchroThread.SQLStmtIndex > 0) and not SetNames) then
-    begin
-      if (SetNames or AlterTableAfterCreateTable) then
-        PacketComplete := pcExclusiveCurrentStmt
-      else if ((SizeOf(COM_QUERY) + SynchroThread.SQLStmtIndex - 1 + StmtLength > MaxAllowedPacket) and (SizeOf(COM_QUERY) + WideCharToMultiByte(CodePage, 0, PChar(@SynchroThread.SQL[SQLPacketIndex]), SynchroThread.SQLStmtIndex - SQLPacketIndex + StmtLength, nil, 0, nil, nil) > MaxAllowedPacket)) then
-        if (SynchroThread.SQLStmt > 0) then
-          PacketComplete := pcExclusiveCurrentStmt
-        else
-          PacketComplete := pcStmtTooLarge
-      else if (not MultiStatements or (SynchroThread.SQLStmtIndex - 1 + StmtLength = Length(SynchroThread.SQL))) then
-        PacketComplete := pcInclusiveCurrentStmt
-      else
-        PacketComplete := pcNo;
-      if ((PacketComplete = pcNo) and SQLParseCallStmt(@SynchroThread.SQL[SynchroThread.SQLStmtIndex], Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]), ProcedureName, ServerVersion) and (ProcedureName <> '')) then
-        PacketComplete := pcInclusiveCurrentStmt;
-    end;
-
-    case (PacketComplete) of
-      pcNo:
-        begin
-          Inc(SynchroThread.SQLStmt);
-          Inc(SynchroThread.SQLStmtIndex, StmtLength);
-        end;
-      pcExclusiveCurrentStmt:
-        begin
-          if (SynchroThread.SQLStmt > OldStmt) then
-            SynchroThread.SQLStmtsInPackets.Add(Pointer(SynchroThread.SQLStmt - OldStmt));
-          OldStmt := SynchroThread.SQLStmt;
-          SQLPacketIndex := SynchroThread.SQLStmtIndex;
-          CreateTableInPacket := False;
-          AlterTableAfterCreateTable := False;
-        end;
-      pcInclusiveCurrentStmt:
-        begin
-          Inc(SynchroThread.SQLStmt);
-          Inc(SynchroThread.SQLStmtIndex, StmtLength);
-          SynchroThread.SQLStmtsInPackets.Add(Pointer(SynchroThread.SQLStmt - OldStmt));
-          OldStmt := SynchroThread.SQLStmt;
-          SQLPacketIndex := SynchroThread.SQLStmtIndex;
-          CreateTableInPacket := False;
-          AlterTableAfterCreateTable := False;
-        end;
-    end;
-  end;
-  if (PacketComplete in [pcNo, pcExclusiveCurrentStmt]) then
-    SynchroThread.SQLStmtsInPackets.Add(Pointer(SynchroThread.SQLStmt > OldStmt));
-
-  if (SynchroThread.SQLStmtLengths.Count = 0) then
-  begin
-    DoError(ER_EMPTY_QUERY, ER_EMPTY_QUERY_MSG);
-    Result := False;
-  end
-  else if (SetNames) then
-  begin
-    DoError(CR_SET_NAMES, CR_SET_NAMES_MSG);
-    Result := False;
-  end
-  else if (PacketComplete = pcStmtTooLarge) then
-  begin
-    DoError(ER_NET_PACKET_TOO_LARGE, ER_NET_PACKET_TOO_LARGE_MSG);
-    Result := False;
-  end
-  else
-  begin
-    DoBeforeExecuteSQL();
-
-    SynchroThread.SQLStmt := 0;
-    SynchroThread.SQLStmtIndex := 1;
-    SynchroThread.SQLPacket := 0;
-    SynchroThread.SQLStmtInPacket := 0;
-    SynchroThread.SQLLastStmtInPacket := Integer(SynchroThread.SQLStmtsInPackets[SynchroThread.SQLPacket]) - 1;
-
-    S := '# ' + SysUtils.DateTimeToStr(Now() + TimeDiff, FormatSettings);
-    WriteMonitor(PChar(S), Length(S), ttTime);
-
-    StmtLength := Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]);
-    WriteMonitor(@SynchroThread.SQL[SynchroThread.SQLStmtIndex], StmtLength, ttRequest);
-
-    if (DirectExecute) then
-    begin
-      SyncExecutingSQL(SynchroThread);
-      FErrorCode := SynchroThread.ErrorCode;
-      FErrorMessage := SynchroThread.ErrorMessage;
-      Result := ErrorCode = 0;
-    end
-    else
-    begin
-      SynchroThread.RunAction(ssExecutingSQL, Synchron or not UseSynchroThread());
-      if ((Synchron or not UseSynchroThread()) and Assigned(SynchroThread.LibHandle)) then
-        Result := ErrorCode = 0
-      else
-        Result := False;
-    end;
-  end;
 end;
 
 procedure TMySQLConnection.SyncExecutedSQL(const SynchroThread: TSynchroThread);
@@ -2981,6 +3433,23 @@ begin
   SynchroThread.ErrorMessage := ErrorMsg(SynchroThread.LibHandle);
 end;
 
+procedure TMySQLConnection.Terminate();
+var
+  S: string;
+begin
+  TerminateCS.Enter();
+
+  if (Assigned(SynchroThread)) then
+  begin
+    S := '----> Connection Terminated <----';
+    WriteMonitor(PChar(S), Length(S), ttInfo);
+    SynchroThread.Terminate();
+    FSynchroThread := nil;
+  end;
+
+  TerminateCS.Leave();
+end;
+
 procedure TMySQLConnection.UnRegisterSQLMonitor(const AMySQLMonitor: TMySQLMonitor);
 var
   I: Integer;
@@ -3021,476 +3490,7 @@ begin
   InMonitor := False;
 end;
 
-{ TMySQLConnection ************************************************************}
-
-procedure TMySQLConnection.BeginSilent();
-begin
-  Inc(FSilentCount);
-end;
-
-procedure TMySQLConnection.BeginSynchron();
-begin
-  Inc(FSynchronCount);
-end;
-
-function TMySQLConnection.CanShutdown(): Boolean;
-begin
-  Result := Assigned(Lib.mysql_shutdown) and not InUse();
-end;
-
-function TMySQLConnection.CharsetToCodePage(const Charset: string): Cardinal;
-var
-  I: Integer;
-begin
-  Result := GetACP();
-
-  if (ServerVersion < 40101) then
-  begin
-    for I := 0 to Length(MySQL_Character_Sets) - 1 do
-      if (lstrcmpiA(PAnsiChar(AnsiString(Charset)), MySQL_Character_Sets[I].CharsetName) = 0) then
-        Result := MySQL_Character_Sets[I].CodePage;
-  end
-  else
-  begin
-    for I := 0 to Length(MySQL_Collations) - 1 do
-      if (lstrcmpiA(PAnsiChar(AnsiString(Charset)), MySQL_Collations[I].CharsetName) = 0) then
-        Result := MySQL_Collations[I].CodePage;
-  end;
-end;
-
-function TMySQLConnection.CharsetToCodePage(const Charset: Byte): Cardinal;
-var
-  Found: Boolean;
-  I: Integer;
-begin
-  if (ServerVersion < 40101) then
-    if (Charset < Length(MySQL_Character_Sets)) then
-      Result := MySQL_Character_Sets[Charset].CodePage
-    else
-      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['CodePage'])
-  else
-  begin
-    Found := False;
-    Result := 0;
-    for I := 0 to Length(MySQL_Collations) - 1 do
-      if (MySQL_Collations[I].CharsetNr = Charset) then
-      begin
-        Result := MySQL_Collations[I].CodePage;
-        Found := True;
-      end;
-    if (not Found) then
-      raise ERangeError.CreateFmt(SInvalidCodePage + ' (%d)', [Charset]);
-  end;
-end;
-
-procedure TMySQLConnection.CloseResult(const ResultHandle: TResultHandle);
-begin
-  if (Asynchron and (ResultHandle.State <> ssReady)) then
-    ResultHandle.RunAction(ssCancel, False)
-  else
-    SyncExecutedSQL(ResultHandle);
-end;
-
-function TMySQLConnection.CodePageToCharset(const CodePage: Cardinal): string;
-var
-  I: Integer;
-begin
-  Result := '';
-
-  if (ServerVersion < 40101) then
-  begin
-    for I := 0 to Length(MySQL_Character_Sets) - 1 do
-      if ((Result = '') and (MySQL_Character_Sets[I].CodePage = CodePage)) then
-        Result := string(StrPas(MySQL_Character_Sets[I].CharsetName));
-  end
-  else
-  begin
-    for I := 0 to Length(MySQL_Collations) - 1 do
-      if ((Result = '') and (MySQL_Collations[I].CodePage = CodePage)) then
-        Result := string(StrPas(MySQL_Collations[I].CharsetName));
-  end;
-end;
-
-procedure TMySQLConnection.CommitTransaction();
-begin
-  if (Lib.LibraryType <> ltHTTP) then
-  begin
-    Assert(InTransaction);
-
-    ExecuteSQL('COMMIT;');
-
-    FInTransaction := False;
-  end;
-end;
-
-constructor TMySQLConnection.Create(AOwner: TComponent);
-begin
-  inherited;
-
-  FFormatSettings := TFormatSettings.Create(GetSystemDefaultLCID());
-  FFormatSettings.ThousandSeparator := #0;
-  FFormatSettings.DecimalSeparator := '.';
-  FFormatSettings.ShortDateFormat := 'yyyy/MM/dd';
-  FFormatSettings.LongDateFormat := FFormatSettings.ShortDateFormat;
-  FFormatSettings.LongTimeFormat := 'hh:mm:ss';
-  FFormatSettings.DateSeparator := '-';
-  FFormatSettings.TimeSeparator := ':';
-
-  ExecuteSQLDone := TEvent.Create(nil, False, False, 'ExecuteSQLDone');
-  FAfterExecuteSQL := nil;
-  FAsynchron := False;
-  FAutoCommit := True;
-  FBeforeExecuteSQL := nil;
-  FCharset := 'utf8';
-  FCodePage := CP_UTF8;
-  FConnected := False;
-  FDatabaseName := '';
-  FExecutionTime := 0;
-  FHost := '';
-  FHTTPAgent := '';
-  FIdentifierQuoted := True;
-  FIdentifierQuoter := '`';
-  FInTransaction := False;
-  FLatestConnect := 0;
-  FLib := nil;
-  FSynchroThread := nil;
-  FLibraryType := ltBuiltIn;
-  FMultiStatements := True;
-  FOnConvertError := nil;
-  FOnSQLError := nil;
-  FOnUpdateIndexDefs := nil;
-  FPassword := '';
-  FPort := MYSQL_PORT;
-  FSilentCount := 0;
-  FTerminateCS := TCriticalSection.Create();
-  FTerminatedThreads := TTerminatedThreads.Create();
-  FThreadDeep := 0;
-  FThreadId := 0;
-  FUserName := '';
-  InMonitor := False;
-  InOnResult := False;
-  local_infile := nil;
-  TimeDiff := 0;
-end;
-
-destructor TMySQLConnection.Destroy();
-begin
-  Asynchron := False;
-  Close();
-
-  while (DataSetCount > 0) do
-    DataSets[0].Free();
-
-  if (Assigned(SynchroThread)) then
-  begin
-    SynchroThread.FreeOnTerminate := False;
-    SynchroThread.Terminate();
-    SynchroThread.WaitFor();
-    SynchroThread.Free();
-  end;
-  TerminatedThreads.Free();
-
-  ExecuteSQLDone.Free();
-  TerminateCS.Free();
-
-  inherited;
-end;
-
-procedure TMySQLConnection.EndSilent();
-begin
-  if (FSilentCount > 0) then
-    Dec(FSilentCount);
-end;
-
-procedure TMySQLConnection.EndSynchron();
-begin
-  if (FSynchronCount > 0) then
-    Dec(FSynchronCount);
-end;
-
-function TMySQLConnection.EscapeIdentifier(const Identifier: string): string;
-begin
-  Result := IdentifierQuoter + ReplaceStr(Identifier, IdentifierQuoter, IdentifierQuoter + IdentifierQuoter) + IdentifierQuoter;
-end;
-
-function TMySQLConnection.ExecuteSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean;
-begin
-  Result := SyncExecuteSQL(SQL, OnResult, True);
-end;
-
-function TMySQLConnection.FirstResult(out ResultHandle: TResultHandle; const SQL: string): Boolean;
-begin
-  Result := SyncExecuteSQL(SQL, nil, True, True);
-  SyncHandleResult(SynchroThread);
-
-  ResultHandle := SynchroThread;
-end;
-
-function TMySQLConnection.InUse(): Boolean;
-begin
-  Result := Assigned(SynchroThread) and SynchroThread.IsRunning;
-end;
-
-function TMySQLConnection.LibEncode(const Value: string): RawByteString;
-var
-  Len: Integer;
-begin
-  if (Value = '') then
-    Result := ''
-  else
-  begin
-    Len := WideCharToMultiByte(CodePage, 0, PChar(Value), Length(Value), nil, 0, nil, nil);
-    if ((Len = 0) and (GetLastError() <> 0)) then
-      RaiseLastOSError();
-
-    SetLength(Result, Len);
-    if (Len > 0) then
-      SetLength(Result, WideCharToMultiByte(CodePage, 0, PChar(Value), Length(Value), PAnsiChar(Result), Len, nil, nil));
-  end;
-end;
-
-function TMySQLConnection.LibPack(const Value: string): RawByteString;
-label
-  StringL;
-var
-  Len: Integer;
-begin
-  if (Value = '') then
-    Result := ''
-  else
-  begin
-    Len := Length(Value);
-    SetLength(Result, Len);
-    asm
-        PUSH ES
-        PUSH ESI
-        PUSH EDI
-
-        PUSH DS                          // string operations uses ES
-        POP ES
-        CLD                              // string operations uses forward direction
-
-        MOV ESI,PChar(Value)             // Copy characters from Value
-        MOV EAX,Result                   //   to Result
-        MOV EDI,[EAX]
-
-        MOV ECX,Len
-      StringL:
-        LODSW                            // Load WideChar from Value
-        STOSB                            // Store AnsiChar into Result
-        LOOP StringL                     // Repeat for all characters
-
-        POP EDI
-        POP ESI
-        POP ES
-    end;
-  end;
-end;
-
-procedure TMySQLConnection.local_infile_end(const local_infile: Plocal_infile);
-begin
-  if (local_infile^.Handle <> INVALID_HANDLE_VALUE) then
-    CloseHandle(local_infile^.Handle);
-  if (Assigned(local_infile^.Buffer)) then
-    VirtualFree(local_infile^.Buffer, local_infile^.BufferSize, MEM_RELEASE);
-
-  Self.local_infile := nil;
-  FreeMem(local_infile);
-end;
-
-function TMySQLConnection.local_infile_error(const local_infile: Plocal_infile; const error_msg: my_char; const error_msg_len: my_uint): my_int;
-var
-  Buffer: PChar;
-  Len: Integer;
-begin
-  Buffer := nil;
-  Len := FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER or FORMAT_MESSAGE_FROM_SYSTEM or FORMAT_MESSAGE_IGNORE_INSERTS, nil, local_infile^.LastError, 0, @Buffer, 0, nil);
-  if (Len > 0) then
-  begin
-    Len := WideCharToMultiByte(CodePage, 0, Buffer, Len, error_msg, error_msg_len, nil, nil);
-    error_msg[Len] := #0;
-    LocalFree(HLOCAL(Buffer));
-  end
-  else if (GetLastError() = 0) then
-    RaiseLastOSError();
-  Result := local_infile^.ErrorCode;
-end;
-
-function TMySQLConnection.local_infile_init(var local_infile: Plocal_infile; const filename: my_char): my_int;
-begin
-  GetMem(local_infile, SizeOf(local_infile^));
-  Self.local_infile := local_infile;
-
-  ZeroMemory(local_infile, SizeOf(local_infile^));
-  local_infile^.Buffer := nil;
-  local_infile^.Connection := Self;
-  local_infile^.Position := 0;
-
-  if ((MultiByteToWideChar(CodePage, 0, filename, lstrlenA(filename), @local_infile^.Filename, Length(local_infile^.Filename)) = 0) and (GetLastError() <> 0)) then
-  begin
-    local_infile^.LastError := GetLastError();
-    local_infile^.ErrorCode := EE_FILENOTFOUND;
-  end
-  else
-  begin
-    local_infile^.Handle := CreateFile(@local_infile^.Filename, GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, 0);
-    if (local_infile^.Handle = INVALID_HANDLE_VALUE) then
-    begin
-      local_infile^.ErrorCode := EE_FILENOTFOUND;
-      local_infile^.LastError := GetLastError();
-    end
-    else
-    begin
-      local_infile^.ErrorCode := 0;
-      local_infile^.LastError := 0;
-    end;
-  end;
-
-  Result := local_infile^.ErrorCode;
-end;
-
-function TMySQLConnection.local_infile_read(const local_infile: Plocal_infile; buf: my_char; const buf_len: my_uint): my_int;
-var
-  BytesPerSector: DWord;
-  NumberofFreeClusters: DWord;
-  SectorsPerCluser: DWord;
-  Size: DWord;
-  TotalNumberOfClusters: DWord;
-begin
-  if (not Assigned(local_infile^.Buffer)) then
-  begin
-    local_infile^.BufferSize := buf_len;
-    if (GetFileSize(local_infile^.Handle, nil) > 0) then
-      local_infile^.BufferSize := Min(GetFileSize(local_infile^.Handle, nil), local_infile^.BufferSize);
-
-    if (GetDiskFreeSpace(PChar(ExtractFileDrive(local_infile^.Filename)), SectorsPerCluser, BytesPerSector, NumberofFreeClusters, TotalNumberOfClusters)
-      and (local_infile^.BufferSize mod BytesPerSector > 0)) then
-      Inc(local_infile^.BufferSize, BytesPerSector - local_infile^.BufferSize mod BytesPerSector);
-    local_infile^.Buffer := VirtualAlloc(nil, local_infile^.BufferSize, MEM_COMMIT, PAGE_READWRITE);
-
-    if (not Assigned(local_infile^.Buffer)) then
-      local_infile^.ErrorCode := EE_OUTOFMEMORY;
-  end;
-
-  if (not ReadFile(local_infile^.Handle, local_infile^.Buffer^, Min(buf_len, local_infile^.BufferSize), Size, nil)) then
-  begin
-    local_infile^.LastError := GetLastError();
-    local_infile^.ErrorCode := EE_READ;
-    Result := -1;
-  end
-  else
-  begin
-    MoveMemory(buf, local_infile^.Buffer, Size);
-    Inc(local_infile^.Position, Size);
-    Result := Size;
-  end;
-end;
-
-function TMySQLConnection.NextResult(const ResultHandle: TResultHandle): Boolean;
-begin
-  SyncNextResult(ResultHandle);
-  SyncHandleResult(ResultHandle);
-
-  Result := ResultHandle.Success;
-end;
-
-procedure TMySQLConnection.RollbackTransaction();
-begin
-  if (InTransaction and (Lib.LibraryType <> ltHTTP)) then
-  begin
-    Assert(InTransaction);
-
-    ExecuteSQL('ROLLBACK;');
-
-    FInTransaction := False;
-  end;
-end;
-
-function TMySQLConnection.SendSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean;
-begin
-  Result := SyncExecuteSQL(SQL, OnResult, False) and not UseSynchroThread();
-end;
-
-function TMySQLConnection.Shutdown(): Boolean;
-var
-  Retry: Integer;
-begin
-  Assert(Connected and Assigned(Lib.mysql_shutdown));
-
-  if (InOnResult) then
-    raise Exception.Create(SOutOfSync);
-  if (InMonitor) then
-    raise Exception.Create(SOutOfSync);
-
-  if (Assigned(SynchroThread) and (SynchroThread.State <> ssReady)) then
-    Terminate();
-
-  if (not Assigned(SynchroThread)) then
-    FSynchroThread := TSynchroThread.Create(Self);
-
-  Retry := 0;
-  while (not Assigned(SynchroThread.LibHandle) and (Retry < RETRY_COUNT)) do
-  begin
-    SyncConnecting(SynchroThread);
-    Inc(Retry);
-  end;
-
-  SendConnectEvent(False);
-
-  if (not Assigned(SynchroThread.LibHandle)) then
-    Result := False
-  else if (Lib.mysql_shutdown(SynchroThread.LibHandle, SHUTDOWN_DEFAULT) <> 0) then
-  begin
-    FErrorCode := Lib.mysql_errno(SynchroThread.LibHandle);
-    FErrorMessage := ErrorMsg(SynchroThread.LibHandle);
-    DoError(FErrorCode, FErrorMessage);
-    Result := False;
-  end
-  else
-  begin
-    SyncDisconncted(nil);
-    Result := True;
-  end;
-end;
-
-function TMySQLConnection.SQLUse(const DatabaseName: string): string;
-begin
-  Result := 'USE ' + EscapeIdentifier(DatabaseName) + ';' + #13#10;
-end;
-
-procedure TMySQLConnection.StartTransaction();
-begin
-  if (Lib.LibraryType <> ltHTTP) then
-  begin
-    Assert(not InTransaction);
-
-    if (ServerVersion < 40011) then
-      ExecuteSQL('BEGIN;')
-    else
-      ExecuteSQL('START TRANSACTION;');
-
-    FInTransaction := True;
-  end;
-end;
-
-procedure TMySQLConnection.Terminate();
-var
-  S: string;
-begin
-  TerminateCS.Enter();
-
-  if (Assigned(SynchroThread)) then
-  begin
-    S := '----> Connection Terminated <----';
-    WriteMonitor(PChar(S), Length(S), ttInfo);
-    SynchroThread.Terminate();
-    FSynchroThread := nil;
-  end;
-
-  TerminateCS.Leave();
-end;
-
-{ TMySQLBitField *************************************************************}
+{ TMySQLBitField **************************************************************}
 
 function TMySQLBitField.GetAsString(): string;
 begin
