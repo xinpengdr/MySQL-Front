@@ -4077,6 +4077,8 @@ function TMySQLQuery.GetRecord(Buffer: TRecordBuffer; GetMode: TGetMode; DoCheck
 begin
   if (GetMode <> gmNext) then
     Result := grError
+  else if (not Assigned(Handle)) then
+    Result := grEOF
   else
   begin
     PRecordBufferData(ActiveBuffer())^.LibRow := Connection.Lib.mysql_fetch_row(Handle);
