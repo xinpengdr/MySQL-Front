@@ -500,6 +500,7 @@ type
     TInternRecordBuffers = class(TList)
     private
       FDataSet: TMySQLDataSet;
+      FRecordReceived: TEvent;
       FRecordsReceived: TEvent;
       function Get(Index: Integer): PInternRecordBuffer; inline;
       procedure Put(Index: Integer; Buffer: PInternRecordBuffer); inline;
@@ -512,6 +513,7 @@ type
       destructor Destroy(); override;
       property Buffers[Index: Integer]: PInternRecordBuffer read Get write Put; default;
       property DataSet: TMySQLDataSet read FDataSet;
+      property RecordReceived: TEvent read FRecordReceived;
       property RecordsReceived: TEvent read FRecordsReceived;
     end;
   private
@@ -627,7 +629,9 @@ type
     RequestedRecordCount: Integer;
     function GetCanModify(): Boolean; override;
     procedure InternalClose(); override;
+    procedure InternalLast(); override;
     procedure InternalOpen(); override;
+    procedure InternalRefresh(); override;
     procedure SetCommandText(const ACommandText: string); override;
     function SQLSelect(const IgnoreLimit: Boolean = False): string; virtual;
     property Asynchron: Boolean read FAsynchron write FAsynchron;
@@ -4748,6 +4752,7 @@ begin
 
   CriticalSection := TCriticalSection.Create();
   Index := -1;
+  FRecordReceived := TEvent.Create(nil, True, False, '');
   FRecordsReceived := TEvent.Create(nil, True, False, '');
 end;
 
@@ -4756,7 +4761,8 @@ begin
   inherited;
 
   CriticalSection.Free();
-  RecordsReceived.Free();
+  FRecordReceived.Free();
+  FRecordsReceived.Free();
 end;
 
 function TMySQLDataSet.TInternRecordBuffers.Get(Index: Integer): PInternRecordBuffer;
@@ -5070,7 +5076,7 @@ begin
         begin
           if ((NewIndex + 1 = InternRecordBuffers.Count) and not Filtered
             and ((Assigned(SynchroThread) or (Self is TMySQLTable) and TMySQLTable(Self).LimitedDataReceived and TMySQLTable(Self).AutomaticLoadNextRecords and TMySQLTable(Self).LoadNextRecords()))) then
-            InternRecordBuffers.RecordsReceived.WaitFor(NET_WAIT_TIMEOUT * 1000);
+            InternRecordBuffers.RecordReceived.WaitFor(NET_WAIT_TIMEOUT * 1000);
 
           if (NewIndex >= InternRecordBuffers.Count - 1) then
             Result := grEOF
@@ -5083,7 +5089,7 @@ begin
         end;
 
         if (Result <> grEOF) then
-          InternRecordBuffers.RecordsReceived.ResetEvent();
+          InternRecordBuffers.RecordReceived.ResetEvent();
       end;
     else // gmCurrent
       if (Filtered) then
@@ -5177,6 +5183,7 @@ begin
     SynchroThread.ReleaseDataSet();
     SynchroThread := nil;
     Connection.TerminateCS.Leave();
+    InternRecordBuffers.RecordsReceived.SetEvent();
   end
   else
   begin
@@ -5203,7 +5210,7 @@ begin
     InternRecordBuffers.CriticalSection.Leave();
   end;
 
-  InternRecordBuffers.RecordsReceived.SetEvent();
+  InternRecordBuffers.RecordReceived.SetEvent();
 end;
 
 procedure TMySQLDataSet.InternalAddRecord(Buffer: Pointer; Append: Boolean);
@@ -5436,10 +5443,7 @@ end;
 procedure TMySQLDataSet.InternalRefresh();
 begin
   InternRecordBuffers.Clear();
-  if (Self is TMySQLTable) then
-    Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(), InternalRefreshEvent)
-  else
-    Connection.ExecuteSQL(CommandText, InternalRefreshEvent);
+  Connection.ExecuteSQL(CommandText, InternalRefreshEvent);
 end;
 
 function TMySQLDataSet.InternalRefreshEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
@@ -5447,7 +5451,7 @@ begin
   Assert(not Assigned(SynchroThread));
 
 
-  InternRecordBuffers.RecordsReceived.ResetEvent();
+  InternRecordBuffers.RecordReceived.ResetEvent();
 
   SynchroThread := Connection.SynchroThread;
   SynchroThread.BindDataSet(Self);
@@ -6671,6 +6675,18 @@ begin
   FLimitedDataReceived := False;
 end;
 
+procedure TMySQLTable.InternalLast();
+begin
+  if (LimitedDataReceived and AutomaticLoadNextRecords) then
+  begin
+    InternRecordBuffers.RecordsReceived.ResetEvent();
+    if (LoadNextRecords(True)) then
+      InternRecordBuffers.RecordsReceived.WaitFor(INFINITE);
+  end;
+
+  inherited;
+end;
+
 procedure TMySQLTable.InternalOpen();
 begin
   Assert(CommandText <> '');
@@ -6680,6 +6696,12 @@ begin
   if (IsCursorOpen()) then
     if (Filtered) then
       InternActivateFilter();
+end;
+
+procedure TMySQLTable.InternalRefresh();
+begin
+  InternRecordBuffers.Clear();
+  Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(), InternalRefreshEvent);
 end;
 
 function TMySQLTable.LoadNextRecords(const AllRecords: Boolean = False): Boolean;

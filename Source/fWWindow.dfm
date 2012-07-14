@@ -4,7 +4,7 @@ object WWindow: TWWindow
   Caption = 'WWindow'
   ClientHeight = 459
   ClientWidth = 691
-  Color = clBtnFace
+  Color = clWindow
   Constraints.MinHeight = 485
   Constraints.MinWidth = 560
   DoubleBuffered = True
@@ -17,6 +17,7 @@ object WWindow: TWWindow
   Menu = MainMenu
   OldCreateOrder = False
   Position = poDefault
+  ShowHint = True
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnHide = FormHide
@@ -43,9 +44,7 @@ object WWindow: TWWindow
     Height = 28
     Align = alTop
     OwnerDraw = True
-    ParentShowHint = False
     PopupMenu = MTabControl
-    ShowHint = True
     TabHeight = 23
     TabOrder = 2
     TabStop = False
@@ -138,7 +137,6 @@ object WWindow: TWWindow
     Top = 438
     Width = 691
     Height = 21
-    AutoHint = True
     Panels = <
       item
         Text = 'sbMessage'
@@ -181,8 +179,6 @@ object WWindow: TWWindow
       Height = 56
       AutoSize = True
       EdgeBorders = [ebTop, ebBottom]
-      ParentShowHint = False
-      ShowHint = True
       TabOrder = 0
       Transparent = False
       object tbVRefresh: TToolButton
@@ -484,8 +480,6 @@ object WWindow: TWWindow
     Width = 561
     Height = 22
     Align = alNone
-    ParentShowHint = False
-    ShowHint = True
     TabOrder = 3
     Transparent = False
     Visible = False

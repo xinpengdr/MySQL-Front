@@ -543,11 +543,6 @@ begin
       FindDialogFind(TSearchFindNext(Action).SearchFind.Dialog);
     Result := True;
   end
-  else if ((Action is TDataSetLast) and (DataLink.DataSet is TMySQLTable) and TMySQLTable(DataLink.DataSet).LimitedDataReceived and TMySQLTable(DataLink.DataSet).AutomaticLoadNextRecords and not DataLink.DataSet.Filtered and (DataLink.DataSet.State = dsBrowse)) then
-  begin
-    TMySQLTable(DataLink.DataSet).LoadNextRecords(True);
-    Result := inherited ExecuteAction(Action);
-  end
   else
     Result := inherited ExecuteAction(Action);
 end;
@@ -686,11 +681,6 @@ begin
   end
   else if (((Key = VK_HOME) or (Key = VK_END) or (Key = VK_LEFT) or (Key = VK_RIGHT)) and (Shift = [ssShift]) and not EditorMode) then
     SelectedRows.CurrentRowSelected := not SelectedRows.CurrentRowSelected
-  else if ((Key = VK_END) and (ssCtrl in Shift) and Assigned(DataLink.DataSet) and (DataLink.DataSet is TMySQLTable) and TMySQLTable(DataLink.DataSet).LimitedDataReceived and TMySQLTable(DataLink.DataSet).AutomaticLoadNextRecords and not DataLink.DataSet.Filtered and (DataLink.DataSet.State = dsBrowse)) then
-  begin
-    TMySQLTable(DataLink.DataSet).LoadNextRecords(True);
-    inherited;
-  end
   else if ((Key = VK_SPACE) and (Shift = [ssCtrl]) and Assigned(DataLink.DataSet) and (DataLink.DataSet.State = dsBrowse)) then
   begin
     SelectedRows.CurrentRowSelected := not SelectedRows.CurrentRowSelected;

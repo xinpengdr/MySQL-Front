@@ -4858,6 +4858,13 @@ begin
   FFilterEnabled.Hint := ReplaceStr(Preferences.LoadStr(209), '&', '');
   FQuickSearch.Hint := ReplaceStr(Preferences.LoadStr(424), '&', '') + ' (' + ShortCutToText(aTBQuickSearch.ShortCut) + ')';
   FQuickSearchEnabled.Hint := ReplaceStr(Preferences.LoadStr(424), '&', '');
+  if (CheckWin32Version(6)) then
+  begin
+    SendMessage(FFilter.Handle, CB_SETCUEBANNER, 0, LParam(PChar(ReplaceStr(Preferences.LoadStr(209), '&', ''))));
+    SendMessage(FQuickSearch.Handle, EM_SETCUEBANNER, 0, LParam(PChar(ReplaceStr(Preferences.LoadStr(424), '&', ''))));
+    SendMessage(FBlobSearch.Handle, EM_SETCUEBANNER, 0, LParam(PChar(ReplaceStr(Preferences.LoadStr(424), '&', ''))));
+  end;
+
   FBlobSearch.Hint := ReplaceStr(Preferences.LoadStr(424), '&', '');
 
   if (Preferences.Editor.LineNumbersBackground = clNone) then
@@ -4912,6 +4919,13 @@ begin
 
   OpenDialog.EncodingLabel := Preferences.LoadStr(682) + ':';
   SaveDialog.EncodingLabel := Preferences.LoadStr(682) + ':';
+
+  Perform(CM_PARENTCOLORCHANGED, 0, 0);
+  Perform(CM_PARENTFONTCHANGED, 0, 0);
+  Perform(CM_PARENTSHOWHINTCHANGED, 0, 0);
+  Perform(CM_PARENTBIDIMODECHANGED, 0, 0);
+  Perform(CM_PARENTDOUBLEBUFFEREDCHANGED, 0, 0);
+  Perform(CM_PARENTTABLETOPTIONSCHANGED, 0, 0);
 
   FBuilderSQLUpdated(nil);
 
@@ -5302,13 +5316,6 @@ begin
   PToolBar.AutoSize := False;
   ToolBar.ButtonHeight := ToolBar.Images.Height + 6; ToolBar.ButtonWidth := ToolBar.Images.Width + 7;
   PToolBar.AutoSize := True;
-
-  if (CheckWin32Version(6)) then
-  begin
-    SendMessage(FFilter.Handle, CB_SETCUEBANNER, 0, LParam(PChar(ReplaceStr(Preferences.LoadStr(209), '&', ''))));
-    SendMessage(FQuickSearch.Handle, EM_SETCUEBANNER, 0, LParam(PChar(ReplaceStr(Preferences.LoadStr(424), '&', ''))));
-    SendMessage(FBlobSearch.Handle, EM_SETCUEBANNER, 0, LParam(PChar(ReplaceStr(Preferences.LoadStr(424), '&', ''))));
-  end;
 
   SetWindowLong(ListView_GetHeader(FServerListView.Handle), GWL_STYLE, GetWindowLong(ListView_GetHeader(FServerListView.Handle), GWL_STYLE) or HDS_DRAGDROP);
 

@@ -6,8 +6,6 @@ object FClient: TFClient
   Align = alClient
   Constraints.MinHeight = 300
   Constraints.MinWidth = 200
-  DoubleBuffered = True
-  ParentDoubleBuffered = False
   TabOrder = 0
   Visible = False
   OnResize = FormResize
@@ -663,8 +661,6 @@ object FClient: TFClient
         Top = 1
         Width = 43
         Height = 22
-        Ctl3D = True
-        ParentCtl3D = False
         TabOrder = 0
         Text = '0'
         OnChange = FOffsetChange
@@ -685,8 +681,6 @@ object FClient: TFClient
         Top = 1
         Width = 36
         Height = 22
-        Ctl3D = True
-        ParentCtl3D = False
         TabOrder = 2
         Text = '100'
         OnChange = FLimitChange
@@ -761,8 +755,6 @@ object FClient: TFClient
         Height = 21
         Anchors = [akTop, akRight]
         AutoSize = False
-        Ctl3D = True
-        ParentCtl3D = False
         TabOrder = 7
         OnChange = FQuickSearchChange
         OnKeyPress = FQuickSearchKeyPress
@@ -928,9 +920,7 @@ object FClient: TFClient
           DoubleBuffered = False
           ParentColor = False
           ParentDoubleBuffered = False
-          ParentShowHint = False
           ShowCaptions = True
-          ShowHint = True
           TabOrder = 0
           Transparent = False
           Wrapable = False
@@ -941,8 +931,6 @@ object FClient: TFClient
             Action = aVBlobText
             AutoSize = True
             Grouped = True
-            ParentShowHint = False
-            ShowHint = False
             Style = tbsCheck
           end
           object tbBlobRTF: TToolButton
@@ -951,8 +939,6 @@ object FClient: TFClient
             Action = aVBlobRTF
             AutoSize = True
             Grouped = True
-            ParentShowHint = False
-            ShowHint = False
             Style = tbsCheck
           end
           object tbBlobHTML: TToolButton
@@ -961,8 +947,6 @@ object FClient: TFClient
             Action = aVBlobHTML
             AutoSize = True
             Grouped = True
-            ParentShowHint = False
-            ShowHint = False
             Style = tbsCheck
           end
           object tbBlobImage: TToolButton
@@ -971,8 +955,6 @@ object FClient: TFClient
             Action = aVBlobImage
             AutoSize = True
             Grouped = True
-            ParentShowHint = False
-            ShowHint = False
             Style = tbsCheck
           end
           object tbBlobHexEditor: TToolButton
@@ -981,8 +963,6 @@ object FClient: TFClient
             Action = aVBlobHexEditor
             AutoSize = True
             Grouped = True
-            ParentShowHint = False
-            ShowHint = False
             Style = tbsCheck
           end
           object tbBlobSpacer: TPanel_Ext
@@ -992,8 +972,6 @@ object FClient: TFClient
             Height = 22
             BevelOuter = bvNone
             ParentBackground = False
-            ParentShowHint = False
-            ShowHint = False
             TabOrder = 1
           end
           object FBlobSearch: TEdit
@@ -1165,9 +1143,7 @@ object FClient: TFClient
     Align = alTop
     AutoSize = True
     BevelOuter = bvNone
-    Ctl3D = False
     ParentBackground = False
-    ParentCtl3D = False
     TabOrder = 3
     object PSideBarHeader: TPanel_Ext
       Left = 0
@@ -1178,8 +1154,6 @@ object FClient: TFClient
       DoubleBuffered = False
       ParentBackground = False
       ParentDoubleBuffered = False
-      ParentShowHint = False
-      ShowHint = False
       TabOrder = 0
       OnMouseDown = PanelMouseDown
       OnMouseMove = PanelMouseMove
@@ -1192,8 +1166,6 @@ object FClient: TFClient
         Height = 22
         Align = alNone
         AutoSize = True
-        ParentShowHint = False
-        ShowHint = True
         TabOrder = 0
         Transparent = False
         Wrapable = False
