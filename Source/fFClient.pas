@@ -6219,7 +6219,7 @@ begin
           aVBlobHexEditor.Execute();
       end;
 
-      if (not Assigned(DBGrid.SelectedField) or (DBGrid.SelectedField.DataType in [ftWideMemo, ftBlob]) or (DBGrid.SelectedField.DataType in [ftUnknown])) then
+      if ((DBGrid.SelectedField.DataType in [ftWideMemo, ftBlob]) or (DBGrid.SelectedField.DataType in [ftUnknown])) then
         DBGrid.Options := DBGrid.Options - [dgEditing]
       else
         DBGrid.Options := DBGrid.Options + [dgEditing];
@@ -14118,10 +14118,7 @@ begin
       TCBaseTable(Table).Keys[0].GetSortDef(SortDef);
 
     if (not Table.DataSet.Active) then
-    begin
-      PResult.Visible := False; SResult.Visible := PResult.Visible;
-      Table.Open(FilterSQL, QuickSearch, SortDef, Offset, Limit, Desktop(Table).DataSetOpenEvent);
-    end
+      Table.Open(FilterSQL, QuickSearch, SortDef, Offset, Limit, Desktop(Table).DataSetOpenEvent)
     else
     begin
       Table.DataSet.FilterSQL := FilterSQL;

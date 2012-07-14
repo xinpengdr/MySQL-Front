@@ -487,7 +487,7 @@ type
     function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; override;
     procedure Invalidate(); override;
     procedure InvalidateData(); virtual;
-    function Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer; const AOnResult: TMySQLConnection.TResultEvent): Boolean; virtual;
+    procedure Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer; const AOnResult: TMySQLConnection.TResultEvent); virtual;
     procedure PushBuildEvent(); override;
     property DataSet: TCTableDataSet read GetDataSet;
     property Fields: TCTableFields read GetFields;
@@ -3377,7 +3377,7 @@ begin
   raise EAbstractError.Create(SAbstractError);
 end;
 
-function TCTable.Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer; const AOnResult: TMySQLConnection.TResultEvent): Boolean;
+procedure TCTable.Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer; const AOnResult: TMySQLConnection.TResultEvent);
 var
   CacheSize: Int64;
   I: Integer;
@@ -3408,14 +3408,12 @@ begin
   FFilterSQL := FilterSQL;
   FOnResult := AOnResult;
 
-  Result := False;
-
   DataSet.Close();
 
   DataSet.Limit := Limit;
   DataSet.Offset := Offset;
   DataSet.FilterSQL := FilterSQL;
-  DataSet.FQuickSearch := QuickSearch;
+  DataSet.QuickSearch := QuickSearch;
   DataSet.SortDef.Assign(ASortDef);
 
   DataSet.Connection := Database.Client;

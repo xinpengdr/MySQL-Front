@@ -3998,10 +3998,7 @@ begin
     ExportObject.RecordsSum := ExportObject.RecordsDone;
 
   if (Assigned(DataSet)) then
-  begin
-    if (Success = daAbort) then while DataSet.FindNext() do ;
     DataSet.Free();
-  end;
 end;
 
 procedure TTExport.ExecuteTableFooter(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery);
