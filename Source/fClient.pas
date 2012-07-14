@@ -11012,7 +11012,7 @@ begin
   if (Assigned(Databases)) then Databases.Invalidate();
   if (Assigned(Plugins)) then Plugins.Invalidate();
   if (Assigned(Users)) then Users.Invalidate();
-  if (Assigned(FHosts)) then Hosts.Invalidate();
+  if (Assigned(FHosts)) then FHosts.Invalidate();
 end;
 
 procedure TCClient.MonitorLog(const Sender: TObject; const Text: PChar; const Len: Integer; const ATraceType: TMySQLMonitor.TTraceType);
