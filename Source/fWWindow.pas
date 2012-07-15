@@ -877,12 +877,21 @@ procedure TWWindow.CMAddTab(var Message: TCMAddTab);
 var
   FClient: TFClient;
 begin
-  if (not FirstOpen or Assigned(Message.Param) and (Copy(Message.Param, 1, 8) = 'mysql://')) then
-    DAccounts.Account := nil
-  else
-    DAccounts.Account := Accounts.AccountByURI(Message.Param);
   DAccounts.Open := True;
-  if (not DAccounts.Execute()) then
+  DAccounts.Account := nil;
+  DAccounts.Client := nil;
+  if (FirstOpen and (Copy(StrPas(Message.Param), 1, 8) = 'mysql://')) then
+  begin
+    DAccounts.Account := Accounts.AccountByURI(Message.Param);
+    if (Assigned(DAccounts.Account)) then
+    begin
+      DAccounts.Client := TCClient.Create(Clients, DAccounts.Account);
+      DConnecting.Client := DAccounts.Client;
+      if (not DConnecting.Execute()) then
+        FreeAndNil(DConnecting.Client);
+    end;
+  end;
+  if (not Assigned(DAccounts.Client) and not DAccounts.Execute()) then
     FClient := nil
   else
   begin
@@ -956,6 +965,17 @@ begin
   TBTabControl.Images := Preferences.SmallImages;
 
   Perform(CM_SYSFONTCHANGED, 0, 0);
+
+  if (not CheckWin32Version(6)) then
+  begin
+    ToolBar.BorderWidth := 0;
+    TBAddressBar.BorderWidth := 0;
+  end
+  else
+  begin
+    ToolBar.BorderWidth := 2;
+    TBAddressBar.BorderWidth := 2;
+  end;
 
   TabControl.Canvas.Font := Font;
 
@@ -1327,6 +1347,16 @@ var
 begin
   inherited;
 
+  if (StyleServices.Enabled or not CheckWin32Version(6)) then
+  begin
+    ToolBar.BorderWidth := 0;
+    TBAddressBar.BorderWidth := 0;
+  end
+  else
+  begin
+    ToolBar.BorderWidth := 2;
+    TBAddressBar.BorderWidth := 2;
+  end;
   for I := 0 to TabControl.Tabs.Count - 1 do
     TabControl.Tabs[I] := TabCaption(Trim(TabControl.Tabs[I]));
 end;
@@ -1699,16 +1729,6 @@ begin
     CToolBar.EdgeBorders := [];
     CAddressBar.EdgeBorders := [];
   end;
-  if (StyleServices.Enabled or not CheckWin32Version(6)) then
-  begin
-    ToolBar.BorderWidth := 0;
-    TBAddressBar.BorderWidth := 0;
-  end
-  else
-  begin
-    ToolBar.BorderWidth := 2;
-    TBAddressBar.BorderWidth := 2;
-  end;
 
   Tabs := TList.Create();
   TBTabControl.Visible := Preferences.TabsVisible;
@@ -1833,7 +1853,7 @@ end;
 
 procedure TWWindow.HandleParam(const AParam: string);
 begin
-  if (Copy(Param, 1, 1) <> '/') then
+  if (Copy(AParam, 1, 1) <> '/') then
   begin
     Param := AParam;
     Perform(CM_ADDTAB, 0, WPARAM(PChar(Param)));

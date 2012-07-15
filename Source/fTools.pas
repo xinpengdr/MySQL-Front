@@ -129,7 +129,6 @@ type
       SourceTableName: string;
     end;
   private
-    DataFileBuffer: TTDataFileBuffer;
     FClient: TCClient;
     FDatabase: TCDatabase;
     FieldNames: string;
@@ -1414,8 +1413,6 @@ procedure TTImport.AfterExecute();
 begin
   Close();
 
-  DataFileBuffer.Free();
-
   if (Success = daSuccess) then
     Client.CommitTransaction()
   else
@@ -1437,8 +1434,6 @@ begin
   Client.BeginSilent();
   Client.BeginSynchron(); // We're still in a thread
   Client.StartTransaction();
-
-  DataFileBuffer := TTDataFileBuffer.Create(Client.CodePage);
 end;
 
 procedure TTImport.BeforeExecuteData(var Item: TItem);
@@ -1578,9 +1573,9 @@ end;
 
 procedure TTImport.ExecuteData(var Item: TItem; const Table: TCTable);
 var
-  Buffer: TTStringBuffer;
   BytesWritten: DWord;
   DataSet: TMySQLQuery;
+  DataFileBuffer: TTDataFileBuffer;
   DBValues: RawByteString;
   Error: TTools.TError;
   I: Integer;
@@ -1590,6 +1585,7 @@ var
   SQL: string;
   SQLThread: TSQLThread;
   SQLValues: TSQLStrings;
+  StringBuffer: TTStringBuffer;
   Values: string;
   WhereClausel: string;
 begin
@@ -1597,6 +1593,8 @@ begin
 
   if (Success = daSuccess) then
   begin
+    DataFileBuffer := TTDataFileBuffer.Create(Client.CodePage);
+
     SQL := '';
     if (Client.DatabaseName <> Database.Name) then
       SQL := SQL + Database.SQLUse() + #13#10;
@@ -1676,12 +1674,14 @@ begin
         end;
         DataSet.Free();
       end;
+
+      DataFileBuffer.Free();
     end
     else
     begin
-      Buffer := TTStringBuffer.Create(SQLPacketSize);
+      StringBuffer := TTStringBuffer.Create(SQLPacketSize);
       if (Database.Name <> Client.DatabaseName) then
-        Buffer.Write(Database.SQLUse());
+        StringBuffer.Write(Database.SQLUse());
 
       SetLength(SQLValues, Length(Fields));
       while ((Success = daSuccess) and GetValues(Item, SQLValues)) do
@@ -1705,8 +1705,8 @@ begin
           end;
 
         if (ImportType = itUpdate) then
-          Buffer.Write(SQLUpdate(Table, Values, WhereClausel))
-        else if (Buffer.Size = 0) then
+          StringBuffer.Write(SQLUpdate(Table, Values, WhereClausel))
+        else if (StringBuffer.Size = 0) then
         begin
           if (ImportType = itReplace) then
             SQL := 'REPLACE INTO '
@@ -1716,18 +1716,18 @@ begin
           if (FieldNames <> '') then
             SQL := SQL + ' (' + FieldNames + ')';
           SQL := SQL + ' VALUES (' + Values + ')';
-          Buffer.Write(SQL);
+          StringBuffer.Write(SQL);
         end
         else
           Values := ',(' + Values + ')';
 
-        if ((Buffer.Size > 0) and ((ImportType = itUpdate) and not Client.MultiStatements or (Buffer.Size >= SQLPacketSize))) then
+        if ((StringBuffer.Size > 0) and ((ImportType = itUpdate) and not Client.MultiStatements or (StringBuffer.Size >= SQLPacketSize))) then
         begin
           if (ImportType = itUpdate) then
-            Buffer.Write(';' + #13#10);
-          S := Buffer.Read();
+            StringBuffer.Write(';' + #13#10);
+          S := StringBuffer.Read();
           DoExecuteSQL(Item, S);
-          Buffer.Write(S);
+          StringBuffer.Write(S);
         end;
 
         Inc(Item.RecordsDone);
@@ -1740,14 +1740,14 @@ begin
 
       if (Success = daSuccess) then
       begin
-        if ((ImportType <> itUpdate) and (Buffer.Size > 0)) then
-          Buffer.Write(';' + #13#10);
+        if ((ImportType <> itUpdate) and (StringBuffer.Size > 0)) then
+          StringBuffer.Write(';' + #13#10);
 
-        S := Buffer.Read();
+        S := StringBuffer.Read();
         DoExecuteSQL(Item, S);
       end;
 
-      Buffer.Free();
+      StringBuffer.Free();
     end;
 
     SQL := '';
@@ -6935,7 +6935,7 @@ begin
               while ((Success = daSuccess) and not SourceClient.FirstResult(DataHandle, SQL)) do
                 DoError(DatabaseError(SourceClient), ToolsItem(TElement(Elements[I]^).Source), SQL)
             else
-              if (not SourceClient.NextResult(DataHandle)) then
+              while ((Success = daSuccess) and not SourceClient.NextResult(DataHandle)) do
                 DoError(DatabaseError(SourceClient), ToolsItem(TElement(Elements[I]^).Source));
 
           ExecuteTable(TElement(Elements[I]^).Source, TElement(Elements[I]^).Destination);

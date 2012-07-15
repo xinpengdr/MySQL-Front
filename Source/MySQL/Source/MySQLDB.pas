@@ -503,7 +503,6 @@ type
     private
       FDataSet: TMySQLDataSet;
       FRecordReceived: TEvent;
-      FRecordsReceived: TEvent;
       function Get(Index: Integer): PInternRecordBuffer; inline;
       procedure Put(Index: Integer; Buffer: PInternRecordBuffer); inline;
     public
@@ -516,7 +515,6 @@ type
       property Buffers[Index: Integer]: PInternRecordBuffer read Get write Put; default;
       property DataSet: TMySQLDataSet read FDataSet;
       property RecordReceived: TEvent read FRecordReceived;
-      property RecordsReceived: TEvent read FRecordsReceived;
     end;
   private
     BookmarkCounter: DWord;
@@ -528,6 +526,7 @@ type
     FilterParser: TExprParser;
     FLocateNext: Boolean;
     FReadOnly: Boolean;
+    FRecordsReceived: TEvent;
     FSortDef: TIndexDef;
     InternRecordBuffers: TInternRecordBuffers;
     function AllocInternRecordBuffer(): PInternRecordBuffer;
@@ -582,6 +581,7 @@ type
     function SQLTableClausel(): string; virtual;
     function SQLUpdate(Buffer: TRecordBuffer = nil): string; virtual;
     procedure UpdateIndexDefs(); override;
+    property RecordsReceived: TEvent read FRecordsReceived;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy(); override;
@@ -1748,9 +1748,6 @@ end;
 
 procedure TMySQLConnection.TSynchroThread.BindDataSet(const ADataSet: TMySQLQuery);
 begin
-  if (State <> ssResult) then
-    Write;
-
   Assert(State = ssResult);
 
   DataSet := ADataSet;
@@ -4532,7 +4529,7 @@ begin
       end
       else
       begin
-        if (not (Self is TMySQLDataSet) or not TMySQLDataSet(Self).CachedUpdates) then
+        if (not (Self is TMySQLTable) and (not (Self is TMySQLDataSet) or not TMySQLDataSet(Self).CachedUpdates)) then
         begin
           FDatabaseName := Connection.DatabaseName;
           FCommandText := Connection.CommandText;
@@ -4761,7 +4758,6 @@ begin
   CriticalSection := TCriticalSection.Create();
   Index := -1;
   FRecordReceived := TEvent.Create(nil, True, False, '');
-  FRecordsReceived := TEvent.Create(nil, True, False, '');
 end;
 
 destructor TMySQLDataSet.TInternRecordBuffers.Destroy();
@@ -4770,7 +4766,6 @@ begin
 
   CriticalSection.Free();
   FRecordReceived.Free();
-  FRecordsReceived.Free();
 end;
 
 function TMySQLDataSet.TInternRecordBuffers.Get(Index: Integer): PInternRecordBuffer;
@@ -4870,6 +4865,7 @@ begin
   FDataSize := 0;
   FilterParser := nil;
   FLocateNext := False;
+  FRecordsReceived := TEvent.Create(nil, True, False, '');
   FSortDef := TIndexDef.Create(nil, 'SortDef', '', []);
   InternRecordBuffers := TInternRecordBuffers.Create(Self);
 
@@ -4929,6 +4925,7 @@ begin
   Close();
 
   FSortDef.Free();
+  FRecordsReceived.Free();
   if (Assigned(FilterParser)) then
     FreeAndNil(FilterParser);
   InternRecordBuffers.Free();
@@ -5191,7 +5188,8 @@ begin
     SynchroThread.ReleaseDataSet();
     SynchroThread := nil;
     Connection.TerminateCS.Leave();
-    InternRecordBuffers.RecordsReceived.SetEvent();
+
+    RecordsReceived.SetEvent();
   end
   else
   begin
@@ -5370,6 +5368,7 @@ procedure TMySQLDataSet.InternalOpen();
 begin
   Assert(not IsCursorOpen());
 
+  RecordsReceived.ResetEvent();
 
   inherited;
 
@@ -6684,12 +6683,8 @@ end;
 
 procedure TMySQLTable.InternalLast();
 begin
-  if (LimitedDataReceived and AutomaticLoadNextRecords) then
-  begin
-    InternRecordBuffers.RecordsReceived.ResetEvent();
-    if (LoadNextRecords(True)) then
-      InternRecordBuffers.RecordsReceived.WaitFor(INFINITE);
-  end;
+  if (LimitedDataReceived and AutomaticLoadNextRecords and LoadNextRecords(True)) then
+    RecordsReceived.WaitFor(INFINITE);
 
   inherited;
 end;
@@ -6713,6 +6708,8 @@ end;
 
 function TMySQLTable.LoadNextRecords(const AllRecords: Boolean = False): Boolean;
 begin
+  RecordsReceived.ResetEvent();
+
   Result := Connection.ExecuteSQL(TMySQLTable(Self).SQLSelect(AllRecords), InternalRefreshEvent);
 end;
 
