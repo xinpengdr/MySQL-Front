@@ -1,0 +1,67 @@
+package EurekaLog_160;
+
+{$ALIGN 8}
+{$ASSERTIONS OFF}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS OFF}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION ON}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO OFF}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES OFF}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+
+requires
+  DesignIDE,
+  rtl;
+
+contains
+  EAbout in '..\Source\EAbout.pas' {AboutForm},
+  EBase64 in '..\Source\EBase64.pas',
+  EBaseModule in '..\Source\EBaseModule.pas',
+  EBorlandDebug in '..\Source\EBorlandDebug.pas',
+  ECmdLine in '..\Source\ECmdLine.pas',
+  ECommon in '..\Source\ECommon.pas',
+  EConsts in '..\Source\EConsts.pas',
+  ECore in '..\Source\ECore.pas',
+  EDebug in '..\Source\EDebug.pas',
+  EDesign in '..\Source\EDesign.pas',
+  EDisAsm in '..\Source\EDisAsm.pas',
+  EEncrypt in '..\Source\EEncrypt.pas',
+  EHash in '..\Source\EHash.pas',
+  EHook in '..\Source\EHook.pas',
+  EIDEOptions in '..\Source\EIDEOptions.pas' {IDEOptionsForm},
+  ELang in '..\Source\ELang.pas',
+  ELeaks in '..\Source\ELeaks.pas',
+  EListView in '..\Source\EListView.pas',
+  ELogManager in '..\Source\ELogManager.pas',
+  EMain in '..\Source\EMain.pas',
+  EMessages in '..\Source\EMessages.pas' {MessageForm},
+  ENagScreen in '..\Source\ENagScreen.pas' {NagForm},
+  EOption in '..\Source\EOption.pas' {OptionsForm},
+  EParser in '..\Source\EParser.pas',
+  EResource in '..\Source\EResource.pas',
+  ESockets in '..\Source\ESockets.pas',
+  EToolsAPI in '..\Source\EToolsAPI.pas',
+  ETypes in '..\Source\ETypes.pas',
+  EVariables in '..\Source\EVariables.pas' {VariableForm},
+  EWait in '..\Source\EWait.pas' {WaitForm},
+  EWebTools in '..\Source\EWebTools.pas',
+  EWinSock in '..\Source\EWinSock.pas',
+  ExceptionLog in '..\Source\ExceptionLog.pas',
+  EXMLBuilder in '..\Source\EXMLBuilder.pas',
+  EZip in '..\Source\EZip.pas',
+  EZLib2 in '..\Source\EZLib2.pas';
+
+end.

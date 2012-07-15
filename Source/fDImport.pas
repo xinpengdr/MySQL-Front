@@ -297,8 +297,6 @@ begin
   FBBack.Caption := '< ' + Preferences.LoadStr(228);
   FBForward.Caption := Preferences.LoadStr(229) + ' >';
   FBCancel.Caption := Preferences.LoadStr(30);
-
-  PostMessage(Handle, CM_SYSFONTCHANGED, 0, 0);
 end;
 
 procedure TDImport.CMExecutedDone(var Message: TMessage);
@@ -957,7 +955,7 @@ begin
     begin
       FLSourceFields.Caption := Preferences.LoadStr(400) + ':';
 
-      SQLiteException(SQLite, sqlite3_prepare_v2(SQLite, PAnsiChar(UTF8Encode('SELECT * FROM "' + GetSourceTableName(FTables.Selected) + '" WHERE 1<>1;')), -1, @Stmt, nil));
+      SQLiteException(SQLite, sqlite3_prepare_v2(SQLite, PAnsiChar(UTF8Encode('SELECT * FROM "' + GetSourceTableName(FTables.Selected) + '" WHERE 1<>1')), -1, @Stmt, nil));
       if (sqlite3_step(Stmt) = SQLITE_DONE) then
         for I := 0 to sqlite3_column_count(Stmt) - 1 do
           FieldNames.Add(UTF8ToString(StrPas(sqlite3_column_name(Stmt, I))));
@@ -1518,7 +1516,7 @@ begin
         MsgBox(Preferences.LoadStr(523, Filename), Preferences.LoadStr(45), MB_OK + MB_ICONERROR)
       else
       begin
-        SQLiteException(SQLite, sqlite3_prepare_v2(SQLite, 'SELECT "name" FROM "sqlite_master" WHERE type=''table'' ORDER BY "name";', -1, @Stmt, nil));
+        SQLiteException(SQLite, sqlite3_prepare_v2(SQLite, 'SELECT "name" FROM "sqlite_master" WHERE type=''table'' ORDER BY "name"', -1, @Stmt, nil));
         while (sqlite3_step(Stmt) = SQLITE_ROW) do
           TableNames.Add(UTF8ToString(sqlite3_column_text(Stmt, 0)));
         SQLiteException(SQLite, sqlite3_finalize(Stmt));

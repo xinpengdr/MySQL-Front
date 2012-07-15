@@ -2089,7 +2089,19 @@ begin
 end;
 
 function GetOSType: AnsiString;
+var
+  Handle: THandle;
+  Wine: Boolean;
 begin
+  Handle := LoadLibrary(PChar('Kernel32.dll'));
+  if (Handle = 0) then
+    Wine := False
+  else
+  begin
+    Wine := Assigned(GetProcAddress(Handle, 'wine_get_unix_file_name'));
+    FreeLibrary(Handle);
+  end;
+
   Result := 'Microsoft Windows ';
   SetCurrentCodePage(Result);
   case Win32Platform of
@@ -2132,6 +2144,7 @@ begin
                  Result := Result + '7'
                else
                  Result := Result + 'Server 2008 R2';
+            2: Result := Result + '8';
            else
              Result := Result + IntToStr(Win32MajorVersion) + '.' + IntToStr(Win32MinorVersion);
            end;
@@ -2140,6 +2153,8 @@ begin
       end;
       if IsWin64 then
         Result := Result + ' (64 bit)';
+      if Wine then
+        Result := 'Wine';
     end;
   end;
 end;

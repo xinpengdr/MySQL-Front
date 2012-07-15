@@ -1505,7 +1505,7 @@ type
     FOnSQLError: TMySQLConnection.TErrorEvent;
     function GetClient(Index: Integer): TCClient; inline;
   public
-    function Add(Item: Pointer): Integer;
+    function Add(const Client: TCClient): Integer;
     function ClientByAccount(const Account: TAAccount; const DatabaseName: string): TCClient; virtual;
     property Client[Index: Integer]: TCClient read GetClient; default;
     property OnSQLError: TMySQLConnection.TErrorEvent read FOnSQLError write FOnSQLError;
@@ -11001,7 +11001,6 @@ begin
         Result := Hosts[I];
 end;
 
-
 procedure TCClient.Invalidate();
 begin
   if (Assigned(Variables)) then Variables.Invalidate();
@@ -12248,11 +12247,11 @@ end;
 
 { TCClients *******************************************************************}
 
-function TCClients.Add(Item: Pointer): Integer;
+function TCClients.Add(const Client: TCClient): Integer;
 begin
-  Result := inherited Add(Item);
+  Result := inherited Add(Client);
 
-  TCClient(Item).OnSQLError := OnSQLError;
+  Client.OnSQLError := OnSQLError;
 end;
 
 function TCClients.ClientByAccount(const Account: TAAccount; const DatabaseName: string): TCClient;

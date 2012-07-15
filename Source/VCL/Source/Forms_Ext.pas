@@ -87,6 +87,8 @@ begin
 
   if (Control is TListView) then
   begin
+    if (CheckWin32Version(6,1)) then
+      SendMessage(Control.Handle, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_JUSTIFYCOLUMNS, LVS_EX_JUSTIFYCOLUMNS);
     SendMessage(Control.Handle, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
     SendMessage(Control.Handle, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_COLUMNSNAPPOINTS, LVS_EX_COLUMNSNAPPOINTS);
   end
@@ -97,8 +99,7 @@ begin
     if (CheckWin32Version(6)) then
     begin
       SetWindowLong(Control.Handle, GWL_STYLE, GetWindowLong(Control.Handle, GWL_STYLE) or TVS_NOHSCROLL);
-      SendMessage(Control.Handle, TVM_SETEXTENDEDSTYLE, TVS_EX_AUTOHSCROLL, TVS_EX_AUTOHSCROLL);
-      SendMessage(Control.Handle, TVM_SETEXTENDEDSTYLE, TVS_EX_FADEINOUTEXPANDOS or TVS_EX_DOUBLEBUFFER, TVS_EX_FADEINOUTEXPANDOS or TVS_EX_DOUBLEBUFFER);
+      SendMessage(Control.Handle, TVM_SETEXTENDEDSTYLE, TVS_EX_AUTOHSCROLL or TVS_EX_FADEINOUTEXPANDOS or TVS_EX_DOUBLEBUFFER, TVS_EX_AUTOHSCROLL or TVS_EX_FADEINOUTEXPANDOS or TVS_EX_DOUBLEBUFFER);
     end;
   end
   else if (Control is TUpDown) then
@@ -108,10 +109,9 @@ begin
   end
   else if (Control is TToolBar) then
   begin
-    Assert(not TToolBar(Control).Transparent); // Needs not to be transparent with styles in Delphi XE2
     if (CheckWin32Version(6)) then
       for I := 0 to TToolBar(Control).ButtonCount - 1 do
-        if (not StyleServices.Enabled and (TToolBar(Control).Buttons[I].Style = tbsSeparator)) then
+        if (TToolBar(Control).Buttons[I].Style = tbsSeparator) then
         begin
           TToolBar(Control).Buttons[I].AutoSize := True;
           TToolBar(Control).Buttons[I].Enabled := False;

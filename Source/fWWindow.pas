@@ -172,6 +172,8 @@ type
     aVSQLHistory: TAction;
     aVSQLHistory1: TMenuItem;
     aVSQLLog: TAction;
+    CAddressBar: TCoolBar;
+    CToolBar: TCoolBar;
     FAddress: TComboBox_Ext;
     FAddressApply: TToolButton;
     Highlighter: TSynSQLSyn;
@@ -337,8 +339,6 @@ type
     N8: TMenuItem;
     N9: TMenuItem;
     OpenDialog: TOpenDialog_Ext;
-    PAddressBar: TPanel_Ext;
-    PToolBar: TPanel_Ext;
     PWorkSpace: TPanel_Ext;
     SaveDialog: TSaveDialog_Ext;
     StatusBar: TStatusBar;
@@ -798,16 +798,8 @@ end;
 
 procedure TWWindow.aVAddressBarExecute(Sender: TObject);
 begin
-  PAddressBar.Visible := aVAddressBar.Checked;
+  CAddressBar.Visible := aVAddressBar.Checked;
   TabControlResize(nil);
-
-  if (PAddressBar.Visible) then
-  begin
-    // PAddressBar sicher unter PToolbar stellen
-    PAddressBar.Align := alNone;
-    PAddressBar.Top := 1;
-    PAddressBar.Align := alTop;
-  end;
 end;
 
 procedure TWWindow.aVAddressExecute(Sender: TObject);
@@ -898,14 +890,6 @@ begin
 
     if (Tabs.Count = 0) then
     begin
-      // TabControl sicher unter PToolbar / PAddressBar stellen
-      TabControl.Align := alNone;
-      if (not PAddressBar.Visible) then
-        TabControl.Top := PToolBar.Top + PToolBar.Height
-      else
-        TabControl.Top := PAddressBar.Top + PAddressBar.Height;
-      TabControl.Align := alTop;
-
       TabControl.Tabs.Add(TabCaption(DAccounts.Client.Account.Name));
       TabControl.Visible := Preferences.TabsVisible;
       if (TabControl.Visible) then
@@ -972,17 +956,6 @@ begin
   TBTabControl.Images := Preferences.SmallImages;
 
   Perform(CM_SYSFONTCHANGED, 0, 0);
-
-  if (not CheckWin32Version(6)) then
-  begin
-    ToolBar.BorderWidth := 0;
-    TBAddressBar.BorderWidth := 0;
-  end
-  else
-  begin
-    ToolBar.BorderWidth := 2;
-    TBAddressBar.BorderWidth := 2;
-  end;
 
   TabControl.Canvas.Font := Font;
 
@@ -1354,33 +1327,6 @@ var
 begin
   inherited;
 
-  if (not CheckWin32Version(6)) then
-  begin
-    ToolBar.EdgeBorders := [ebTop,ebBottom];
-    TBAddressBar.EdgeBorders := [ebBottom];
-  end
-  else
-  begin
-    ToolBar.EdgeBorders := [];
-    TBAddressBar.EdgeBorders := [];
-  end;
-
-  if (Assigned(ToolBar.Images) and Assigned(TBAddressBar.Images)) then
-  begin
-    // Recalculate height of Toolbars:
-    PToolBar.AutoSize := False;
-    ToolBar.AutoSize := False;
-    ToolBar.ButtonHeight := 0;
-    ToolBar.ButtonHeight := ToolBar.Images.Height + 6;
-    ToolBar.ButtonWidth := ToolBar.Images.Width + 7;
-    ToolBar.AutoSize := True;
-    PToolBar.AutoSize := True;
-
-    PAddressBar.AutoSize := False;
-    TBAddressBar.AutoSize := False; TBAddressBar.ButtonHeight := 0; TBAddressBar.ButtonHeight := TBAddressBar.Images.Height + 6; TBAddressBar.ButtonWidth := TBAddressBar.Images.Width + 7; TBAddressBar.AutoSize := True;
-    PAddressBar.AutoSize := True;
-  end;
-
   for I := 0 to TabControl.Tabs.Count - 1 do
     TabControl.Tabs[I] := TabCaption(Trim(TabControl.Tabs[I]));
 end;
@@ -1743,6 +1689,27 @@ begin
   TabControl.Images := Preferences.SmallImages;
   TBTabControl.Images := Preferences.SmallImages;
 
+  if (not CheckWin32Version(6)) then
+  begin
+    CToolBar.EdgeBorders := [ebTop,ebBottom];
+    CAddressBar.EdgeBorders := [ebBottom];
+  end
+  else
+  begin
+    CToolBar.EdgeBorders := [];
+    CAddressBar.EdgeBorders := [];
+  end;
+  if (StyleServices.Enabled or not CheckWin32Version(6)) then
+  begin
+    ToolBar.BorderWidth := 0;
+    TBAddressBar.BorderWidth := 0;
+  end
+  else
+  begin
+    ToolBar.BorderWidth := 2;
+    TBAddressBar.BorderWidth := 2;
+  end;
+
   Tabs := TList.Create();
   TBTabControl.Visible := Preferences.TabsVisible;
 
@@ -1750,7 +1717,7 @@ begin
   aHUpdate.Enabled := IsConnectedToInternet() and (Preferences.SetupProgram = '');
 
   aVAddressBar.Checked := Preferences.AddressBarVisible;
-  PAddressBar.Visible := aVAddressBar.Checked;
+  CAddressBar.Visible := aVAddressBar.Checked;
 
   Perform(CM_UPDATETOOLBAR, 0, 0);
 
@@ -2369,18 +2336,18 @@ begin
     TBTabControl.Width := TabControl.Width - TBTabControl.Left;
     TBTabControl.Height := TabControl.Height - 3;
   end
-  else if (PAddressBar.Visible) then
+  else if (CAddressBar.Visible) then
   begin
-    TBTabControl.Left := PAddressBar.Left;
-    TBTabControl.Top := PAddressBar.Top + PAddressBar.Height;
-    TBTabControl.Width := PAddressBar.Width;
+    TBTabControl.Left := CAddressBar.Left;
+    TBTabControl.Top := CAddressBar.Top + CAddressBar.Height;
+    TBTabControl.Width := CAddressBar.Width;
     TBTabControl.Height := TabControl.Height - 3;
   end
   else
   begin
-    TBTabControl.Left := PToolBar.Left;
-    TBTabControl.Top := PToolBar.Top + PToolBar.Height;
-    TBTabControl.Width := PToolBar.Width;
+    TBTabControl.Left := CToolBar.Left;
+    TBTabControl.Top := CToolBar.Top + CToolBar.Height;
+    TBTabControl.Width := CToolBar.Width;
     TBTabControl.Height := TabControl.Height - 3;
   end
 end;

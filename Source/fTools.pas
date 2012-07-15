@@ -860,6 +860,33 @@ begin
   Result.ErrorMessage := ErrorMessage;
 end;
 
+function AnsiCharToWideChar(const CodePage: UINT; const lpMultiByteStr: LPCSTR; const cchMultiByte: Integer; const lpWideCharStr: LPWSTR; const cchWideChar: Integer): Integer;
+begin
+  if (cchMultiByte = 0) then
+    Result := 0
+  else
+  begin
+    Result := MultiByteToWideChar(CodePage, MB_ERR_INVALID_CHARS, lpMultiByteStr, cchMultiByte, lpWideCharStr, cchWideChar);
+    if (Result = 0) then
+      RaiseLastOSError();
+  end;
+end;
+
+function WideCharToAnsiChar(const CodePage: UINT; const lpWideCharStr: LPWSTR; const cchWideChar: Integer; const lpMultiByteStr: LPSTR; const cchMultiByte: Integer): Integer;
+var
+  Flags: DWord;
+begin
+  if (cchWideChar = 0) then
+    Result := 0
+  else
+  begin
+    if (CodePage <> CP_UTF8) then Flags := 0 else Flags := WC_ERR_INVALID_CHARS;
+    Result := WideCharToMultiByte(CodePage, Flags, lpWideCharStr, cchWideChar, lpMultiByteStr, cchMultiByte, nil, nil);
+    if (Result = 0) then
+      RaiseLastOSError();
+  end;
+end;
+
 { TTBuffer ********************************************************************}
 
 procedure TTDataFileBuffer.Clear();
@@ -975,7 +1002,6 @@ end;
 
 procedure TTDataFileBuffer.PutEncoded(const Text: PChar; const Length: Integer);
 var
-  Flags: DWORD;
   Len: Integer;
   Size: Integer;
 begin
@@ -986,17 +1012,7 @@ begin
     ReallocMem(Temp2Mem, Temp2Size);
   end;
 
-  if (Length = 0) then
-    Len := 0
-  else
-  begin
-    if (CodePage <> CP_UTF8) then
-      Flags := 0
-    else
-      Flags := WC_ERR_INVALID_CHARS;
-    Len := WideCharToMultiByte(CodePage, Flags, Text, Length, Temp2Mem, Temp2Size, nil, nil);
-    if (Len = 0) then RaiseLastOSError();
-  end;
+  Len := WideCharToAnsiChar(CodePage, Text, Length, Temp2Mem, Temp2Size);
 
   PutEscaped(Temp2Mem, Len);
 end;
@@ -1014,8 +1030,7 @@ begin
       ReallocMem(Temp1Mem, Size);
       Temp1Size := Size;
     end;
-    Len := MultiByteToWideChar(CodePage, MB_ERR_INVALID_CHARS, Value, Length, Temp1Mem, Temp1Size div SizeOf(Char));
-    if (Len = 0) then RaiseLastOSError();
+    Len := AnsiCharToWideChar(CodePage, Value, Length, Temp1Mem, Temp1Size div SizeOf(Char));
 
     Size := MaxCharSize * Len;
     if (Size < Temp2Size) then
@@ -1023,8 +1038,7 @@ begin
       ReallocMem(Temp2Mem, Size);
       Temp2Size := Size;
     end;
-    Len := WideCharToMultiByte(Self.CodePage, WC_ERR_INVALID_CHARS, PChar(Temp1Mem), Len, Temp2Mem, Size, nil, nil);
-    if (Len = 0) then RaiseLastOSError();
+    Len := WideCharToAnsiChar(Self.CodePage, PChar(Temp1Mem), Len, Temp2Mem, Size);
 
     PutEscaped(Temp2Mem, Len);
   end
@@ -1400,6 +1414,8 @@ procedure TTImport.AfterExecute();
 begin
   Close();
 
+  DataFileBuffer.Free();
+
   if (Success = daSuccess) then
     Client.CommitTransaction()
   else
@@ -1412,7 +1428,6 @@ end;
 
 procedure TTImport.AfterExecuteData(var Item: TItem);
 begin
-  DataFileBuffer.Free();
 end;
 
 procedure TTImport.BeforeExecute();
@@ -2042,7 +2057,7 @@ begin
 
     case (CodePage) of
       CP_UNICODE: Inc(FilePos, Len * SizeOf(Char));
-      else if (Len > 0) then Inc(FilePos, WideCharToMultiByte(CodePage, 0, PChar(@FileContent.Str[Index]), Len, nil, 0, nil, nil));
+      else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[Index]), Len, nil, 0));
     end;
 
     SetCharacterSet := not EOF
@@ -2275,9 +2290,7 @@ begin
   if (FileContent.Index - OldFileContentIndex > 0) then
     case (CodePage) of
       CP_UNICODE: Inc(FilePos, (FileContent.Index - OldFileContentIndex) * SizeOf(FileContent.Str[1]));
-      else
-        Inc(FilePos, WideCharToMultiByte(CodePage, 0,
-          PChar(@FileContent.Str[OldFileContentIndex]), FileContent.Index - OldFileContentIndex, nil, 0, nil, nil));
+      else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[OldFileContentIndex]), FileContent.Index - OldFileContentIndex, nil, 0));
     end;
 
   Result := RecordComplete;
@@ -2353,9 +2366,7 @@ begin
   if (FileContent.Index - OldFileContentIndex > 0) then
     case (CodePage) of
       CP_UNICODE: Inc(FilePos, (FileContent.Index - OldFileContentIndex) * SizeOf(FileContent.Str[1]));
-      else
-        Inc(FilePos, WideCharToMultiByte(CodePage, 0,
-          PChar(@FileContent.Str[OldFileContentIndex]), FileContent.Index - OldFileContentIndex, nil, 0, nil, nil));
+      else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[OldFileContentIndex]), FileContent.Index - OldFileContentIndex, nil, 0));
     end;
 
   Result := RecordComplete;
@@ -2422,9 +2433,7 @@ begin
 
   case (CodePage) of
     CP_UNICODE: Inc(FilePos, (FileContent.Index - OldFileContentIndex) * SizeOf(FileContent.Str[1]));
-    else if (FileContent.Index - OldFileContentIndex > 0) then
-      Inc(FilePos, WideCharToMultiByte(CodePage, 0,
-        PChar(@FileContent.Str[OldFileContentIndex]), FileContent.Index - OldFileContentIndex, nil, 0, nil, nil));
+    else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[OldFileContentIndex]), FileContent.Index - OldFileContentIndex, nil, 0));
   end;
 
   if (UseHeadline) then
@@ -2695,7 +2704,7 @@ begin
           else if (cbData = SQL_NULL_DATA) then
             DataFileBuffer.Put(PAnsiChar('NULL'), 4)
           else
-            DataFileBuffer.Put(PSQLACHAR(ODBCData), cbData div SizeOf(SQLWCHAR), ColumnDesc[I].SQLDataType in [SQL_TYPE_DATE, SQL_TYPE_TIMESTAMP, SQL_TYPE_TIME]);
+            DataFileBuffer.Put(PSQLACHAR(ODBCData), cbData div SizeOf(SQLACHAR), ColumnDesc[I].SQLDataType in [SQL_TYPE_DATE, SQL_TYPE_TIMESTAMP, SQL_TYPE_TIME]);
         SQL_CHAR,
         SQL_VARCHAR,
         SQL_LONGVARCHAR,
@@ -3156,7 +3165,7 @@ end;
 
 procedure TTImportSQLite.AfterExecuteData(var Item: TTImport.TItem);
 begin
-  sqlite3_finalize(@Stmt); Stmt := nil;
+  sqlite3_finalize(Stmt); Stmt := nil;
 end;
 
 procedure TTImportSQLite.BeforeExecute();
@@ -3168,7 +3177,7 @@ begin
   if ((Success = daSuccess) and Data) then
     for I := 0 to Length(Items) - 1 do
     begin
-      SQLiteException(Handle, sqlite3_prepare_v2(Handle, PAnsiChar(UTF8Encode('SELECT COUNT(*) FROM "' + Items[I].SourceTableName + '";')), -1, @Stmt, nil));
+      SQLiteException(Handle, sqlite3_prepare_v2(Handle, PAnsiChar(UTF8Encode('SELECT COUNT(*) FROM "' + Items[I].SourceTableName + '"')), -1, @Stmt, nil));
       if (sqlite3_step(Stmt) = SQLITE_ROW) then
         Items[I].RecordsSum := sqlite3_column_int(Stmt, 0);
       sqlite3_finalize(Stmt); Stmt := nil;
@@ -3191,7 +3200,7 @@ begin
     end
   else
     SQL := '*';
-  SQL := 'SELECT ' + SQL + ' FROM "' + Item.SourceTableName + '";';
+  SQL := 'SELECT ' + SQL + ' FROM "' + Item.SourceTableName + '"';
 
   SQLiteException(Handle, sqlite3_prepare_v2(Handle, PAnsiChar(UTF8Encode(SQL)), -1, @Stmt, nil));
 end;
@@ -3263,6 +3272,7 @@ end;
 
 procedure TTImportSQLite.ExecuteStructure(var Item: TTImport.TItem);
 var
+  Error: TTools.TError;
   I: Integer;
   Name: string;
   NewField: TCBaseTableField;
@@ -3283,90 +3293,100 @@ begin
 
   NewTable := nil;
 
-  SQLiteException(Handle, sqlite3_prepare_v2(Handle, PAnsiChar(UTF8Encode('SELECT "sql" FROM "sqlite_master" WHERE type=''table'' AND name="' + Item.TableName + '";')), -1, @Stmt, nil));
-  ParseSQL := UTF8ToString(sqlite3_column_text(Stmt, 0));
-  if ((sqlite3_step(Stmt) = SQLITE_ROW) and (SQLCreateParse(Parse, PChar(ParseSQL), Length(ParseSQL), 0))) then
+  SQLiteException(Handle, sqlite3_prepare_v2(Handle, PAnsiChar(UTF8Encode('SELECT "sql" FROM "sqlite_master" WHERE type=''table'' AND name=''' + Item.TableName + '''')), -1, @Stmt, nil));
+  if (sqlite3_step(Stmt) = SQLITE_ROW) then
   begin
-    SQL := UTF8ToString(sqlite3_column_text(Stmt, 0));
+    ParseSQL := UTF8ToString(sqlite3_column_text(Stmt, 0));
+    if (not SQLCreateParse(Parse, PChar(ParseSQL), Length(ParseSQL), 0)) then
+    begin
+      Error.ErrorType := TE_SQLite;
+      Error.ErrorCode := 0;
+      Error.ErrorMessage := 'Empty Result';
+      DoError(Error, EmptyToolsItem());
+    end
+    else
+    begin
+      SQL := UTF8ToString(sqlite3_column_text(Stmt, 0));
 
-    NewTable := TCBaseTable.Create(Database.Tables, Item.TableName);
-    NewTable.DefaultCharset := Charset;
-    NewTable.Collation := Collation;
-    NewTable.Engine := Client.EngineByName(Engine);
-    NewTable.RowType := RowType;
+      NewTable := TCBaseTable.Create(Database.Tables, Item.TableName);
+      NewTable.DefaultCharset := Charset;
+      NewTable.Collation := Collation;
+      NewTable.Engine := Client.EngineByName(Engine);
+      NewTable.RowType := RowType;
 
-    if (not SQLParseKeyword(Parse, 'CREATE TABLE')) then raise EConvertError.CreateFmt(SSourceParseError, [Item.TableName, 1, SQL]);
+      if (not SQLParseKeyword(Parse, 'CREATE TABLE')) then raise EConvertError.CreateFmt(SSourceParseError, [Item.TableName, 1, SQL]);
 
-    NewTable.Name := Database.Tables.ApplyMySQLTableName(SQLParseValue(Parse));
+      NewTable.Name := Database.Tables.ApplyMySQLTableName(SQLParseValue(Parse));
 
-    if (not SQLParseChar(Parse, '(')) then raise EConvertError.CreateFmt(SSourceParseError, [Item.TableName, 2, SQL]);
+      if (not SQLParseChar(Parse, '(')) then raise EConvertError.CreateFmt(SSourceParseError, [Item.TableName, 2, SQL]);
 
-    repeat
-      Name := SQLParseValue(Parse);
-      Primary := False;
+      repeat
+        Name := SQLParseValue(Parse);
+        Primary := False;
 
-      SetLength(SourceFields, Length(SourceFields) + 1);
-      SourceFields[Length(SourceFields) - 1].Name := Name;
+        SetLength(SourceFields, Length(SourceFields) + 1);
+        SourceFields[Length(SourceFields) - 1].Name := Name;
 
 
-      NewField := TCBaseTableField.Create(NewTable.Fields);
-      NewField.Name := Name;
-      if (SQLParseKeyword(Parse, 'INTEGER PRIMARY KEY')) then
-      begin
-        Primary := True;
-        NewField.FieldType := mfBigInt;
-        NewField.Unsigned := False;
-        NewField.AutoIncrement := SQLParseKeyword(Parse, 'AUTOINCREMENT');
-      end
-      else if (SQLParseKeyword(Parse, 'INTEGER')) then
-        NewField.FieldType := mfBigInt
-      else if (SQLParseKeyword(Parse, 'REAL')) then
-        NewField.FieldType := mfDouble
-      else if (SQLParseKeyword(Parse, 'TEXT')) then
-        NewField.FieldType := mfLongText
-      else if (SQLParseKeyword(Parse, 'BLOB')) then
-        NewField.FieldType := mfLongBlob
-      else
-        raise EConvertError.CreateFmt(SSourceParseError, [Item.TableName, 3, SQL]);
+        NewField := TCBaseTableField.Create(NewTable.Fields);
+        NewField.Name := Name;
+        if (SQLParseKeyword(Parse, 'INTEGER PRIMARY KEY')) then
+        begin
+          Primary := True;
+          NewField.FieldType := mfBigInt;
+          NewField.Unsigned := False;
+          NewField.AutoIncrement := SQLParseKeyword(Parse, 'AUTOINCREMENT');
+        end
+        else if (SQLParseKeyword(Parse, 'INTEGER')) then
+          NewField.FieldType := mfBigInt
+        else if (SQLParseKeyword(Parse, 'REAL')) then
+          NewField.FieldType := mfDouble
+        else if (SQLParseKeyword(Parse, 'TEXT')) then
+          NewField.FieldType := mfLongText
+        else if (SQLParseKeyword(Parse, 'BLOB')) then
+          NewField.FieldType := mfLongBlob
+        else
+          raise EConvertError.CreateFmt(SSourceParseError, [Item.TableName, 3, SQL]);
 
-      if (SQLParseChar(Parse, '(')) then
-      begin
-        if (TryStrToInt(SQLParseValue(Parse), I)) then
-          NewField.Size := I;
-        if (SQLParseChar(Parse, ',')) then
+        if (SQLParseChar(Parse, '(')) then
+        begin
           if (TryStrToInt(SQLParseValue(Parse), I)) then
-            NewField.Decimals := I;
-        SQLParseChar(Parse, ')');
-      end;
+            NewField.Size := I;
+          if (SQLParseChar(Parse, ',')) then
+            if (TryStrToInt(SQLParseValue(Parse), I)) then
+              NewField.Decimals := I;
+          SQLParseChar(Parse, ')');
+        end;
 
-      // Ignore all further field properties like keys and foreign keys
-      while (not SQLParseChar(Parse, ',', False) and not SQLParseChar(Parse, ')', False) and (SQLParseGetIndex(Parse) <= Length(SQL))) do
-        SQLParseValue(Parse);
+        // Ignore all further field properties like keys and foreign keys
+        while (not SQLParseChar(Parse, ',', False) and not SQLParseChar(Parse, ')', False) and (SQLParseGetIndex(Parse) <= Length(SQL))) do
+          SQLParseValue(Parse);
 
-      if (NewTable.Fields.Count > 0) then
-        NewField.FieldBefore := NewTable.Fields[NewTable.Fields.Count - 1];
-      NewTable.Fields.AddField(NewField);
-      NewField.Free();
+        if (NewTable.Fields.Count > 0) then
+          NewField.FieldBefore := NewTable.Fields[NewTable.Fields.Count - 1];
+        NewTable.Fields.AddField(NewField);
+        NewField.Free();
 
-      if (Primary) then
-      begin
-        NewKey := TCKey.Create(NewTable.Keys);
-        NewKey.Primary := True;
-        NewKeyColumn := TCKeyColumn.Create(NewKey.Columns);
-        NewKeyColumn.Field := TCBaseTableField(NewTable.Fields[NewTable.Fields.Count - 1]);
-        NewKeyColumn.Ascending := True;
-        NewKey.Columns.AddColumn(NewKeyColumn);
-        NewKeyColumn.Free();
-        NewTable.Keys.AddKey(NewKey);
-        NewKey.Free();
-      end;
-    until (not SQLParseChar(Parse, ',') and SQLParseChar(Parse, ')'));
+        if (Primary) then
+        begin
+          NewKey := TCKey.Create(NewTable.Keys);
+          NewKey.Primary := True;
+          NewKeyColumn := TCKeyColumn.Create(NewKey.Columns);
+          NewKeyColumn.Field := TCBaseTableField(NewTable.Fields[NewTable.Fields.Count - 1]);
+          NewKeyColumn.Ascending := True;
+          NewKey.Columns.AddColumn(NewKeyColumn);
+          NewKeyColumn.Free();
+          NewTable.Keys.AddKey(NewKey);
+          NewKey.Free();
+        end;
+      until (not SQLParseChar(Parse, ',') and SQLParseChar(Parse, ')'));
+    end;
   end;
   SQLiteException(Handle, sqlite3_finalize(Stmt));
 
   if (Assigned(NewTable)) then
   begin
-    RBS := UTF8Encode('SELECT "sql" FROM "sqlite_master" WHERE type=''index'';');
+    RBS := UTF8Encode('SELECT "sql" FROM "sqlite_master" WHERE type=''index''');
     SQLiteException(Handle, sqlite3_prepare_v2(Handle, PAnsiChar(RBS), -1, @Stmt, nil));
     while (sqlite3_step(Stmt) = SQLITE_ROW) do
     begin
@@ -4116,15 +4136,14 @@ begin
       end;
     else
       begin
-        BytesToWrite := WideCharToMultiByte(CodePage, 0, ContentBuffer.Buffer, ContentBuffer.Size, nil, 0, nil, nil);
+        BytesToWrite := WideCharToAnsiChar(CodePage, ContentBuffer.Buffer, ContentBuffer.Size, nil, 0);
         if (BytesToWrite > FileBuffer.Size) then
         begin
           FileBuffer.Size := BytesToWrite;
           ReallocMem(FileBuffer.Mem, FileBuffer.Size);
         end;
         Buffer := FileBuffer.Mem;
-        if (BytesToWrite > 0) then
-          WideCharToMultiByte(CodePage, 0, ContentBuffer.Buffer, ContentBuffer.Size, Buffer, BytesToWrite, nil, nil);
+        WideCharToAnsiChar(CodePage, ContentBuffer.Buffer, ContentBuffer.Size, Buffer, BytesToWrite);
       end;
   end;
 
@@ -4408,10 +4427,10 @@ begin
     end;
 
     SQLInsertPrefix := SQLInsertPrefix + ' VALUES ';
-    SQLInsertPrefixPacketLen := SizeOf(COM_QUERY) + WideCharToMultiByte(Client.CodePage, 0, PChar(SQLInsertPrefix), Length(SQLInsertPrefix), nil, 0, nil, nil);
+    SQLInsertPrefixPacketLen := SizeOf(COM_QUERY) + WideCharToAnsiChar(Client.CodePage, PChar(SQLInsertPrefix), Length(SQLInsertPrefix), nil, 0);
 
     SQLInsertPostfix := ';' + #13#10;
-    SQLInsertPrefixPacketLen := WideCharToMultiByte(Client.CodePage, 0, PChar(SQLInsertPostfix), Length(SQLInsertPostfix), nil, 0, nil, nil);
+    SQLInsertPrefixPacketLen := WideCharToAnsiChar(Client.CodePage, PChar(SQLInsertPostfix), Length(SQLInsertPostfix), nil, 0);
 
     SQLInsertPacketLen := 0;
   end;
@@ -4431,7 +4450,7 @@ begin
   end;
   Values := Values + ')';
 
-  ValuesPacketLen := WideCharToMultiByte(Client.CodePage, 0, PChar(Values), Length(Values), nil, 0, nil, nil);
+  ValuesPacketLen := WideCharToAnsiChar(Client.CodePage, PChar(Values), Length(Values), nil, 0);
 
   if ((SQLInsertPacketLen > 0) and (SQLInsertPacketLen + ValuesPacketLen + SQLInsertPostfixPacketLen >= SQLPacketSize)) then
   begin
@@ -5732,14 +5751,11 @@ begin
           end;
         ftWideString:
           begin
-            Parameter[I].Size := Min(Parameter[I].BufferSize, MultiByteToWideChar(Client.CodePage, 0,
-              DataSet.LibRow^[I], DataSet.LibLengths^[I], nil, 0) * SizeOf(Char));
-            MultiByteToWideChar(Client.CodePage, 0,
-              DataSet.LibRow^[I], DataSet.LibLengths^[I], Parameter[I].Buffer, Parameter[I].Size div SizeOf(Char));
+            Parameter[I].Size := Min(Parameter[I].BufferSize, MultiByteToWideChar(Client.CodePage, 0, DataSet.LibRow^[I], DataSet.LibLengths^[I], nil, 0) * SizeOf(Char));
+            MultiByteToWideChar(Client.CodePage, 0, DataSet.LibRow^[I], DataSet.LibLengths^[I], Parameter[I].Buffer, Parameter[I].Size div SizeOf(Char));
           end;
         ftWideMemo:
-          Parameter[I].Size := SQL_LEN_DATA_AT_EXEC(MultiByteToWideChar(Client.CodePage, 0,
-            DataSet.LibRow^[I], DataSet.LibLengths^[I], nil, 0) * SizeOf(Char));
+          Parameter[I].Size := SQL_LEN_DATA_AT_EXEC(MultiByteToWideChar(Client.CodePage, 0, DataSet.LibRow^[I], DataSet.LibLengths^[I], nil, 0) * SizeOf(Char));
         ftBlob:
           Parameter[I].Size := SQL_LEN_DATA_AT_EXEC(DataSet.LibLengths^[I]);
         else
@@ -6047,7 +6063,7 @@ begin
     if (I > 0) then SQL := SQL + ',';
     SQL := SQL + '?' + IntToStr(1 + I)
   end;
-  SQL := SQL + ');';
+  SQL := SQL + ')';
   SQLiteException(Handle, sqlite3_prepare_v2(Handle, PAnsiChar(UTF8Encode(SQL)), -1, @Stmt, nil));
 
   SetLength(Text, Length(Fields));

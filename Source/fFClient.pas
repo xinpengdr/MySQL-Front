@@ -5272,42 +5272,6 @@ var
 begin
   inherited;
 
-  if (not StyleServices.Enabled and not CheckWin32Version(6)) then
-  begin
-    PNavigator.BevelInner := bvRaised; PNavigator.BevelOuter := bvLowered;
-    PBookmarks.BevelInner := bvRaised; PBookmarks.BevelOuter := bvLowered;
-    PExplorer.BevelInner := bvRaised; PExplorer.BevelOuter := bvLowered;
-    PSQLHistory.BevelInner := bvRaised; PSQLHistory.BevelOuter := bvLowered;
-    PFolders.BevelInner := bvRaised; PFolders.BevelOuter := bvLowered;
-    PFiles.BevelInner := bvRaised; PFiles.BevelOuter := bvLowered;
-    PListView.BevelInner := bvRaised; PListView.BevelOuter := bvLowered;
-    PBuilderQuery.BevelInner := bvRaised; PBuilderQuery.BevelOuter := bvLowered;
-    PSynMemo.BevelInner := bvRaised; PSynMemo.BevelOuter := bvLowered;
-    PWorkbench.BevelInner := bvRaised; PWorkbench.BevelOuter := bvLowered;
-    PDBGrid.BevelInner := bvRaised; PDBGrid.BevelOuter := bvLowered;
-    PBlob.BevelInner := bvRaised; PBlob.BevelOuter := bvLowered;
-    PLog.BevelInner := bvRaised; PLog.BevelOuter := bvLowered;
-
-    TBSideBar.BorderWidth := 1;
-    ToolBar.BorderWidth := 1;
-  end
-  else
-  begin
-    PNavigator.BevelInner := bvNone; PNavigator.BevelOuter := bvNone;
-    PBookmarks.BevelInner := bvNone; PBookmarks.BevelOuter := bvNone;
-    PExplorer.BevelInner := bvNone; PExplorer.BevelOuter := bvNone;
-    PFolders.BevelInner := bvNone; PNavigator.BevelOuter := bvNone;
-    PFiles.BevelInner := bvNone; PFiles.BevelOuter := bvNone;
-    PSQLHistory.BevelInner := bvNone; PSQLHistory.BevelOuter := bvNone;
-    PListView.BevelInner := bvNone; PListView.BevelOuter := bvNone;
-    PBuilderQuery.BevelInner := bvNone; PBuilderQuery.BevelOuter := bvNone;
-    PSynMemo.BevelInner := bvNone; PSynMemo.BevelOuter := bvNone;
-    PWorkbench.BevelInner := bvNone; PWorkbench.BevelOuter := bvNone;
-    PDBGrid.BevelInner := bvNone; PDBGrid.BevelOuter := bvNone;
-    PBlob.BevelInner := bvNone; PBlob.BevelOuter := bvNone;
-    PLog.BevelInner := bvNone; PLog.BevelOuter := bvNone;
-  end;
-
   TBSideBar.Left := 0;
   TBSideBar.Top := 0;
   TBSideBar.ButtonHeight := TBSideBar.Images.Height + 6; TBSideBar.ButtonWidth := TBSideBar.Images.Width + 7;
@@ -5316,13 +5280,6 @@ begin
   PToolBar.AutoSize := False;
   ToolBar.ButtonHeight := ToolBar.Images.Height + 6; ToolBar.ButtonWidth := ToolBar.Images.Width + 7;
   PToolBar.AutoSize := True;
-
-  SetWindowLong(ListView_GetHeader(FServerListView.Handle), GWL_STYLE, GetWindowLong(ListView_GetHeader(FServerListView.Handle), GWL_STYLE) or HDS_DRAGDROP);
-
-  if (not StyleServices.Enabled) then
-    PObjectIDESpacer.Color := clBtnFace
-  else
-    PObjectIDESpacer.Color := clActiveBorder;
 
   if (Assigned(Client)) then
   begin
@@ -5478,11 +5435,6 @@ begin
   TBFilterEnabled.Images := Preferences.SmallImages;
   FServerListView.SmallImages := Preferences.SmallImages;
 
-  Node := FNavigator.Items.Add(nil, Client.Caption);
-  Node.Data := Client;
-  Node.HasChildren := True;
-  Node.ImageIndex := iiServer;
-
   FUDOffset.HandleNeeded();
   FOffset.HandleNeeded();
   FUDLimit.HandleNeeded();
@@ -5631,14 +5583,57 @@ begin
   smECopyToFile.Action := MainAction('aECopyToFile');
   smESelectAll.Action := MainAction('aESelectAll');
 
+
+  if (not StyleServices.Enabled and not CheckWin32Version(6)) then
+  begin
+    PNavigator.BevelInner := bvRaised; PNavigator.BevelOuter := bvLowered;
+    PBookmarks.BevelInner := bvRaised; PBookmarks.BevelOuter := bvLowered;
+    PExplorer.BevelInner := bvRaised; PExplorer.BevelOuter := bvLowered;
+    PSQLHistory.BevelInner := bvRaised; PSQLHistory.BevelOuter := bvLowered;
+    PFolders.BevelInner := bvRaised; PFolders.BevelOuter := bvLowered;
+    PFiles.BevelInner := bvRaised; PFiles.BevelOuter := bvLowered;
+    PListView.BevelInner := bvRaised; PListView.BevelOuter := bvLowered;
+    PBuilderQuery.BevelInner := bvRaised; PBuilderQuery.BevelOuter := bvLowered;
+    PSynMemo.BevelInner := bvRaised; PSynMemo.BevelOuter := bvLowered;
+    PWorkbench.BevelInner := bvRaised; PWorkbench.BevelOuter := bvLowered;
+    PDBGrid.BevelInner := bvRaised; PDBGrid.BevelOuter := bvLowered;
+    PBlob.BevelInner := bvRaised; PBlob.BevelOuter := bvLowered;
+    PLog.BevelInner := bvRaised; PLog.BevelOuter := bvLowered;
+
+    TBSideBar.BorderWidth := 1;
+    ToolBar.BorderWidth := 1;
+  end
+  else
+  begin
+    PNavigator.BevelInner := bvNone; PNavigator.BevelOuter := bvNone;
+    PBookmarks.BevelInner := bvNone; PBookmarks.BevelOuter := bvNone;
+    PExplorer.BevelInner := bvNone; PExplorer.BevelOuter := bvNone;
+    PFolders.BevelInner := bvNone; PNavigator.BevelOuter := bvNone;
+    PFiles.BevelInner := bvNone; PFiles.BevelOuter := bvNone;
+    PSQLHistory.BevelInner := bvNone; PSQLHistory.BevelOuter := bvNone;
+    PListView.BevelInner := bvNone; PListView.BevelOuter := bvNone;
+    PBuilderQuery.BevelInner := bvNone; PBuilderQuery.BevelOuter := bvNone;
+    PSynMemo.BevelInner := bvNone; PSynMemo.BevelOuter := bvNone;
+    PWorkbench.BevelInner := bvNone; PWorkbench.BevelOuter := bvNone;
+    PDBGrid.BevelInner := bvNone; PDBGrid.BevelOuter := bvNone;
+    PBlob.BevelInner := bvNone; PBlob.BevelOuter := bvNone;
+    PLog.BevelInner := bvNone; PLog.BevelOuter := bvNone;
+  end;
+
   FNavigator.RowSelect := CheckWin32Version(6, 1);
   FSQLHistory.RowSelect := CheckWin32Version(6, 1);
+
+  Node := FNavigator.Items.Add(nil, Client.Caption);
+  Node.Data := Client;
+  Node.HasChildren := True;
+  Node.ImageIndex := iiServer;
 
   PListView.Align := alClient;
   PSynMemo.Align := alClient;
   PBuilder.Align := alClient;
 
   FServerListView.RowSelect := CheckWin32Version(6);
+  SetWindowLong(ListView_GetHeader(FServerListView.Handle), GWL_STYLE, GetWindowLong(ListView_GetHeader(FServerListView.Handle), GWL_STYLE) or HDS_DRAGDROP);
 
   FSQLEditorSynMemo.Highlighter := MainHighlighter;
   FBuilderSynMemo.Highlighter := MainHighlighter;
@@ -5648,6 +5643,11 @@ begin
   GIFImage := TGIFImage.Create();
   PNGImage := TPNGImage.Create();
   JPEGImage := TJPEGImage.Create();
+
+  if (not StyleServices.Enabled) then
+    PObjectIDESpacer.Color := clBtnFace
+  else
+    PObjectIDESpacer.Color := clActiveBorder;
 
   NavigatorElapse := 0;
   MovingToAddress := False;

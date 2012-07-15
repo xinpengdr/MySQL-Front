@@ -4,7 +4,7 @@ object WWindow: TWWindow
   Caption = 'WWindow'
   ClientHeight = 459
   ClientWidth = 691
-  Color = clWindow
+  Color = clBtnFace
   Constraints.MinHeight = 485
   Constraints.MinWidth = 560
   DoubleBuffered = True
@@ -28,25 +28,27 @@ object WWindow: TWWindow
   TextHeight = 14
   object PWorkSpace: TPanel_Ext
     Left = 0
-    Top = 113
+    Top = 102
     Width = 691
-    Height = 325
+    Height = 336
     Align = alClient
     BevelOuter = bvNone
     Color = clAppWorkSpace
     ParentBackground = False
     TabOrder = 5
+    ExplicitTop = 104
+    ExplicitHeight = 334
   end
   object TabControl: TTabControl
     Left = 0
-    Top = 85
+    Top = 74
     Width = 691
     Height = 28
     Align = alTop
     OwnerDraw = True
     PopupMenu = MTabControl
     TabHeight = 23
-    TabOrder = 2
+    TabOrder = 1
     TabStop = False
     Visible = False
     OnChange = TabControlChange
@@ -63,29 +65,37 @@ object WWindow: TWWindow
     OnResize = TabControlResize
     OnStartDrag = TabControlStartDrag
   end
-  object PAddressBar: TPanel_Ext
+  object CAddressBar: TCoolBar
     Left = 0
-    Top = 56
+    Top = 52
     Width = 691
-    Height = 29
-    Align = alTop
+    Height = 22
     AutoSize = True
-    BevelOuter = bvNone
-    ParentBackground = False
-    TabOrder = 1
+    BandBorderStyle = bsNone
+    BandMaximize = bmNone
+    Bands = <
+      item
+        Break = False
+        Control = TBAddressBar
+        FixedSize = True
+        ImageIndex = -1
+        MinHeight = 22
+        Width = 692
+      end>
+    EdgeInner = esNone
+    EdgeOuter = esNone
     Visible = False
     object TBAddressBar: TToolBar
-      Left = 0
+      Left = 1
       Top = 0
       Width = 691
+      Height = 22
       AutoSize = True
-      BorderWidth = 2
-      EdgeBorders = [ebBottom]
       TabOrder = 0
-      Transparent = False
+      Transparent = True
       OnResize = TBAddressBarResize
       DesignSize = (
-        683
+        691
         22)
       object tbPrev: TToolButton
         Left = 0
@@ -162,25 +172,33 @@ object WWindow: TWWindow
     ParentFont = True
     UseSystemFont = False
   end
-  object PToolBar: TPanel_Ext
+  object CToolBar: TCoolBar
     Left = 0
     Top = 0
     Width = 691
-    Height = 56
-    Align = alTop
+    Height = 52
     AutoSize = True
-    BevelOuter = bvNone
-    ParentBackground = False
-    TabOrder = 0
+    BandBorderStyle = bsNone
+    BandMaximize = bmNone
+    Bands = <
+      item
+        Break = False
+        Control = ToolBar
+        FixedSize = True
+        ImageIndex = -1
+        MinHeight = 52
+        Width = 691
+      end>
+    EdgeInner = esNone
+    EdgeOuter = esNone
     object ToolBar: TToolBar
       Left = 0
       Top = 0
       Width = 691
-      Height = 56
+      Height = 52
       AutoSize = True
-      EdgeBorders = [ebTop, ebBottom]
       TabOrder = 0
-      Transparent = False
+      Transparent = True
       object tbVRefresh: TToolButton
         Left = 0
         Top = 0
@@ -480,7 +498,7 @@ object WWindow: TWWindow
     Width = 561
     Height = 22
     Align = alNone
-    TabOrder = 3
+    TabOrder = 0
     Transparent = False
     Visible = False
     object tcOpenAccount: TToolButton
