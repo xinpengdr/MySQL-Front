@@ -2,7 +2,7 @@ object WWindow: TWWindow
   Left = 387
   Top = 161
   Caption = 'WWindow'
-  ClientHeight = 459
+  ClientHeight = 460
   ClientWidth = 691
   Color = clBtnFace
   Constraints.MinHeight = 485
@@ -30,14 +30,13 @@ object WWindow: TWWindow
     Left = 0
     Top = 102
     Width = 691
-    Height = 336
+    Height = 337
     Align = alClient
     BevelOuter = bvNone
     Color = clAppWorkSpace
     ParentBackground = False
     TabOrder = 5
-    ExplicitTop = 104
-    ExplicitHeight = 334
+    ExplicitHeight = 336
   end
   object TabControl: TTabControl
     Left = 0
@@ -70,7 +69,6 @@ object WWindow: TWWindow
     Top = 52
     Width = 691
     Height = 22
-    AutoSize = True
     BandBorderStyle = bsNone
     BandMaximize = bmNone
     Bands = <
@@ -80,17 +78,17 @@ object WWindow: TWWindow
         FixedSize = True
         ImageIndex = -1
         MinHeight = 22
-        Width = 692
+        Width = 691
       end>
     EdgeInner = esNone
     EdgeOuter = esNone
     Visible = False
     object TBAddressBar: TToolBar
-      Left = 1
+      Left = 0
       Top = 0
       Width = 691
       Height = 22
-      AutoSize = True
+      GradientEndColor = 14079702
       TabOrder = 0
       Transparent = True
       OnResize = TBAddressBarResize
@@ -144,7 +142,7 @@ object WWindow: TWWindow
   end
   object StatusBar: TStatusBar
     Left = 0
-    Top = 438
+    Top = 439
     Width = 691
     Height = 21
     Panels = <
@@ -171,6 +169,7 @@ object WWindow: TWWindow
       end>
     ParentFont = True
     UseSystemFont = False
+    ExplicitTop = 438
   end
   object CToolBar: TCoolBar
     Left = 0
@@ -197,6 +196,7 @@ object WWindow: TWWindow
       Width = 691
       Height = 52
       AutoSize = True
+      GradientEndColor = 14079702
       TabOrder = 0
       Transparent = True
       object tbVRefresh: TToolButton
@@ -498,6 +498,7 @@ object WWindow: TWWindow
     Width = 561
     Height = 22
     Align = alNone
+    GradientEndColor = 14079702
     TabOrder = 0
     Transparent = False
     Visible = False

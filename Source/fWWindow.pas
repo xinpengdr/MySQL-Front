@@ -1357,6 +1357,28 @@ begin
     ToolBar.BorderWidth := 2;
     TBAddressBar.BorderWidth := 2;
   end;
+
+  if (Assigned(ToolBar.Images) and Assigned(TBAddressBar.Images)) then
+  begin
+    // Recalculate height of Toolbars:
+    CToolBar.AutoSize := False;
+    ToolBar.AutoSize := False;
+    ToolBar.ButtonHeight := 0;
+    ToolBar.ButtonHeight := ToolBar.Images.Height + 6;
+    ToolBar.ButtonWidth := ToolBar.Images.Width + 7;
+    ToolBar.AutoSize := True;
+    CToolBar.AutoSize := True;
+
+    CAddressBar.AutoSize := False;
+    TBAddressBar.AutoSize := False;
+    TBAddressBar.ButtonHeight := 0;
+    TBAddressBar.ButtonHeight := TBAddressBar.Images.Height + 6;
+    TBAddressBar.ButtonWidth := TBAddressBar.Images.Width + 7;
+    if (TBAddressBar.ClientHeight < FAddress.Height) then
+      TBAddressBar.ClientHeight := FAddress.Height;
+    CAddressBar.ClientHeight := TBAddressBar.Height;
+  end;
+
   for I := 0 to TabControl.Tabs.Count - 1 do
     TabControl.Tabs[I] := TabCaption(Trim(TabControl.Tabs[I]));
 end;

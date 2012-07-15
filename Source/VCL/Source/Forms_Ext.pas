@@ -85,14 +85,7 @@ begin
       if (Control.Controls[I] is TWinControl) then
         ApplyWinAPIUpdates(TWinControl(Control.Controls[I]), StatusFont);
 
-  if (Control is TListView) then
-  begin
-    if (CheckWin32Version(6,1)) then
-      SendMessage(Control.Handle, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_JUSTIFYCOLUMNS, LVS_EX_JUSTIFYCOLUMNS);
-    SendMessage(Control.Handle, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
-    SendMessage(Control.Handle, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_COLUMNSNAPPOINTS, LVS_EX_COLUMNSNAPPOINTS);
-  end
-  else if (Control is TTreeView) then
+  if (Control is TTreeView) then
   begin
     if ((ComCtl32MajorVersion > 4) or (ComCtl32MinorVersion >= 71)) then
       SendMessage(Control.Handle, TVM_SETITEMHEIGHT, GetSystemMetrics(SM_CYSMICON) + 4, 0);
@@ -101,6 +94,13 @@ begin
       SetWindowLong(Control.Handle, GWL_STYLE, GetWindowLong(Control.Handle, GWL_STYLE) or TVS_NOHSCROLL);
       SendMessage(Control.Handle, TVM_SETEXTENDEDSTYLE, TVS_EX_AUTOHSCROLL or TVS_EX_FADEINOUTEXPANDOS or TVS_EX_DOUBLEBUFFER, TVS_EX_AUTOHSCROLL or TVS_EX_FADEINOUTEXPANDOS or TVS_EX_DOUBLEBUFFER);
     end;
+  end
+  else if (Control is TListView) then
+  begin
+    if (CheckWin32Version(6,1)) then
+      SendMessage(Control.Handle, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_JUSTIFYCOLUMNS, 0);
+    SendMessage(Control.Handle, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+    SendMessage(Control.Handle, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_COLUMNSNAPPOINTS, LVS_EX_COLUMNSNAPPOINTS);
   end
   else if (Control is TUpDown) then
   begin

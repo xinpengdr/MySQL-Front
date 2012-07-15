@@ -2720,7 +2720,11 @@ begin
       AllowChange := False;
   end;
 
-  if (AllowChange) then
+  if (not AllowChange) then
+begin
+MsgBox('Wrong format', 'Debug', MB_OK + MB_ICONINFORMATION);
+end
+else
   begin
     if (not Client.Update() and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
       AllowChange := False
@@ -2738,7 +2742,10 @@ begin
     begin
       Database := Client.DatabaseByName(URI.Database);
       if (not Assigned(Database)) then
-        NotFound := True
+begin
+        NotFound := True;
+MsgBox('Not Found (1)', 'Debug', MB_OK + MB_ICONINFORMATION);
+end
       else if (not Database.Update((URI.Table = '') and (URI.Param['object'] = Null) and (URI.Param['view'] = NULL)) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
         AllowChange := False
       else if ((URI.Table <> '') or (URI.Param['object'] <> Null)) then
@@ -2757,11 +2764,17 @@ begin
           DBObject := nil;
 
         if (not Assigned(DBObject)) then
-          NotFound := True
+begin
+          NotFound := True;
+MsgBox('Not Found (2)', 'Debug', MB_OK + MB_ICONINFORMATION);
+end
         else if (not DBObject.Update()) then
           AllowChange := False
         else if ((URI.Param['objecttype'] = 'trigger') and (URI.Param['object'] <> Null) and not Assigned(Database.TriggerByName(URI.Param['object']))) then
-          NotFound := True
+begin
+          NotFound := True;
+MsgBox('Not Found (3)', 'Debug', MB_OK + MB_ICONINFORMATION);
+end;
       end;
     end;
 
@@ -2776,14 +2789,14 @@ begin
 
   URI.Free();
 
-  if (AllowChange and Assigned(ActiveDBGrid) and Assigned(ActiveDBGrid.DataSource.DataSet) and ActiveDBGrid.DataSource.DataSet.Active) then
-    try
-      if ((Window.ActiveControl = FText) or (Window.ActiveControl = FRTF) or (Window.ActiveControl = FHexEditor)) then
-        Window.ActiveControl := ActiveDBGrid;
-      ActiveDBGrid.DataSource.DataSet.CheckBrowseMode();
-    except
-      AllowChange := False;
-    end;
+//  if (AllowChange and Assigned(ActiveDBGrid) and Assigned(ActiveDBGrid.DataSource.DataSet) and ActiveDBGrid.DataSource.DataSet.Active) then
+//    try
+//      if ((Window.ActiveControl = FText) or (Window.ActiveControl = FRTF) or (Window.ActiveControl = FHexEditor)) then
+//        Window.ActiveControl := ActiveDBGrid;
+//      ActiveDBGrid.DataSource.DataSet.CheckBrowseMode();
+//    except
+//      AllowChange := False;
+//    end;
 
   if (AllowChange) then
     if (Assigned(Window.ActiveControl) and IsChild(PContent.Handle, Window.ActiveControl.Handle)) then
@@ -9756,7 +9769,7 @@ procedure TFClient.ListViewAdvancedCustomDrawItem(
   Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
   Stage: TCustomDrawStage; var DefaultDraw: Boolean);
 begin
-  if ((Stage = cdPrePaint) and not (csDestroying in ComponentState) and Assigned(Item)
+  if ((Stage = cdPrePaint) and Assigned(Item)
     and ((Item.ImageIndex = iiKey) and TCKey(Item.Data).Primary or (Item.ImageIndex = iiField) and TCTableField(Item.Data).InPrimaryKey)) then
     Sender.Canvas.Font.Style := [fsBold]
   else
@@ -13041,6 +13054,10 @@ begin
   FQuickSearch.Left := TBQuickSearchEnabled.Left - FQuickSearch.Width;
   TBFilterEnabled.Left := FQuickSearch.Left - TBFilterEnabled.Width;
   FFilter.Width := TBFilterEnabled.Left - FFilter.Left;
+
+  FQuickSearch.Height := FFilter.Height;
+
+  PDataBrowser.ClientHeight := FFilter.Height;
 end;
 
 procedure TFClient.PGridResize(Sender: TObject);
