@@ -7026,7 +7026,7 @@ begin
 
     if (Success = daSuccess) then
     begin
-      SourceDataSet := TMySQLDataSet.Create(nil);
+      SourceDataSet := TMySQLQuery.Create(nil);
       SourceDataSet.Connection := Source.Client;
       SourceDataSet.Open(DataHandle);
 

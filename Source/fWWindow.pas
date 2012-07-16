@@ -1604,7 +1604,7 @@ begin
   if (IsWine()) then
     DataFields.Add('Wine=Yes');
 
-  if (Assigned(ActiveTab)) then
+  if (not Assigned(ActiveTab)) then
   begin
     for I := 0 to Clients.Count - 1 do
     begin
@@ -1625,6 +1625,8 @@ begin
     end;
     Log.Free();
   end;
+
+  DataFields.Add('System CodePage=' + IntToStr(GetACP()));
 end;
 
 procedure TWWindow.EurekaLogExceptionNotify(

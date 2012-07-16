@@ -36,7 +36,6 @@ object WWindow: TWWindow
     Color = clAppWorkSpace
     ParentBackground = False
     TabOrder = 5
-    ExplicitHeight = 336
   end
   object TabControl: TTabControl
     Left = 0
@@ -169,7 +168,6 @@ object WWindow: TWWindow
       end>
     ParentFont = True
     UseSystemFont = False
-    ExplicitTop = 438
   end
   object CToolBar: TCoolBar
     Left = 0
