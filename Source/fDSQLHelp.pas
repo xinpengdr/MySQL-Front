@@ -40,7 +40,7 @@ type
     CM_SEND_SQL = WM_USER + 300;
   private
     ManualURL: string;
-    function ClientResult(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+    function ClientResult(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean;
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
     procedure CMSendSQL(var Message: TMessage); message CM_SEND_SQL;
     procedure CMSysFontChanged(var Message: TMessage); message CM_SYSFONTCHANGED;
@@ -79,15 +79,14 @@ end;
 
 { TDSQLHelp *******************************************************************}
 
-function TDSQLHelp.ClientResult(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+function TDSQLHelp.ClientResult(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean;
 var
   DataSet: TMySQLQuery;
 begin
-  if (Connection.ErrorCode = 0) then
+  if (Data) then
   begin
     DataSet := TMySQLQuery.Create(Owner);
-    DataSet.Connection := Connection;
-    DataSet.Open();
+    DataSet.Open(DataHandle);
 
     if (Assigned(DataSet.FindField('description')) and not DataSet.IsEmpty()) then
     begin

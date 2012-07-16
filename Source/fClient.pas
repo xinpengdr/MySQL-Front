@@ -463,7 +463,6 @@ type
   TCTable = class(TCDBObject)
   private
     FFields: TCTableFields;
-    FOnResult: TMySQLConnection.TResultEvent;
     function GetDataSet(): TCTableDataSet;
     function GetTables(): TCTables; inline;
     function GetValidDataSet(): Boolean;
@@ -474,7 +473,6 @@ type
     FSourceParsed: Boolean;
     function GetFields(): TCTableFields; virtual;
     function GetInServerCache(): Boolean; virtual;
-    function OpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean; virtual;
     procedure SetName(const AName: string); override;
     property SourceParsed: Boolean read FSourceParsed;
   public
@@ -487,7 +485,7 @@ type
     function GetSourceEx(const DropBeforeCreate: Boolean = False; const EncloseDefiner: Boolean = True; const ForeignKeysSource: PString = nil): string; override;
     procedure Invalidate(); override;
     procedure InvalidateData(); virtual;
-    procedure Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer; const AOnResult: TMySQLConnection.TResultEvent); virtual;
+    procedure Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer); virtual;
     procedure PushBuildEvent(); override;
     property DataSet: TCTableDataSet read GetDataSet;
     property Fields: TCTableFields read GetFields;
@@ -1387,13 +1385,12 @@ type
     function GetUserRights(): TCUserRight;
     function GetValid(): Boolean;
   protected
-    CachedTables: array of TCTable;
     FLowerCaseTableNames: Byte;
     FMaxAllowedPacket: Integer;
     procedure DoAfterExecuteSQL(); override;
     procedure DoBeforeExecuteSQL(); override;
     procedure BuildUser(const DataSet: TMySQLQuery); virtual;
-    function ClientResult(const Connection: TMySQLConnection; const Data: Boolean): Boolean; virtual;
+    function ClientResult(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean; virtual;
     procedure ExecuteEvent(const EventType: TEventType); overload; virtual;
     procedure ExecuteEvent(const EventType: TEventType; const Sender: TObject; const CItems: TCItems = nil; const CItem: TCEntity = nil); overload; virtual;
     function GetAutoCommit(): Boolean; override;
@@ -3158,8 +3155,6 @@ var
   I: Integer;
   Pos: Integer;
 begin
-  FCommandText := TableName;
-
   Result := 'SELECT * FROM ';
   if (DatabaseName <> '') then
     Result := Result + Connection.EscapeIdentifier(FDatabaseName) + '.';
@@ -3216,7 +3211,6 @@ begin
       RequestedRecordCount := RecordCount;
     Result := Result + IntToStr(RequestedRecordCount);
   end;
-  Result := Result + ';' + #13#10;
 end;
 
 { TCTable *********************************************************************}
@@ -3289,20 +3283,9 @@ begin
 end;
 
 destructor TCTable.Destroy();
-var
-  I: Integer;
-  J: Integer;
 begin
   if (Assigned(FDesktop)) then
     FDesktop.SaveToXML();
-
-  for I := Length(Database.Client.CachedTables) - 1 downto 0 do
-    if (Database.Client.CachedTables[I] = Self) then
-    begin
-      for J := I to Length(Database.Client.CachedTables) - 2 do
-        Database.Client.CachedTables[J] := Database.Client.CachedTables[J + 1];
-      SetLength(Database.Client.CachedTables, Length(Database.Client.CachedTables) - 1);
-    end;
 
   if (Assigned(FDataSet)) then
     FDataSet.Free();
@@ -3377,36 +3360,9 @@ begin
   raise EAbstractError.Create(SAbstractError);
 end;
 
-procedure TCTable.Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer; const AOnResult: TMySQLConnection.TResultEvent);
-var
-  CacheSize: Int64;
-  I: Integer;
-  J: Integer;
+procedure TCTable.Open(const FilterSQL, QuickSearch: string; const ASortDef: TIndexDef; const Offset: Integer; const Limit: Integer);
 begin
-  CacheSize := 0;
-  for I := Length(Database.Client.CachedTables) - 1 downto 0 do
-    if (Database.Client.CachedTables[I] <> Self) then
-      Inc(CacheSize, Database.Client.CachedTables[I].DataSet.DataSize)
-    else
-    begin
-      for J := I to Length(Database.Client.CachedTables) - 2 do
-        Database.Client.CachedTables[J] := Database.Client.CachedTables[J + 1];
-      SetLength(Database.Client.CachedTables, Length(Database.Client.CachedTables) - 1);
-    end;
-  while ((CacheSize div (1024 * 1024) >= 50) and (Length(Database.Client.CachedTables) > 0)) do
-  begin
-    CacheSize := 0;
-    FreeAndNil(Database.Client.CachedTables[0].FDataSet);
-    for J := 1 to Length(Database.Client.CachedTables) - 2 do
-    begin
-      Database.Client.CachedTables[J] := Database.Client.CachedTables[J + 1];
-      Inc(CacheSize, Database.Client.CachedTables[J].DataSet.DataSize);
-    end;
-    SetLength(Database.Client.CachedTables, Length(Database.Client.CachedTables) - 1);
-  end;
-
   FFilterSQL := FilterSQL;
-  FOnResult := AOnResult;
 
   DataSet.Close();
 
@@ -3418,17 +3374,7 @@ begin
 
   DataSet.Connection := Database.Client;
   DataSet.CommandText := Name;
-  DataSet.Open(OpenEvent);
-end;
-
-function TCTable.OpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
-begin
-  FOnResult(Connection, Data);
-
-  SetLength(Database.Client.CachedTables, Length(Database.Client.CachedTables) + 1);
-  Database.Client.CachedTables[Length(Database.Client.CachedTables) - 1] := Self;
-
-  Result := False;
+  DataSet.Open();
 end;
 
 procedure TCTable.SetName(const AName: string);
@@ -9976,7 +9922,7 @@ begin
         Result := Collations[I].Charset;
 end;
 
-function TCClient.ClientResult(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+function TCClient.ClientResult(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean;
 var
   Database: TCDatabase;
   DatabaseName: string;
@@ -9991,17 +9937,16 @@ begin
   Result := False;
 
   DataSet := TMySQLQuery.Create(nil);
-  DataSet.Connection := Connection;
 
   if (SQLCreateParse(Parse, PChar(CommandText), Length(CommandText), ServerVersion)) then
     if (SQLParseKeyword(Parse, 'SELECT')) then
     begin
-      DatabaseName := DataSet.DatabaseName;
+      DatabaseName := Self.DatabaseName;
       if (SQLParseChar(Parse, '*') and SQLParseKeyword(Parse, 'FROM') and SQLParseObjectName(Parse, DatabaseName, ObjectName)) then
       begin
         if (Databases.NameCmp(DatabaseName, information_schema) = 0) then
         begin
-          DataSet.Open();
+          DataSet.Open(DataHandle);
           if (TableNameCmp(ObjectName, 'CHARACTER_SETS') = 0) then
             Result := Charsets.Build(DataSet, True, not SQLParseEnd(Parse))
           else if (TableNameCmp(ObjectName, 'COLLATIONS') = 0) then
@@ -10071,7 +10016,7 @@ begin
         end
         else if (Databases.NameCmp(DatabaseName, 'mysql') = 0) then
         begin
-          DataSet.Open();
+          DataSet.Open(DataHandle);
           if (TableNameCmp(ObjectName, 'host') = 0) then
             Result := FHosts.Build(DataSet, False, not SQLParseEnd(Parse))
           else if (TableNameCmp(ObjectName, 'user') = 0) then
@@ -10086,13 +10031,13 @@ begin
             if (Assigned(Table.FDataSet) and not Table.FDataSet.Active) then
               Table.FDataSet.Open()
             else
-              DataSet.Open();
+              DataSet.Open(DataHandle);
           end;
         end;
       end
       else if (FCurrentUser = '') then
       begin
-        DataSet.Open();
+        DataSet.Open(DataHandle);
         Field := 0;
         repeat
           FunctionName := SQLParseValue(Parse);
@@ -10113,7 +10058,7 @@ begin
     end
     else if (SQLParseKeyword(Parse, 'SHOW')) then
     begin
-      DataSet.Open();
+      DataSet.Open(DataHandle);
       DatabaseName := DataSet.DatabaseName;
       if (SQLParseKeyword(Parse, 'CHARACTER SET')) then
         Result := Charsets.Build(DataSet, False, not SQLParseEnd(Parse))
@@ -10121,7 +10066,7 @@ begin
         Result := Collations.Build(DataSet, False, not SQLParseEnd(Parse))
       else if (SQLParseKeyword(Parse, 'CREATE')) then
       begin
-        if (Connection.ErrorCode = 0) then
+        if (DataSet.Active) then
           if (SQLParseKeyword(Parse, 'DATABASE')) then
             DatabaseByName(SQLParseValue(Parse)).SetSource(DataSet)
           else if (SQLParseKeyword(Parse, 'EVENT')) then
@@ -10289,7 +10234,6 @@ begin
   FMaxAllowedPacket := 0;
   FPerformanceSchema := nil;
   FAccount := AAccount;
-  SetLength(CachedTables, 0);
 
   if (not Assigned(AAccount)) then
   begin

@@ -711,7 +711,7 @@ type
       procedure CloseResult();
       constructor Create(const AFClient: TFClient);
       destructor Destroy(); override;
-      function ResultEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+      function ResultEvent(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean;
       property ActiveDBGrid: TMySQLDBGrid read GetActiveDBGrid;
     end;
 
@@ -737,7 +737,7 @@ type
       FWorkbench: TWWorkbench;
     public
       ListView: TListView;
-      function BuilderResultEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+      function BuilderResultEvent(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean;
       procedure CloseBuilderResult();
       procedure CloseQuery(Sender: TObject; var CanClose: Boolean);
       constructor Create(const AFClient: TFClient; const ADatabase: TCDatabase);
@@ -775,7 +775,7 @@ type
       constructor Create(const AFClient: TFClient; const ATable: TCTable);
       function CreateDBGrid(): TMySQLDBGrid; virtual;
       function CreateListView(): TListView; virtual;
-      function DataSetOpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+      procedure DataSetAfterOpen(DataSet: TDataSet);
       destructor Destroy(); override;
       property Filters[Index: Integer]: string read GetFilter;
       property FilterCount: Integer read GetFilterCount;
@@ -812,7 +812,7 @@ type
       constructor Create(const AFClient: TFClient; const ARoutine: TCRoutine);
       function CreateSynMemo(): TSynMemo; virtual;
       destructor Destroy(); override;
-      function IDEResultEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+      function IDEResultEvent(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean;
       property ActiveDBGrid: TMySQLDBGrid read GetActiveDBGrid;
     end;
 
@@ -1204,6 +1204,7 @@ begin
     begin
       FClient.FreeDBGrid(TResult(Results[I]^).DBGrid);
       TResult(Results[I]^).DataSource.Free();
+      TResult(Results[I]^).DataSet.Free();
       FreeMem(Results[I]);
     end;
     Results.Clear();
@@ -1241,7 +1242,7 @@ begin
     Result := TResult(Results[TCResult.TabIndex]^).DBGrid;
 end;
 
-function TFClient.TSQLEditor.ResultEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+function TFClient.TSQLEditor.ResultEvent(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean;
 var
   EndingCommentLength: Integer;
   Item: ^TResult;
@@ -1260,38 +1261,38 @@ begin
       XML.Attributes['type'] := 'statement'
     else
       XML.Attributes['type'] := 'query';
-    XML.AddChild('database').Text := Connection.DatabaseName;
-    XML.AddChild('datetime').Text := FloatToStr(Connection.DateTime, FileFormatSettings);
-    if (not Data and (Connection.RowsAffected >= 0)) then
-      XML.AddChild('rows_affected').Text := IntToStr(Connection.RowsAffected);
-    XML.AddChild('sql').Text := Connection.CommandText;
-    if (Connection.Info <> '') then
-      XML.AddChild('info').Text := Connection.Info;
-    XML.AddChild('execution_time').Text := FloatToStr(Connection.ExecutionTime, FileFormatSettings);
-    if (Connection.Connected and (Connection.InsertId > 0)) then
-      XML.AddChild('insert_id').Text := IntToStr(Connection.InsertId);
+    XML.AddChild('database').Text := DataHandle.Connection.DatabaseName;
+    XML.AddChild('datetime').Text := FloatToStr(DataHandle.Connection.DateTime, FileFormatSettings);
+    if (not Data and (DataHandle.Connection.RowsAffected >= 0)) then
+      XML.AddChild('rows_affected').Text := IntToStr(DataHandle.Connection.RowsAffected);
+    XML.AddChild('sql').Text := DataHandle.Connection.CommandText;
+    if (DataHandle.Connection.Info <> '') then
+      XML.AddChild('info').Text := DataHandle.Connection.Info;
+    XML.AddChild('execution_time').Text := FloatToStr(DataHandle.Connection.ExecutionTime, FileFormatSettings);
+    if (DataHandle.Connection.Connected and (DataHandle.Connection.InsertId > 0)) then
+      XML.AddChild('insert_id').Text := IntToStr(DataHandle.Connection.InsertId);
 
     while (FClient.Client.Account.HistoryXML.ChildNodes.Count > 100) do
       FClient.Client.Account.HistoryXML.ChildNodes.Delete(0);
     FClient.FSQLHistoryRefresh(nil);
   end;
 
-  if (Connection.ErrorCode > 0) then
+  if (DataHandle.Connection.ErrorCode > 0) then
   begin
-    if ((Connection.CommandText <> '') and (Length(FClient.FSQLEditorSynMemo.Text) > Length(Connection.CommandText) + 5)) then
+    if ((DataHandle.Connection.CommandText <> '') and (Length(FClient.FSQLEditorSynMemo.Text) > Length(DataHandle.Connection.CommandText) + 5)) then
     begin
-      Len := SQLStmtLength(Connection.CommandText);
-      SQLTrimStmt(Connection.CommandText, 1, Len, StartingCommentLength, EndingCommentLength);
-      FClient.FSQLEditorSynMemo.SelStart := FClient.aDRunExecuteSelStart + Connection.ExecutedSQLLength + StartingCommentLength;
+      Len := SQLStmtLength(DataHandle.Connection.CommandText);
+      SQLTrimStmt(DataHandle.Connection.CommandText, 1, Len, StartingCommentLength, EndingCommentLength);
+      FClient.FSQLEditorSynMemo.SelStart := FClient.aDRunExecuteSelStart + DataHandle.Connection.ExecutedSQLLength + StartingCommentLength;
       FClient.FSQLEditorSynMemo.SelLength := Len - StartingCommentLength - EndingCommentLength;
     end
   end
   else if (not Data) then
   begin
-    if (FClient.Client.Databases.NameCmp(Connection.DatabaseName, FClient.SelectedDatabase) <> 0) then
+    if (FClient.Client.Databases.NameCmp(DataHandle.Connection.DatabaseName, FClient.SelectedDatabase) <> 0) then
     begin
       URI := TUURI.Create(FClient.Address);
-      URI.Database := Connection.DatabaseName;
+      URI.Database := DataHandle.Connection.DatabaseName;
       FClient.Address := URI.Address;
       URI.Free();
     end;
@@ -1307,7 +1308,6 @@ begin
 
     GetMem(Item, SizeOf(TResult));
     TResult(Item^).DataSet := TMySQLDataSet.Create(FClient.Owner);
-    TResult(Item^).DataSet.Connection := Connection;
     TResult(Item^).DataSet.AfterOpen := FClient.DataSetAfterOpen;
     TResult(Item^).DataSource := TDataSource.Create(FClient.Owner);
     TResult(Item^).DataSource.Enabled := False;
@@ -1324,7 +1324,7 @@ begin
     end;
 
     FClient.ActiveDBGrid := TResult(Item^).DBGrid;
-    TResult(Item^).DataSet.Open();
+    TResult(Item^).DataSet.Open(DataHandle);
 
     FClient.SBResultRefresh(TResult(Item^).DataSet);
   end;
@@ -1352,12 +1352,11 @@ end;
 
 { TFClient.TDatabaseDesktop ***************************************************}
 
-function TFClient.TDatabaseDesktop.BuilderResultEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+function TFClient.TDatabaseDesktop.BuilderResultEvent(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean;
 begin
-  if ((Connection.ErrorCode = 0) and Data) then
+  if (Data) then
   begin
     DataSet := TMySQLDataSet.Create(FClient.Owner);
-    DataSet.Connection := Connection;
     DataSet.AfterOpen := FClient.DataSetAfterOpen;
 
     if (not Assigned(PDBGrid)) then
@@ -1372,7 +1371,7 @@ begin
       FDBGrid := FClient.CreateDBGrid(PDBGrid, DataSource);
 
     FClient.ActiveDBGrid := FDBGrid;
-    DataSet.Open();
+    DataSet.Open(DataHandle);
   end;
 
   Result := False;
@@ -1555,59 +1554,53 @@ begin
   Result := ListView;
 end;
 
-function TFClient.TTableDesktop.DataSetOpenEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+procedure TFClient.TTableDesktop.DataSetAfterOpen(DataSet: TDataSet);
 var
   Child: IXMLNode;
   FieldInfo: TFieldInfo;
   I: Integer;
   Width: Integer;
 begin
-  if (Connection.ErrorCode = 0) then
-  begin
-    Table.DataSet.AfterOpen := FClient.DataSetAfterOpen;
-    Table.DataSet.Open();
+  FClient.DataSetAfterOpen(DataSet);
 
-    DBGrid.ReadOnly := Table is TCSystemView;
-    for I := 0 to DBGrid.Columns.Count - 1 do
-      if (GetFieldInfo(DBGrid.Columns[I].Field.Origin, FieldInfo)) then
-      begin
-        Child := XMLNode(GridXML[FieldInfo.OriginalFieldName], 'width');
-        if (Assigned(Child) and TryStrToInt(Child.Text, Width) and (Width > 10)) then
-        begin
-          if ((Width > Preferences.GridMaxColumnWidth) and not (DBGrid.Columns[I].Field.DataType in [ftSmallint, ftInteger, ftLargeint, ftWord, ftFloat, ftDate, ftDateTime, ftTime, ftCurrency])) then
-            Width := Preferences.GridMaxColumnWidth;
-          DBGrid.Columns[I].Width := Width;
-        end;
-      end;
-
-    if (Table.DataSet.FilterSQL <> '') then
-      AddFilter(Table.DataSet.FilterSQL);
-    if (((Table.DataSet.Limit > 0) <> Limited) or (Limit <> Table.DataSet.Limit)) then
+  DBGrid.ReadOnly := Table is TCSystemView;
+  for I := 0 to DBGrid.Columns.Count - 1 do
+    if (GetFieldInfo(DBGrid.Columns[I].Field.Origin, FieldInfo)) then
     begin
-      Limited := Table.DataSet.Limit > 0;
-      Limit := Table.DataSet.Limit;
+      Child := XMLNode(GridXML[FieldInfo.OriginalFieldName], 'width');
+      if (Assigned(Child) and TryStrToInt(Child.Text, Width) and (Width > 10)) then
+      begin
+        if ((Width > Preferences.GridMaxColumnWidth) and not (DBGrid.Columns[I].Field.DataType in [ftSmallint, ftInteger, ftLargeint, ftWord, ftFloat, ftDate, ftDateTime, ftTime, ftCurrency])) then
+          Width := Preferences.GridMaxColumnWidth;
+        DBGrid.Columns[I].Width := Width;
+      end;
     end;
 
-    FClient.FUDOffset.Position := Table.DataSet.Offset;
-    FClient.FLimitEnabled.Down := Table.DataSet.Limit > 0;
-    if (FClient.FLimitEnabled.Down) then
-      FClient.FUDLimit.Position := Table.DataSet.Limit;
-
-    FClient.FFilterEnabled.Down := Table.DataSet.FilterSQL <> '';
-    FClient.FFilterEnabled.Enabled := FClient.FFilter.Text <> '';
-    FClient.FilterMRU.Clear();
-    if (FClient.FFilterEnabled.Down) then
-      FClient.FFilter.Text := Table.DataSet.FilterSQL;
-    for I := 0 to FilterCount - 1 do
-      FClient.FilterMRU.Add(Filters[I]);
-    FClient.gmFilter.Clear();
-
-    FClient.FQuickSearchEnabled.Down := Table.DataSet.QuickSearch <> '';
-
-    FClient.AddressChanged(nil);
+  if (Table.DataSet.FilterSQL <> '') then
+    AddFilter(Table.DataSet.FilterSQL);
+  if (((Table.DataSet.Limit > 0) <> Limited) or (Limit <> Table.DataSet.Limit)) then
+  begin
+    Limited := Table.DataSet.Limit > 0;
+    Limit := Table.DataSet.Limit;
   end;
 
-  Result := False;
+  FClient.FUDOffset.Position := Table.DataSet.Offset;
+  FClient.FLimitEnabled.Down := Table.DataSet.Limit > 0;
+  if (FClient.FLimitEnabled.Down) then
+    FClient.FUDLimit.Position := Table.DataSet.Limit;
+
+  FClient.FFilterEnabled.Down := Table.DataSet.FilterSQL <> '';
+  FClient.FFilterEnabled.Enabled := FClient.FFilter.Text <> '';
+  FClient.FilterMRU.Clear();
+  if (FClient.FFilterEnabled.Down) then
+    FClient.FFilter.Text := Table.DataSet.FilterSQL;
+  for I := 0 to FilterCount - 1 do
+    FClient.FilterMRU.Add(Filters[I]);
+  FClient.gmFilter.Clear();
+
+  FClient.FQuickSearchEnabled.Down := Table.DataSet.QuickSearch <> '';
+
+  FClient.AddressChanged(nil);
 end;
 
 destructor TFClient.TTableDesktop.Destroy();
@@ -1811,6 +1804,7 @@ begin
     begin
       FClient.FreeDBGrid(TResult(Results[I]^).DBGrid);
       TResult(Results[I]^).DataSource.Free();
+      TResult(Results[I]^).DataSet.Free();
       FreeMem(Results[I]);
     end;
     Results.Clear();
@@ -1856,11 +1850,11 @@ begin
     Result := TResult(Results[TCResult.TabIndex]^).DBGrid;
 end;
 
-function TFClient.TRoutineDesktop.IDEResultEvent(const Connection: TMySQLConnection; const Data: Boolean): Boolean;
+function TFClient.TRoutineDesktop.IDEResultEvent(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean;
 var
   Item: ^TResult;
 begin
-  if ((Connection.ErrorCode = 0) and Data) then
+  if (Data) then
   begin
     if (not Assigned(PDBGrid)) then
       PDBGrid := FClient.CreatePDBGrid();
@@ -1876,7 +1870,6 @@ begin
 
     GetMem(Item, SizeOf(TResult));
     TResult(Item^).DataSet := TMySQLDataSet.Create(FClient.Owner);
-    TResult(Item^).DataSet.Connection := Connection;
     TResult(Item^).DataSet.AfterOpen := FClient.DataSetAfterOpen;
     TResult(Item^).DataSource := TDataSource.Create(FClient.Owner);
     TResult(Item^).DataSource.Enabled := False;
@@ -1893,7 +1886,7 @@ begin
     end;
 
     FClient.ActiveDBGrid := TResult(Item^).DBGrid;
-    TResult(Item^).DataSet.Open();
+    TResult(Item^).DataSet.Open(DataHandle);
   end;
 
   Result := False;
@@ -2720,11 +2713,7 @@ begin
       AllowChange := False;
   end;
 
-  if (not AllowChange) then
-begin
-MsgBox('Wrong format', 'Debug', MB_OK + MB_ICONINFORMATION);
-end
-else
+  if (AllowChange) then
   begin
     if (not Client.Update() and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
       AllowChange := False
@@ -2742,10 +2731,7 @@ else
     begin
       Database := Client.DatabaseByName(URI.Database);
       if (not Assigned(Database)) then
-begin
-        NotFound := True;
-MsgBox('Not Found (1)', 'Debug', MB_OK + MB_ICONINFORMATION);
-end
+        NotFound := True
       else if (not Database.Update((URI.Table = '') and (URI.Param['object'] = Null) and (URI.Param['view'] = NULL)) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
         AllowChange := False
       else if ((URI.Table <> '') or (URI.Param['object'] <> Null)) then
@@ -2764,17 +2750,11 @@ end
           DBObject := nil;
 
         if (not Assigned(DBObject)) then
-begin
-          NotFound := True;
-MsgBox('Not Found (2)', 'Debug', MB_OK + MB_ICONINFORMATION);
-end
+          NotFound := True
         else if (not DBObject.Update()) then
           AllowChange := False
         else if ((URI.Param['objecttype'] = 'trigger') and (URI.Param['object'] <> Null) and not Assigned(Database.TriggerByName(URI.Param['object']))) then
-begin
           NotFound := True;
-MsgBox('Not Found (3)', 'Debug', MB_OK + MB_ICONINFORMATION);
-end;
       end;
     end;
 
@@ -2789,14 +2769,14 @@ end;
 
   URI.Free();
 
-//  if (AllowChange and Assigned(ActiveDBGrid) and Assigned(ActiveDBGrid.DataSource.DataSet) and ActiveDBGrid.DataSource.DataSet.Active) then
-//    try
-//      if ((Window.ActiveControl = FText) or (Window.ActiveControl = FRTF) or (Window.ActiveControl = FHexEditor)) then
-//        Window.ActiveControl := ActiveDBGrid;
-//      ActiveDBGrid.DataSource.DataSet.CheckBrowseMode();
-//    except
-//      AllowChange := False;
-//    end;
+  if (AllowChange and Assigned(ActiveDBGrid) and Assigned(ActiveDBGrid.DataSource.DataSet) and ActiveDBGrid.DataSource.DataSet.Active) then
+    try
+      if ((Window.ActiveControl = FText) or (Window.ActiveControl = FRTF) or (Window.ActiveControl = FHexEditor)) then
+        Window.ActiveControl := ActiveDBGrid;
+      ActiveDBGrid.DataSource.DataSet.CheckBrowseMode();
+    except
+      AllowChange := False;
+    end;
 
   if (AllowChange) then
     if (Assigned(Window.ActiveControl) and IsChild(PContent.Handle, Window.ActiveControl.Handle)) then
@@ -13261,13 +13241,23 @@ begin
     Result := Event.Database.UpdateEvent(Event, NewEvent);
     NewEvent.Free();
   end
+  else if (CItem is TCKey) then
+  begin
+    BaseTable := TCBaseTableField(CItem).Table;
+
+    NewBaseTable := TCBaseTable.Create(BaseTable.Database.Tables);
+    NewBaseTable.Assign(BaseTable);
+    NewBaseTable.KeyByCaption(CItem.Caption).Name := NewName;
+    Result := BaseTable.Database.UpdateTable(BaseTable, NewBaseTable);
+    NewBaseTable.Free();
+  end
   else if (CItem is TCBaseTableField) then
   begin
     BaseTable := TCBaseTableField(CItem).Table;
 
     NewBaseTable := TCBaseTable.Create(BaseTable.Database.Tables);
     NewBaseTable.Assign(BaseTable);
-    TCBaseTableField(CItem).Name := NewName;
+    NewBaseTable.FieldByName(CItem.Name).Name := NewName;
     Result := BaseTable.Database.UpdateTable(BaseTable, NewBaseTable);
     NewBaseTable.Free();
   end
@@ -13277,7 +13267,7 @@ begin
 
     NewBaseTable := TCBaseTable.Create(BaseTable.Database.Tables);
     NewBaseTable.Assign(BaseTable);
-    TCForeignKey(CItem).Name := NewName;
+    NewBaseTable.FieldByName(CItem.Name).Name := NewName;
     Result := BaseTable.Database.UpdateTable(BaseTable, NewBaseTable);
     NewBaseTable.Free();
   end
@@ -14142,7 +14132,10 @@ begin
       TCBaseTable(Table).Keys[0].GetSortDef(SortDef);
 
     if (not Table.DataSet.Active) then
-      Table.Open(FilterSQL, QuickSearch, SortDef, Offset, Limit, Desktop(Table).DataSetOpenEvent)
+    begin
+      Table.DataSet.AfterOpen := Desktop(Table).DataSetAfterOpen;
+      Table.Open(FilterSQL, QuickSearch, SortDef, Offset, Limit);
+    end
     else
     begin
       Table.DataSet.FilterSQL := FilterSQL;

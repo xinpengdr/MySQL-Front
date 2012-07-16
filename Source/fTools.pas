@@ -339,7 +339,7 @@ type
     procedure ExecuteFooter(); virtual;
     procedure ExecuteHeader(); virtual;
     procedure ExecuteRoutine(const Routine: TCRoutine); virtual;
-    procedure ExecuteTable(var ExportObject: TExportObject; const ResultHandle: TMySQLConnection.TResultHandle); virtual;
+    procedure ExecuteTable(var ExportObject: TExportObject; const DataHandle: TMySQLConnection.TDataResult); virtual;
     procedure ExecuteTableFooter(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery); virtual;
     procedure ExecuteTableHeader(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery); virtual;
     procedure ExecuteTableRecord(const Table: TCTable; const Fields: array of TField; const DataSet: TMySQLQuery); virtual; abstract;
@@ -610,7 +610,7 @@ type
     end;
   private
     DataFileBuffer: TTDataFileBuffer;
-    DataHandle: TMySQLConnection.TResultHandle;
+    DataHandle: TMySQLConnection.TDataResult;
     Elements: TList;
   protected
     procedure AfterExecute(); override;
@@ -3707,7 +3707,7 @@ end;
 
 procedure TTExport.Execute();
 var
-  ResultHandle: TMySQLConnection.TResultHandle;
+  DataHandle: TMySQLConnection.TDataResult;
   I: Integer;
   Index: Integer;
   J: Integer;
@@ -3804,10 +3804,10 @@ begin
           Index := DataTables.IndexOf(ExportObjects[I].DBObject);
           if (Index >= 0) then
             if (Index = 0) then
-              while ((Success = daSuccess) and not Client.FirstResult(ResultHandle, SQL)) do
+              while ((Success = daSuccess) and not Client.FirstResult(DataHandle, SQL)) do
                 DoError(DatabaseError(Client), EmptyToolsItem(), SQL)
             else
-              if ((Success = daSuccess) and not Client.NextResult(ResultHandle)) then
+              if ((Success = daSuccess) and not Client.NextResult(DataHandle)) then
                 DoError(DatabaseError(Client), EmptyToolsItem());
         end;
 
@@ -3822,7 +3822,7 @@ begin
           Success := daSuccess;
 
           if (ExportObjects[I].DBObject is TCTable) then
-            ExecuteTable(ExportObjects[I], ResultHandle)
+            ExecuteTable(ExportObjects[I], DataHandle)
           else if (ExportObjects[I].DBObject is TCRoutine) then
             ExecuteRoutine(TCRoutine(ExportObjects[I].DBObject))
           else if (ExportObjects[I].DBObject is TCEvent) then
@@ -3852,7 +3852,7 @@ begin
 
   if (Data) then
   begin
-    Client.CloseResult(ResultHandle);
+    Client.CloseResult(DataHandle);
     DataTables.Free();
   end;
 end;
@@ -3957,7 +3957,7 @@ procedure TTExport.ExecuteRoutine(const Routine: TCRoutine);
 begin
 end;
 
-procedure TTExport.ExecuteTable(var ExportObject: TExportObject; const ResultHandle: TMySQLConnection.TResultHandle);
+procedure TTExport.ExecuteTable(var ExportObject: TExportObject; const DataHandle: TMySQLConnection.TDataResult);
 var
   DataSet: TMySQLQuery;
   Fields: array of TField;
@@ -3975,7 +3975,7 @@ begin
     DataSet.Connection := Client;
     while ((Success = daSuccess) and not DataSet.Active) do
     begin
-      DataSet.Open(ResultHandle);
+      DataSet.Open(DataHandle);
       if (not DataSet.Active) then
         DoError(DatabaseError(Client), ToolsItem(ExportObject), SQL);
     end;
@@ -7026,7 +7026,7 @@ begin
 
     if (Success = daSuccess) then
     begin
-      SourceDataSet := TMySQLQuery.Create(nil);
+      SourceDataSet := TMySQLDataSet.Create(nil);
       SourceDataSet.Connection := Source.Client;
       SourceDataSet.Open(DataHandle);
 
