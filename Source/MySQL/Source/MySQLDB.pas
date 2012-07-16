@@ -3384,14 +3384,20 @@ begin
 end;
 
 procedure TMySQLConnection.SyncHandlingResult(const SynchroThread: TSynchroThread);
+var
+  Error: Boolean;
 begin
+  Error := ErrorCode <> 0;
+
   InOnResult := True;
   if ((not Assigned(SynchroThread.OnResult) or not SynchroThread.OnResult(SynchroThread, Assigned(SynchroThread.ResultHandle)))
     and (ErrorCode > 0)) then
     DoError(ErrorCode, ErrorMessage);
   InOnResult := False;
 
-  if (SynchroThread.State = ssResult) then
+  if (Error) then
+    SyncExecutedSQL(SynchroThread)
+  else if (SynchroThread.State = ssResult) then
   begin
     SynchroThread.State := ssReceivingResult;
     SynchroThread.Synchronize();
@@ -3456,8 +3462,11 @@ begin
 
   if (Assigned(SynchroThread)) then
   begin
-    S := '----> Connection Terminated <----';
-    WriteMonitor(PChar(S), Length(S), ttInfo);
+    if (SynchroThread.IsRunning) then
+    begin
+      S := '----> Connection Terminated <----';
+      WriteMonitor(PChar(S), Length(S), ttInfo);
+    end;
     SynchroThread.Terminate();
     FSynchroThread := nil;
   end;

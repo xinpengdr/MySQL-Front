@@ -2100,6 +2100,9 @@ begin
   Client.Terminate();
 
   MainAction('aDCancel').Enabled := Client.InUse();
+
+  StatusBar.Panels[sbMessage].Text := '';
+  StatusBarRefresh();
 end;
 
 procedure TFClient.aDCommitExecute(Sender: TObject);
