@@ -1603,33 +1603,25 @@ var
 begin
   if (IsWine()) then
     DataFields.Add('Wine=Yes');
+  DataFields.Add('System CodePage=' + IntToStr(GetACP()));
 
   if (not Assigned(ActiveTab)) then
   begin
     for I := 0 to Clients.Count - 1 do
-    begin
       if (Clients[I].Connected) then
         DataFields.Add('MySQL Version=' + Clients[I].ServerVersionStr);
-    end;
   end
   else
   begin
     DataFields.Add('MySQL Version=' + ActiveTab.Client.ServerVersionStr);
     Log := TStringList.Create();
-    Log.Text := ActiveTab.Client.Log;
-    DataFields.Add('SQL Log Count=' + IntToStr(Log.Count));
+    Log.Text := RightStr(ActiveTab.Client.SQLMonitor.CacheText, 1000);
     while (Log.Count > 10) do Log.Delete(0);
-    DataFields.Add('SQL Log Count=' + IntToStr(Log.Count));
     while (Log.Count > 0) do
-    begin
       DataFields.Add('SQL Log ' + IntToStr(Log.Count + 1) + '=' + Log[0]);
-      Log.Delete(0);
-    end;
     DataFields.Add('SQL Log Count=' + IntToStr(Log.Count));
     Log.Free();
   end;
-
-  DataFields.Add('System CodePage=' + IntToStr(GetACP()));
 end;
 
 procedure TWWindow.EurekaLogExceptionNotify(

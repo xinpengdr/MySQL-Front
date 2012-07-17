@@ -10491,7 +10491,7 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const List
       else
         Item.ImageIndex := iiView;
       Item.Caption := TCTable(Data).Caption;
-      if ((TCTable(Data) is TCBaseTable) and Assigned(TCBaseTable(Data).Engine)) then
+      if ((TCTable(Data) is TCBaseTable) and TCBaseTable(TCTable(Data)).ValidStatus and Assigned(TCBaseTable(Data).Engine)) then
         Item.SubItems.Add(TCBaseTable(Data).Engine.Name)
       else if ((TCTable(Data) is TCView)) then
         Item.SubItems.Add(ReplaceStr(Preferences.LoadStr(738), '&', ''))
