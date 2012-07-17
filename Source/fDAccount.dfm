@@ -10,7 +10,7 @@ object DAccount: TDAccount
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
-  Font.Height = -11
+  Font.Height = -12
   Font.Name = 'MS Sans Serif'
   Font.Style = []
   OldCreateOrder = False
@@ -18,7 +18,7 @@ object DAccount: TDAccount
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnShow = FormShow
-  PixelsPerInch = 96
+  PixelsPerInch = 106
   TextHeight = 13
   object FBOk: TButton
     Left = 142
@@ -233,7 +233,7 @@ object DAccount: TDAccount
     object FUser: TEdit
       Left = 128
       Top = 16
-      Width = 89
+      Width = 113
       Height = 21
       MaxLength = 50
       TabOrder = 0
@@ -243,7 +243,7 @@ object DAccount: TDAccount
     object FPassword: TEdit
       Left = 128
       Top = 48
-      Width = 89
+      Width = 113
       Height = 21
       MaxLength = 50
       TabOrder = 1

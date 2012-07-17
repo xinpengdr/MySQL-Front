@@ -961,7 +961,7 @@ begin
             Seterror(CR_NAMEDPIPEWAIT_ERROR, EncodeString(Format(CLIENT_ERRORS[CR_NAMEDPIPEWAIT_ERROR - CR_MIN_ERROR], [LOCAL_HOST, PipeName, GetLastError()])))
         else
         begin
-          Pipe := CreateFile(PChar(Filename), GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, 0, 0);
+          Pipe := CreateFile(PChar(Filename), GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, FILE_FLAG_WRITE_THROUGH, 0);
           if (Pipe = INVALID_HANDLE_VALUE) then
             if (GetLastError() = ERROR_PIPE_BUSY) then
               Seterror(CR_NAMEDPIPEWAIT_ERROR, EncodeString(Format(CLIENT_ERRORS[CR_NAMEDPIPEWAIT_ERROR - CR_MIN_ERROR], [LOCAL_HOST, PipeName, GetLastError()])))
@@ -1074,29 +1074,59 @@ end;
 
 function TMySQL_IO.Receive(var Buffer; const BytesToRead: my_uint; out BytesRead: my_uint): Boolean;
 var
+  arg: u_long;
   Len: my_int;
   ReadFDS: TFDSet;
+  Size: Cardinal;
   Time: timeval;
 begin
-  case (IOType) of
-    itNamedPipe:
-      Result := ReadFile(Pipe, Buffer, BytesToRead, BytesRead, nil);
-    itTCPIP:
-      begin
-        FD_ZERO(ReadFDS); FD_SET(Socket, ReadFDS);
-        Time.tv_sec := NET_WAIT_TIMEOUT; Time.tv_usec := Time.tv_sec * 1000;
-        Result := select(0, @ReadFDS, nil, nil, @Time) > 0;
-        if (Result) then
+  BytesRead := 0;
+  repeat
+    case (IOType) of
+      itNamedPipe:
         begin
-          Len := recv(Socket, Buffer, BytesToRead, 0);
-          Result := Len <> SOCKET_ERROR;
-          if (Result) then
-            BytesRead := Len;
+          Result := ReadFile(Pipe, PAnsiChar(@AnsiChar(Buffer))[BytesRead], BytesToRead - BytesRead, Size, nil);
+          if (not Result) then
+            Len := -1
+          else
+            Len := Size;
+       end;
+      itTCPIP:
+        begin
+          if (FErrNo = 0) then
+            Size := BytesToRead
+          else if (ioctlsocket(Socket, FIONREAD, arg) <> SOCKET_ERROR) then
+            Size := arg
+          else
+            Size := 0;
+
+          Result := Size > 0;
+          if (not Result) then
+            Len := -1
+          else
+          begin
+            FD_ZERO(ReadFDS); FD_SET(Socket, ReadFDS);
+            Time.tv_sec := NET_WAIT_TIMEOUT; Time.tv_usec := Time.tv_sec * 1000;
+            Result := select(0, @ReadFDS, nil, nil, @Time) > 0;
+            if (not Result) then
+              Len := -1
+            else
+            begin
+              Len := recv(Socket, PAnsiChar(@AnsiChar(Buffer))[BytesRead], BytesToRead - BytesRead, 0);
+              Result := Len <> SOCKET_ERROR;
+            end;
+          end;
         end;
-      end;
-    else
-      Result := False;
-  end;
+      else
+        begin
+          Len := -1;
+          Result := False;
+        end;
+    end;
+
+    if (Result) then
+      Inc(BytesRead, Len);
+  until (not Result or (Len = 0) or (BytesRead = BytesToRead));
 
   if (not Result) then
     Seterror(CR_SERVER_LOST);
@@ -1104,6 +1134,7 @@ end;
 
 function TMySQL_IO.Send(const Buffer; const BytesToWrite: my_uint): Boolean;
 var
+  BytesWritten: my_uint;
   Len: my_int;
   Size: DWORD;
   Time: timeval;
@@ -1111,18 +1142,25 @@ var
 begin
   case (IOType) of
     itNamedPipe:
-      Result := WriteFile(Pipe, Buffer, BytesToWrite, Size, nil);
-    itTCPIP:
-      begin
-        FD_ZERO(WriteFDS); FD_SET(Socket, WriteFDS);
-        Time.tv_sec := NET_WRITE_TIMEOUT; Time.tv_usec := Time.tv_sec * 1000;
-        Result := (select(0, nil, @WriteFDS, nil, @Time) >= 1);
+    begin
+      BytesWritten := 0;
+      repeat
+        Result := WriteFile(Pipe, PAnsiChar(@AnsiChar(Buffer))[BytesWritten], BytesToWrite - BytesWritten, Size, nil);
         if (Result) then
-        begin
-          Len := WinSock.send(Socket, Pointer(@Buffer)^, BytesToWrite, 0);
-          Result := (Len >= SOCKET_ERROR) and (my_uint(Len) = BytesToWrite);
-        end;
+          Inc(BytesWritten, Size);
+      until (not Result or (BytesWritten = BytesToWrite));
+    end;
+    itTCPIP:
+    begin
+      FD_ZERO(WriteFDS); FD_SET(Socket, WriteFDS);
+      Time.tv_sec := NET_WRITE_TIMEOUT; Time.tv_usec := Time.tv_sec * 1000;
+      Result := (select(0, nil, @WriteFDS, nil, @Time) >= 1);
+      if (Result) then
+      begin
+        Len := WinSock.send(Socket, Pointer(@Buffer)^, BytesToWrite, 0);
+        Result := (Len >= SOCKET_ERROR) and (my_uint(Len) = BytesToWrite);
       end;
+    end;
     else
       Result := False;
   end;
@@ -1144,8 +1182,24 @@ begin
 end;
 
 procedure TMySQL_IO.SetDirection(ADirection: TMySQL_IO.TDirection);
+var
+  arg: Integer;
 begin
-  FDirection := ADirection;
+  if (ADirection <> FDirection) then
+  begin
+    case (IOType) of
+      itTCPIP:
+        begin
+          if (ADirection = idRead) then
+            arg := 0 // disable Nonblocking mode
+          else
+            arg := not 0; // enable Nonblocking mode
+          ioctlsocket(Socket, FIONBIO, arg);
+        end;
+    end;
+
+    FDirection := ADirection;
+  end;
 end;
 
 { TMySQL_File *****************************************************************}
