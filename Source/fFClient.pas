@@ -2716,11 +2716,7 @@ begin
       AllowChange := False;
   end;
 
-  if (not AllowChange) then
-begin
-MsgBox('Wrong format', 'Debug', MB_OK + MB_ICONINFORMATION);
-end
-else
+  if (AllowChange) then
   begin
     if (not Client.Update() and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
       AllowChange := False
@@ -2738,10 +2734,7 @@ else
     begin
       Database := Client.DatabaseByName(URI.Database);
       if (not Assigned(Database)) then
-begin
-        NotFound := True;
-MsgBox('Not Found (1)', 'Debug', MB_OK + MB_ICONINFORMATION);
-end
+        NotFound := True
       else if (not Database.Update((URI.Table = '') and (URI.Param['object'] = Null) and (URI.Param['view'] = NULL)) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
         AllowChange := False
       else if ((URI.Table <> '') or (URI.Param['object'] <> Null)) then
@@ -2760,17 +2753,11 @@ end
           DBObject := nil;
 
         if (not Assigned(DBObject)) then
-begin
-          NotFound := True;
-MsgBox('Not Found (2)', 'Debug', MB_OK + MB_ICONINFORMATION);
-end
+          NotFound := True
         else if (not DBObject.Update()) then
           AllowChange := False
         else if ((URI.Param['objecttype'] = 'trigger') and (URI.Param['object'] <> Null) and not Assigned(Database.TriggerByName(URI.Param['object']))) then
-begin
-          NotFound := True;
-MsgBox('Not Found (3)', 'Debug', MB_OK + MB_ICONINFORMATION);
-end;
+          NotFound := True
       end;
     end;
 
@@ -2785,14 +2772,14 @@ end;
 
   URI.Free();
 
-//  if (AllowChange and Assigned(ActiveDBGrid) and Assigned(ActiveDBGrid.DataSource.DataSet) and ActiveDBGrid.DataSource.DataSet.Active) then
-//    try
-//      if ((Window.ActiveControl = FText) or (Window.ActiveControl = FRTF) or (Window.ActiveControl = FHexEditor)) then
-//        Window.ActiveControl := ActiveDBGrid;
-//      ActiveDBGrid.DataSource.DataSet.CheckBrowseMode();
-//    except
-//      AllowChange := False;
-//    end;
+  if (AllowChange and Assigned(ActiveDBGrid) and Assigned(ActiveDBGrid.DataSource.DataSet) and ActiveDBGrid.DataSource.DataSet.Active) then
+    try
+      if ((Window.ActiveControl = FText) or (Window.ActiveControl = FRTF) or (Window.ActiveControl = FHexEditor)) then
+        Window.ActiveControl := ActiveDBGrid;
+      ActiveDBGrid.DataSource.DataSet.CheckBrowseMode();
+    except
+      AllowChange := False;
+    end;
 
   if (AllowChange) then
     if (Assigned(Window.ActiveControl) and IsChild(PContent.Handle, Window.ActiveControl.Handle)) then
@@ -13787,8 +13774,6 @@ var
 begin
   if (Assigned(StatusBar) and (Immediately or (tsActive in FrameState)) and not (csDestroying in ComponentState) and Assigned(Window)) then
   begin
-    KillTimer(Handle, tiStatusBar);
-
     Count := -1;
     case (View) of
       vObjects: if (Assigned(ActiveListView)) then Count := ActiveListView.Items.Count;

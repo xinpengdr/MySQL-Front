@@ -1893,14 +1893,14 @@ begin
                 Connection.SyncExecutingSQL(Self);
                 Connection.SyncHandleResult(Self);
                 Connection.SyncHandlingResult(Self);
-                while (AState = ssNextResult) do
+                while (State = ssNextResult) do
                 begin
                   Connection.SyncNextResult(Self);
                   Connection.SyncHandleResult(Self);
                   Connection.SyncHandlingResult(Self);
                 end;
-              until (AState <> ssExecutingSQL);
-              if (AState = ssReady) then
+              until (State <> ssExecutingSQL);
+              if (State = ssReady) then
                 Connection.SyncExecutedSQL(Self);
             end;
           smDataSet:
@@ -3313,7 +3313,7 @@ begin
   FErrorCode := SynchroThread.ErrorCode;
   FErrorMessage := SynchroThread.ErrorMessage;
 
-  if (SynchroThread.State = ssResult) then
+  if (not SynchroThread.Terminated and (SynchroThread.State = ssResult)) then
   begin
     if (Assigned(SynchroThread.ResultHandle)) then
       while (Assigned(Lib.mysql_fetch_row(SynchroThread.ResultHandle))) do ;
@@ -3398,10 +3398,7 @@ begin
   if (Error) then
     SyncExecutedSQL(SynchroThread)
   else if (SynchroThread.State = ssResult) then
-  begin
-    SynchroThread.State := ssReceivingResult;
-    SynchroThread.Synchronize();
-  end;
+    SyncHandledResult(SynchroThread);
 end;
 
 procedure TMySQLConnection.SyncNextResult(const SynchroThread: TSynchroThread);
@@ -5448,7 +5445,7 @@ begin
         if ((Fields[I].AutoGenerateValue = arAutoInc) and (Fields[I].IsNull or (Fields[I].AsInteger = 0))) then
           Fields[I].AsInteger := Connection.Lib.mysql_insert_id(Connection.Handle);
 
-    if (PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData <> PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData) then
+    if (PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData <> PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData) then
       FreeMem(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData);
     PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.OldData := PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData;
   end;
