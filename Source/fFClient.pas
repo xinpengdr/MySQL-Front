@@ -5290,6 +5290,9 @@ begin
 
   Font := Window.Font;
 
+  PDataBrowserSpacer.Top := FFilter.Height;
+  PDataBrowser.ClientHeight := PDataBrowserSpacer.Top + PDataBrowserSpacer.Height;
+
   FSQLEditorSynMemo.Font.Name := Preferences.SQLFontName;
   FSQLEditorSynMemo.Font.Style := Preferences.SQLFontStyle;
   FSQLEditorSynMemo.Font.Color := Preferences.SQLFontColor;
@@ -13032,15 +13035,17 @@ begin
 end;
 
 procedure TFClient.PDataBrowserResize(Sender: TObject);
+var
+  I: Integer;
 begin
   TBQuickSearchEnabled.Left := PDataBrowser.ClientWidth - TBQuickSearchEnabled.Width - GetSystemMetrics(SM_CXVSCROLL);
   FQuickSearch.Left := TBQuickSearchEnabled.Left - FQuickSearch.Width;
   TBFilterEnabled.Left := FQuickSearch.Left - TBFilterEnabled.Width;
   FFilter.Width := TBFilterEnabled.Left - FFilter.Left;
 
-  FQuickSearch.Height := FFilter.Height;
-
-  PDataBrowser.ClientHeight := FFilter.Height;
+  for I := 0 to PDataBrowser.ControlCount - 1 do
+    if ((PDataBrowser.Controls[I] <> FFilter) and (PDataBrowser.Controls[I] <> PDataBrowserSpacer)) then
+      PDataBrowser.Controls[I].Height := FFilter.Height;
 end;
 
 procedure TFClient.PGridResize(Sender: TObject);
@@ -14320,7 +14325,7 @@ begin
           begin
             Database := TCDatabase(FNavigator.Selected.Data);
 
-            if (Database.Count < 50) then
+            if (Database.Count < 30) then
             begin
               List := TList.Create();
 

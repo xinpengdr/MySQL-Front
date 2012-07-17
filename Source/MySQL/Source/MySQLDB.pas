@@ -190,7 +190,7 @@ type
       Success: Boolean;
       procedure BindDataSet(const ADataSet: TMySQLQuery); virtual;
       procedure Execute(); override;
-      procedure ReleaseDataSet(const Sync: Boolean); virtual;
+      procedure ReleaseDataSet(); virtual;
       procedure RunAction(const AState: TState; const Synchron: Boolean); virtual;
       procedure Synchronize(); virtual;
       property IsRunning: Boolean read GetIsRunning;
@@ -1820,13 +1820,12 @@ begin
         end;
 
         Connection.TerminateCS.Enter();
-        if (Terminated) then
+        RunExecute.ResetEvent();
+        if (Terminated or (Mode in [smDataHandle]) and (State = ssReceivingResult)) then
           SynchronizeRequestSent := False
         else
         begin
-          RunExecute.ResetEvent();
-          if (State <> ssReceivingResult) then
-            MySQLConnectionSynchronizeRequest(Self);
+          MySQLConnectionSynchronizeRequest(Self);
           SynchronizeRequestSent := True;
         end;
         Connection.TerminateCS.Leave();
@@ -1856,16 +1855,16 @@ begin
   Result := (RunExecute.WaitFor(IGNORE) = wrSignaled) or not (State in [ssClose, ssReady]);
 end;
 
-procedure TMySQLConnection.TSynchroThread.ReleaseDataSet(const Sync: Boolean);
+procedure TMySQLConnection.TSynchroThread.ReleaseDataSet();
 begin
-  Assert(State = ssReceivingResult);
+  Assert(Assigned(DataSet));
+
+  if (DataSet is TMySQLDataSet) then
+    TMySQLDataSet(DataSet).RecordsReceived.SetEvent();
 
   DataSet := nil;
 
-  if (Sync and IsRunning) then
-    MySQLConnectionSynchronizeRequest(Self)
-  else
-    Synchronize();
+  Connection.SyncHandledResult(Self);
 end;
 
 procedure TMySQLConnection.TSynchroThread.RunAction(const AState: TState; const Synchron: Boolean);
@@ -1885,40 +1884,35 @@ begin
             Connection.SyncConnected(Self);
         end;
       ssExecutingSQL:
-        case (Mode) of
-          smSQL:
-            begin
-              repeat
-                Connection.SyncExecutingSQL(Self);
-                Connection.SyncHandleResult(Self);
-                Connection.SyncHandlingResult(Self);
-                while (State = ssNextResult) do
-                begin
-                  Connection.SyncNextResult(Self);
+    		begin
+          case (Mode) of
+            smSQL:
+              begin
+                repeat
+                  Connection.SyncExecutingSQL(Self);
                   Connection.SyncHandleResult(Self);
                   Connection.SyncHandlingResult(Self);
-                end;
-              until (State <> ssExecutingSQL);
-              if (State = ssReady) then
-                Connection.SyncExecutedSQL(Self);
-            end;
-          smDataSet:
-            begin
-              Connection.SyncExecutingSQL(Self);
-              Connection.SyncHandleResult(Self);
-            end;
+                  while (State = ssNextResult) do
+                  begin
+                    Connection.SyncNextResult(Self);
+                    Connection.SyncHandleResult(Self);
+                    Connection.SyncHandlingResult(Self);
+                  end;
+                until (State <> ssExecutingSQL);
+                if (State = ssReady) then
+                  Connection.SyncExecutedSQL(Self);
+              end;
+            smDataSet:
+              begin
+                Connection.SyncExecutingSQL(Self);
+                Connection.SyncHandleResult(Self);
+              end;
+          end;
+          if (State = ssReady) then
+            Connection.SyncExecutedSQL(Self);
         end;
-      ssReceivingResult:
-        begin
-          Connection.SyncReceivingResult(Self);
-          if (not Success) then
-          begin
-            Connection.DoError(ErrorCode, ErrorMessage);
-            State := ssReady;
-          end
-          else
-            Connection.SyncHandledResult(Self);
-        end;
+	    ssReceivingResult:
+        raise Exception.Create(SOutOfSync);
       ssCancel:
         begin
           Connection.SyncCancel(Self);
@@ -1944,18 +1938,28 @@ begin
         Connection.SyncConnected(Self);
       ssExecutingSQL,
       ssNextResult:
-        if (Mode in [smSQL, smDataSet]) then
         begin
           Connection.SyncHandleResult(Self);
           Connection.SyncHandlingResult(Self);
-        end;
-      ssReceivingResult:
-        begin
-          Connection.SyncHandledResult(Self);
           if (Mode in [smSQL, smDataSet]) then
             if (State in [ssNextResult, ssExecutingSQL]) then
               RunExecute.SetEvent()
-            else
+            else if (State in [ssReady, ssError]) then
+              Connection.SyncExecutedSQL(Self);
+        end;
+	    ssReceivingResult:
+        begin
+          Connection.TerminateCS.Enter();
+          if (Assigned(DataSet.SynchroThread)) then
+          begin
+            DataSet.SynchroThread := nil;
+            ReleaseDataSet();
+          end;
+          Connection.TerminateCS.Leave();
+          if (Mode in [smSQL, smDataSet]) then
+            if (State in [ssNextResult, ssExecutingSQL]) then
+              RunExecute.SetEvent()
+            else if (State in [ssReady, ssError]) then
               Connection.SyncExecutedSQL(Self);
         end;
       ssCancel:
@@ -3388,7 +3392,7 @@ begin
   if (SynchroThread.State = ssResult) then
   begin
     SynchroThread.State := ssReceivingResult;
-    SynchroThread.ReleaseDataSet(False);
+    SyncHandledResult(SynchroThread);
   end;
 end;
 
@@ -3425,14 +3429,13 @@ begin
 
 
   repeat
-    if (SynchroThread.Terminated) then
+    if ((SynchroThread.Terminated) or not Assigned(SynchroThread.DataSet)) then
       LibRow := nil
     else
       LibRow := Lib.mysql_fetch_row(SynchroThread.ResultHandle);
 
     TerminateCS.Enter();
-    if (not SynchroThread.Terminated and (SynchroThread.DataSet is TMySQLDataSet)) then
-      TMySQLDataSet(SynchroThread.DataSet).InternAddRecord(LibRow, Lib.mysql_fetch_lengths(SynchroThread.ResultHandle));
+    TMySQLDataSet(SynchroThread.DataSet).InternAddRecord(LibRow, Lib.mysql_fetch_lengths(SynchroThread.ResultHandle));
     TerminateCS.Leave();
   until (not Assigned(LibRow));
 
@@ -4170,7 +4173,7 @@ begin
       Result := grEOF;
 
       Connection.TerminateCS.Enter();
-      SynchroThread.ReleaseDataSet(False);
+      SynchroThread.ReleaseDataSet();
       SynchroThread := nil;
       Connection.TerminateCS.Leave();
     end;
@@ -4192,7 +4195,7 @@ begin
   Connection.TerminateCS.Enter();
   if (Assigned(SynchroThread)) then
   begin
-    SynchroThread.ReleaseDataSet(False);
+    SynchroThread.ReleaseDataSet();
     SynchroThread := nil;
   end;
   Connection.TerminateCS.Leave();
@@ -4558,6 +4561,7 @@ begin
 
   FCommandText := Connection.CommandText;
   FDatabaseName := Connection.DatabaseName;
+
   SetState(dsOpening);
   SetActiveEvent(DataHandle, Assigned(DataHandle.ResultHandle));
 end;
@@ -5075,7 +5079,7 @@ begin
         while (Result = grError) do
         begin
           if ((NewIndex + 1 = InternRecordBuffers.Count) and not Filtered
-            and ((Assigned(SynchroThread) or (Self is TMySQLTable) and TMySQLTable(Self).LimitedDataReceived and TMySQLTable(Self).AutomaticLoadNextRecords and TMySQLTable(Self).LoadNextRecords()))) then
+            and ((RecordsReceived.WaitFor(IGNORE) <> wrSignaled) or (Self is TMySQLTable) and TMySQLTable(Self).LimitedDataReceived and TMySQLTable(Self).AutomaticLoadNextRecords and TMySQLTable(Self).LoadNextRecords())) then
             InternRecordBuffers.RecordReceived.WaitFor(NET_WAIT_TIMEOUT * 1000);
 
           if (NewIndex >= InternRecordBuffers.Count - 1) then
@@ -5199,20 +5203,14 @@ begin
       InternRecordBuffers.Add(InternRecordBuffer);
     InternRecordBuffers.CriticalSection.Leave();
   end
-  else if (Assigned(SynchroThread)) then
+  else
   begin
+    if ((Self is TMySQLTable) and Assigned(SynchroThread)) then
+      TMySQLTable(Self).FLimitedDataReceived :=
+        not SynchroThread.Success or not Assigned(SynchroThread.DataSet)
+        or (Connection.Lib.mysql_num_rows(SynchroThread.ResultHandle) = TMySQLTable(Self).RequestedRecordCount);
+
     RecordsReceived.SetEvent();
-
-    Connection.TerminateCS.Enter();
-    if (Assigned(SynchroThread)) then
-    begin
-      if (Self is TMySQLTable) then
-        TMySQLTable(Self).FLimitedDataReceived := not SynchroThread.Success or (Connection.Lib.mysql_num_rows(SynchroThread.ResultHandle) = TMySQLTable(Self).RequestedRecordCount);
-
-      SynchroThread.ReleaseDataSet(True);
-      SynchroThread := nil;
-    end;
-    Connection.TerminateCS.Leave();
   end;
 
   InternRecordBuffers.RecordReceived.SetEvent();

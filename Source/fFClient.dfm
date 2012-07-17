@@ -658,7 +658,7 @@ object FClient: TFClient
       end
       object FOffset: TEdit
         Left = 0
-        Top = 1
+        Top = 0
         Width = 43
         Height = 22
         TabOrder = 0
@@ -668,7 +668,7 @@ object FClient: TFClient
       end
       object FUDOffset: TUpDown
         Left = 43
-        Top = 1
+        Top = 0
         Width = 15
         Height = 22
         Associate = FOffset
@@ -678,7 +678,7 @@ object FClient: TFClient
       end
       object FLimit: TEdit
         Left = 59
-        Top = 1
+        Top = 0
         Width = 36
         Height = 22
         TabOrder = 2
@@ -688,7 +688,7 @@ object FClient: TFClient
       end
       object FUDLimit: TUpDown
         Left = 95
-        Top = 1
+        Top = 0
         Width = 15
         Height = 22
         Associate = FLimit
@@ -719,7 +719,7 @@ object FClient: TFClient
       end
       object FFilter: TComboBox_Ext
         Left = 142
-        Top = 1
+        Top = 0
         Width = 198
         Height = 22
         Constraints.MinWidth = 100
