@@ -1511,6 +1511,7 @@ type
 const
   DefaultLimit = 100;
   DefaultLimitSize = 50 * 1024;
+  PrefetchObjectCount = 30;
 
 var
   Clients: TCClients;

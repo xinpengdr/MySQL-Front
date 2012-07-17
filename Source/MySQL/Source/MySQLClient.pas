@@ -1140,27 +1140,27 @@ var
   Time: timeval;
   WriteFDS: TFDSet;
 begin
+  BytesWritten := 0;
   case (IOType) of
     itNamedPipe:
-    begin
-      BytesWritten := 0;
       repeat
         Result := WriteFile(Pipe, PAnsiChar(@AnsiChar(Buffer))[BytesWritten], BytesToWrite - BytesWritten, Size, nil);
         if (Result) then
           Inc(BytesWritten, Size);
       until (not Result or (BytesWritten = BytesToWrite));
-    end;
     itTCPIP:
-    begin
-      FD_ZERO(WriteFDS); FD_SET(Socket, WriteFDS);
-      Time.tv_sec := NET_WRITE_TIMEOUT; Time.tv_usec := Time.tv_sec * 1000;
-      Result := (select(0, nil, @WriteFDS, nil, @Time) >= 1);
-      if (Result) then
       begin
-        Len := WinSock.send(Socket, Pointer(@Buffer)^, BytesToWrite, 0);
-        Result := (Len >= SOCKET_ERROR) and (my_uint(Len) = BytesToWrite);
+        FD_ZERO(WriteFDS); FD_SET(Socket, WriteFDS);
+        Time.tv_sec := NET_WRITE_TIMEOUT; Time.tv_usec := Time.tv_sec * 1000;
+        Result := (select(0, nil, @WriteFDS, nil, @Time) >= 1);
+        if (Result) then
+          repeat
+            Len := WinSock.send(Socket, PAnsiChar(@AnsiChar(Buffer))[BytesWritten], BytesToWrite - BytesWritten, 0);
+            Result := (Len > SOCKET_ERROR);
+            if (Result) then
+              Inc(BytesWritten, Len);
+          until (not Result or (BytesWritten = BytesToWrite));
       end;
-    end;
     else
       Result := False;
   end;
@@ -1182,24 +1182,9 @@ begin
 end;
 
 procedure TMySQL_IO.SetDirection(ADirection: TMySQL_IO.TDirection);
-var
-  arg: Integer;
 begin
   if (ADirection <> FDirection) then
-  begin
-    case (IOType) of
-      itTCPIP:
-        begin
-          if (ADirection = idRead) then
-            arg := 0 // disable Nonblocking mode
-          else
-            arg := not 0; // enable Nonblocking mode
-          ioctlsocket(Socket, FIONBIO, arg);
-        end;
-    end;
-
     FDirection := ADirection;
-  end;
 end;
 
 { TMySQL_File *****************************************************************}

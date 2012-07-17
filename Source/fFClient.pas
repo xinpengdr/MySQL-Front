@@ -2716,7 +2716,11 @@ begin
       AllowChange := False;
   end;
 
-  if (AllowChange) then
+  if (not AllowChange) then
+begin
+MsgBox('Wrong format', 'Debug', MB_OK + MB_ICONINFORMATION);
+end
+else
   begin
     if (not Client.Update() and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
       AllowChange := False
@@ -2734,7 +2738,10 @@ begin
     begin
       Database := Client.DatabaseByName(URI.Database);
       if (not Assigned(Database)) then
-        NotFound := True
+begin
+        NotFound := True;
+MsgBox('Not Found (1)', 'Debug', MB_OK + MB_ICONINFORMATION);
+end
       else if (not Database.Update((URI.Table = '') and (URI.Param['object'] = Null) and (URI.Param['view'] = NULL)) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
         AllowChange := False
       else if ((URI.Table <> '') or (URI.Param['object'] <> Null)) then
@@ -2753,11 +2760,17 @@ begin
           DBObject := nil;
 
         if (not Assigned(DBObject)) then
-          NotFound := True
+begin
+          NotFound := True;
+MsgBox('Not Found (2)', 'Debug', MB_OK + MB_ICONINFORMATION);
+end
         else if (not DBObject.Update()) then
           AllowChange := False
         else if ((URI.Param['objecttype'] = 'trigger') and (URI.Param['object'] <> Null) and not Assigned(Database.TriggerByName(URI.Param['object']))) then
-          NotFound := True
+begin
+          NotFound := True;
+MsgBox('Not Found (3)', 'Debug', MB_OK + MB_ICONINFORMATION);
+end;
       end;
     end;
 
@@ -2772,14 +2785,14 @@ begin
 
   URI.Free();
 
-  if (AllowChange and Assigned(ActiveDBGrid) and Assigned(ActiveDBGrid.DataSource.DataSet) and ActiveDBGrid.DataSource.DataSet.Active) then
-    try
-      if ((Window.ActiveControl = FText) or (Window.ActiveControl = FRTF) or (Window.ActiveControl = FHexEditor)) then
-        Window.ActiveControl := ActiveDBGrid;
-      ActiveDBGrid.DataSource.DataSet.CheckBrowseMode();
-    except
-      AllowChange := False;
-    end;
+//  if (AllowChange and Assigned(ActiveDBGrid) and Assigned(ActiveDBGrid.DataSource.DataSet) and ActiveDBGrid.DataSource.DataSet.Active) then
+//    try
+//      if ((Window.ActiveControl = FText) or (Window.ActiveControl = FRTF) or (Window.ActiveControl = FHexEditor)) then
+//        Window.ActiveControl := ActiveDBGrid;
+//      ActiveDBGrid.DataSource.DataSet.CheckBrowseMode();
+//    except
+//      AllowChange := False;
+//    end;
 
   if (AllowChange) then
     if (Assigned(Window.ActiveControl) and IsChild(PContent.Handle, Window.ActiveControl.Handle)) then
@@ -14325,7 +14338,7 @@ begin
           begin
             Database := TCDatabase(FNavigator.Selected.Data);
 
-            if (Database.Count < 30) then
+            if (Database.Count < PrefetchObjectCount) then
             begin
               List := TList.Create();
 

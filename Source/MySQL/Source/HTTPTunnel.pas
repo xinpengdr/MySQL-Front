@@ -500,7 +500,7 @@ begin
 
   if (Result) then
   begin
-    Move(Buffer, SendBuffer.Mem[SendBuffer.Size], BytesToWrite);
+    MoveMemory(@SendBuffer.Mem[SendBuffer.Size], @Buffer, BytesToWrite);
     Inc(SendBuffer.Size, BytesToWrite);
   end;
 end;
