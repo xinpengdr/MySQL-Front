@@ -1614,15 +1614,18 @@ begin
   end
   else
   begin
-    DataFields.Add('MySQL_Version=' + ActiveTab.Client.ServerVersionStr);
+    DataFields.Add('MySQL Version=' + ActiveTab.Client.ServerVersionStr);
     Log := TStringList.Create();
     Log.Text := ActiveTab.Client.Log;
+    DataFields.Add('SQL Log Count=' + IntToStr(Log.Count));
     while (Log.Count > 10) do Log.Delete(0);
+    DataFields.Add('SQL Log Count=' + IntToStr(Log.Count));
     while (Log.Count > 0) do
     begin
       DataFields.Add('SQL Log ' + IntToStr(Log.Count + 1) + '=' + Log[0]);
       Log.Delete(0);
     end;
+    DataFields.Add('SQL Log Count=' + IntToStr(Log.Count));
     Log.Free();
   end;
 

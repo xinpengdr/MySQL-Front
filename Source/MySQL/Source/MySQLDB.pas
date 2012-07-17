@@ -190,7 +190,7 @@ type
       Success: Boolean;
       procedure BindDataSet(const ADataSet: TMySQLQuery); virtual;
       procedure Execute(); override;
-      procedure ReleaseDataSet(); virtual;
+      procedure ReleaseDataSet(const Sync: Boolean); virtual;
       procedure RunAction(const AState: TState; const Synchron: Boolean); virtual;
       procedure Synchronize(); virtual;
       property IsRunning: Boolean read GetIsRunning;
@@ -1856,17 +1856,16 @@ begin
   Result := (RunExecute.WaitFor(IGNORE) = wrSignaled) or not (State in [ssClose, ssReady]);
 end;
 
-procedure TMySQLConnection.TSynchroThread.ReleaseDataSet();
+procedure TMySQLConnection.TSynchroThread.ReleaseDataSet(const Sync: Boolean);
 begin
   Assert(State = ssReceivingResult);
-  Assert(Assigned(DataSet));
 
   DataSet := nil;
 
-  if ((Mode = smDataHandle) or not Connection.UseSynchroThread()) then
-    Synchronize()
+  if (Sync and IsRunning) then
+    MySQLConnectionSynchronizeRequest(Self)
   else
-    MySQLConnectionSynchronizeRequest(Self);
+    Synchronize();
 end;
 
 procedure TMySQLConnection.TSynchroThread.RunAction(const AState: TState; const Synchron: Boolean);
@@ -1943,7 +1942,8 @@ begin
     case (State) of
       ssConnecting:
         Connection.SyncConnected(Self);
-      ssExecutingSQL:
+      ssExecutingSQL,
+      ssNextResult:
         if (Mode in [smSQL, smDataSet]) then
         begin
           Connection.SyncHandleResult(Self);
@@ -1957,12 +1957,6 @@ begin
               RunExecute.SetEvent()
             else
               Connection.SyncExecutedSQL(Self);
-        end;
-      ssNextResult:
-        if (Mode = smSQL) then
-        begin
-          Connection.SyncHandleResult(Self);
-          Connection.SyncHandlingResult(Self);
         end;
       ssCancel:
         Connection.SyncExecutedSQL(Self);
@@ -3384,21 +3378,18 @@ begin
 end;
 
 procedure TMySQLConnection.SyncHandlingResult(const SynchroThread: TSynchroThread);
-var
-  Error: Boolean;
 begin
-  Error := ErrorCode <> 0;
-
   InOnResult := True;
   if ((not Assigned(SynchroThread.OnResult) or not SynchroThread.OnResult(SynchroThread, Assigned(SynchroThread.ResultHandle)))
     and (ErrorCode > 0)) then
     DoError(ErrorCode, ErrorMessage);
   InOnResult := False;
 
-  if (Error) then
-    SyncExecutedSQL(SynchroThread)
-  else if (SynchroThread.State = ssResult) then
-    SyncHandledResult(SynchroThread);
+  if (SynchroThread.State = ssResult) then
+  begin
+    SynchroThread.State := ssReceivingResult;
+    SynchroThread.ReleaseDataSet(False);
+  end;
 end;
 
 procedure TMySQLConnection.SyncNextResult(const SynchroThread: TSynchroThread);
@@ -4179,7 +4170,7 @@ begin
       Result := grEOF;
 
       Connection.TerminateCS.Enter();
-      SynchroThread.ReleaseDataSet();
+      SynchroThread.ReleaseDataSet(False);
       SynchroThread := nil;
       Connection.TerminateCS.Leave();
     end;
@@ -4201,9 +4192,7 @@ begin
   Connection.TerminateCS.Enter();
   if (Assigned(SynchroThread)) then
   begin
-    if (SynchroThread.State <> ssReceivingResult) then
-      Write;
-    SynchroThread.ReleaseDataSet();
+    SynchroThread.ReleaseDataSet(False);
     SynchroThread := nil;
   end;
   Connection.TerminateCS.Leave();
@@ -5210,7 +5199,7 @@ begin
       InternRecordBuffers.Add(InternRecordBuffer);
     InternRecordBuffers.CriticalSection.Leave();
   end
-  else
+  else if (Assigned(SynchroThread)) then
   begin
     RecordsReceived.SetEvent();
 
@@ -5220,7 +5209,7 @@ begin
       if (Self is TMySQLTable) then
         TMySQLTable(Self).FLimitedDataReceived := not SynchroThread.Success or (Connection.Lib.mysql_num_rows(SynchroThread.ResultHandle) = TMySQLTable(Self).RequestedRecordCount);
 
-      SynchroThread.ReleaseDataSet();
+      SynchroThread.ReleaseDataSet(True);
       SynchroThread := nil;
     end;
     Connection.TerminateCS.Leave();
@@ -6820,13 +6809,14 @@ begin
     if (Offset + InternRecordBuffers.Count > 0) then
       Result := Result + IntToStr(Offset + InternRecordBuffers.Count) + ',';
     if (IgnoreLimit) then
-      RequestedRecordCount := 2147483647 - (Offset + InternRecordBuffers.Count)
+      RequestedRecordCount := $7fffffff - (Offset + InternRecordBuffers.Count)
     else if (InternRecordBuffers.Count = 0) then
       RequestedRecordCount := Limit
     else
       RequestedRecordCount := InternRecordBuffers.Count;
     Result := Result + IntToStr(RequestedRecordCount);
   end;
+  Result := Result + ';' + #13#10;
 end;
 
 {******************************************************************************}

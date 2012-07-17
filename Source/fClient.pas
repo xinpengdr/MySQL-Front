@@ -3211,6 +3211,7 @@ begin
       RequestedRecordCount := RecordCount;
     Result := Result + IntToStr(RequestedRecordCount);
   end;
+  Result := Result + ';' + #13#10;
 end;
 
 { TCTable *********************************************************************}
@@ -10029,7 +10030,7 @@ begin
           begin
             Table := Database.TableByName(ObjectName);
             if (Assigned(Table.FDataSet) and not Table.FDataSet.Active) then
-              Table.FDataSet.Open()
+              Table.FDataSet.Open(DataHandle)
             else
               DataSet.Open(DataHandle);
           end;
