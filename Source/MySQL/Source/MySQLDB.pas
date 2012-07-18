@@ -525,11 +525,11 @@ type
     FCursorOpen: Boolean;
     FDataSize: Int64;
     FilterParser: TExprParser;
+    FInternRecordBuffers: TInternRecordBuffers;
     FLocateNext: Boolean;
     FReadOnly: Boolean;
     FRecordsReceived: TEvent;
     FSortDef: TIndexDef;
-    InternRecordBuffers: TInternRecordBuffers;
     function AllocInternRecordBuffer(): PInternRecordBuffer;
     function BookmarkToInternBufferIndex(const Bookmark: TBookmark): Integer;
     procedure FreeInternRecordBuffer(const InternRecordBuffer: PInternRecordBuffer);
@@ -581,6 +581,7 @@ type
     function SQLTableClausel(): string; virtual;
     function SQLUpdate(Buffer: TRecordBuffer = nil): string; virtual;
     procedure UpdateIndexDefs(); override;
+    property InternRecordBuffers: TInternRecordBuffers read FInternRecordBuffers;
     property RecordsReceived: TEvent read FRecordsReceived;
   public
     constructor Create(AOwner: TComponent); override;
@@ -632,7 +633,6 @@ type
     procedure InternalClose(); override;
     procedure InternalLast(); override;
     procedure InternalOpen(); override;
-    procedure InternalRefresh(); override;
     procedure SetCommandText(const ACommandText: string); override;
     function SQLSelect(const IgnoreLimit: Boolean = False): string; overload; virtual;
   public
@@ -4767,6 +4767,7 @@ begin
   inherited Clear();
   FilteredRecordCount := 0;
   Index := -1;
+  RecordReceived.ResetEvent();
   CriticalSection.Leave();
 end;
 
@@ -4888,7 +4889,7 @@ begin
   FLocateNext := False;
   FRecordsReceived := TEvent.Create(nil, True, False, '');
   FSortDef := TIndexDef.Create(nil, 'SortDef', '', []);
-  InternRecordBuffers := TInternRecordBuffers.Create(Self);
+  FInternRecordBuffers := TInternRecordBuffers.Create(Self);
 
   BookmarkSize := SizeOf(BookmarkCounter);
 
@@ -5020,13 +5021,8 @@ end;
 
 function TMySQLDataSet.GetFieldData(Field: TField; Buffer: Pointer): Boolean;
 begin
-try
   Result := Assigned(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer)
     and GetFieldData(Field, Buffer, PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData);
-except
-  Result := Assigned(PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer)
-    and GetFieldData(Field, Buffer, PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData);
-end;
 end;
 
 function TMySQLDataSet.GetIsIndexField(Field: TField): Boolean;
@@ -5461,9 +5457,22 @@ begin
 end;
 
 procedure TMySQLDataSet.InternalRefresh();
+var
+  SQL: string;
 begin
   InternRecordBuffers.Clear();
-  Connection.ExecuteSQL(CommandText, InternalRefreshEvent);
+
+  RecordsReceived.ResetEvent();
+
+  if (CommandType = ctQuery) then
+    SQL := CommandText
+  else
+    SQL := SQLSelect();
+  if (Connection.ExecuteSQL(smDataSet, True, SQL)) then
+  begin
+    SynchroThread := Connection.SynchroThread;
+    SynchroThread.BindDataSet(Self);
+  end;
 end;
 
 function TMySQLDataSet.InternalRefreshEvent(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean;
@@ -6713,19 +6722,6 @@ begin
       InternActivateFilter();
 end;
 
-procedure TMySQLTable.InternalRefresh();
-begin
-  InternRecordBuffers.Clear();
-
-  RecordsReceived.ResetEvent();
-
-  if (Connection.ExecuteSQL(smDataSet, True, TMySQLTable(Self).SQLSelect())) then
-  begin
-    SynchroThread := Connection.SynchroThread;
-    SynchroThread.BindDataSet(Self);
-  end;
-end;
-
 function TMySQLTable.LoadNextRecords(const AllRecords: Boolean = False): Boolean;
 begin
   RecordsReceived.ResetEvent();
@@ -6735,6 +6731,7 @@ begin
   begin
     SynchroThread := Connection.SynchroThread;
     SynchroThread.BindDataSet(Self);
+    InternRecordBuffers.RecordReceived.WaitFor(INFINITE);
   end;
 end;
 
@@ -6773,17 +6770,11 @@ begin
     else
     begin
       FSortDef.Assign(ASortDef);
-
-
-      CheckBrowseMode();
-
       FOffset := 0;
-      InternRecordBuffers.Clear();
-      Connection.ExecuteSQL(SQLSelect(), InternalRefreshEvent);
+
+      Refresh();
 
       SetFieldsSortTag();
-
-      First();
     end;
   end;
 end;
