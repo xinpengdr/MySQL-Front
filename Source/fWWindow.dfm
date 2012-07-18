@@ -491,8 +491,8 @@ object WWindow: TWWindow
     end
   end
   object TBTabControl: TToolBar
-    Left = 144
-    Top = 98
+    Left = 130
+    Top = 80
     Width = 561
     Height = 22
     Align = alNone

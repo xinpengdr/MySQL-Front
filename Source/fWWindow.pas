@@ -472,7 +472,7 @@ type
     QuitAfterShow: Boolean;
     TabControlDragMarkedTabIndex: Integer;
     TabControlDragStartTabIndex: Integer;
-    Tabs: TList;
+    FClients: TList;
     UniqueTabNameCounter: Integer;
     UpdateAvailable: Boolean;
     procedure ApplicationActivate(Sender: TObject);
@@ -532,7 +532,7 @@ implementation {***************************************************************}
 
 uses
   ShellApi, ShlObj, DBConsts, CommCtrl, StrUtils, ShLwApi, IniFiles, Themes,
-  Variants, WinINet,
+  Variants, WinINet, SysConst,
   acQBLocalizer,
   MySQLConsts,
   HTTPTunnel,
@@ -591,11 +591,11 @@ var
   I: Integer;
 begin
   CanClose := True;
-  for I := Tabs.Count - 1 downto 0 do
+  for I := FClients.Count - 1 downto 0 do
   begin
-    CanClose := CanClose and (SendMessage(TFClient(Tabs[I]).Handle, CM_CLOSE_TAB_QUERY, 0, 0) = 1);
+    CanClose := CanClose and (SendMessage(TFClient(FClients[I]).Handle, CM_CLOSE_TAB_QUERY, 0, 0) = 1);
     if (CanClose) then
-      Perform(CM_CLOSE_TAB, 0, LPARAM(TFClient(Tabs[I])));
+      Perform(CM_CLOSE_TAB, 0, LPARAM(TFClient(FClients[I])));
   end;
 end;
 
@@ -643,7 +643,7 @@ begin
     TempCursor := Screen.Cursor;
     Screen.Cursor := crHourGlass;
 
-    TabControl.Visible := Preferences.TabsVisible or not Preferences.TabsVisible and (Tabs.Count >= 2);
+    TabControl.Visible := Preferences.TabsVisible or not Preferences.TabsVisible and (FClients.Count >= 2);
     TBTabControl.Visible := Preferences.TabsVisible;
     for I := 0 to Screen.FormCount - 1 do
       PostMessage(Screen.Forms[I].Handle, CM_CHANGEPREFERENCES, 0, 0);
@@ -713,17 +713,17 @@ begin
       begin
         NewTabIndex := TabControl.TabIndex - 1;
         if (NewTabIndex < 0) then
-          NewTabIndex := Tabs.Count - 1;
+          NewTabIndex := FClients.Count - 1;
         Handled := True;
       end
       else if ((TWMKey(Pointer(@Msg.message)^).CharCode = VK_TAB) and (GetKeyState(VK_SHIFT) >= 0) or (TWMKey(Pointer(@Msg.message)^).CharCode =  VK_NEXT)) then
       begin
         NewTabIndex := TabControl.TabIndex + 1;
-        if (NewTabIndex >= Tabs.Count) then
+        if (NewTabIndex >= FClients.Count) then
           NewTabIndex := 0;
         Handled := True;
       end
-      else if ((Ord('1') <= TWMKey(Pointer(@Msg.message)^).CharCode) and (TWMKey(Pointer(@Msg.message)^).CharCode < Ord('1') + Tabs.Count)) then
+      else if ((Ord('1') <= TWMKey(Pointer(@Msg.message)^).CharCode) and (TWMKey(Pointer(@Msg.message)^).CharCode < Ord('1') + FClients.Count)) then
       begin
         NewTabIndex := TWMKey(Pointer(@Msg.message)^).CharCode - Ord('1');
         Handled := True;
@@ -734,7 +734,7 @@ begin
       if (NewTabIndex <> TabControl.TabIndex) then
       begin
         Perform(CM_DEACTIVATETAB, 0, 0);
-        Perform(CM_ACTIVATETAB, 0, LPARAM(Tabs[NewTabIndex]));
+        Perform(CM_ACTIVATETAB, 0, LPARAM(FClients[NewTabIndex]));
       end;
     end;
   end;
@@ -897,7 +897,7 @@ begin
   begin
     Perform(CM_DEACTIVATETAB, 0, 0);
 
-    if (Tabs.Count = 0) then
+    if (FClients.Count = 0) then
     begin
       TabControl.Tabs.Add(TabCaption(DAccounts.Client.Account.Name));
       TabControl.Visible := Preferences.TabsVisible;
@@ -907,6 +907,8 @@ begin
     else
     begin
       TabControl.Tabs.Add(TabCaption(DAccounts.Client.Account.Name));
+      if (TabControl.Tabs.Count < 0) then
+        raise ERangeError.Create(SRangeError);
       TabControl.TabIndex := TabControl.Tabs.Count - 1;
       if (not TabControl.Visible) then
       begin
@@ -924,7 +926,7 @@ begin
 
     aFCloseAll.Enabled := True;
 
-    Tabs.Add(FClient);
+    FClients.Add(FClient);
 
     Perform(CM_ACTIVATETAB, 0, LPARAM(FClient));
 
@@ -1199,9 +1201,9 @@ begin
     // There is a bug inside acQBLocalizer.pas ver. 1.18 - but it's not interested to get informed
   end;
 
-  if (Assigned(Tabs)) then
-    for I := 0 to Tabs.Count - 1 do
-      SendMessage(TFClient(Tabs[0]).Handle, Message.Msg, Message.WParam, Message.LParam);
+  if (Assigned(FClients)) then
+    for I := 0 to FClients.Count - 1 do
+      SendMessage(TFClient(FClients[0]).Handle, Message.Msg, Message.WParam, Message.LParam);
 end;
 
 procedure TWWindow.CMClientSynchronize(var Message: TMessage);
@@ -1215,28 +1217,28 @@ var
 begin
   Perform(CM_DEACTIVATETAB, 0, 0);
 
-  NewTabIndex := Tabs.IndexOf(Message.Tab);
+  NewTabIndex := FClients.IndexOf(Message.Tab);
 
   if (0 <= NewTabIndex) and (NewTabIndex < TabControl.Tabs.Count) then
   begin
     TabControl.Tabs.Delete(NewTabIndex);
-    Tabs.Delete(Tabs.IndexOf(Message.Tab));
+    FClients.Delete(FClients.IndexOf(Message.Tab));
     if (TabControl.TabIndex < 0) then
-      TabControl.TabIndex := Tabs.Count - 1;
+      TabControl.TabIndex := FClients.Count - 1;
 
     Dec(NewTabIndex, 1);
-    if ((NewTabIndex < 0) and (Tabs.Count > 0)) then
+    if ((NewTabIndex < 0) and (FClients.Count > 0)) then
       NewTabIndex := 0;
     if (NewTabIndex >= 0) then
-      Perform(CM_ACTIVATETAB, 0, LPARAM(Tabs[NewTabIndex]));
+      Perform(CM_ACTIVATETAB, 0, LPARAM(FClients[NewTabIndex]));
 
     Message.Tab.Free();
 
-    TBTabControl.Visible := Preferences.TabsVisible or not Preferences.TabsVisible and (Tabs.Count >= 2);
+    TBTabControl.Visible := Preferences.TabsVisible or not Preferences.TabsVisible and (FClients.Count >= 2);
     TabControl.Visible := TBTabControl.Visible;
     TabControlResize(nil);
 
-    aFCloseAll.Enabled := Tabs.Count > 0;
+    aFCloseAll.Enabled := FClients.Count > 0;
   end;
 end;
 
@@ -1337,8 +1339,8 @@ begin
   else
     Perform(CM_ADDTAB, 0, 0);
 
-  if (ExecutePostShow and (Tabs.Count = 1)) then
-    PostMessage(TFClient(Tabs[0]).Handle, CM_EXECUTE, 0, 0);
+  if (ExecutePostShow and (FClients.Count = 1)) then
+    PostMessage(TFClient(FClients[0]).Handle, CM_EXECUTE, 0, 0);
 end;
 
 procedure TWWindow.CMSysFontChanged(var Message: TMessage);
@@ -1572,7 +1574,7 @@ end;
 destructor TWWindow.Destroy();
 begin
   FreeAndNil(CloseButton);
-  FreeAndNil(Tabs);
+  FreeAndNil(FClients);
   FreeAndNil(Accounts);
 
   {$IFDEF EurekaLog}
@@ -1617,7 +1619,6 @@ begin
     while (Log.Count > 10) do Log.Delete(0);
     while (Log.Count > 0) do
       DataFields.Add('SQL Log ' + IntToStr(Log.Count + 1) + '=' + Log[0]);
-    DataFields.Add('SQL Log Count=' + IntToStr(Log.Count));
     Log.Free();
   end;
 end;
@@ -1628,8 +1629,8 @@ var
   CheckUpdateThread: TCheckUpdateThread;
   I: Integer;
 begin
-  for I := 0 to Tabs.Count - 1 do
-    try TFClient(Tabs[I]).CrashRescue(); except end;
+  for I := 0 to FClients.Count - 1 do
+    try TFClient(FClients[I]).CrashRescue(); except end;
 
   try Accounts.SaveToXML(); except end;
 
@@ -1694,7 +1695,7 @@ procedure TWWindow.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
   aFCloseAllExecute(Sender);
 
-  CanClose := Tabs.Count = 0;
+  CanClose := FClients.Count = 0;
 end;
 
 procedure TWWindow.FormCreate(Sender: TObject);
@@ -1747,7 +1748,7 @@ begin
     CAddressBar.EdgeBorders := [];
   end;
 
-  Tabs := TList.Create();
+  FClients := TList.Create();
   TBTabControl.Visible := Preferences.TabsVisible;
 
   aHIndex.Enabled := FileExists(Application.HelpFile);
@@ -1849,10 +1850,10 @@ end;
 
 function TWWindow.GetActiveTab(): TFClient;
 begin
-  if (not Assigned(Tabs) or (TabControl.TabIndex < 0) or (Tabs.Count <= TabControl.TabIndex)) then
+  if (not Assigned(FClients) or (TabControl.TabIndex < 0) or (FClients.Count <= TabControl.TabIndex)) then
     Result := nil
   else
-    Result := TFClient(Tabs[TabControl.TabIndex]);
+    Result := TFClient(FClients[TabControl.TabIndex]);
 end;
 
 function TWWindow.GetNewTabIndex(Sender: TObject; X, Y: Integer): Integer;
@@ -1950,15 +1951,15 @@ begin
   begin
     if (Assigned(ActiveTab)) then
       Perform(CM_DEACTIVATETAB, 0, 0);
-    Perform(CM_ACTIVATETAB, 0, LPARAM(TFClient(Tabs[TMenuItem(Sender).Parent.IndexOf(TMenuItem(Sender))])));
+    Perform(CM_ACTIVATETAB, 0, LPARAM(TFClient(FClients[TMenuItem(Sender).Parent.IndexOf(TMenuItem(Sender))])));
   end;
 end;
 
 procedure TWWindow.SetActiveTab(const FClient: TFClient);
 begin
-  TabControl.TabIndex := Tabs.IndexOf(FClient);
+  TabControl.TabIndex := FClients.IndexOf(FClient);
 
-  TFClient(Tabs[Tabs.IndexOf(FClient)]).BringToFront();
+  TFClient(FClients[FClients.IndexOf(FClient)]).BringToFront();
 end;
 
 procedure TWWindow.SQLError(const Connection: TMySQLConnection; const ErrorCode: Integer; const ErrorMessage: string);
@@ -2023,9 +2024,9 @@ procedure TWWindow.TabControlChange(Sender: TObject);
 var
   Tab: TFClient;
 begin
-  if (TabControl.TabIndex < Tabs.Count) then
+  if ((0 <= TabControl.TabIndex) and (TabControl.TabIndex < FClients.Count)) then
   begin
-    Tab := TFClient(Tabs[TabControl.TabIndex]);
+    Tab := TFClient(FClients[TabControl.TabIndex]);
 
     Perform(CM_ACTIVATETAB, 0, LPARAM(Tab));
   end;
@@ -2046,10 +2047,10 @@ var
 begin
   mtTabs.Clear();
   if (TabControl.Tabs.Count > 1) then
-    for I := 0 to Tabs.Count - 1 do
+    for I := 0 to FClients.Count - 1 do
     begin
       MenuItem := TMenuItem.Create(Self);
-      MenuItem.Caption := TFClient(Tabs[I]).ToolBarData.Caption;
+      MenuItem.Caption := TFClient(FClients[I]).ToolBarData.Caption;
       MenuItem.RadioItem := True;
       MenuItem.Checked := I = TabControl.TabIndex;
       MenuItem.OnClick := mtTabsClick;
@@ -2067,11 +2068,11 @@ var
 begin
   NewTabIndex := GetNewTabIndex(Sender, X, Y);
 
-  Tabs.Move(TabControlDragStartTabIndex, NewTabIndex);
+  FClients.Move(TabControlDragStartTabIndex, NewTabIndex);
 
   TabControl.Tabs.Clear();
-  for I := 0 to Tabs.Count - 1 do
-    TabControl.Tabs.Add(TabCaption(TFClient(Tabs[I]).Client.Account.Name));
+  for I := 0 to FClients.Count - 1 do
+    TabControl.Tabs.Add(TabCaption(TFClient(FClients[I]).Client.Account.Name));
 
   TabControl.TabIndex := NewTabIndex;
 end;
@@ -2227,10 +2228,10 @@ procedure TWWindow.TabControlGetImageIndex(Sender: TObject;
 var
   Tab: TFClient;
 begin
-  if ((TabIndex < 0) or (Tabs.Count <= TabIndex)) then
+  if ((TabIndex < 0) or (FClients.Count <= TabIndex)) then
     Tab := nil
   else
-    Tab := TFClient(Tabs[TabIndex]);
+    Tab := TFClient(FClients[TabIndex]);
 
   if (not Assigned(Tab)) then
     ImageIndex := iiServer
@@ -2275,7 +2276,7 @@ begin
     TabControl := TTabControl(Sender);
     TabIndex := TabControl.IndexOfTabAt(X, Y);
 
-    if ((TabIndex < 0) or (Tabs.Count <= TabIndex)) then
+    if ((TabIndex < 0) or (FClients.Count <= TabIndex)) then
       TabControl.Hint := ''
     else
     begin
@@ -2334,7 +2335,7 @@ begin
         Hint := ReplaceStr(aFClose.Caption, '&', '')
       else
       begin
-        Hint := TFClient(Tabs[TabIndex]).Client.Account.Name;
+        Hint := TFClient(FClients[TabIndex]).Client.Account.Name;
 
         if (TabIndex < 9) then
           Hint := Hint + ' (' + ShortCutToText(ShortCut(Ord('1') + TabIndex, [ssCtrl])) + ')';
