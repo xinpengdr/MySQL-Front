@@ -4590,7 +4590,7 @@ begin
       SetState(dsOpening);
 
     Assert((SQL <> '') and SQLSingleStmt(SQL));
-    if (Synchron xor (Self is TMySQLDataSet)) then
+    if (Synchron = (Self is TMySQLDataSet)) then
       raise Exception.Create('Not jet implemented');
 
     if (not Synchron) then
