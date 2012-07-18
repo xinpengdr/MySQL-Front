@@ -1601,8 +1601,6 @@ var
   I: Integer;
   Log: TStringList;
 begin
-  if (IsWine()) then
-    DataFields.Add('Wine=Yes');
   DataFields.Add('System CodePage=' + IntToStr(GetACP()));
 
   if (not Assigned(ActiveTab)) then

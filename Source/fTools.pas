@@ -1098,7 +1098,7 @@ const
   Search: array [0 .. SearchLen - 1] of AnsiChar = (#0, #9, #10, #13, '''', '"', '\');
   Replace: array [0 .. 2 * SearchLen - 1] of AnsiChar = ('\','0', '\','t', '\','n', '\','r', '\','''', '\','"', '\','\');
 var
-  Write: Pointer;
+  Write: PAnsiChar;
   Positions: packed array [0 .. SearchLen - 1] of Cardinal;
 begin
   if (Assigned(Value) and (Length > 0)) then
@@ -7073,7 +7073,7 @@ begin
 
                 for I := 0 to DestinationTable.Fields.Count - 1 do
                 begin
-                  if (DataFileBuffer.Length() > 0) then
+                  if (I > 0) then
                     DataFileBuffer.Put(PAnsiChar(',_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
                   if (not Assigned(LibRow^[SourceFields[I]])) then
                     DataFileBuffer.Put(PAnsiChar('NULL'), 4)

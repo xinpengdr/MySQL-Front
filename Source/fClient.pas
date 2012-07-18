@@ -3144,6 +3144,8 @@ begin
   inherited Create(nil);
 
   FTable := ATable;
+
+  Asynchron := True;
   Connection := ATable.Database.Client;
 end;
 

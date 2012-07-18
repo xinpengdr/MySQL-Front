@@ -1273,7 +1273,7 @@ begin
 
         Answer := IDYES;
         for I := 0 to FTables.Items.Count - 1 do
-          if (FTables.Items[I].Selected) then
+          if (Assigned(ImportODBC) and (FTables.Items[I].Selected)) then
           begin
             TableName := Database.Tables.ApplyMySQLTableName(GetTableName(FTables.Items[I]));
             if (not Assigned(Database.TableByName(TableName))) then
@@ -1327,7 +1327,7 @@ begin
 
         Answer := IDYES;
         for I := 0 to FTables.Items.Count - 1 do
-          if (FTables.Items.Item[I].Selected) then
+          if (Assigned(ImportSQLite) and (FTables.Items.Item[I].Selected)) then
           begin
             TableName := Database.Tables.ApplyMySQLTableName(GetTableName(FTables.Items[I]));
             if (not Assigned(Database.TableByName(TableName))) then

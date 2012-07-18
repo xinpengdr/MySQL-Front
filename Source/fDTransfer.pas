@@ -39,7 +39,7 @@ type
     FTransferStructure: TCheckBox;
     GErrorMessages: TGroupBox_Ext;
     GSource: TGroupBox_Ext;
-    GProgress: TGroupBox_Ext;
+    GProgress: TGroupBox;
     GDestination: TGroupBox_Ext;
     GTransferOptions: TGroupBox_Ext;
     GTransferWhat: TGroupBox_Ext;
@@ -893,7 +893,7 @@ begin
             begin
               Database := SourceClient.DatabaseByName(FSource.Selected.Parent[I].Text);
               for J := 0 to Database.Tables.Count - 1 do
-                if ((Database.Tables[J] is TCBaseTable) and Assigned(TCBaseTable(Database.Tables[J]).Engine) and not TCBaseTable(Database.Tables[J]).Engine.IsMerge and (RightStr(Database.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
+                if (Assigned(Transfer) and (Database.Tables[J] is TCBaseTable) and Assigned(TCBaseTable(Database.Tables[J]).Engine) and not TCBaseTable(Database.Tables[J]).Engine.IsMerge and (RightStr(Database.Tables[J].Name, Length(BackupExtension)) <> BackupExtension)) then
                   AddTable(
                     SourceClient, Database.Name, Database.Tables[J].Name,
                     DestinationClient, Database.Name, Database.Tables[J].Name
@@ -906,7 +906,8 @@ begin
             );
         end;
 
-    Transfer.Start();
+    if (Assigned(Transfer)) then
+      Transfer.Start();
   end;
 end;
 

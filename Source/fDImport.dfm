@@ -102,6 +102,10 @@ object DImport: TDImport
       TabVisible = False
       OnHide = TSCSVOptionsHide
       OnShow = TSCSVOptionsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object GCSVHow: TGroupBox_Ext
         Left = 4
         Top = 0

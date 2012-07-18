@@ -418,6 +418,7 @@ type
     FWarningCount: Integer;
     function GetHandle(): MySQLConsts.MYSQL_RES;
   protected
+    FAsynchron: Boolean;
     FCommandText: string;
     FCommandType: TCommandType;
     FDatabaseName: string;
@@ -444,6 +445,7 @@ type
     function SetActiveEvent(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean; virtual;
     procedure SetCommandText(const ACommandText: string); virtual;
     procedure SetConnection(const AConnection: TMySQLConnection); virtual;
+    function SQLSelect(): string; overload; virtual;
     procedure UpdateIndexDefs(); override;
     property Handle: MySQLConsts.MYSQL_RES read GetHandle;
     property IndexDefs: TIndexDefs read FIndexDefs;
@@ -463,6 +465,7 @@ type
     property UniDirectional: Boolean read GetUniDirectional;
     property Warnings: Integer read FWarningCount;
   published
+    property Asynchron: Boolean read FAsynchron write FAsynchron default False;
     property CommandText: string read FCommandText write SetCommandText;
     property CommandType: TCommandType read FCommandType;
     property Connection: TMySQLConnection read FConnection write SetConnection;
@@ -631,7 +634,7 @@ type
     procedure InternalOpen(); override;
     procedure InternalRefresh(); override;
     procedure SetCommandText(const ACommandText: string); override;
-    function SQLSelect(const IgnoreLimit: Boolean = False): string; virtual;
+    function SQLSelect(const IgnoreLimit: Boolean = False): string; overload; virtual;
   public
     constructor Create(AOwner: TComponent); override;
     function LoadNextRecords(const AllRecords: Boolean = False): Boolean; virtual;
@@ -1749,9 +1752,9 @@ begin
 
   DataSet := ADataSet;
 
-  if (not (DataSet is TMySQLDataSet)) then
-    State := ssReceivingResult
-  else
+  State := ssReceivingResult;
+
+  if (DataSet.Asynchron) then
     RunAction(ssReceivingResult, False);
 end;
 
@@ -1884,7 +1887,7 @@ begin
             Connection.SyncConnected(Self);
         end;
       ssExecutingSQL:
-    		begin
+        begin
           case (Mode) of
             smSQL:
               begin
@@ -1911,7 +1914,7 @@ begin
           if (State = ssReady) then
             Connection.SyncExecutedSQL(Self);
         end;
-	    ssReceivingResult:
+      ssReceivingResult:
         raise Exception.Create(SOutOfSync);
       ssCancel:
         begin
@@ -3425,8 +3428,8 @@ procedure TMySQLConnection.SyncReceivingResult(SynchroThread: TSynchroThread);
 var
   LibRow: MYSQL_ROW;
 begin
+  Assert(SynchroThread.State = ssReceivingResult);
   Assert(Assigned(SynchroThread.DataSet));
-
 
   repeat
     if ((SynchroThread.Terminated) or not Assigned(SynchroThread.DataSet)) then
@@ -3909,6 +3912,7 @@ constructor TMySQLQuery.Create(AOwner: TComponent);
 begin
   inherited;
 
+  FAsynchron := False;
   FCommandText := '';
   FCommandType := ctQuery;
   FConnection := nil;
@@ -4559,30 +4563,39 @@ procedure TMySQLQuery.Open(const DataHandle: TMySQLConnection.TDataResult);
 begin
   Connection := DataHandle.Connection;
 
-  FCommandText := Connection.CommandText;
-  FDatabaseName := Connection.DatabaseName;
+  if (CommandType = ctQuery) then
+  begin
+    FCommandText := Connection.CommandText;
+    FDatabaseName := Connection.DatabaseName;
+  end;
 
-  SetState(dsOpening);
   SetActiveEvent(DataHandle, Assigned(DataHandle.ResultHandle));
 end;
 
 procedure TMySQLQuery.SetActive(Value: Boolean);
+var
+  SQL: string;
+  Synchron: Boolean;
 begin
   if (not Value) then
     inherited
   else if (not Active) then
   begin
-    if (not (Self is TMySQLTable)) then
-      Assert(SQLSingleStmt(CommandText))
+    Synchron := not Asynchron or Connection.UseSynchroThread();
+    if (CommandType <> ctTable) then
+      SQL := CommandText
     else
-      Assert(CommandText <> '');
-
-    if ((Self is TMySQLTable) and Connection.UseSynchroThread()) then
-    begin
+      SQL := SQLSelect();
+    if (not Synchron) then
       SetState(dsOpening);
-      Connection.ExecuteSQL(smDataSet, False, TMySQLTable(Self).SQLSelect(), SetActiveEvent);
-    end
-    else if (Connection.ExecuteSQL(smDataSet, True, CommandText)) then
+
+    Assert((SQL <> '') and SQLSingleStmt(SQL));
+    if (Synchron xor (Self is TMySQLDataSet)) then
+      raise Exception.Create('Not jet implemented');
+
+    if (not Synchron) then
+      Connection.ExecuteSQL(smDataSet, Synchron, SQL, SetActiveEvent)
+    else if (Connection.ExecuteSQL(smDataSet, Synchron, SQL)) then
       inherited;
   end;
 end;
@@ -4597,6 +4610,7 @@ begin
   else
   begin
     DoBeforeOpen();
+    SetState(dsOpening);
     OpenCursorComplete();
   end;
 
@@ -4680,6 +4694,14 @@ begin
       ftWideString: Result := SQLEscape(Connection.LibDecode(Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]));
       else raise EDatabaseError.CreateFMT(SUnknownFieldType + '(%d)', [Field.Name, Integer(Field.DataType)]);
     end;
+end;
+
+function TMySQLQuery.SQLSelect(): string;
+begin
+  Result := 'SELECT * FROM ';
+  if (DatabaseName <> '') then
+    Result := Result + Connection.EscapeIdentifier(DatabaseName) + '.';
+  Result := Result + Connection.EscapeIdentifier(TableName);
 end;
 
 procedure TMySQLQuery.UpdateIndexDefs();
@@ -6774,10 +6796,7 @@ var
   FirstField: Boolean;
   Pos: Integer;
 begin
-  Result := 'SELECT * FROM ';
-  if (DatabaseName <> '') then
-    Result := Result + Connection.EscapeIdentifier(DatabaseName) + '.';
-  Result := Result + Connection.EscapeIdentifier(TableName);
+  Result := inherited SQLSelect();
   if (FilterSQL <> '') then
     Result := Result + ' WHERE ' + FilterSQL;
   if (SortDef.Fields <> '') then
@@ -6814,7 +6833,6 @@ begin
       RequestedRecordCount := InternRecordBuffers.Count;
     Result := Result + IntToStr(RequestedRecordCount);
   end;
-  Result := Result + ';' + #13#10;
 end;
 
 {******************************************************************************}

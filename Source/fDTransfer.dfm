@@ -48,10 +48,6 @@ object DTransfer: TDTransfer
       Caption = 'TSSelect'
       TabVisible = False
       OnShow = TSSelectShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         436
         279)
@@ -151,7 +147,7 @@ object DTransfer: TDTransfer
       DesignSize = (
         436
         279)
-      object GProgress: TGroupBox_Ext
+      object GProgress: TGroupBox
         Left = 4
         Top = 0
         Width = 429
@@ -331,6 +327,10 @@ object DTransfer: TDTransfer
       Caption = 'TSTransferOptions'
       TabVisible = False
       OnShow = TSTransferOptionsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         436
         279)
