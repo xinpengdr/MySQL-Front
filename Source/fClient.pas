@@ -6292,7 +6292,7 @@ begin
       end;
     until (not DataSet.FindNext());
 
-  Result := inherited or (Client.ErrorCode = ER_EVENTS_DB_ERROR);
+  Result := inherited;
 
   if (not Filtered) then
     while (DeleteList.Count > 0) do
@@ -6529,7 +6529,7 @@ begin
   if ((Client.ServerVersion < 50004) or (Self is TCSystemDatabase)) then FRoutines := nil else FRoutines := TCRoutines.Create(Self);
   FTables := TCTables.Create(Self);
   if ((Client.ServerVersion < 50010) or (Self is TCSystemDatabase)) then FTriggers := nil else FTriggers := TCTriggers.Create(Self);
-  if ((Client.ServerVersion < 50106) or (Self is TCSystemDatabase)) then FEvents := nil else FEvents := TCEvents.Create(Self);
+  if ((Client.ServerVersion < 50106) or (Self is TCSystemDatabase) or not Client.VariableByName('event_scheduler').AsBoolean) then FEvents := nil else FEvents := TCEvents.Create(Self);
 end;
 
 function TCDatabase.DeleteObject(const DBObject: TCDBObject): Boolean;

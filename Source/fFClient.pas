@@ -2719,7 +2719,9 @@ begin
       AllowChange := False;
   end;
 
-  if (AllowChange) then
+  if (not AllowChange) then
+    raise ERangeError.Create(SRangeError + ('NewAddress: ' + NewAddress))
+  else
   begin
     if (not Client.Update() and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
       AllowChange := False
