@@ -56,6 +56,10 @@
 
 1 RT_MANIFEST "{BuildTempPath}\\MySQLFront.manifest"  
 
+1 RCDATA "{BuildImagesPath}\\Info.jpg"
+
+// SLATECLASSICO VCLSTYLE "{BuildImagesPath}\\SlateClassico.vsf"
+
 MAINICON ICON "{BuildImagesPath}\\MySQLFront.ico"
 10000 ICON "{BuildImagesPath}\\Blank.ico"
 10001 ICON "{BuildImagesPath}\\cubes.ico"
@@ -150,8 +154,6 @@ MAINICON ICON "{BuildImagesPath}\\MySQLFront.ico"
 10098 ICON "{BuildImagesPath}\\wrench.ico"
 10099 ICON "{BuildImagesPath}\\branch.ico"
 10100 ICON "{BuildImagesPath}\\magic_wand.ico"
-
-1 RCDATA "{BuildImagesPath}\\Info.jpg"
 
 STRINGTABLE
 BEGIN

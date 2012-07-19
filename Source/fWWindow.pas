@@ -455,6 +455,7 @@ type
       var DragObject: TDragObject);
     procedure TBAddressBarResize(Sender: TObject);
     procedure tbPropertiesClick(Sender: TObject);
+    procedure CAddressBarResize(Sender: TObject);
   const
     tiDeactivate = 1;
   private
@@ -532,7 +533,7 @@ implementation {***************************************************************}
 
 uses
   ShellApi, ShlObj, DBConsts, CommCtrl, StrUtils, ShLwApi, IniFiles, Themes,
-  Variants, WinINet, SysConst,
+  Variants, WinINet, SysConst, Styles,
   acQBLocalizer,
   MySQLConsts,
   HTTPTunnel,
@@ -799,6 +800,11 @@ end;
 procedure TWWindow.aVAddressBarExecute(Sender: TObject);
 begin
   CAddressBar.Visible := aVAddressBar.Checked;
+  if (not CAddressBar.Visible) then
+    CAddressBar.Top := 0 // Workaround for Wine 1.4. Without this, the CAddressBar is visible
+  else
+    CAddressBar.Top := CToolBar.Height;
+
   TabControlResize(nil);
 end;
 
@@ -843,6 +849,14 @@ end;
 procedure TWWindow.MySQLConnectionSynchronize(const Data: Pointer);
 begin
   PostMessage(Handle, CM_MYSQLCONNECTION_SYNCHRONIZE, 0, LPARAM(Data));
+end;
+
+procedure TWWindow.CAddressBarResize(Sender: TObject);
+begin
+  FAddress.Width := CAddressBar.ClientWidth - FAddress.Left - FAddressApply.Width - 4;
+  TBAddressBar.Width := CAddressBar.ClientWidth;
+
+  TBAddressBar.ClientHeight := FAddress.Height;
 end;
 
 procedure TWWindow.CMActivateTab(var Message: TCMActivateTab);
@@ -1709,6 +1723,9 @@ begin
   UniqueTabNameCounter := 0;
   UpdateAvailable := False;
 
+//  if (IsWine()) then
+//    TStyleManager.TrySetStyle('Slate Classico');
+
   MySQLDB.MySQLConnectionOnSynchronize := MySQLConnectionSynchronize;
 
   Application.HelpFile := ExtractFilePath(Application.ExeName) + Copy(ExtractFileName(Application.ExeName), 1, Length(ExtractFileName(Application.ExeName)) - 4) + '.chm';
@@ -1755,7 +1772,7 @@ begin
   aHUpdate.Enabled := IsConnectedToInternet() and (Preferences.SetupProgram = '');
 
   aVAddressBar.Checked := Preferences.AddressBarVisible;
-  CAddressBar.Visible := aVAddressBar.Checked;
+  aVAddressBarExecute(Self);
 
   Perform(CM_UPDATETOOLBAR, 0, 0);
 

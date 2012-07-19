@@ -564,7 +564,6 @@ type
     procedure InternalOpen(); override;
     procedure InternalPost(); override;
     procedure InternalRefresh(); override;
-    function InternalRefreshEvent(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean; virtual;
     procedure InternalSetToRecord(Buffer: TRecordBuffer); override;
     function IsCursorOpen(): Boolean; override;
     procedure MoveRecordBufferData(var DestData: TMySQLQuery.PRecordBufferData; const SourceData: TMySQLQuery.PRecordBufferData);
@@ -634,7 +633,8 @@ type
     procedure InternalLast(); override;
     procedure InternalOpen(); override;
     procedure SetCommandText(const ACommandText: string); override;
-    function SQLSelect(const IgnoreLimit: Boolean = False): string; overload; virtual;
+    function SQLSelect(): string; override;
+    function SQLSelect(const IgnoreLimit: Boolean): string; overload; virtual;
   public
     constructor Create(AOwner: TComponent); override;
     function LoadNextRecords(const AllRecords: Boolean = False): Boolean; virtual;
@@ -4590,8 +4590,6 @@ begin
       SetState(dsOpening);
 
     Assert((SQL <> '') and SQLSingleStmt(SQL));
-//    if (Synchron = (Self is TMySQLDataSet)) then
-//      raise Exception.Create('Not jet implemented');
 
     if (not Synchron) then
       Connection.ExecuteSQL(smDataSet, Synchron, SQL, SetActiveEvent)
@@ -5473,19 +5471,6 @@ begin
     SynchroThread := Connection.SynchroThread;
     SynchroThread.BindDataSet(Self);
   end;
-end;
-
-function TMySQLDataSet.InternalRefreshEvent(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean;
-begin
-  Assert(not Assigned(SynchroThread));
-
-
-  InternRecordBuffers.RecordReceived.ResetEvent();
-
-  SynchroThread := DataHandle;
-  SynchroThread.BindDataSet(Self);
-
-  Result := False;
 end;
 
 procedure TMySQLDataSet.InternalSetToRecord(Buffer: TRecordBuffer);
@@ -6779,7 +6764,12 @@ begin
   end;
 end;
 
-function TMySQLTable.SQLSelect(const IgnoreLimit: Boolean = False): string;
+function TMySQLTable.SQLSelect(): string;
+begin
+  Result := SQLSelect(False);
+end;
+
+function TMySQLTable.SQLSelect(const IgnoreLimit: Boolean): string;
 var
   DescFieldName: string;
   DescPos: Integer;

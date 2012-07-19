@@ -82,6 +82,7 @@ object WWindow: TWWindow
     EdgeInner = esNone
     EdgeOuter = esNone
     Visible = False
+    OnResize = CAddressBarResize
     object TBAddressBar: TToolBar
       Left = 0
       Top = 0
