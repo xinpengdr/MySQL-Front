@@ -215,7 +215,7 @@ begin
     SetString(Result, PChar(@Buffer), Size)
   else
   begin
-    MessageBox(0, PChar(SysErrorMessage(GetLastError())), 'Error', MB_OK + MB_ICONERROR);
+    MessageBox(0, PChar(SysErrorMessage(GetLastError()) + ' #' + IntToStr(GetLastError())), 'Error', MB_OK + MB_ICONERROR);
 
     Result := Scheme + '://' + Host;
     if ((Port <> 0) and (Port <> MYSQL_PORT)) then
