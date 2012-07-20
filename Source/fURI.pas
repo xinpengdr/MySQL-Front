@@ -211,10 +211,24 @@ begin
   URLComponents.dwExtraInfoLength := StrLen(URLComponents.lpszExtraInfo);
 
   Size := SizeOf(Buffer);
-  if (not InternetCreateUrl(URLComponents, 0, @Buffer, Size)) then
-    Result := ''
+  if (InternetCreateUrl(URLComponents, 0, @Buffer, Size)) then
+    SetString(Result, PChar(@Buffer), Size)
   else
-    SetString(Result, PChar(@Buffer), Size);
+  begin
+    MessageBox(0, PChar(SysErrorMessage(GetLastError())), 'Error', MB_OK + MB_ICONERROR);
+
+    Result := Scheme + '://' + Host;
+    if ((Port <> 0) and (Port <> MYSQL_PORT)) then
+      Result := Result + ':' +  IntToStr(Port);
+    if (Username <> '') then
+    begin
+      Result := Result + EscapeURL(Username);
+      if (Password <> '') then
+        Result := Result + ':' + EscapeURL(Password);
+      Result := Result + '@';
+    end;
+    Result := Result + Path + Copy(FExtraInfos, 1, 1) + EscapeURL(Copy(FExtraInfos, 2, Length(FExtraInfos) - 1));
+  end;
 end;
 
 function TUURI.GetParam(AName: string): Variant;

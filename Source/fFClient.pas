@@ -2720,7 +2720,7 @@ begin
   end;
 
   if (not AllowChange) then
-    raise ERangeError.Create(SRangeError + ('NewAddress: ' + NewAddress))
+    raise ERangeError.Create(SRangeError + #13#10 + 'NewAddress: ' + NewAddress)
   else
   begin
     if (not Client.Update() and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
@@ -3439,7 +3439,7 @@ begin
         end;
       except
         on E: EFileStreamError do
-          MsgBox(SysErrorMessage(GetLastError), Preferences.LoadStr(45), MB_OK + MB_ICONERROR);
+          MsgBox(SysErrorMessage(GetLastError()), Preferences.LoadStr(45), MB_OK + MB_ICONERROR);
       end;
       Encoding.Free();
     end
