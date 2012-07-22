@@ -23,41 +23,40 @@ object FClient: TFClient
     OnCanResize = SLogCanResize
     OnMoved = SLogMoved
     ActiveBorder = alTop
+    ActiveBorderColor = clWindow
     ExplicitTop = 252
     ExplicitWidth = 443
   end
   object SSideBar: TSplitter_Ext
     Left = 120
-    Top = 27
+    Top = 22
     Width = 4
-    Height = 229
+    Height = 234
     AutoSnap = False
-    Color = clBtnFace
-    ParentColor = False
     ResizeStyle = rsUpdate
     OnCanResize = SSideBarCanResize
     OnMoved = SSideBarMoved
     ActiveBorder = alRight
+    ActiveBorderColor = clWindow
     ExplicitTop = 0
     ExplicitHeight = 252
   end
   object PSideBar: TPanel_Ext
     Left = 0
-    Top = 27
+    Top = 22
     Width = 120
-    Height = 229
+    Height = 234
     Align = alLeft
     BevelOuter = bvNone
     Color = clWindow
     Constraints.MinWidth = 120
     ParentBackground = False
     TabOrder = 0
-    OnResize = PSideBarResize
     object PExplorer: TPanel_Ext
       Left = 0
       Top = 0
       Width = 120
-      Height = 229
+      Height = 234
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -65,6 +64,7 @@ object FClient: TFClient
       ParentBackground = False
       TabOrder = 3
       Visible = False
+      OnResize = PanelResize
       object SExplorer: TSplitter_Ext
         Left = 2
         Top = 102
@@ -76,13 +76,14 @@ object FClient: TFClient
         Constraints.MinHeight = 4
         ParentColor = False
         OnCanResize = SplitterCanResize
+        ActiveBorderColor = clWindow
         ExplicitTop = 150
       end
       object PFiles: TPanel_Ext
         Left = 2
         Top = 106
         Width = 116
-        Height = 121
+        Height = 126
         Align = alClient
         BevelOuter = bvNone
         Color = clWindow
@@ -101,14 +102,13 @@ object FClient: TFClient
         Constraints.MinHeight = 50
         ParentBackground = False
         TabOrder = 1
-        OnResize = PSideBarResize
       end
     end
     object PSQLHistory: TPanel_Ext
       Left = 0
       Top = 0
       Width = 120
-      Height = 229
+      Height = 234
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -119,7 +119,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 225
+        Height = 230
         HelpContext = 1112
         Align = alClient
         BorderStyle = bsNone
@@ -153,7 +153,7 @@ object FClient: TFClient
       Left = 0
       Top = 0
       Width = 120
-      Height = 229
+      Height = 234
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -164,7 +164,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 225
+        Height = 230
         HelpContext = 1082
         Align = alClient
         BorderStyle = bsNone
@@ -192,7 +192,7 @@ object FClient: TFClient
       Left = 0
       Top = 0
       Width = 120
-      Height = 229
+      Height = 234
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -203,7 +203,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 225
+        Height = 230
         HelpContext = 1038
         Align = alClient
         BorderStyle = bsNone
@@ -294,9 +294,9 @@ object FClient: TFClient
   end
   object PContent: TPanel_Ext
     Left = 124
-    Top = 27
+    Top = 22
     Width = 467
-    Height = 229
+    Height = 234
     Align = alClient
     BevelOuter = bvNone
     Color = clWindow
@@ -307,7 +307,7 @@ object FClient: TFClient
     OnResize = PContentResize
     object SResult: TSplitter_Ext
       Left = 0
-      Top = 13
+      Top = 18
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -321,12 +321,13 @@ object FClient: TFClient
       OnCanResize = SplitterCanResize
       OnMoved = SResultMoved
       ActiveBorder = alBottom
+      ActiveBorderColor = clWindow
       ExplicitTop = 36
       ExplicitWidth = 319
     end
     object SBlob: TSplitter_Ext
       Left = 0
-      Top = 166
+      Top = 171
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -339,6 +340,7 @@ object FClient: TFClient
       Visible = False
       OnCanResize = SplitterCanResize
       ActiveBorder = alTop
+      ActiveBorderColor = clWindow
       ExplicitTop = 189
       ExplicitWidth = 319
     end
@@ -448,7 +450,7 @@ object FClient: TFClient
     end
     object PResult: TPanel_Ext
       Left = 0
-      Top = 36
+      Top = 41
       Width = 467
       Height = 130
       Align = alBottom
@@ -457,7 +459,6 @@ object FClient: TFClient
       ParentBackground = False
       TabOrder = 5
       Visible = False
-      OnResize = PSideBarResize
       object PResultHeader: TPanel_Ext
         Left = 0
         Top = 0
@@ -508,6 +509,7 @@ object FClient: TFClient
         AutoSnap = False
         ResizeStyle = rsUpdate
         OnCanResize = SplitterCanResize
+        ActiveBorderColor = clWindow
         ExplicitWidth = 319
       end
       object PBuilderQuery: TPanel_Ext
@@ -877,7 +879,7 @@ object FClient: TFClient
     end
     object PBlob: TPanel_Ext
       Left = 0
-      Top = 170
+      Top = 175
       Width = 467
       Height = 59
       Align = alBottom
@@ -1108,7 +1110,7 @@ object FClient: TFClient
     end
     object SBResult: TStatusBar
       Left = 0
-      Top = 17
+      Top = 22
       Width = 467
       Height = 19
       Panels = <
@@ -1135,150 +1137,125 @@ object FClient: TFClient
       Visible = False
     end
   end
-  object PHeader: TPanel_Ext
+  object PView: TPanel_Ext
     Left = 0
     Top = 0
     Width = 591
-    Height = 27
+    Height = 22
     Align = alTop
-    AutoSize = True
     BevelOuter = bvNone
+    DoubleBuffered = False
     ParentBackground = False
+    ParentDoubleBuffered = False
     TabOrder = 3
-    object PSideBarHeader: TPanel_Ext
-      Left = 0
+    OnPaint = PViewPaint
+    object TBSideBar: TToolBar
+      Left = 2
       Top = 0
-      Width = 120
-      Height = 27
-      BevelOuter = bvNone
-      DoubleBuffered = False
-      ParentBackground = False
-      ParentDoubleBuffered = False
+      Width = 92
+      Height = 22
+      Align = alNone
+      AutoSize = True
       TabOrder = 0
-      OnMouseDown = PanelMouseDown
-      OnMouseMove = PanelMouseMove
-      OnMouseUp = PanelMouseUp
-      OnPaint = PanelPaint
-      object TBSideBar: TToolBar
-        Left = 2
-        Top = 2
-        Width = 92
-        Height = 22
-        Align = alNone
-        AutoSize = True
-        TabOrder = 0
-        Transparent = False
-        Wrapable = False
-        OnResize = ToolBarResize
-        object tbNavigator: TToolButton
-          Left = 0
-          Top = 0
-          Caption = 'tbNavigator'
-          Grouped = True
-          Style = tbsCheck
-        end
-        object tbBookmarks: TToolButton
-          Left = 23
-          Top = 0
-          Caption = 'tbBookmarks'
-          Grouped = True
-          Style = tbsCheck
-        end
-        object tbExplorer: TToolButton
-          Left = 46
-          Top = 0
-          Caption = 'tbExplorer'
-          Grouped = True
-          Style = tbsCheck
-        end
-        object tbSQLHistory: TToolButton
-          Left = 69
-          Top = 0
-          Caption = 'tbSQLHistory'
-          Grouped = True
-          Style = tbsCheck
-        end
+      Transparent = True
+      Wrapable = False
+      OnResize = ToolBarResize
+      object tbNavigator: TToolButton
+        Left = 0
+        Top = 0
+        Caption = 'tbNavigator'
+        Grouped = True
+        Style = tbsCheck
+      end
+      object tbBookmarks: TToolButton
+        Left = 23
+        Top = 0
+        Caption = 'tbBookmarks'
+        Grouped = True
+        Style = tbsCheck
+      end
+      object tbExplorer: TToolButton
+        Left = 46
+        Top = 0
+        Caption = 'tbExplorer'
+        Grouped = True
+        Style = tbsCheck
+      end
+      object tbSQLHistory: TToolButton
+        Left = 69
+        Top = 0
+        Caption = 'tbSQLHistory'
+        Grouped = True
+        Style = tbsCheck
       end
     end
-    object PToolBar: TPanel_Ext
-      Left = 120
+    object ToolBar: TToolBar
+      Left = 124
       Top = 0
-      Width = 471
-      Height = 27
-      BevelOuter = bvNone
-      DoubleBuffered = False
-      ParentBackground = False
-      ParentDoubleBuffered = False
+      Width = 374
+      Height = 20
+      Align = alNone
+      ButtonHeight = 20
+      ButtonWidth = 68
+      List = True
+      PopupMenu = MToolBar
+      ShowCaptions = True
       TabOrder = 1
-      object ToolBar: TToolBar
-        Left = 2
-        Top = 2
-        Width = 374
-        Height = 20
-        Align = alNone
+      Transparent = True
+      Wrapable = False
+      OnResize = ToolBarResize
+      object tbObjects: TToolButton
+        Left = 0
+        Top = 0
         AutoSize = True
-        ButtonHeight = 20
-        ButtonWidth = 68
-        List = True
+        Caption = 'tbObjects'
+        ImageIndex = 1
         PopupMenu = MToolBar
-        ShowCaptions = True
-        TabOrder = 0
-        Transparent = False
-        Wrapable = False
-        OnResize = ToolBarResize
-        object tbObjects: TToolButton
-          Left = 0
-          Top = 0
-          AutoSize = True
-          Caption = 'tbObjects'
-          ImageIndex = 1
-          PopupMenu = MToolBar
-          Style = tbsCheck
-        end
-        object tbBrowser: TToolButton
-          Left = 70
-          Top = 0
-          AutoSize = True
-          Caption = 'tbBrowser'
-          ImageIndex = 2
-          PopupMenu = MToolBar
-          Style = tbsCheck
-        end
-        object tbIDE: TToolButton
-          Left = 142
-          Top = 0
-          AutoSize = True
-          Caption = 'tbIDE'
-          PopupMenu = MToolBar
-          Style = tbsCheck
-          Visible = False
-        end
-        object tbBuilder: TToolButton
-          Left = 184
-          Top = 0
-          AutoSize = True
-          Caption = 'tbBuilder'
-          ImageIndex = 0
-          PopupMenu = MToolBar
-          Style = tbsCheck
-        end
-        object tbEditor: TToolButton
-          Left = 248
-          Top = 0
-          AutoSize = True
-          Caption = 'tbEditor'
-          ImageIndex = 3
-          PopupMenu = MToolBar
-          Style = tbsCheck
-        end
-        object tbDiagram: TToolButton
-          Left = 308
-          Top = 0
-          AutoSize = True
-          Caption = 'tbDiagram'
-          PopupMenu = MToolBar
-          Style = tbsCheck
-        end
+        Style = tbsCheck
+      end
+      object tbBrowser: TToolButton
+        Left = 70
+        Top = 0
+        AutoSize = True
+        Caption = 'tbBrowser'
+        ImageIndex = 2
+        PopupMenu = MToolBar
+        Style = tbsCheck
+      end
+      object tbIDE: TToolButton
+        Left = 142
+        Top = 0
+        AutoSize = True
+        Caption = 'tbIDE'
+        PopupMenu = MToolBar
+        Style = tbsCheck
+        Visible = False
+      end
+      object tbBuilder: TToolButton
+        Left = 184
+        Top = 0
+        AutoSize = True
+        Caption = 'tbBuilder'
+        ImageIndex = 0
+        PopupMenu = MToolBar
+        Style = tbsCheck
+      end
+      object tbEditor: TToolButton
+        Left = 248
+        Top = 0
+        AutoSize = True
+        Caption = 'tbEditor'
+        ImageIndex = 3
+        PopupMenu = MToolBar
+        Style = tbsCheck
+      end
+      object tbDiagram: TToolButton
+        Left = 308
+        Top = 0
+        AutoSize = True
+        Caption = 'tbDiagram'
+        PopupMenu = MToolBar
+        Style = tbsCheck
       end
     end
   end

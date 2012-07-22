@@ -15,19 +15,19 @@ type
     ActionList: TActionList;
     aPCreateField: TAction;
     aPCreateForeignKey: TAction;
-    aPCreateIndex: TAction;
+    aPCreateKey: TAction;
     aPCreatePartition: TAction;
     aPCreateTrigger: TAction;
     aPDeleteField: TAction;
     aPDeleteForeignKey: TAction;
-    aPDeleteIndex: TAction;
+    aPDeleteKey: TAction;
     aPDeletePartition: TAction;
     aPDeleteTrigger: TAction;
     aPDown: TAction;
     aPDown1: TMenuItem;
     aPEditField: TAction;
     aPEditForeignKey: TAction;
-    aPEditIndex: TAction;
+    aPEditKey: TAction;
     aPEditPartition: TAction;
     aPEditTrigger: TAction;
     aPUp: TAction;
@@ -120,10 +120,10 @@ type
     PPartitions: TPanel_Ext;
     tbCreateField: TToolButton;
     tbCreateForeignKey: TToolButton;
-    tbCreateIndex: TToolButton;
+    tbCreateKey: TToolButton;
     tbDeleteField: TToolButton;
     tbDeleteForeignKey: TToolButton;
-    tbDeleteIndex: TToolButton;
+    tbDeleteKey: TToolButton;
     tbFieldDown: TToolButton;
     TBFields: TToolBar;
     tbFieldUp: TToolButton;
@@ -131,13 +131,13 @@ type
     TBIndices: TToolBar;
     tbPropertiesField: TToolButton;
     tbPropertiesForeignKey: TToolButton;
-    tbPropertiesIndex: TToolButton;
+    tbPropertiesKey: TToolButton;
     tbSeparator: TToolButton;
     TSExtras: TTabSheet;
     TSFields: TTabSheet;
     TSForeignKeys: TTabSheet;
     TSKeys: TTabSheet;
-    TSInformations: TTabSheet;
+    TSInformation: TTabSheet;
     TSPartitions: TTabSheet;
     TSReferenced: TTabSheet;
     TSSource: TTabSheet;
@@ -147,16 +147,16 @@ type
     PSQLWait: TPanel;
     procedure aPCreateFieldExecute(Sender: TObject);
     procedure aPCreateForeignKeyExecute(Sender: TObject);
-    procedure aPCreateIndexExecute(Sender: TObject);
+    procedure aPCreateKeyExecute(Sender: TObject);
     procedure aPCreatePartitionExecute(Sender: TObject);
     procedure aPDeleteFieldExecute(Sender: TObject);
     procedure aPDeleteForeignKeyExecute(Sender: TObject);
-    procedure aPDeleteIndexExecute(Sender: TObject);
+    procedure aPDeleteKeyExecute(Sender: TObject);
     procedure aPDeletePartitionExecute(Sender: TObject);
     procedure aPDownExecute(Sender: TObject);
     procedure aPEditFieldExecute(Sender: TObject);
     procedure aPEditForeignKeyExecute(Sender: TObject);
-    procedure aPEditIndexExecute(Sender: TObject);
+    procedure aPEditKeyExecute(Sender: TObject);
     procedure aPEditPartitionExecute(Sender: TObject);
     procedure aPUpExecute(Sender: TObject);
     procedure FAutoIncrementExit(Sender: TObject);
@@ -201,7 +201,7 @@ type
     procedure TSFieldsShow(Sender: TObject);
     procedure TSForeignKeysShow(Sender: TObject);
     procedure TSKeysShow(Sender: TObject);
-    procedure TSInformationsShow(Sender: TObject);
+    procedure TSInformationShow(Sender: TObject);
     procedure TSPartitionsShow(Sender: TObject);
     procedure TSReferencedShow(Sender: TObject);
     procedure TSSourceShow(Sender: TObject);
@@ -285,7 +285,7 @@ begin
   end;
 end;
 
-procedure TDTable.aPCreateIndexExecute(Sender: TObject);
+procedure TDTable.aPCreateKeyExecute(Sender: TObject);
 begin
   DIndex.Database := nil;
   DIndex.Table := NewTable;
@@ -350,7 +350,7 @@ begin
   end;
 end;
 
-procedure TDTable.aPDeleteIndexExecute(Sender: TObject);
+procedure TDTable.aPDeleteKeyExecute(Sender: TObject);
 var
   I: Integer;
   Msg: string;
@@ -482,7 +482,7 @@ begin
   end;
 end;
 
-procedure TDTable.aPEditIndexExecute(Sender: TObject);
+procedure TDTable.aPEditKeyExecute(Sender: TObject);
 begin
   DIndex.Database := nil;
   DIndex.Table := NewTable;
@@ -645,7 +645,7 @@ begin
     FTablesRowType.ItemIndex := Index;
   end;
 
-  TSInformations.TabVisible := Assigned(Table) and (Table.DataSize >= 0) or Assigned(Tables);
+  TSInformation.TabVisible := Assigned(Table) and (Table.DataSize >= 0) or Assigned(Tables);
   TSFields.TabVisible := not Assigned(Tables);
   TSKeys.TabVisible := not Assigned(Tables);
   TSTriggers.TabVisible := Assigned(Table)  and Assigned(Database.Triggers);
@@ -690,7 +690,7 @@ begin
   GTablesRecords.Caption := Preferences.LoadStr(124);
   FLTablesRowType.Caption := Preferences.LoadStr(129) + ':';
 
-  TSInformations.Caption := Preferences.LoadStr(121);
+  TSInformation.Caption := Preferences.LoadStr(121);
   GDates.Caption := Preferences.LoadStr(122);
   FLCreated.Caption := Preferences.LoadStr(118) + ':';
   FLUpdated.Caption := Preferences.LoadStr(119) + ':';
@@ -715,9 +715,9 @@ begin
   FFields.Column[5].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
 
   TSKeys.Caption := Preferences.LoadStr(458);
-  tbCreateIndex.Hint := Preferences.LoadStr(160) + '...';
-  tbDeleteIndex.Hint := ReplaceStr(Preferences.LoadStr(28), '&', '');
-  tbPropertiesIndex.Hint := ReplaceStr(Preferences.LoadStr(97), '&', '') + '...';
+  tbCreateKey.Hint := Preferences.LoadStr(160) + '...';
+  tbDeleteKey.Hint := ReplaceStr(Preferences.LoadStr(28), '&', '');
+  tbPropertiesKey.Hint := ReplaceStr(Preferences.LoadStr(97), '&', '') + '...';
   FKeys.Column[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
   FKeys.Column[1].Caption := Preferences.LoadStr(69);
   FKeys.Column[2].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
@@ -785,9 +785,9 @@ begin
     FSource.Gutter.Color := Preferences.Editor.LineNumbersBackground;
   FSource.Gutter.Font.Style := Preferences.Editor.LineNumbersStyle;
 
-  aPCreateIndex.Caption := Preferences.LoadStr(26) + '...';
-  aPDeleteIndex.Caption := Preferences.LoadStr(28);
-  aPEditIndex.Caption := Preferences.LoadStr(97) + '...';
+  aPCreateKey.Caption := Preferences.LoadStr(26) + '...';
+  aPDeleteKey.Caption := Preferences.LoadStr(28);
+  aPEditKey.Caption := Preferences.LoadStr(97) + '...';
   aPCreateField.Caption := Preferences.LoadStr(26) + '...';
   aPDeleteField.Caption := Preferences.LoadStr(28);
   aPEditField.Caption := Preferences.LoadStr(97) + '...';
@@ -1123,9 +1123,9 @@ begin
   aPCreateField.Enabled := not Selected and (Page = TSFields);
   aPDeleteField.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiField) and (NewTable.Fields.Count > 1);
   aPEditField.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSFields);
-  aPCreateIndex.Enabled := not Selected and (Page = TSKeys);
-  aPDeleteIndex.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiKey);
-  aPEditIndex.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSKeys);
+  aPCreateKey.Enabled := not Selected and (Page = TSKeys);
+  aPDeleteKey.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiKey);
+  aPEditKey.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSKeys);
   aPCreateForeignKey.Enabled := not Selected and (Page = TSForeignKeys);
   aPDeleteForeignKey.Enabled := Selected and (ListView.SelCount >= 1) and (Item.ImageIndex = iiForeignKey);
   aPEditForeignKey.Enabled := Selected and (ListView.SelCount = 1) and (Page = TSForeignKeys);
@@ -1443,7 +1443,7 @@ begin
   FTablesCollation.Visible := Database.Client.ServerVersion >= 40101; FLTablesCollation.Visible := FTablesCollation.Visible;
   GRecords.Visible := Assigned(Table);
 
-  TSInformations.TabVisible := Assigned(Table) and (Table.DataSize >= 0) or Assigned(Tables);
+  TSInformation.TabVisible := Assigned(Table) and (Table.DataSize >= 0) or Assigned(Tables);
   TSFields.TabVisible := not Assigned(Tables);
   TSKeys.TabVisible := not Assigned(Tables);
   TSTriggers.TabVisible := Assigned(Table)  and Assigned(Database.Triggers);
@@ -1735,9 +1735,9 @@ begin
   TempOnChange := FKeys.OnChange;
   FKeys.OnChange := nil;
 
-  mlDCreate.Action := aPCreateIndex;
-  mlDDelete.Action := aPDeleteIndex;
-  mlDProperties.Action := aPEditIndex;
+  mlDCreate.Action := aPCreateKey;
+  mlDDelete.Action := aPDeleteKey;
+  mlDProperties.Action := aPEditKey;
 
   mlDCreate.Caption := Preferences.LoadStr(26);
   mlDDelete.Caption := Preferences.LoadStr(28);
@@ -1767,7 +1767,7 @@ begin
   FKeys.OnChange := TempOnChange;
 end;
 
-procedure TDTable.TSInformationsShow(Sender: TObject);
+procedure TDTable.TSInformationShow(Sender: TObject);
 var
   DateTime: TDateTime;
   I: Integer;

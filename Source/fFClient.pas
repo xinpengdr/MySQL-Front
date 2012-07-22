@@ -27,7 +27,7 @@ const
 
 const
   sbMessage = 0;
-  sbItem = 1;
+  sbNavigation = 1;
   sbSummarize = 2;
   sbConnected = 3;
 
@@ -334,7 +334,7 @@ type
     PExplorer: TPanel_Ext;
     PFiles: TPanel_Ext;
     PFolders: TPanel_Ext;
-    PHeader: TPanel_Ext;
+    PView: TPanel_Ext;
     PListView: TPanel_Ext;
     PLog: TPanel_Ext;
     PLogHeader: TPanel_Ext;
@@ -347,10 +347,8 @@ type
     PResultHeader: TPanel_Ext;
     PrintDialog: TPrintDialog_Ext;
     PSideBar: TPanel_Ext;
-    PSideBarHeader: TPanel_Ext;
     PSynMemo: TPanel_Ext;
     PSQLHistory: TPanel_Ext;
-    PToolBar: TPanel_Ext;
     PToolBarBlob: TPanel_Ext;
     PWorkbench: TPanel_Ext;
     SaveDialog: TSaveDialog_Ext;
@@ -645,7 +643,6 @@ type
     procedure PGridResize(Sender: TObject);
     procedure PLogResize(Sender: TObject);
     procedure PObjectIDEResize(Sender: TObject);
-    procedure PSideBarResize(Sender: TObject);
     procedure SearchNotFound(Sender: TObject; FindText: string);
     procedure SLogCanResize(Sender: TObject; var NewSize: Integer;
       var Accept: Boolean);
@@ -678,6 +675,7 @@ type
     procedure TreeViewMouseUp(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure ToolBarResize(Sender: TObject);
+    procedure PViewPaint(Sender: TObject);
   type
     TNewLineFormat = (nlWindows, nlUnix, nlMacintosh);
     TTabState = set of (tsLoading, tsActive);
@@ -896,6 +894,7 @@ type
     PResultHeight: Integer;
     ProcessesListView: TListView;
     ShellLink: TJamShellLink;
+    SplitColor: TColor;
     SQLEditor: TSQLEditor;
     StatiListView: TListView;
     SynMemoBeforeDrag: TSynMemoBeforeDrag;
@@ -4510,7 +4509,7 @@ begin
   end
   else
     PSideBar.Visible := False;
-  PSideBarHeader.Visible := PSideBar.Visible; PSideBarResize(Sender);
+  TBSideBar.Visible := PSideBar.Visible;
 
 
   PSideBar.EnableAlign();
@@ -4702,6 +4701,8 @@ begin
     if (Control.Visible and Control.Enabled) then
       Window.ActiveControl := TempActiveControl;
   end;
+
+  StatusBarRefresh();
 
   if (Assigned(Event) and ((Event.EventType in [ceItemCreated, ceItemAltered]) or ((Event.EventType in [ceItemValid]) and (Event.CItem is TCObject) and not TCObject(Event.CItem).Valid)) and (Screen.ActiveForm = Window) and Wanted.Nothing) then
     Wanted.Update := Client.Update;
@@ -5268,32 +5269,54 @@ end;
 
 procedure TFClient.CMSysFontChanged(var Message: TMessage);
 var
+  Color: TColor;
   LogFont: TLogFont;
   NonClientMetrics: TNonClientMetrics;
 begin
   inherited;
 
+  Font := Window.Font;
+
+  ToolBar.AutoSize := False;
+  ToolBar.ButtonHeight := Max(ToolBar.Images.Height + 6, ToolBar.Canvas.TextHeight('I') + 10);
+  ToolBar.ButtonWidth := ToolBar.Images.Width + 7;
+  ToolBar.AutoSize := True;
+
   TBSideBar.Left := 0;
   TBSideBar.Top := 0;
-  TBSideBar.ButtonHeight := TBSideBar.Images.Height + 6; TBSideBar.ButtonWidth := TBSideBar.Images.Width + 7;
-  PSideBarHeader.Height := PSideBarHeader.Height;
+  TBSideBar.ButtonHeight := ToolBar.ButtonHeight;
 
-  PToolBar.AutoSize := False;
-  ToolBar.ButtonHeight := ToolBar.Images.Height + 6; ToolBar.ButtonWidth := ToolBar.Images.Width + 7;
-  PToolBar.AutoSize := True;
+  PView.ClientHeight := ToolBar.Height + 1;
+  if (not StyleServices.Enabled or not StyleServices.GetElementColor(StyleServices.GetElementDetails(ttTopTabItemSelected), ecGlowColor, Color)) then
+    PView.Color := clBtnFace
+  else
+    PView.Color := Color;
 
-  if (Assigned(Client)) then
+  if (not StyleServices.Enabled or not StyleServices.GetElementColor(StyleServices.GetElementDetails(tebNormalGroupHead),
+    ecGradientColor2, Color)) then
   begin
-    PResultHeader.Width := CloseButton.Bitmap.Width + 2 * GetSystemMetrics(SM_CXEDGE);
-    PLogHeader.Width := CloseButton.Bitmap.Width + 2 * GetSystemMetrics(SM_CXEDGE);
-
-    if (Assigned(ActiveDBGrid) and (ActiveDBGrid.DataSource.DataSet is TMySQLDataSet)) then
-      SBResultRefresh(TMySQLDataSet(ActiveDBGrid.DataSource.DataSet));
-
-    FormResize(nil);
+    SplitColor := clBtnFace;
+    SSideBar.Color := clBtnFace;
+  end
+  else
+  begin
+    SplitColor := Color;
+    SSideBar.Color := clWindow;
+    SSideBar.ActiveBorderColor := Color;
+    SLog.ActiveBorderColor := Color;
+    SExplorer.ActiveBorderColor := Color;
+    SResult.ActiveBorderColor := Color;
+    SBlob.ActiveBorderColor := Color;
+    SBuilderQuery.ActiveBorderColor := Color;
   end;
 
-  Font := Window.Font;
+  PResultHeader.Width := CloseButton.Bitmap.Width + 2 * GetSystemMetrics(SM_CXEDGE);
+  PLogHeader.Width := CloseButton.Bitmap.Width + 2 * GetSystemMetrics(SM_CXEDGE);
+
+  if (Assigned(ActiveDBGrid) and (ActiveDBGrid.DataSource.DataSet is TMySQLDataSet)) then
+    SBResultRefresh(TMySQLDataSet(ActiveDBGrid.DataSource.DataSet));
+
+  FormResize(nil);
 
   PDataBrowserSpacer.Top := FFilter.Height;
   PDataBrowser.ClientHeight := PDataBrowserSpacer.Top + PDataBrowserSpacer.Height;
@@ -5334,6 +5357,8 @@ begin
     FHexEditor.Colors.OffsetBackground := clBtnFace
   else
     FHexEditor.Colors.OffsetBackground := Preferences.Editor.LineNumbersBackground;
+
+  SBResult.ClientHeight := SBResult.Canvas.TextHeight('I') + 5;
 
   SendMessage(FLog.Handle, EM_SETTEXTMODE, TM_PLAINTEXT, 0);
   SendMessage(FLog.Handle, EM_SETWORDBREAKPROC, 0, LPARAM(@EditWordBreakProc));
@@ -8672,6 +8697,8 @@ procedure TFClient.FormResize(Sender: TObject);
 var
   MaxHeight: Integer;
 begin
+  PView.ClientHeight := ToolBar.Height + 1;
+
   if (PSideBar.Visible) then
   begin
     PSideBar.Constraints.MaxWidth := ClientWidth - PContent.Constraints.MinWidth - SSideBar.Width;
@@ -8685,7 +8712,7 @@ begin
 
   if (PLog.Visible) then
   begin
-    PLog.Constraints.MaxHeight := ClientHeight - PHeader.Height - PContent.Constraints.MinHeight - SLog.Height;
+    PLog.Constraints.MaxHeight := ClientHeight - PView.Height - PContent.Constraints.MinHeight - SLog.Height;
     PLogResize(Sender);
   end;
 end;
@@ -12429,16 +12456,7 @@ begin
         ActiveDBGrid := nil;
       end
       else if (Sender = PLogHeader) then
-        MainAction('aVSQLLog').Execute()
-      else if (Sender = PSideBarHeader) then
-        if (MainAction('aVNavigator').Checked) then
-          MainAction('aVNavigator').Execute()
-        else if (MainAction('aVBookmarks').Checked) then
-          MainAction('aVBookmarks').Execute()
-        else if (MainAction('aVExplorer').Checked) then
-          MainAction('aVExplorer').Execute()
-        else if (MainAction('aVSQLHistory').Checked) then
-          MainAction('aVSQLHistory').Execute();
+        MainAction('aVSQLLog').Execute();
     PanelMouseDownPoint := Point(-1, -1);
   end;
 end;
@@ -13035,8 +13053,14 @@ end;
 
 procedure TFClient.PContentResize(Sender: TObject);
 begin
+  SetWindowLong(FNavigator.Handle, GWL_STYLE, GetWindowLong(FNavigator.Handle, GWL_STYLE) or TVS_NOHSCROLL);
+  SetWindowLong(FSQLHistory.Handle, GWL_STYLE, GetWindowLong(FSQLHistory.Handle, GWL_STYLE) or TVS_NOHSCROLL);
+  if (Assigned(FFolders)) then
+    SetWindowLong(FFolders.Handle, GWL_STYLE, GetWindowLong(FFolders.Handle, GWL_STYLE) or TVS_NOHSCROLL);
+
   PanelResize(Sender);
-  PToolBar.Width := PContent.Width;
+  Toolbar.Left := ClientWidth - PContent.Width;
+  Toolbar.Width := PContent.Width;
 end;
 
 procedure TFClient.PDataBrowserResize(Sender: TObject);
@@ -13077,7 +13101,7 @@ begin
   if (dgRowLines in FObjectIDEGrid.Options) then
     Inc(NewHeight, FObjectIDEGrid.GridLineWidth);
   Inc(NewHeight, FObjectIDEGrid.DefaultRowHeight);
-  
+
   ZeroMemory(@ScrollBarInfo, SizeOf(ScrollBarInfo));
   ScrollBarInfo.cbSize := SizeOf(ScrollBarInfo);
   GetScrollBarInfo(FObjectIDEGrid.Handle, Integer(OBJID_HSCROLL), ScrollBarInfo);
@@ -13172,17 +13196,6 @@ begin
   DServer.Execute();
 end;
 
-procedure TFClient.PSideBarResize(Sender: TObject);
-begin
-  SetWindowLong(FNavigator.Handle, GWL_STYLE, GetWindowLong(FNavigator.Handle, GWL_STYLE) or TVS_NOHSCROLL);
-  SetWindowLong(FSQLHistory.Handle, GWL_STYLE, GetWindowLong(FSQLHistory.Handle, GWL_STYLE) or TVS_NOHSCROLL);
-  if (Assigned(FFolders)) then
-    SetWindowLong(FFolders.Handle, GWL_STYLE, GetWindowLong(FFolders.Handle, GWL_STYLE) or TVS_NOHSCROLL);
-
-  PSideBarHeader.Width := PSideBar.Width;
-  PToolBar.Left := PContent.Left;
-end;
-
 procedure TFClient.PSQLEditorUpdate();
 var
   Event: TCEvent;
@@ -13210,6 +13223,16 @@ begin
     end;
 
   if (Assigned(ActiveSynMemo) and Assigned(ActiveSynMemo.OnStatusChange)) then ActiveSynMemo.OnStatusChange(ActiveSynMemo, [scModified]);
+end;
+
+procedure TFClient.PViewPaint(Sender: TObject);
+begin
+  if (StyleServices.Enabled) then
+  begin
+    PView.Canvas.Pen.Color := SplitColor;
+    PView.Canvas.MoveTo(0, PView.ClientHeight - 1);
+    PView.Canvas.LineTo(PView.ClientWidth, PView.ClientHeight - 1);
+  end;
 end;
 
 function TFClient.RenameCItem(const CItem: TCItem; const NewName: string): Boolean;
@@ -13687,7 +13710,7 @@ end;
 procedure TFClient.SLogCanResize(Sender: TObject; var NewSize: Integer;
   var Accept: Boolean);
 begin
-  Accept := (PLog.Constraints.MinHeight <= NewSize) and (NewSize <= ClientHeight - PToolBar.Height - SLog.Height - PContent.Constraints.MinHeight);
+  Accept := (PLog.Constraints.MinHeight <= NewSize) and (NewSize <= ClientHeight - PView.Height - SLog.Height - PContent.Constraints.MinHeight);
 end;
 
 procedure TFClient.SLogMoved(Sender: TObject);
@@ -13779,11 +13802,22 @@ var
   Count: Integer;
   QueryBuilderWorkArea: TacQueryBuilderWorkArea;
   SelCount: Integer;
-  Table: TCBaseTable;
-  Text: string;
 begin
   if (Assigned(StatusBar) and (Immediately or (tsActive in FrameState)) and not (csDestroying in ComponentState) and Assigned(Window)) then
   begin
+    if (Assigned(Window.ActiveControl)) then
+      if (Window.ActiveControl = ActiveSynMemo) then
+        StatusBar.Panels[sbNavigation].Text := IntToStr(ActiveSynMemo.CaretXY.Line) + ':' + IntToStr(ActiveSynMemo.CaretXY.Char)
+      else if ((Window.ActiveControl = ActiveListView) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiKey)) then
+        StatusBar.Panels[sbNavigation].Text := Preferences.LoadStr(377) + ': ' + IntToStr(TCKey(ActiveListView.ItemFocused.Data).Index + 1)
+      else if ((Window.ActiveControl = ActiveListView) and (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiField)) then
+       StatusBar.Panels[sbNavigation].Text := ReplaceStr(Preferences.LoadStr(164), '&', '') + ': ' + IntToStr(TCTableField(ActiveListView.ItemFocused.Data).Index)
+      else if ((Window.ActiveControl = ActiveDBGrid) and Assigned(ActiveDBGrid.SelectedField) and (ActiveDBGrid.DataSource.DataSet.RecNo >= 0)) then
+        StatusBar.Panels[sbNavigation].Text := IntToStr(ActiveDBGrid.DataSource.DataSet.RecNo + 1) + ':' + IntToStr(ActiveDBGrid.SelectedField.FieldNo)
+      else
+        StatusBar.Panels[sbNavigation].Text := '';
+
+
     Count := -1;
     case (View) of
       vObjects: if (Assigned(ActiveListView)) then Count := ActiveListView.Items.Count;
@@ -13815,49 +13849,30 @@ begin
     else if ((Window.ActiveControl = ActiveDBGrid) and Assigned(ActiveDBGrid) and (ActiveDBGrid.SelectedRows.Count > 0)) then
       SelCount := ActiveDBGrid.SelectedRows.Count;
 
-    if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView])) then
-      Table := TCBaseTable(FNavigator.Selected.Data)
-    else
-      Table := nil;
-
     if (SelCount > 0) then
-      Text := Preferences.LoadStr(688, IntToStr(SelCount))
-    else if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView]) and not Client.InUse() and Assigned(Table) and Table.DataSet.LimitedDataReceived and (Table.Rows >= 0)) then
+      StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(688, IntToStr(SelCount))
+    else if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView]) and not Client.InUse() and TCBaseTable(FNavigator.Selected.Data).DataSet.LimitedDataReceived and (TCBaseTable(FNavigator.Selected.Data).Rows >= 0)) then
       if (Assigned(TCBaseTable(FNavigator.Selected.Data).Engine) and (UpperCase(TCBaseTable(FNavigator.Selected.Data).Engine.Name) <> 'INNODB')) then
-        Text := Preferences.LoadStr(691, IntToStr(Count), IntToStr(TCBaseTable(FNavigator.Selected.Data).Rows))
+        StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(691, IntToStr(Count), IntToStr(TCBaseTable(FNavigator.Selected.Data).Rows))
       else
-        Text := Preferences.LoadStr(691, IntToStr(Count), '~' + IntToStr(TCBaseTable(FNavigator.Selected.Data).Rows))
+        StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(691, IntToStr(Count), '~' + IntToStr(TCBaseTable(FNavigator.Selected.Data).Rows))
     else if (Assigned(ActiveSynMemo) and (Window.ActiveControl = ActiveSynMemo) and (Count >= 0)) then
-      Text := IntToStr(Count) + ' ' + ReplaceStr(Preferences.LoadStr(600), '&', '')
+      StatusBar.Panels[sbSummarize].Text := IntToStr(Count) + ' ' + ReplaceStr(Preferences.LoadStr(600), '&', '')
     else if ((View = vBuilder) and (Count >= 0)) then
       if (Window.ActiveControl = FBuilderSynMemo) then
-        Text := IntToStr(Count) + ' ' + ReplaceStr(Preferences.LoadStr(600), '&', '')
+        StatusBar.Panels[sbSummarize].Text := IntToStr(Count) + ' ' + ReplaceStr(Preferences.LoadStr(600), '&', '')
       else
-        Text := Preferences.LoadStr(687, IntToStr(Count))
+        StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(687, IntToStr(Count))
     else if (Count >= 0) then
-      Text := Preferences.LoadStr(687, IntToStr(Count))
+      StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(687, IntToStr(Count))
     else
-      Text := '';
-    StatusBar.Panels[sbSummarize].Text := Text;
+      StatusBar.Panels[sbSummarize].Text := '';
 
 
     if (not Client.Connected) then
       StatusBar.Panels[sbConnected].Text := ''
     else
       StatusBar.Panels[sbConnected].Text := Preferences.LoadStr(519) + ': ' + FormatDateTime(FormatSettings.ShortTimeFormat, Client.LatestConnect);
-
-    if (Assigned(Window.ActiveControl)) then
-      if (Window.ActiveControl = ActiveSynMemo) then
-        Text := IntToStr(ActiveSynMemo.CaretXY.Line) + ':' + IntToStr(ActiveSynMemo.CaretXY.Char)
-      else if ((Window.ActiveControl = ActiveListView) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiKey)) then
-        Text := Preferences.LoadStr(377) + ': ' + IntToStr(TCKey(ActiveListView.ItemFocused.Data).Index + 1)
-      else if ((Window.ActiveControl = ActiveListView) and (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView]) and Assigned(ActiveListView.ItemFocused) and Assigned(ActiveListView.Selected) and (ActiveListView.ItemFocused.ImageIndex = iiField)) then
-        Text := ReplaceStr(Preferences.LoadStr(164), '&', '') + ': ' + IntToStr(TCTableField(ActiveListView.ItemFocused.Data).Index)
-      else if ((Window.ActiveControl = ActiveDBGrid) and Assigned(ActiveDBGrid.SelectedField) and (ActiveDBGrid.DataSource.DataSet.RecNo >= 0)) then
-        Text := IntToStr(ActiveDBGrid.DataSource.DataSet.RecNo + 1) + ':' + IntToStr(ActiveDBGrid.SelectedField.FieldNo)
-      else
-        Text := '';
-      StatusBar.Panels[sbItem].Text := Text;
   end;
 end;
 
@@ -14539,7 +14554,7 @@ end;
 
 procedure TFClient.WorkbenchCursorMove(Sender: TObject; X, Y: Integer);
 begin
-  StatusBar.Panels[sbItem].Text := IntToStr(X) + ':' + IntToStr(Y);
+  StatusBar.Panels[sbNavigation].Text := IntToStr(X) + ':' + IntToStr(Y);
 end;
 
 procedure TFClient.WorkbenchDragDrop(Sender, Source: TObject; X, Y: Integer);

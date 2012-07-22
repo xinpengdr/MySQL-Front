@@ -1085,24 +1085,16 @@ begin
   URLComponents.dwStructSize := SizeOf(URLComponents);
 
   URLComponents.lpszScheme := PChar('mysql');
-  URLComponents.dwSchemeLength := StrLen(URLComponents.lpszScheme);
   URLComponents.lpszHostName := PChar(Connection.Host);
-  URLComponents.dwHostNameLength := Length(Connection.Host);
   if (Connection.Port <> MYSQL_PORT) then
     URLComponents.nPort := Connection.Port;
   URLComponents.lpszUrlPath := PChar(APath);
-  URLComponents.dwUrlPathLength := StrLen(URLComponents.lpszUrlPath);
 
-  Len := SizeOf(URL) - 1;
-  if (InternetCreateUrl(URLComponents, ICU_ESCAPE, @URL, Len)) then
-    SetString(Result, PChar(@URL), Len)
+  Len := Length(URL);
+  if (not InternetCreateUrl(URLComponents, ICU_ESCAPE, @URL, Len)) then
+    RaiseLastOSError()
   else
-  begin
-    Result := 'mysql://' + Connection.Host;
-    if (Connection.Port <> MYSQL_PORT) then
-      Result := Result + ':' + IntToStr(Connection.Port);
-    Result := Result + APath;
-  end;
+    SetString(Result, PChar(@URL), Len);
 end;
 
 function TAAccount.GetBookmarksFilename(): TFileName;

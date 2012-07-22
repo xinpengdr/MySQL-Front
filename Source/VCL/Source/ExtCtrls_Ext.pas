@@ -3,7 +3,7 @@ unit ExtCtrls_Ext;
 interface {********************************************************************}
 
 uses
-  SysUtils, Classes, Controls, ExtCtrls, Messages;
+  SysUtils, Classes, Controls, ExtCtrls, Messages, Graphics;
 
 type
   TPanel_Ext = class(TPanel)
@@ -23,11 +23,16 @@ type
   TSplitter_Ext = class(TSplitter)
   private
     FActiveBorder: TAlign;
+    FActiveBorderColor: TColor;
   protected
     procedure Paint(); override;
     procedure SetActiveBorder(AActiveBorder: TAlign);
+    procedure SetActiveBorderColor(AActiveBorderColor: TColor);
+  public
+    constructor Create(AOwner: TComponent); override;
   published
     property ActiveBorder: TAlign read FActiveBorder write SetActiveBorder default alNone;
+    property ActiveBorderColor: TColor read FActiveBorderColor write SetActiveBorderColor default clBtnFace;
   end;
 
 procedure Register();
@@ -35,7 +40,7 @@ procedure Register();
 implementation {***************************************************************}
 
 uses
-  Windows, CommCtrl, Themes, Graphics;
+  Windows, CommCtrl, Themes;
 
 procedure Register();
 begin
@@ -76,6 +81,13 @@ end;
 
 { TSplitter_Ext ***************************************************************}
 
+constructor TSplitter_Ext.Create(AOwner: TComponent);
+begin
+  inherited;
+
+  FActiveBorderColor := Color;
+end;
+
 procedure TSplitter_Ext.Paint();
 var
   Rect: TRect;
@@ -85,7 +97,8 @@ begin
   if (StyleServices.Enabled and CheckWin32Version(6) and (ActiveBorder <> alNone)) then
   begin
     Rect := ClientRect;
-    Canvas.Brush.Color := clActiveBorder;
+
+    Canvas.Brush.Color := ActiveBorderColor;
     case (ActiveBorder) of
       alLeft: Rect.Right := Rect.Left + 1;
       alTop: Rect.Bottom := Rect.Top + 1;
@@ -99,7 +112,13 @@ end;
 procedure TSplitter_Ext.SetActiveBorder(AActiveBorder: TAlign);
 begin
   FActiveBorder := AActiveBorder;
-  Update();
+  Invalidate();
+end;
+
+procedure TSplitter_Ext.SetActiveBorderColor(AActiveBorderColor: TColor);
+begin
+  FActiveBorderColor := AActiveBorderColor;
+  Invalidate();
 end;
 
 end.

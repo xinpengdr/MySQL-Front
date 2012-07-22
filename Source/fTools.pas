@@ -737,7 +737,7 @@ begin
   Result := S;
 end;
 
-function SQLLoadDataInfile(const Database: TCDatabase; const IgnoreHeadline, Replace: Boolean; const Filename, FileCharset, DatabaseName, TableName: string; const FieldNames: string; const Quoter, FieldTerminator, LineTerminator: string): string;
+function SQLLoadDataInfile(const Database: TCDatabase; const Replace: Boolean; const Filename, FileCharset, DatabaseName, TableName: string; const FieldNames: string): string;
 var
   Client: TCClient;
 begin
@@ -750,14 +750,11 @@ begin
   if (((50038 <= Client.ServerVersion) and (Client.ServerVersion < 50100) or (50117 <= Client.ServerVersion)) and (FileCharset <> '')) then
     Result := Result + '  CHARACTER SET ' + FileCharset + #13#10;
   Result := Result + '  FIELDS' + #13#10;
-  Result := Result + '    TERMINATED BY ' + SQLEscape(FieldTerminator) + #13#10;
-  if (Quoter <> '') then
-    Result := Result + '    OPTIONALLY ENCLOSED BY ' + SQLEscape(Quoter) + #13#10;
+  Result := Result + '    TERMINATED BY ' + SQLEscape(',') + #13#10;
+  Result := Result + '    OPTIONALLY ENCLOSED BY ' + SQLEscape('''') + #13#10;
   Result := Result + '    ESCAPED BY ' + SQLEscape('\') + #13#10;
   Result := Result + '  LINES' + #13#10;
-  Result := Result + '    TERMINATED BY ' + SQLEscape(LineTerminator) + #13#10;
-  if (IgnoreHeadline) then
-    Result := Result + '  IGNORE 1 LINES' + #13#10;
+  Result := Result + '    TERMINATED BY ' + SQLEscape(#10) + #13#10;
   if (FieldNames <> '') then
     Result := Result + '  (' + FieldNames + ')' + #13#10;
   Result := Trim(Result) + ';' + #13#10;
@@ -849,7 +846,7 @@ function SysError(): TTools.TError;
 begin
   Result.ErrorType := TE_File;
   Result.ErrorCode := GetLastError();
-  Result.ErrorMessage := SysErrorMessage(GetLastError());
+  Result.ErrorMessage := SysErrorMessage(GetLastError()) + ' (# ' + IntToStr(GetLastError()) + ')';
 end;
 
 function ZipError(const Zip: TZipFile; const ErrorMessage: string): TTools.TError;
@@ -1616,7 +1613,7 @@ begin
         SQL := '';
         if (Database.Name <> Client.DatabaseName) then
           SQL := SQL + Database.SQLUse();
-        SQL := SQL + SQLLoadDataInfile(Database, False, ImportType = itReplace, Pipename, Client.Charset, Database.Name, Table.Name, FieldNames, '''', ',', #13#10);
+        SQL := SQL + SQLLoadDataInfile(Database, ImportType = itReplace, Pipename, Client.Charset, Database.Name, Table.Name, FieldNames);
 
         SQLThread := TSQLThread.Create(Client, SQL);
 
@@ -1625,6 +1622,8 @@ begin
           Item.RecordsDone := 0;
           while ((Success = daSuccess) and GetValues(Item, DataFileBuffer)) do
           begin
+            DataFileBuffer.Put(PAnsiChar(#10 + '_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
+
             if (DataFileBuffer.Length() > NET_BUFFER_LENGTH) then
               if (not WriteFile(Pipe, DataFileBuffer.Mem^, DataFileBuffer.Length(), BytesWritten, nil)) then
                 DoError(SysError(), ToolsItem(Item))
@@ -2341,7 +2340,6 @@ begin
             DataFileBuffer.Put(CSVUnquoteMem, Len, True);
         end;
       end;
-      DataFileBuffer.Put(PAnsiChar(#13#10), 2);
     end;
 end;
 
@@ -2762,7 +2760,6 @@ begin
           raise EDatabaseError.CreateFMT(SUnknownFieldType + ' (%d)', [Fields[I].Name, ColumnDesc[I].SQLDataType]);
       end;
     end;
-    DataFileBuffer.Put(PAnsiChar(#13#10), 2);
   end;
 end;
 
@@ -3236,7 +3233,6 @@ begin
       else
         DataFileBuffer.Put(sqlite3_column_text(Stmt, I), sqlite3_column_bytes(Stmt, I));
     end;
-    DataFileBuffer.Put(PAnsiChar(#13#10), 2);
   end;
 end;
 
@@ -3535,7 +3531,6 @@ begin
       else
         DataFileBuffer.Put(PChar(XMLValueNode.text), Length(XMLValueNode.text), True);
     end;
-    DataFileBuffer.Put(PAnsiChar(#13#10), 2);
 
     repeat
       XMLNode := XMLNode.nextSibling;
@@ -3972,7 +3967,7 @@ begin
   else
   begin
     DataSet := TMySQLQuery.Create(nil);
-    DataSet.Connection := Client;
+    DataSet.Asynchron := True;
     while ((Success = daSuccess) and not DataSet.Active) do
     begin
       DataSet.Open(DataHandle);
@@ -7061,7 +7056,7 @@ begin
             SQL := '';
             if (DestinationDatabase.Name <> Destination.Client.DatabaseName) then
               SQL := SQL + DestinationDatabase.SQLUse();
-            SQL := SQL + SQLLoadDataInfile(DestinationDatabase, False, False, Pipename, Destination.Client.Charset, DestinationDatabase.Name, DestinationTable.Name, DestinationFieldNames, '''', ',', #13#10);
+            SQL := SQL + SQLLoadDataInfile(DestinationDatabase, False, Pipename, Destination.Client.Charset, DestinationDatabase.Name, DestinationTable.Name, DestinationFieldNames);
 
             SQLThread := TSQLThread.Create(Destination.Client, SQL);
 
@@ -7088,7 +7083,7 @@ begin
                   else
                     DataFileBuffer.Put(LibRow^[SourceFields[I]], LibLengths^[SourceFields[I]], True);
                 end;
-                DataFileBuffer.Put(PAnsiChar(#13#10), 2);
+                DataFileBuffer.Put(PAnsiChar(#10 + '_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
 
                 if (DataFileBuffer.Length() > NET_BUFFER_LENGTH) then
                   if (not WriteFile(Pipe, DataFileBuffer.Mem^, DataFileBuffer.Length(), WrittenSize, nil) or (Abs(WrittenSize) < DataFileBuffer.Length())) then

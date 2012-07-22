@@ -4154,6 +4154,8 @@ function TMySQLQuery.GetRecord(Buffer: TRecordBuffer; GetMode: TGetMode; DoCheck
 begin
   if (GetMode <> gmNext) then
     Result := grError
+  else if (Asynchron) then
+    raise ERangeError.CreateFmt(SPropertyOutOfRange, ['Asynchron'])
   else if (not Assigned(SynchroThread.ResultHandle)) then
     Result := grEOF
   else
@@ -4561,6 +4563,8 @@ end;
 
 procedure TMySQLQuery.Open(const DataHandle: TMySQLConnection.TDataResult);
 begin
+  Assert(not Assigned(Connection));
+
   Connection := DataHandle.Connection;
 
   if (CommandType = ctQuery) then
@@ -4889,6 +4893,8 @@ begin
   FSortDef := TIndexDef.Create(nil, 'SortDef', '', []);
   FInternRecordBuffers := TInternRecordBuffers.Create(Self);
 
+  Asynchron := True;
+
   BookmarkSize := SizeOf(BookmarkCounter);
 
   SetUniDirectional(False);
@@ -4948,7 +4954,7 @@ begin
   FRecordsReceived.Free();
   if (Assigned(FilterParser)) then
     FreeAndNil(FilterParser);
-  InternRecordBuffers.Free();
+  FInternRecordBuffers.Free();
   Connection := nil; // UnRegister Connection
 
   inherited;

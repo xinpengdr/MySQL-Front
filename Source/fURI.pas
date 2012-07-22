@@ -182,53 +182,31 @@ end;
 
 function TUURI.GetAddress(): string;
 var
-  Buffer: array [0 .. INTERNET_MAX_URL_LENGTH] of Char;
-  Size: Cardinal;
+  Len: Cardinal;
+  URL: array [0 .. INTERNET_MAX_URL_LENGTH] of Char;
   URLComponents: URL_COMPONENTS;
 begin
   ZeroMemory(@URLComponents, SizeOf(URLComponents));
   URLComponents.dwStructSize := SizeOf(URLComponents);
 
   URLComponents.lpszScheme := PChar(Scheme);
-  URLComponents.dwSchemeLength := StrLen(URLComponents.lpszScheme);
   URLComponents.lpszHostName := PChar(Host);
-  URLComponents.dwHostNameLength := StrLen(URLComponents.lpszHostName);
   if (Port <> MYSQL_PORT) then
     URLComponents.nPort := Port;
   if (Username <> '') then
   begin
     URLComponents.lpszUserName := PChar(EscapeURL(Username));
-    URLComponents.dwUserNameLength := StrLen(URLComponents.lpszUserName);
     if (Password <> '') then
-    begin
       URLComponents.lpszPassword := PChar(EscapeURL(Password));
-      URLComponents.dwPasswordLength := StrLen(URLComponents.lpszPassword);
-    end;
   end;
   URLComponents.lpszUrlPath := PChar(EscapeURL(Path));
-  URLComponents.dwUrlPathLength := StrLen(URLComponents.lpszUrlPath);
   URLComponents.lpszExtraInfo := PChar(Copy(FExtraInfos, 1, 1) + EscapeURL(Copy(FExtraInfos, 2, Length(FExtraInfos) - 1)));
-  URLComponents.dwExtraInfoLength := StrLen(URLComponents.lpszExtraInfo);
 
-  Size := SizeOf(Buffer);
-  if (InternetCreateUrl(URLComponents, 0, @Buffer, Size)) then
-    SetString(Result, PChar(@Buffer), Size)
+  Len := Length(URL);
+  if (not InternetCreateUrl(URLComponents, 0, @URL, Len)) then
+    RaiseLastOSError()
   else
-  begin
-    MessageBox(0, PChar(SysErrorMessage(GetLastError()) + ' #' + IntToStr(GetLastError())), 'Error', MB_OK + MB_ICONERROR);
-
-    Result := Scheme + '://' + Host;
-    if ((Port <> 0) and (Port <> MYSQL_PORT)) then
-      Result := Result + ':' +  IntToStr(Port);
-    if (Username <> '') then
-    begin
-      Result := Result + EscapeURL(Username);
-      if (Password <> '') then
-        Result := Result + ':' + EscapeURL(Password);
-      Result := Result + '@';
-    end;
-    Result := Result + Path + Copy(FExtraInfos, 1, 1) + EscapeURL(Copy(FExtraInfos, 2, Length(FExtraInfos) - 1));
-  end;
+    SetString(Result, PChar(@URL), Len);
 end;
 
 function TUURI.GetParam(AName: string): Variant;

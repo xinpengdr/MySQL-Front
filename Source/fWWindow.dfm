@@ -2,8 +2,8 @@ object WWindow: TWWindow
   Left = 387
   Top = 161
   Caption = 'WWindow'
-  ClientHeight = 460
-  ClientWidth = 691
+  ClientHeight = 449
+  ClientWidth = 683
   Color = clBtnFace
   Constraints.MinHeight = 485
   Constraints.MinWidth = 560
@@ -20,6 +20,7 @@ object WWindow: TWWindow
   ShowHint = True
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   OnHide = FormHide
   OnKeyDown = FormKeyDown
   OnResize = FormResize
@@ -29,8 +30,8 @@ object WWindow: TWWindow
   object PWorkSpace: TPanel_Ext
     Left = 0
     Top = 102
-    Width = 691
-    Height = 337
+    Width = 683
+    Height = 326
     Align = alClient
     BevelOuter = bvNone
     Color = clAppWorkSpace
@@ -40,9 +41,10 @@ object WWindow: TWWindow
   object TabControl: TTabControl
     Left = 0
     Top = 74
-    Width = 691
+    Width = 683
     Height = 28
     Align = alTop
+    MultiLine = True
     OwnerDraw = True
     PopupMenu = MTabControl
     TabHeight = 23
@@ -66,7 +68,7 @@ object WWindow: TWWindow
   object CAddressBar: TCoolBar
     Left = 0
     Top = 52
-    Width = 691
+    Width = 683
     Height = 22
     BandBorderStyle = bsNone
     BandMaximize = bmNone
@@ -88,7 +90,6 @@ object WWindow: TWWindow
       Top = 0
       Width = 691
       Height = 22
-      GradientEndColor = 14079702
       TabOrder = 0
       Transparent = True
       OnResize = TBAddressBarResize
@@ -142,8 +143,8 @@ object WWindow: TWWindow
   end
   object StatusBar: TStatusBar
     Left = 0
-    Top = 439
-    Width = 691
+    Top = 428
+    Width = 683
     Height = 21
     Panels = <
       item
@@ -173,7 +174,7 @@ object WWindow: TWWindow
   object CToolBar: TCoolBar
     Left = 0
     Top = 0
-    Width = 691
+    Width = 683
     Height = 52
     AutoSize = True
     BandBorderStyle = bsNone
@@ -195,7 +196,6 @@ object WWindow: TWWindow
       Width = 691
       Height = 52
       AutoSize = True
-      GradientEndColor = 14079702
       TabOrder = 0
       Transparent = True
       object tbVRefresh: TToolButton
@@ -497,7 +497,6 @@ object WWindow: TWWindow
     Width = 561
     Height = 22
     Align = alNone
-    GradientEndColor = 14079702
     TabOrder = 0
     Transparent = False
     Visible = False

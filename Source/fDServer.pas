@@ -857,7 +857,6 @@ begin
   begin
     FStati.DisableAlign(); FStati.Items.BeginUpdate();
 
-    Client.Stati.Clear();
     for I := 0 to Client.Stati.Count - 1 do
     begin
       Item := FStati.Items.Add();

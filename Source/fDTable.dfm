@@ -72,10 +72,6 @@ object DTable: TDTable
     TabOrder = 1
     object TSTable: TTabSheet
       Caption = 'TSTable'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -231,10 +227,6 @@ object DTable: TDTable
     end
     object TSTables: TTabSheet
       Caption = 'TSTables'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -361,13 +353,9 @@ object DTable: TDTable
         end
       end
     end
-    object TSInformations: TTabSheet
-      Caption = 'TSInformations'
-      OnShow = TSInformationsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
+    object TSInformation: TTabSheet
+      Caption = 'TSInformation'
+      OnShow = TSInformationShow
       DesignSize = (
         313
         261)
@@ -507,10 +495,6 @@ object DTable: TDTable
     object TSFields: TTabSheet
       Caption = 'TSFields'
       OnShow = TSFieldsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -603,10 +587,6 @@ object DTable: TDTable
     object TSKeys: TTabSheet
       Caption = 'TSKeys'
       OnShow = TSKeysShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -649,30 +629,26 @@ object DTable: TDTable
         ShowHint = True
         TabOrder = 1
         Transparent = False
-        object tbCreateIndex: TToolButton
+        object tbCreateKey: TToolButton
           Left = 0
           Top = 0
-          Action = aPCreateIndex
+          Action = aPCreateKey
         end
-        object tbDeleteIndex: TToolButton
+        object tbDeleteKey: TToolButton
           Left = 23
           Top = 0
-          Action = aPDeleteIndex
+          Action = aPDeleteKey
         end
-        object tbPropertiesIndex: TToolButton
+        object tbPropertiesKey: TToolButton
           Left = 46
           Top = 0
-          Action = aPEditIndex
+          Action = aPEditKey
         end
       end
     end
     object TSForeignKeys: TTabSheet
       Caption = 'TSForeignKeys'
       OnShow = TSForeignKeysShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -735,10 +711,6 @@ object DTable: TDTable
     object TSTriggers: TTabSheet
       Caption = 'TSTriggers'
       OnShow = TSTriggersShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -772,10 +744,6 @@ object DTable: TDTable
     object TSReferenced: TTabSheet
       Caption = 'TSReferenced'
       OnShow = TSReferencedShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -808,10 +776,6 @@ object DTable: TDTable
     object TSPartitions: TTabSheet
       Caption = 'TSPartitions'
       OnShow = TSPartitionsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -956,10 +920,6 @@ object DTable: TDTable
     object TSExtras: TTabSheet
       Caption = 'TSExtras'
       OnShow = TSExtrasShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -1065,10 +1025,6 @@ object DTable: TDTable
     object TSSource: TTabSheet
       Caption = 'TSSource'
       OnShow = TSSourceShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
         261)
@@ -1175,20 +1131,20 @@ object DTable: TDTable
       ImageIndex = 11
       OnExecute = aPEditFieldExecute
     end
-    object aPCreateIndex: TAction
-      Caption = 'aPCreateIndex'
+    object aPCreateKey: TAction
+      Caption = 'aPCreateKey'
       ImageIndex = 63
-      OnExecute = aPCreateIndexExecute
+      OnExecute = aPCreateKeyExecute
     end
-    object aPDeleteIndex: TAction
-      Caption = 'aPDeleteIndex'
+    object aPDeleteKey: TAction
+      Caption = 'aPDeleteKey'
       ImageIndex = 64
-      OnExecute = aPDeleteIndexExecute
+      OnExecute = aPDeleteKeyExecute
     end
-    object aPEditIndex: TAction
-      Caption = 'aPEditIndex'
+    object aPEditKey: TAction
+      Caption = 'aPEditKey'
       ImageIndex = 11
-      OnExecute = aPEditIndexExecute
+      OnExecute = aPEditKeyExecute
     end
     object aPCreateForeignKey: TAction
       Caption = 'aPCreateContraint'
