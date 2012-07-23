@@ -551,6 +551,7 @@ begin
             DatabaseNode := DatabaseNode.getNextSibling();
           end;
         end;
+        break;
       end;
       AccountNode := AccountNode.getNextSibling();
     end;
@@ -561,7 +562,9 @@ begin
         FSelect.Selected.Expand(False);
     end
     else if (SelectedNodes.Count > 1) then
-      FSelect.Select(SelectedNodes);
+      FSelect.Select(SelectedNodes)
+    else if (Assigned(AccountNode)) then
+      AccountNode.Selected := True;
 
     SelectedNodes.Free();
     DatabaseNames.Free();

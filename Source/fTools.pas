@@ -625,7 +625,6 @@ type
     procedure ExecuteTable(var Source, Destination: TItem); virtual;
     function ToolsItem(const Item: TItem): TTools.TItem; virtual;
   public
-    Backup: Boolean;
     Data: Boolean;
     DisableKeys: Boolean;
     Structure: Boolean;
@@ -1528,7 +1527,6 @@ end;
 
 procedure TTImport.Execute();
 var
-  Error: TTools.TError;
   I: Integer;
 begin
   BeforeExecute();
@@ -1551,15 +1549,9 @@ begin
 
       if ((Success = daSuccess) and Data) then
       begin
-        while ((Success = daSuccess) and not Assigned(Database.TableByName(Items[I].TableName))) do
-        begin
-          Error.ErrorType := TE_Database;
-          Error.ErrorCode := 0;
-          Error.ErrorMessage := 'Table "' + Items[I].TableName + '" does not exists.';
-          DoError(DatabaseError(Client), ToolsItem(Items[I]));
-        end;
-        if (Success = daSuccess) then
-          ExecuteData(Items[I], Database.TableByName(Items[I].TableName));
+        if (not Assigned(Database.TableByName(Items[I].TableName))) then
+          raise Exception.Create('Table "' + Items[I].TableName + '" does not exists.');
+        ExecuteData(Items[I], Database.TableByName(Items[I].TableName));
       end;
 
       Items[I].Done := True;
@@ -2054,10 +2046,11 @@ begin
       end;
     until ((Len > 0) or Eof);
 
-    case (CodePage) of
-      CP_UNICODE: Inc(FilePos, Len * SizeOf(Char));
-      else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[Index]), Len, nil, 0));
-    end;
+    if (Len > 0) then
+      case (CodePage) of
+        CP_UNICODE: Inc(FilePos, Len * SizeOf(Char));
+        else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[Index]), Len, nil, 0));
+      end;
 
     SetCharacterSet := not EOF
       and SQLParseCLStmt(CLStmt, @FileContent.Str[Index], Length(FileContent.Str), Client.ServerVersion)
@@ -2286,10 +2279,11 @@ begin
     end;
   end;
 
-  if (FileContent.Index - OldFileContentIndex > 0) then
+  Len := FileContent.Index - OldFileContentIndex;
+  if (Len > 0) then
     case (CodePage) of
-      CP_UNICODE: Inc(FilePos, (FileContent.Index - OldFileContentIndex) * SizeOf(FileContent.Str[1]));
-      else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[OldFileContentIndex]), FileContent.Index - OldFileContentIndex, nil, 0));
+      CP_UNICODE: Inc(FilePos, Len * SizeOf(FileContent.Str[1]));
+      else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[OldFileContentIndex]), Len, nil, 0));
     end;
 
   Result := RecordComplete;
@@ -2348,6 +2342,7 @@ var
   Eof: Boolean;
   Error: TTools.TError;
   I: Integer;
+  Len: Integer;
   OldFileContentIndex: Integer;
   RecordComplete: Boolean;
   S: string;
@@ -2361,10 +2356,11 @@ begin
       Eof := not ReadContent();
   end;
 
-  if (FileContent.Index - OldFileContentIndex > 0) then
+  Len := FileContent.Index - OldFileContentIndex;
+  if (Len > 0) then
     case (CodePage) of
-      CP_UNICODE: Inc(FilePos, (FileContent.Index - OldFileContentIndex) * SizeOf(FileContent.Str[1]));
-      else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[OldFileContentIndex]), FileContent.Index - OldFileContentIndex, nil, 0));
+      CP_UNICODE: Inc(FilePos, Len * SizeOf(FileContent.Str[1]));
+      else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[OldFileContentIndex]), Len, nil, 0));
     end;
 
   Result := RecordComplete;
@@ -2408,6 +2404,7 @@ var
   FirstRecordFilePos: Integer;
   I: Integer;
   Int: Integer;
+  Len: Integer;
   OldFileContentIndex: Integer;
   OldSuccess: TDataAction;
   RecNo: Integer;
@@ -2429,10 +2426,12 @@ begin
     end;
   end;
 
-  case (CodePage) of
-    CP_UNICODE: Inc(FilePos, (FileContent.Index - OldFileContentIndex) * SizeOf(FileContent.Str[1]));
-    else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[OldFileContentIndex]), FileContent.Index - OldFileContentIndex, nil, 0));
-  end;
+  Len := FileContent.Index - OldFileContentIndex;
+  if (Len > 0) then
+    case (CodePage) of
+      CP_UNICODE: Inc(FilePos, Len * SizeOf(FileContent.Str[1]));
+      else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[OldFileContentIndex]), Len, nil, 0));
+    end;
 
   if (UseHeadline) then
   begin
@@ -7022,7 +7021,6 @@ begin
     if (Success = daSuccess) then
     begin
       SourceDataSet := TMySQLQuery.Create(nil);
-      SourceDataSet.Connection := Source.Client;
       SourceDataSet.Open(DataHandle);
 
       SetLength(SourceFields, DestinationTable.Fields.Count);
@@ -7357,14 +7355,6 @@ begin
   if (Success = daSuccess) then
   begin
     DestinationTable := DestinationDatabase.BaseTableByName(Destination.TableName);
-
-    if (Backup and Assigned(DestinationTable)) then
-    begin
-      BackupTable(ToolsItem(Destination), True);
-      if (Success = daFail) then Success := daSuccess;
-
-      DestinationTable := DestinationDatabase.BaseTableByName(Destination.TableName);
-    end;
 
     if (Structure and Data and not Assigned(DestinationTable) and (Source.Client = Destination.Client) and (Source.Client.DatabaseByName(Source.DatabaseName).BaseTableByName(Source.TableName).ForeignKeys.Count = 0)) then
     begin

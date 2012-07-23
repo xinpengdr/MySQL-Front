@@ -1755,6 +1755,10 @@ begin
       DataFields.Add('SQL Log ' + IntToStr(Log.Count + 1) + '=' + Log[0]);
     Log.Free();
   end;
+
+  EurekaExceptionRecord.CurrentModuleOptions.EMailSubject
+    := AnsiString(SysUtils.LoadStr(1000) + ' ' + IntToStr(Preferences.VerMajor) + '.' + IntToStr(Preferences.VerMinor) + ' Bug Report'
+    + '  (' + Preferences.LoadStr(737) + ': ' + IntToStr(Preferences.VerPatch) + '.' + IntToStr(Preferences.VerBuild) + ')');
 end;
 
 procedure TWWindow.EurekaLogExceptionNotify(

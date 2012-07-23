@@ -924,7 +924,6 @@ type
     function CloneView(const View: TCView; const NewViewName: string): Boolean; virtual;
     constructor Create(const AClient: TCClient = nil; const AName: string = ''); reintroduce; virtual;
     function DeleteObject(const DBObject: TCDBObject): Boolean; virtual;
-    function DeleteObjects(const List: TList): Boolean; virtual;
     destructor Destroy(); override;
     function EmptyTables(const Tables: TList = nil): Boolean; virtual;
     function EventByName(const EventName: string): TCEvent; virtual;
@@ -1426,11 +1425,9 @@ type
     function DatabaseByName(const DatabaseName: string): TCDatabase; virtual;
     procedure DecodeInterval(const Value: string; const IntervalType: TMySQLIntervalType; var Year, Month, Day, Quarter, Week, Hour, Minute, Second, MSec: Word); virtual;
     function DeleteDatabase(const Database: TCDatabase): Boolean; virtual;
-    function DeleteDatabases(const List: TList): Boolean; virtual;
+    function DeleteEntities(const List: TList): Boolean; virtual;
     function DeleteHost(const Host: TCHost): Boolean; virtual;
-    function DeleteHosts(const List: TList): Boolean; virtual;
     function DeleteProcess(const Process: TCProcess): Boolean; virtual;
-    function DeleteProcesses(const List: TList): Boolean; virtual;
     function DeleteUser(const User: TCUser): Boolean; virtual;
     function DeleteUsers(const List: TList): Boolean; virtual;
     destructor Destroy(); override;
@@ -6538,52 +6535,8 @@ var
 begin
   List := TList.Create();
   List.Add(DBObject);
-  Result := DeleteObjects(List);
+  Result := Client.DeleteEntities(List);
   List.Free();
-end;
-
-function TCDatabase.DeleteObjects(const List: TList): Boolean;
-var
-  I: Integer;
-  Identifiers: string;
-  SQL: string;
-begin
-  SQL := '';
-
-  Identifiers := '';
-  for I := 0 to List.Count - 1 do
-    if (TCObject(List[I]) is TCBaseTable) then
-    begin
-      if (Identifiers <> '') then Identifiers := Identifiers + ',';
-      Identifiers := Identifiers + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(TCObject(List[I]).Name);
-    end;
-  if (Identifiers <> '') then
-    SQL := SQL + 'DROP TABLE ' + Identifiers + ';' + #13#10;
-
-  Identifiers := '';
-  for I := 0 to List.Count - 1 do
-    if (TCObject(List[I]) is TCView) then
-    begin
-      if (Identifiers <> '') then Identifiers := Identifiers + ',';
-      Identifiers := Identifiers + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(TCObject(List[I]).Name);
-    end;
-  if (Identifiers <> '') then
-    SQL := SQL + 'DROP VIEW ' + Identifiers + ';' + #13#10;
-
-  for I := 0 to List.Count - 1 do
-    if (TCObject(List[I]) is TCProcedure) then
-      SQL := SQL + 'DROP PROCEDURE ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(TCObject(List[I]).Name) + ';' + #13#10
-    else if (TCObject(List[I]) is TCFunction) then
-      SQL := SQL + 'DROP FUNCTION ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(TCObject(List[I]).Name) + ';' + #13#10
-    else if (TCObject(List[I]) is TCTrigger) then
-      SQL := SQL + 'DROP TRIGGER ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(TCObject(List[I]).Name) + ';' + #13#10
-    else if (TCObject(List[I]) is TCEvent) then
-      SQL := SQL + 'DROP EVENT ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(TCObject(List[I]).Name) + ';' + #13#10;
-
-  if (Client.DatabaseName <> Name) then
-    SQL := SQLUse() + SQL;
-
-  Result := Client.ExecuteSQL(SQL);
 end;
 
 destructor TCDatabase.Destroy();
@@ -9697,6 +9650,46 @@ end;
 
 { TCClient ********************************************************************}
 
+function Compare(Item1, Item2: Pointer): Integer;
+
+  function ClassOrder(const Item: TObject): Integer;
+  begin
+    Result := -1;
+    if (Item is TCVariables) then Result := 0
+    else if (Item is TCStati) then Result := 1
+    else if (Item is TCCollations) then Result := 2
+    else if (Item is TCEngines) then Result := 3
+    else if (Item is TCCharsets) then Result := 4
+    else if (Item is TCCollations) then Result := 5
+    else if (Item is TCDatabases) then Result := 6
+    else if (Item is TCPlugins) then Result := 7
+    else if (Item is TCUsers) then Result := 8
+    else if (Item is TCHosts) then Result := 9
+    else if (Item is TCTable) then Result := 10
+    else if (Item is TCProcedure) then Result := 11
+    else if (Item is TCFunction) then Result := 12
+    else if (Item is TCTrigger) then Result := 13
+    else if (Item is TCEvent) then Result := 14
+    else if (Item is TCDatabase) then Result := 15
+    else if (Item is TCVariable) then Result := 16
+    else if (Item is TCStatus) then Result := 17
+    else if (Item is TCEngine) then Result := 18
+    else if (Item is TCCharset) then Result := 19
+    else if (Item is TCCollation) then Result := 20
+    else if (Item is TCPlugin) then Result := 21
+    else if (Item is TCProcess) then Result := 22
+    else if (Item is TCUser) then Result := 23
+    else if (Item is TCHost) then Result := 24
+    else ERangeError.Create(SRangeError);
+  end;
+begin
+  Result := Sign(ClassOrder(TObject(Item1)) - ClassOrder(TObject(Item2)));
+  if ((Result = 0) and (TObject(Item1) is TCDBObject)) then
+    Result := Sign(TCDBObject(Item1).Database.Index - TCDBObject(Item2).Database.Index);
+  if (Result = 0) then
+    Result := Sign(TCObject(Item1).Index - TCObject(Item2).Index);
+end;
+
 function TCClient.AddDatabase(const NewDatabase: TCDatabase): Boolean;
 begin
   Result := UpdateDatabase(nil, NewDatabase);
@@ -10347,18 +10340,101 @@ var
 begin
   List := TList.Create();
   List.Add(Database);
-  Result := DeleteDatabases(List);
+  Result := DeleteEntities(List);
   List.Free();
 end;
 
-function TCClient.DeleteDatabases(const List: TList): Boolean;
+function TCClient.DeleteEntities(const List: TList): Boolean;
 var
+  Database: TCDatabase;
+  FlushPrivileges: Boolean;
   I: Integer;
-  SQL: String;
+  Identifiers: string;
+  SQL: string;
 begin
+  List.Sort(Compare);
+
+  Database := nil; FlushPrivileges := False;
   SQL := '';
+
+  Identifiers := '';
   for I := 0 to List.Count - 1 do
-    SQL := SQL + 'DROP DATABASE ' + EscapeIdentifier(TCDatabase(List[I]).Name) + ';' + #13#10;
+    if (TCObject(List[I]) is TCBaseTable) then
+    begin
+      if (not Assigned(Database) or (TCBaseTable(List[I]).Database <> Database) or not Assigned(Database) and (Databases.NameCmp(TCBaseTable(List[I]).Database.Name, DatabaseName) <> 0)) then
+      begin
+        SQL := TCBaseTable(List[I]).Database.SQLUse() + SQL;
+        Database := TCBaseTable(List[I]).Database;
+        if (Identifiers <> '') then
+        begin
+          SQL := SQL + 'DROP TABLE ' + Identifiers + ';' + #13#10;
+          Identifiers := '';
+        end;
+      end;
+      if (Identifiers <> '') then Identifiers := Identifiers + ',';
+      Identifiers := Identifiers + EscapeIdentifier(Database.Name) + '.' + EscapeIdentifier(TCBaseTable(List[I]).Name);
+    end;
+  if (Identifiers <> '') then
+    SQL := SQL + 'DROP TABLE ' + Identifiers + ';' + #13#10;
+
+  Identifiers := '';
+  for I := 0 to List.Count - 1 do
+    if (TCObject(List[I]) is TCView) then
+    begin
+      if (not Assigned(Database) or (TCView(List[I]).Database <> Database) or not Assigned(Database) and (Databases.NameCmp(TCView(List[I]).Database.Name, DatabaseName) <> 0)) then
+      begin
+        SQL := TCView(List[I]).Database.SQLUse() + SQL;
+        Database := TCView(List[I]).Database;
+        if (Identifiers <> '') then
+        begin
+          SQL := SQL + 'DROP VIEW ' + Identifiers + ';' + #13#10;
+          Identifiers := '';
+        end;
+      end;
+      if (Identifiers <> '') then Identifiers := Identifiers + ',';
+      Identifiers := Identifiers + EscapeIdentifier(Database.Name) + '.' + EscapeIdentifier(TCView(List[I]).Name);
+    end;
+  if (Identifiers <> '') then
+    SQL := SQL + 'DROP VIEW ' + Identifiers + ';' + #13#10;
+
+  for I := 0 to List.Count - 1 do
+    if ((TObject(List[I]) is TCRoutine) or (TObject(List[I]) is TCTrigger) or (TObject(List[I]) is TCEvent)) then
+    begin
+      if (not Assigned(Database) or (TCDBObject(List[I]).Database <> Database) or not Assigned(Database) and (Databases.NameCmp(TCDBObject(List[I]).Database.Name, DatabaseName) <> 0)) then
+      begin
+        SQL := TCDBObject(List[I]).Database.SQLUse() + SQL;
+        Database := TCDBObject(List[I]).Database;
+      end;
+      if (TCObject(List[I]) is TCProcedure) then
+        SQL := SQL + 'DROP PROCEDURE ' + EscapeIdentifier(Database.Name) + '.' + EscapeIdentifier(TCObject(List[I]).Name) + ';' + #13#10
+      else if (TCObject(List[I]) is TCFunction) then
+        SQL := SQL + 'DROP FUNCTION ' + EscapeIdentifier(Database.Name) + '.' + EscapeIdentifier(TCObject(List[I]).Name) + ';' + #13#10
+      else if (TCObject(List[I]) is TCTrigger) then
+        SQL := SQL + 'DROP TRIGGER ' + EscapeIdentifier(Database.Name) + '.' + EscapeIdentifier(TCObject(List[I]).Name) + ';' + #13#10
+      else if (TCObject(List[I]) is TCEvent) then
+        SQL := SQL + 'DROP EVENT ' + EscapeIdentifier(Database.Name) + '.' + EscapeIdentifier(TCObject(List[I]).Name) + ';' + #13#10;
+    end;
+
+  for I := 0 to List.Count - 1 do
+    if (TObject(List[I]) is TCDatabase) then
+      SQL := SQL + 'DROP DATABASE ' + EscapeIdentifier(TCDatabase(List[I]).Name) + ';' + #13#10;
+
+  for I := 0 to List.Count - 1 do
+    if (TObject(List[I]) is TCProcess) then
+      if (ServerVersion < 50000) then
+        SQL := SQL + 'KILL ' + IntToStr(TCProcess(List[I]).Id) + ';' + #13#10
+      else
+        SQL := SQL + 'KILL CONNECTION ' + IntToStr(TCProcess(List[I]).Id) + ';' + #13#10;
+
+  for I := 0 to List.Count - 1 do
+    if (TObject(List[I]) is TCHost) then
+    begin
+      SQL := SQL + 'DELETE FROM ' + EscapeIdentifier('mysql') + '.' + EscapeIdentifier('host') + ' WHERE ' + EscapeIdentifier('Host') + '=' + SQLEscape(TCHost(List[I]).Name) + ';' + #13#10;
+      FlushPrivileges := True;
+    end;
+
+  if (FlushPrivileges) then
+    SQL := SQL + 'FLUSH PRIVILEGES;' + #13#10;
 
   Result := ExecuteSQL(SQL);
 end;
@@ -10369,23 +10445,8 @@ var
 begin
   List := TList.Create();
   List.Add(Host);
-  Result := DeleteHosts(List);
+  Result := DeleteEntities(List);
   List.Free();
-end;
-
-function TCClient.DeleteHosts(Const List: TList): Boolean;
-var
-  I: Integer;
-  SQL: string;
-begin
-  SQL := '';
-  for I := 0 to List.Count - 1 do
-    SQL := SQL + 'DELETE FROM ' + EscapeIdentifier('mysql') + '.' + EscapeIdentifier('host') + ' WHERE ' + EscapeIdentifier('Host') + '=' + SQLEscape(TCHost(List[I]).Name) + ';' + #13#10;
-
-  if (SQL <> '') then
-    SQL := SQL + 'FLUSH PRIVILEGES;' + #13#10;
-
-  Result := ExecuteSQL(SQL);
 end;
 
 function TCClient.DeleteProcess(const Process: TCProcess): Boolean;
@@ -10394,23 +10455,8 @@ var
 begin
   List := TList.Create();
   List.Add(Process);
-  Result := DeleteProcesses(List);
+  Result := DeleteEntities(List);
   List.Free();
-end;
-
-function TCClient.DeleteProcesses(const List: TList): Boolean;
-var
-  I: Byte;
-  SQL: string;
-begin
-  SQL := '';
-  for I := 0 to List.Count - 1 do
-    if (ServerVersion < 50000) then
-      SQL := SQL + 'KILL ' + IntToStr(TCProcess(List[I]).Id) + ';' + #13#10
-    else
-      SQL := SQL + 'KILL CONNECTION ' + IntToStr(TCProcess(List[I]).Id) + ';' + #13#10;
-
-  Result := (SQL = '') or ExecuteSQL(SQL);
 end;
 
 function TCClient.DeleteUser(const User: TCUser): Boolean;
@@ -11637,6 +11683,7 @@ begin
 
   if (Assigned(InvalidObjects)) then
     List.Assign(InvalidObjects, laOr);
+  List.Sort(Compare);
 
   Tables := TList.Create();
   ViewInTables := False;

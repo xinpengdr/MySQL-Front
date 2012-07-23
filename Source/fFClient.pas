@@ -408,9 +408,7 @@ type
     procedure aDCreateUserExecute(Sender: TObject);
     procedure aDCreateViewExecute(Sender: TObject);
     procedure aDDeleteExecute(Sender: TObject);
-    procedure aDDeleteHostExecute(Sender: TObject);
     procedure aDDeleteRecordExecute(Sender: TObject);
-    procedure aDDeleteUserExecute(Sender: TObject);
     procedure aDInsertRecordExecute(Sender: TObject);
     procedure aDNextExecute(Sender: TObject);
     procedure aDPrevExecute(Sender: TObject);
@@ -2294,7 +2292,6 @@ end;
 procedure TFClient.aDDeleteExecute(Sender: TObject);
 var
   CItems: TList;
-  Database: TCDatabase;
   I: Integer;
   List: TList;
   Msg: string;
@@ -2352,25 +2349,13 @@ begin
 
     List.Clear();
     for I := 0 to CItems.Count - 1 do
-      if (TCItem(CItems[I]) is TCDatabase) then
+      if ((TCItem(CItems[I]) is TCDatabase) or (TCItem(CItems[I]) is TCDBObject) or (TCItem(CItems[I]) is TCHost) or (TCItem(CItems[I]) is TCProcess)) then
       begin
-        List.Add(TCDatabase(CItems[I]));
+        List.Add(TCEntity(CItems[I]));
         CItems[I] := nil;
       end;
     if (Success and (List.Count > 0)) then
-      Success := Client.DeleteDatabases(List);
-
-    Database := nil;
-    List.Clear();
-    for I := 0 to CItems.Count - 1 do
-      if (TCItem(CItems[I]) is TCDBObject) then
-      begin
-        Database := TCDBObject(CItems[I]).Database;
-        List.Add(TCDBObject(CItems[I]));
-        CItems[I] := nil;
-      end;
-    if (Success and (List.Count > 0)) then
-      Success := Database.DeleteObjects(List);
+      Success := Client.DeleteEntities(List);
 
     Table := nil;
     for I := 0 to CItems.Count - 1 do
@@ -2412,45 +2397,18 @@ begin
 
     List.Clear();
     for I := 0 to CItems.Count - 1 do
-      if (TCItem(CItems[I]) is TCHost) then
-      begin
-        List.Add(TCHost(CItems[I]));
-        CItems[I] := nil;
-      end;
-    if (Success and (List.Count > 0)) then
-      Success := Client.DeleteHosts(List);
-
-    List.Clear();
-    for I := 0 to CItems.Count - 1 do
       if (TCItem(CItems[I]) is TCUser) then
       begin
         List.Add(TCUser(CItems[I]));
         CItems[I] := nil;
       end;
     if (Success and (List.Count > 0)) then
-      Success := Client.DeleteUsers(List);
-
-    List.Clear();
-    for I := 0 to CItems.Count - 1 do
-      if (TCItem(CItems[I]) is TCProcess) then
-      begin
-        List.Add(TCProcess(CItems[I]));
-        CItems[I] := nil;
-      end;
-    if (Success and (List.Count > 0)) then
-      Client.DeleteProcesses(List);
+      Client.DeleteUsers(List);
 
     List.Free();
   end;
 
   CItems.Free();
-end;
-
-procedure TFClient.aDDeleteHostExecute(Sender: TObject);
-begin
-  Wanted.Clear();
-
-;
 end;
 
 procedure TFClient.aDDeleteRecordExecute(Sender: TObject);
@@ -2474,11 +2432,6 @@ begin
       SetLength(Bookmarks, 0);
     end;
   end;
-end;
-
-procedure TFClient.aDDeleteUserExecute(Sender: TObject);
-begin
-  Wanted.Clear();
 end;
 
 procedure TFClient.AddressChanged(Sender: TObject);
@@ -9577,7 +9530,7 @@ var
   I: Integer;
   URI: TUURI;
 begin
-  if ((Window.ActiveControl = ActiveListView) and (SelectedImageIndex in [iiDatabase, iiSystemDatabase])) then
+  if ((Window.ActiveControl = ActiveListView) and Assigned(ActiveListView) and (SelectedImageIndex in [iiDatabase, iiSystemDatabase])) then
   begin
     Result := '';
     for I := 0 to ActiveListView.Items.Count - 1 do

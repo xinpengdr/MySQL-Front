@@ -594,7 +594,7 @@ begin
     for I := 0 to FHosts.Items.Count - 1 do
       if (Success and FHosts.Items[I].Selected) then
         List.Add(Client.HostByCaption(FHosts.Items[I].Caption));
-    if (Client.DeleteHosts(List)) then
+    if (Client.DeleteEntities(List)) then
     begin
       FHosts.Items.Clear();
       TSHostsShow(Sender);
@@ -611,7 +611,7 @@ begin
     for I := 0 to FProcesses.Items.Count - 1 do
       if (Success and FProcesses.Items[I].Selected) then
         List.Add(Client.ProcessById(StrToInt(FProcesses.Items[I].Caption)));
-    if (Client.DeleteProcesses(List)) then
+    if (Client.DeleteEntities(List)) then
     begin
       FProcesses.Items.Clear();
       TSProcessesShow(Sender);

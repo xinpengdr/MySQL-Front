@@ -4646,7 +4646,11 @@ begin
     if (not (Self is TMySQLDataSet)) then
       Data := PRecordBufferData(ActiveBuffer())
     else
+try
       Data := TMySQLDataSet.PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData;
+except
+      Data := TMySQLDataSet.PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData;
+end;
 
   if (not Assigned(Data) or not Assigned(Data^.LibRow^[Field.FieldNo - 1]) and (not Field.Required or (Field.AutoGenerateValue = arAutoInc))) then
     Result := 'NULL'
@@ -5153,11 +5157,14 @@ begin
 
   if (Result = grOk) then
   begin
+    InternRecordBuffers.CriticalSection.Enter();
     InternRecordBuffers.Index := NewIndex;
 
     PExternRecordBuffer(Buffer)^.InternRecordBuffer := InternRecordBuffers[InternRecordBuffers.Index];
     PExternRecordBuffer(Buffer)^.RecNo := InternRecordBuffers.Index;
     PExternRecordBuffer(Buffer)^.BookmarkFlag := bfCurrent;
+
+    InternRecordBuffers.CriticalSection.Leave();
   end;
 end;
 

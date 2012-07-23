@@ -498,6 +498,7 @@ begin
             DatabaseNode := DatabaseNode.getNextSibling();
           end;
         end;
+        break;
       end;
       AccountNode := AccountNode.getNextSibling();
     end;
@@ -508,7 +509,9 @@ begin
         FSource.Selected.Expand(False);
     end
     else if (SelectedNodes.Count > 1) then
-      FSource.Select(SelectedNodes);
+      FSource.Select(SelectedNodes)
+    else if (Assigned(AccountNode)) then
+      AccountNode.Selected := True;
 
     SelectedNodes.Free();
     DatabaseNames.Free();
@@ -797,7 +800,7 @@ var
               begin
                 Database := Client.Databases[I];
                 Result := not Database.Tables.Update() and Client.Asynchron;
-                if (not Result) then
+                if (not Result and (Node.TreeView = FSource)) then
                 begin
                   for J := 0 to Database.Tables.Count - 1 do
                     if (Database.Tables[J] is TCBaseTable) then
@@ -810,7 +813,7 @@ var
         begin
           Database := Client.DatabaseByName(Node.Text);
           Result := not Database.Tables.Update() and Client.Asynchron;
-          if (not Result) then
+          if (not Result and (Node.TreeView = FSource)) then
           begin
             for J := 0 to Database.Tables.Count - 1 do
               if (Database.Tables[J] is TCBaseTable) then
@@ -878,7 +881,6 @@ begin
 
     Transfer := TTTransfer.Create();
     Transfer.Wnd := Self.Handle;
-    Transfer.Backup := False;
     Transfer.Data := FTransferData.Checked;
     Transfer.DisableKeys := FTransferDisableKeys.Checked;
     Transfer.Structure := FTransferStructure.Checked;
