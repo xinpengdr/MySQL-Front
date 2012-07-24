@@ -30,7 +30,7 @@ object DTransfer: TDTransfer
     Anchors = [akRight, akBottom]
     Caption = 'FBForward'
     Default = True
-    TabOrder = 3
+    TabOrder = 2
     OnClick = FBForwardClick
   end
   object PageControl: TPageControl
@@ -38,7 +38,7 @@ object DTransfer: TDTransfer
     Top = 0
     Width = 444
     Height = 289
-    ActivePage = TSExecute
+    ActivePage = TSSelect
     Anchors = [akLeft, akTop, akRight, akBottom]
     Style = tsFlatButtons
     TabOrder = 0
@@ -47,11 +47,6 @@ object DTransfer: TDTransfer
     object TSSelect: TTabSheet
       Caption = 'TSSelect'
       TabVisible = False
-      OnShow = TSSelectShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         436
         279)
@@ -323,88 +318,6 @@ object DTransfer: TDTransfer
         end
       end
     end
-    object TSTransferOptions: TTabSheet
-      Caption = 'TSTransferOptions'
-      TabVisible = False
-      OnShow = TSTransferOptionsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        436
-        279)
-      object GTransferWhat: TGroupBox_Ext
-        Left = 4
-        Top = 0
-        Width = 429
-        Height = 69
-        Anchors = [akLeft, akTop, akRight]
-        Caption = 'GTransferWhat'
-        TabOrder = 0
-        DesignSize = (
-          429
-          69)
-        object FLTransferWhat: TLabel
-          Left = 8
-          Top = 17
-          Width = 77
-          Height = 13
-          Caption = 'FLTransferWhat'
-        end
-        object FTransferStructure: TCheckBox
-          Left = 200
-          Top = 16
-          Width = 225
-          Height = 17
-          Anchors = [akLeft, akTop, akRight]
-          Caption = 'FTransferStructure'
-          Enabled = False
-          TabOrder = 0
-          OnClick = FTransferStructureClick
-          OnKeyPress = FTransferStructureKeyPress
-        end
-        object FTransferData: TCheckBox
-          Left = 200
-          Top = 38
-          Width = 225
-          Height = 17
-          Anchors = [akLeft, akTop, akRight]
-          Caption = 'FTransferData'
-          TabOrder = 1
-          OnClick = FTransferDataClick
-          OnKeyPress = FTransferDataKeyPress
-        end
-      end
-      object GTransferOptions: TGroupBox_Ext
-        Left = 4
-        Top = 76
-        Width = 429
-        Height = 45
-        Anchors = [akLeft, akTop, akRight]
-        Caption = 'GTransferOptions'
-        TabOrder = 1
-        DesignSize = (
-          429
-          45)
-        object FLTransferGeneral: TLabel
-          Left = 8
-          Top = 16
-          Width = 88
-          Height = 13
-          Caption = 'FLTransferGeneral'
-        end
-        object FTransferDisableKeys: TCheckBox
-          Left = 200
-          Top = 16
-          Width = 225
-          Height = 17
-          Anchors = [akLeft, akTop, akRight]
-          Caption = 'FTransferDisableKeys'
-          TabOrder = 0
-        end
-      end
-    end
   end
   object FBHelp: TButton
     Left = 8
@@ -417,16 +330,6 @@ object DTransfer: TDTransfer
     TabOrder = 1
     OnClick = FBHelpClick
   end
-  object FBBack: TButton
-    Left = 200
-    Top = 296
-    Width = 75
-    Height = 25
-    Anchors = [akRight, akBottom]
-    Caption = 'FBBack'
-    TabOrder = 2
-    OnClick = FBBackClick
-  end
   object FBCancel: TButton
     Left = 361
     Top = 296
@@ -436,7 +339,7 @@ object DTransfer: TDTransfer
     Cancel = True
     Caption = 'FBCancel'
     ModalResult = 2
-    TabOrder = 4
+    TabOrder = 3
     OnClick = FBCancelClick
   end
   object MSource: TPopupMenu

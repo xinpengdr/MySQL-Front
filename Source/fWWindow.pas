@@ -1734,10 +1734,13 @@ end;
 procedure TWWindow.EurekaLogCustomDataRequest(
   EurekaExceptionRecord: TEurekaExceptionRecord; DataFields: TStrings);
 var
+  Frequency: Int64;
   I: Integer;
   Log: TStringList;
 begin
   DataFields.Add('System CodePage=' + IntToStr(GetACP()));
+  if (QueryPerformanceFrequency(Frequency)) then
+    DataFields.Add('Frequency=' + FormatFloat('#,##0', Frequency div 1000, LocaleFormatSettings) + ' kHz');
 
   if (not Assigned(ActiveTab)) then
   begin

@@ -1031,12 +1031,13 @@ type
     function GetEngines(): TCEngines; inline;
     function GetForeignKeyAllowed(): Boolean;
     function GetIsMerge(): Boolean;
+  protected
+    property Engines: TCEngines read GetEngines;
   public
     function FieldAvailable(const MySQLFieldType: TMySQLFieldType): Boolean; virtual;
     function ApplyMySQLFieldType(const MySQLFieldType: TMySQLFieldType; const MySQLFieldSize: Integer): TMySQLFieldType; virtual;
     property Comment: string read FComment write FComment;
     property Default: Boolean read FDefault;
-    property Engines: TCEngines read GetEngines;
     property ForeignKeyAllowed: Boolean read GetForeignKeyAllowed;
     property IsMerge: Boolean read GetIsMerge;
   end;
@@ -2046,6 +2047,7 @@ begin
   for I := 0 to Count - 1 do
     TCObject(Items[I]).Invalidate();
 end;
+
 { TCDBObject ******************************************************************}
 
 constructor TCDBObject.Create(const ACDBObjects: TCDBObjects; const AName: string = '');
@@ -7515,8 +7517,9 @@ begin
       end;
 
   SQL := SQLAlterTable(Table, NewTable);
+  SQL := SQL + NewTable.SQLGetSource();
 
-  Result := (SQL = '') or Client.SendSQL(SQL);
+  Result := (SQL = '') or Client.SendSQL(SQL, Client.ClientResult);
 end;
 
 function TCDatabase.UpdateTables(const TableNames: TStringList; const ACharset, ACollation, AEngine: string; const ARowType: TMySQLRowType): Boolean;
@@ -7635,10 +7638,12 @@ begin
     SQL := SQL + ';';
   SQL := SQL + #13#10;
 
+  SQL := SQL + NewView.SQLGetSource();
+
   if (Client.DatabaseName <> Name) then
     SQL := SQLUse() + SQL;
 
-  Result := (SQL = '') or Client.SendSQL(SQL);
+  Result := (SQL = '') or Client.SendSQL(SQL, Client.ClientResult);
 end;
 
 function TCDatabase.ViewByName(const TableName: string): TCView;

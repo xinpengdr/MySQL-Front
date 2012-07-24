@@ -265,19 +265,9 @@ type
   end;
 
   TPTransfer = class(TPWindow)
-  type
-    TOption = (toDisableForeignKeys);
-    TOptions = set of TOption;
-  protected
-    procedure LoadFromXML(const XML: IXMLNode); override;
-    procedure SaveToXML(const XML: IXMLNode); override;
   public
-    Data: Boolean;
     Left: Integer;
-    Options: TOptions;
-    Structure: Boolean;
     Top: Integer;
-    constructor Create(const APreferences: TPPreferences); override;
   end;
 
   TPTrigger = class(TPWindow)
@@ -628,20 +618,6 @@ begin
   if (roMatchCase in Options) then begin if (Result <> '') then Result := Result + ','; Result := Result + 'MatchCase'; end;
   if (roWholeValue in Options) then begin if (Result <> '') then Result := Result + ','; Result := Result + 'WholeValue'; end;
   if (roRegExpr in Options) then begin if (Result <> '') then Result := Result + ','; Result := Result + 'RegExpr'; end;
-end;
-
-function StrToTransferOptions(const Str: string): TPTransfer.TOptions;
-begin
-  Result := [];
-
-  if (Pos('DISABLEFOREIGNKEYS', UpperCase(Str)) > 0) then Result := Result + [toDisableForeignKeys];
-end;
-
-function TransferOptionsToStr(const Options: TPTransfer.TOptions): string;
-begin
-  Result := '';
-
-  if (toDisableForeignKeys in Options) then begin if (Result <> '') then Result := Result + ','; Result := Result + 'DisableForeignKeys'; end;
 end;
 
 function ReplaceEnviromentVariables(const AStr: string): string;
@@ -1241,33 +1217,6 @@ begin
 end;
 
 { TPTransfer ******************************************************************}
-
-constructor TPTransfer.Create(const APreferences: TPPreferences);
-begin
-  inherited;
-
-  Data := True;
-  Options := [];
-  Structure := True;
-end;
-
-procedure TPTransfer.LoadFromXML(const XML: IXMLNode);
-begin
-  inherited;
-
-  if (Assigned(XMLNode(XML, 'data'))) then TryStrToBool(XMLNode(XML, 'data').Attributes['enabled'], Data);
-  if (Assigned(XMLNode(XML, 'objects'))) then TryStrToBool(XMLNode(XML, 'objects').Attributes['enabled'], Data);
-  if (Assigned(XMLNode(XML, 'options'))) then Options := StrToTransferOptions(XMLNode(XML, 'options').Text);
-end;
-
-procedure TPTransfer.SaveToXML(const XML: IXMLNode);
-begin
-  inherited;
-
-  XMLNode(XML, 'data').Attributes['enabled'] := Data;
-  XMLNode(XML, 'objects').Attributes['enabled'] := Data;
-  XMLNode(XML, 'options').Text := TransferOptionsToStr(Options);
-end;
 
 { TPLanguage ******************************************************************}
 

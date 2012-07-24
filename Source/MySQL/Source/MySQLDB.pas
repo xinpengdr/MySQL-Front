@@ -3429,7 +3429,7 @@ var
   LibRow: MYSQL_ROW;
 begin
   Assert(SynchroThread.State = ssReceivingResult);
-  Assert(Assigned(SynchroThread.DataSet));
+  Assert(SynchroThread.DataSet is TMySQLDataSet);
 
   repeat
     if ((SynchroThread.Terminated) or not Assigned(SynchroThread.DataSet)) then

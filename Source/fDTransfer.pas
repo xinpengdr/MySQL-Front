@@ -11,7 +11,6 @@ uses
 
 type
   TDTransfer = class(TForm_Ext)
-    FBBack: TButton;
     FBCancel: TButton;
     FBForward: TButton;
     FBHelp: TButton;
@@ -29,20 +28,13 @@ type
     FLProgressRecords: TLabel;
     FLProgressTables: TLabel;
     FLProgressTime: TLabel;
-    FLTransferGeneral: TLabel;
-    FLTransferWhat: TLabel;
     FSource: TTreeView_Ext;
     FProgressBar: TProgressBar;
     FDestination: TTreeView_Ext;
-    FTransferData: TCheckBox;
-    FTransferDisableKeys: TCheckBox;
-    FTransferStructure: TCheckBox;
     GErrorMessages: TGroupBox_Ext;
     GSource: TGroupBox_Ext;
     GProgress: TGroupBox;
     GDestination: TGroupBox_Ext;
-    GTransferOptions: TGroupBox_Ext;
-    GTransferWhat: TGroupBox_Ext;
     miSelectAll: TMenuItem;
     MSource: TPopupMenu;
     PageControl: TPageControl;
@@ -51,7 +43,6 @@ type
     PDestination: TPanel_Ext;
     TSExecute: TTabSheet;
     TSSelect: TTabSheet;
-    TSTransferOptions: TTabSheet;
     procedure FBBackClick(Sender: TObject);
     procedure FBCancelClick(Sender: TObject);
     procedure FBForwardClick(Sender: TObject);
@@ -59,10 +50,6 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure FormShow(Sender: TObject);
-    procedure FTransferDataClick(Sender: TObject);
-    procedure FTransferDataKeyPress(Sender: TObject; var Key: Char);
-    procedure FTransferStructureClick(Sender: TObject);
-    procedure FTransferStructureKeyPress(Sender: TObject; var Key: Char);
     procedure miSelectAllClick(Sender: TObject);
     procedure MSourcePopup(Sender: TObject);
     procedure PageControlResize(Sender: TObject);
@@ -72,8 +59,6 @@ type
     procedure TreeViewMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure TSExecuteShow(Sender: TObject);
-    procedure TSSelectShow(Sender: TObject);
-    procedure TSTransferOptionsShow(Sender: TObject);
     procedure TreeViewGetSelectedIndex(Sender: TObject; Node: TTreeNode);
   private
     Clients: array of TCClient;
@@ -149,15 +134,6 @@ begin
   GSource.Caption := ReplaceStr(Preferences.LoadStr(754), '&', '');
   GDestination.Caption := ReplaceStr(Preferences.LoadStr(755), '&', '');
 
-  GTransferWhat.Caption := Preferences.LoadStr(227);
-  FLTransferWhat.Caption := Preferences.LoadStr(227) + ':';
-  FTransferStructure.Caption := Preferences.LoadStr(215);
-  FTransferData.Caption := Preferences.LoadStr(216);
-
-  GTransferOptions.Caption := Preferences.LoadStr(238);
-  FLTransferGeneral.Caption := Preferences.LoadStr(108) + ':';
-  FTransferDisableKeys.Caption := Preferences.LoadStr(621);
-
   GProgress.Caption := Preferences.LoadStr(224);
   FLEntiered.Caption := Preferences.LoadStr(211) + ':';
   FLDone.Caption := Preferences.LoadStr(232) + ':';
@@ -169,7 +145,6 @@ begin
   GErrorMessages.Caption := Preferences.LoadStr(392);
 
   FBHelp.Caption := Preferences.LoadStr(167);
-  FBBack.Caption := '< ' + Preferences.LoadStr(228);
 end;
 
 procedure TDTransfer.CMExecutedDone(var Message: TMessage);
@@ -235,10 +210,8 @@ end;
 
 procedure TDTransfer.FBBackClick(Sender: TObject);
 begin
-  if (PageControl.ActivePage = TSTransferOptions)then
-    PageControl.ActivePage := TSSelect
-  else if (PageControl.ActivePage = TSExecute) then
-    PageControl.ActivePage := TSTransferOptions;
+  if (PageControl.ActivePage = TSExecute) then
+    PageControl.ActivePage := TSSelect;
 end;
 
 procedure TDTransfer.FBCancelClick(Sender: TObject);
@@ -254,8 +227,6 @@ end;
 procedure TDTransfer.FBForwardClick(Sender: TObject);
 begin
   if (PageControl.ActivePage = TSSelect) then
-    PageControl.ActivePage := TSTransferOptions
-  else if (PageControl.ActivePage = TSTransferOptions)then
     PageControl.ActivePage := TSExecute;
 end;
 
@@ -284,10 +255,6 @@ begin
   FSource.Images := Preferences.SmallImages;
   FDestination.Images := Preferences.SmallImages;
 
-  FTransferStructure.Checked := Preferences.Transfer.Structure;
-  FTransferData.Checked := Preferences.Transfer.Data;
-  FTransferDisableKeys.Checked := toDisableForeignKeys in Preferences.Transfer.Options;
-
   SendMessage(FErrorMessages.Handle, EM_SETTEXTMODE, TM_PLAINTEXT, 0);
   SendMessage(FErrorMessages.Handle, EM_SETWORDBREAKPROC, 0, LPARAM(@EditWordBreakProc));
 
@@ -298,16 +265,6 @@ procedure TDTransfer.FormHide(Sender: TObject);
 var
   I: Integer;
 begin
-  if (ModalResult in [mrNone, mrOk]) then
-  begin
-    if (FTransferData.Enabled) then
-      Preferences.Transfer.Structure := FTransferStructure.Checked;
-    if (FTransferData.Enabled) then
-      Preferences.Transfer.Data := FTransferData.Checked;
-    if (FTransferDisableKeys.Enabled) then
-      if (FTransferDisableKeys.Checked) then Include(Preferences.Transfer.Options, toDisableForeignKeys) else Exclude(Preferences.Transfer.Options, toDisableForeignKeys);
-  end;
-
   for I := 0 to Length(Clients) - 1 do
     if (Assigned(Clients[I])) then
     begin
@@ -361,49 +318,16 @@ begin
 
   InitTSSelect(Sender);
 
-  TSSelectShow(Sender);
-  if (not Assigned(DestinationClient)) then
-  begin
-    PageControl.ActivePage := TSSelect;
-    if (Assigned(SourceClient)) then
-      ActiveControl := FSource
-    else
-      ActiveControl := FBCancel;
-  end
+  PageControl.ActivePage := TSSelect;
+  if (Assigned(SourceClient)) then
+    ActiveControl := FSource
   else
-  begin
-    PageControl.ActivePage := TSTransferOptions;
-    ActiveControl := FTransferData;
-  end;
+    ActiveControl := FBCancel;
 
+  FBForward.Caption := Preferences.LoadStr(230);
   FBCancel.Caption := Preferences.LoadStr(30);
   FBCancel.ModalResult := mrCancel;
   FBCancel.Default := False;
-end;
-
-procedure TDTransfer.FTransferDataClick(Sender: TObject);
-begin
-  FTransferStructure.Checked := FTransferStructure.Checked or FTransferData.Checked;
-
-  FBForward.Enabled := FTransferStructure.Checked or FTransferData.Checked;
-end;
-
-procedure TDTransfer.FTransferDataKeyPress(Sender: TObject; var Key: Char);
-begin
-  FTransferDataClick(Sender);
-end;
-
-procedure TDTransfer.FTransferStructureClick(Sender: TObject);
-begin
-  FTransferData.Checked := FTransferData.Checked and FTransferStructure.Checked;
-
-  FBForward.Enabled := FTransferStructure.Checked or FTransferData.Checked;
-end;
-
-procedure TDTransfer.FTransferStructureKeyPress(Sender: TObject;
-  var Key: Char);
-begin
-  FTransferStructureClick(Sender);
 end;
 
 function TDTransfer.GetClient(const Index: Integer): TCClient;
@@ -855,7 +779,6 @@ begin
   ProgressInfos.Progress := 0;
   SendMessage(Self.Handle, CM_UPDATEPROGRESSINFO, 0, LPARAM(@ProgressInfos));
 
-  FBBack.Enabled := False;
   FBForward.Enabled := False;
   FBCancel.Default := True;
   ActiveControl := FBCancel;
@@ -881,9 +804,8 @@ begin
 
     Transfer := TTTransfer.Create();
     Transfer.Wnd := Self.Handle;
-    Transfer.Data := FTransferData.Checked;
-    Transfer.DisableKeys := FTransferDisableKeys.Checked;
-    Transfer.Structure := FTransferStructure.Checked;
+    Transfer.Data := True;
+    Transfer.Structure := True;
     Transfer.OnError := OnError;
     Transfer.OnExecuted := OnExecuted;
     Transfer.OnUpdate := OnUpdate;
@@ -911,25 +833,6 @@ begin
     if (Assigned(Transfer)) then
       Transfer.Start();
   end;
-end;
-
-procedure TDTransfer.TSSelectShow(Sender: TObject);
-begin
-  FBBack.Enabled := False;
-  FBForward.Caption := Preferences.LoadStr(229) + ' >';
-
-  TreeViewChange(Sender, nil);
-end;
-
-procedure TDTransfer.TSTransferOptionsShow(Sender: TObject);
-begin
-  FBBack.Enabled := True;
-  FBForward.Caption := Preferences.LoadStr(230);
-  FBForward.Enabled := True;
-  FBForward.Default := True;
-  FBCancel.Caption := Preferences.LoadStr(30);
-  FBCancel.ModalResult := mrCancel;
-  FBCancel.Default := False;
 end;
 
 initialization

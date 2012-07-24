@@ -626,7 +626,6 @@ type
     function ToolsItem(const Item: TItem): TTools.TItem; virtual;
   public
     Data: Boolean;
-    DisableKeys: Boolean;
     Structure: Boolean;
     procedure Add(const SourceClient: TCClient; const SourceDatabaseName, SourceTableName: string; const DestinationClient: TCClient; const DestinationDatabaseName, DestinationTableName: string); virtual;
     constructor Create(); override;
@@ -1409,10 +1408,6 @@ procedure TTImport.AfterExecute();
 begin
   Close();
 
-  if (Success = daSuccess) then
-    Client.CommitTransaction()
-  else
-    Client.RollbackTransaction();
   Client.EndSilent();
   Client.EndSynchron();
 
@@ -1429,7 +1424,6 @@ begin
 
   Client.BeginSilent();
   Client.BeginSynchron(); // We're still in a thread
-  Client.StartTransaction();
 end;
 
 procedure TTImport.BeforeExecuteData(var Item: TItem);
@@ -1527,11 +1521,51 @@ end;
 
 procedure TTImport.Execute();
 var
+  DataSet: TMySQLQuery;
   I: Integer;
+  OLD_FOREIGN_KEY_CHECKS: string;
+  OLD_UNIQUE_CHECKS: string;
+  SQL: string;
 begin
   BeforeExecute();
 
   Open();
+
+  if (Client.ServerVersion >= 40014) then
+  begin
+    if (Assigned(Client.VariableByName('UNIQUE_CHECKS'))
+      and Assigned(Client.VariableByName('FOREIGN_KEY_CHECKS'))) then
+    begin
+      OLD_UNIQUE_CHECKS := Client.VariableByName('UNIQUE_CHECKS').Value;
+      OLD_FOREIGN_KEY_CHECKS := Client.VariableByName('FOREIGN_KEY_CHECKS').Value;
+    end
+    else
+    begin
+      DataSet := TMySQLQuery.Create(nil);
+      DataSet.Connection := Client;
+      DataSet.CommandText := 'SELECT @@UNIQUE_CHECKS, @@FOREIGN_KEY_CHECKS';
+
+      while ((Success = daSuccess) and not DataSet.Active) do
+      begin
+        DataSet.Open();
+        if (Client.ErrorCode > 0) then
+          DoError(DatabaseError(Client), ToolsItem(Items[0]), SQL);
+      end;
+
+      if (DataSet.Active) then
+      begin
+        OLD_UNIQUE_CHECKS := DataSet.Fields[0].AsString;
+        OLD_FOREIGN_KEY_CHECKS := DataSet.Fields[1].AsString;
+        DataSet.Close();
+      end;
+
+      DataSet.Free();
+    end;
+
+    SQL := 'SET UNIQUE_CHECKS=0, FOREIGN_KEY_CHECKS=0;';
+    while ((Success = daSuccess) and not Client.ExecuteSQL(SQL)) do
+      DoError(DatabaseError(Client), ToolsItem(Items[0]), SQL);
+  end;
 
   for I := 0 to Length(Items) - 1 do
     if (Success <> daAbort) then
@@ -1557,6 +1591,13 @@ begin
       Items[I].Done := True;
     end;
 
+  if (Client.ServerVersion >= 40014) then
+  begin
+    SQL := 'SET UNIQUE_CHECKS=' + OLD_UNIQUE_CHECKS + ', FOREIGN_KEY_CHECKS=' + OLD_FOREIGN_KEY_CHECKS + ';' + #13#10;
+    while ((Success = daSuccess) and not Client.ExecuteSQL(SQL)) do
+      DoError(DatabaseError(Client), ToolsItem(Items[0]), SQL);
+  end;
+
   AfterExecute();
 end;
 
@@ -1570,7 +1611,6 @@ var
   I: Integer;
   Pipe: THandle;
   Pipename: string;
-  S: string;
   SQL: string;
   SQLThread: TSQLThread;
   SQLValues: TSQLStrings;
@@ -1582,8 +1622,6 @@ begin
 
   if (Success = daSuccess) then
   begin
-    DataFileBuffer := TTDataFileBuffer.Create(Client.CodePage);
-
     SQL := '';
     if (Client.DatabaseName <> Database.Name) then
       SQL := SQL + Database.SQLUse() + #13#10;
@@ -1602,15 +1640,18 @@ begin
         DoError(SysError(), ToolsItem(Item))
       else
       begin
-        SQL := '';
+        SQL := 'START TRANSACTION;' + #13#10;
         if (Database.Name <> Client.DatabaseName) then
           SQL := SQL + Database.SQLUse();
         SQL := SQL + SQLLoadDataInfile(Database, ImportType = itReplace, Pipename, Client.Charset, Database.Name, Table.Name, FieldNames);
+        SQL := SQL + 'COMMIT;' + #13#10;
 
         SQLThread := TSQLThread.Create(Client, SQL);
 
         if (ConnectNamedPipe(Pipe, nil)) then
         begin
+          DataFileBuffer := TTDataFileBuffer.Create(Client.CodePage);
+
           Item.RecordsDone := 0;
           while ((Success = daSuccess) and GetValues(Item, DataFileBuffer)) do
           begin
@@ -1640,10 +1681,16 @@ begin
           DisconnectNamedPipe(Pipe);
 
           if (not Client.ErrorCode = 0) then
+          begin
             DoError(DatabaseError(Client), ToolsItem(Item), SQL);
+            if ((0 < Client.ExecutedStmts) and (Client.ExecutedStmts < 3)) then
+              Client.ExecuteSQL('ROLLBACK;');
+          end;
+
+          DataFileBuffer.Free();
         end;
 
-        FreeAndNil(SQLThread);
+        SQLThread.Free();
         CloseHandle(Pipe);
       end;
 
@@ -1665,14 +1712,14 @@ begin
         end;
         DataSet.Free();
       end;
-
-      DataFileBuffer.Free();
     end
     else
     begin
       StringBuffer := TTStringBuffer.Create(SQLPacketSize);
       if (Database.Name <> Client.DatabaseName) then
         StringBuffer.Write(Database.SQLUse());
+      StringBuffer.Write('START TRANSACTION;' + #13#10);
+      StringBuffer.Write('LOCK TABLES ' + Client.EscapeIdentifier(Table.Name) + ' WRITE;' + #13#10);
 
       SetLength(SQLValues, Length(Fields));
       while ((Success = daSuccess) and GetValues(Item, SQLValues)) do
@@ -1716,9 +1763,9 @@ begin
         begin
           if (ImportType = itUpdate) then
             StringBuffer.Write(';' + #13#10);
-          S := StringBuffer.Read();
-          DoExecuteSQL(Item, S);
-          StringBuffer.Write(S);
+          SQL := StringBuffer.Read();
+          DoExecuteSQL(Item, SQL);
+          StringBuffer.Write(SQL);
         end;
 
         Inc(Item.RecordsDone);
@@ -1733,9 +1780,17 @@ begin
       begin
         if ((ImportType <> itUpdate) and (StringBuffer.Size > 0)) then
           StringBuffer.Write(';' + #13#10);
+        StringBuffer.Write('UNLOCK TABLES;' + #13#10);
+        StringBuffer.Write('COMMIT;' + #13#10);
 
-        S := StringBuffer.Read();
-        DoExecuteSQL(Item, S);
+        SQL := StringBuffer.Read();
+        DoExecuteSQL(Item, SQL);
+      end
+      else
+      begin
+        SQL := 'UNLOCK TABLES;' + #13#10;
+        SQL := SQL + 'ROLLBACK;' + #13#10;
+        DoExecuteSQL(Item, SQL);
       end;
 
       StringBuffer.Free();
@@ -2198,8 +2253,6 @@ begin
   NewTable.Name := Item.TableName;
 
   while ((Success = daSuccess) and not Database.AddTable(NewTable)) do
-    DoError(DatabaseError(Client), ToolsItem(Item));
-  while ((Success = daSuccess) and not Client.Update()) do
     DoError(DatabaseError(Client), ToolsItem(Item));
 
   NewTable.Free();
@@ -3118,8 +3171,6 @@ begin
 
     while ((Success = daSuccess) and not Database.AddTable(NewTable)) do
       DoError(DatabaseError(Client), ToolsItem(Item));
-    while ((Success = daSuccess) and not Client.Update()) do
-      DoError(DatabaseError(Client), ToolsItem(Item));
   end;
 
   NewTable.Free();
@@ -3418,8 +3469,6 @@ begin
     SQLiteException(Handle, sqlite3_finalize(Stmt));
 
     while ((Success = daSuccess) and not Database.AddTable(NewTable)) do
-      DoError(DatabaseError(Client), ToolsItem(Item));
-    while ((Success = daSuccess) and not Client.Update()) do
       DoError(DatabaseError(Client), ToolsItem(Item));
 
     NewTable.Free();
@@ -3966,7 +4015,6 @@ begin
   else
   begin
     DataSet := TMySQLQuery.Create(nil);
-    DataSet.Asynchron := True;
     while ((Success = daSuccess) and not DataSet.Active) do
     begin
       DataSet.Open(DataHandle);
@@ -6686,8 +6734,6 @@ begin
 
     TElement(Elements[0]^).Destination.Client.EndSilent();
     TElement(Elements[0]^).Destination.Client.EndSynchron();
-
-    DataFileBuffer.Free();
   end;
 
   inherited;
@@ -6704,8 +6750,6 @@ begin
 
     TElement(Elements[0]^).Destination.Client.BeginSilent();
     TElement(Elements[0]^).Destination.Client.BeginSynchron(); // We're still in a thread
-
-    DataFileBuffer := TTDataFileBuffer.Create(TElement(Elements[0]^).Destination.Client.CodePage);
   end;
 end;
 
@@ -6856,9 +6900,15 @@ begin
     DoUpdateGUI();
   end;
 
-  if (DisableKeys) then
+  if (DestinationClient.ServerVersion >= 40014) then
   begin
-    if (DestinationClient.ServerVersion >= 40014) then
+    if (Assigned(DestinationClient.VariableByName('UNIQUE_CHECKS'))
+      and Assigned(DestinationClient.VariableByName('FOREIGN_KEY_CHECKS'))) then
+    begin
+      OLD_UNIQUE_CHECKS := DestinationClient.VariableByName('UNIQUE_CHECKS').Value;
+      OLD_FOREIGN_KEY_CHECKS := DestinationClient.VariableByName('FOREIGN_KEY_CHECKS').Value;
+    end
+    else
     begin
       DataSet := TMySQLQuery.Create(nil);
       DataSet.Connection := DestinationClient;
@@ -6871,19 +6921,19 @@ begin
           DoError(DatabaseError(DestinationClient), ToolsItem(TElement(Elements[0]^).Destination), SQL);
       end;
 
-      if (Success = daSuccess) then
+      if (DataSet.Active) then
       begin
         OLD_UNIQUE_CHECKS := DataSet.Fields[0].AsString;
         OLD_FOREIGN_KEY_CHECKS := DataSet.Fields[1].AsString;
         DataSet.Close();
-
-        SQL := 'SET UNIQUE_CHECKS=0, FOREIGN_KEY_CHECKS=0;';
-        while ((Success = daSuccess) and not DestinationClient.ExecuteSQL(SQL)) do
-          DoError(DatabaseError(DestinationClient), ToolsItem(TElement(Elements[0]^).Destination), SQL);
       end;
 
-      FreeAndNil(DataSet);
+      DataSet.Free();
     end;
+
+    SQL := 'SET UNIQUE_CHECKS=0, FOREIGN_KEY_CHECKS=0;';
+    while ((Success = daSuccess) and not DestinationClient.ExecuteSQL(SQL)) do
+      DoError(DatabaseError(DestinationClient), ToolsItem(TElement(Elements[0]^).Destination), SQL);
   end;
 
   if (SourceClient = DestinationClient) then
@@ -6950,14 +7000,11 @@ begin
       end;
   end;
 
-  if (DisableKeys) then
+  if (DestinationClient.ServerVersion >= 40014) then
   begin
-    if (DestinationClient.ServerVersion >= 40014) then
-    begin
-      SQL := 'SET UNIQUE_CHECKS=' + OLD_UNIQUE_CHECKS + ', FOREIGN_KEY_CHECKS=' + OLD_FOREIGN_KEY_CHECKS + ';' + #13#10;
-      while ((Success = daSuccess) and not DestinationClient.ExecuteSQL(SQL)) do
-        DoError(DatabaseError(DestinationClient), ToolsItem(TElement(Elements[0]^).Destination), SQL);
-    end;
+    SQL := 'SET UNIQUE_CHECKS=' + OLD_UNIQUE_CHECKS + ', FOREIGN_KEY_CHECKS=' + OLD_FOREIGN_KEY_CHECKS + ';' + #13#10;
+    while ((Success = daSuccess) and not DestinationClient.ExecuteSQL(SQL)) do
+      DoError(DatabaseError(DestinationClient), ToolsItem(TElement(Elements[0]^).Destination), SQL);
   end;
 
   AfterExecute();
@@ -6965,7 +7012,6 @@ end;
 
 procedure TTTransfer.ExecuteData(var Source, Destination: TItem);
 var
-  Buffer: TTStringBuffer;
   DestinationDatabase: TCDatabase;
   DestinationFieldNames: string;
   DestinationPrimaryIndexFieldNames: string;
@@ -6974,7 +7020,7 @@ var
   FieldInfo: TFieldInfo;
   FilenameP: array [0 .. MAX_PATH] of Char;
   I: Integer;
-  InsertStmtInBuffer: Boolean;
+  InsertStmtInStringBuffer: Boolean;
   J: Integer;
   LibLengths: MYSQL_LENGTHS;
   LibRow: MYSQL_ROW;
@@ -6990,6 +7036,7 @@ var
   SQL: string;
   SQLThread: TSQLThread;
   SQLValues: TSQLStrings;
+  StringBuffer: TTStringBuffer;
   Update: Boolean;
   Values: string;
   WhereClausel: string;
@@ -7009,13 +7056,6 @@ begin
 
   if (FieldCount > 0) then
   begin
-    if ((Success = daSuccess) and DisableKeys and (Destination.Client.ServerVersion >= 40000)) then
-    begin
-      SQL := 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' DISABLE KEYS;';
-      if (not Destination.Client.ExecuteSQL(SQL)) then
-        DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
-    end;
-
     SourceFieldNames := '';
 
     if (Success = daSuccess) then
@@ -7039,8 +7079,6 @@ begin
 
       if ((Success = daSuccess) and (DestinationFieldNames <> '') and not SourceDataSet.IsEmpty()) then
       begin
-        Destination.Client.StartTransaction();
-
         if (Destination.Client.LoadDataFile) then
         begin
           Pipename := '\\.\pipe\' + LoadStr(1000);
@@ -7052,14 +7090,22 @@ begin
           else
           begin
             SQL := '';
+            SQL := SQL + 'START TRANSACTION;' + #13#10;
+            if (Destination.Client.ServerVersion >= 40000) then
+              SQL := SQL + 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' DISABLE KEYS;' + #13#10;
             if (DestinationDatabase.Name <> Destination.Client.DatabaseName) then
               SQL := SQL + DestinationDatabase.SQLUse();
             SQL := SQL + SQLLoadDataInfile(DestinationDatabase, False, Pipename, Destination.Client.Charset, DestinationDatabase.Name, DestinationTable.Name, DestinationFieldNames);
+            if (Destination.Client.ServerVersion >= 40000) then
+              SQL := SQL + 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' ENABLE KEYS;' + #13#10;
+            SQL := SQL + 'COMMIT;' + #13#10;
 
             SQLThread := TSQLThread.Create(Destination.Client, SQL);
 
             if (ConnectNamedPipe(Pipe, nil)) then
             begin
+              DataFileBuffer := TTDataFileBuffer.Create(TElement(Elements[0]^).Destination.Client.CodePage);
+
               repeat
                 LibLengths := SourceDataSet.LibLengths;
                 LibRow := SourceDataSet.LibRow;
@@ -7090,7 +7136,8 @@ begin
                    DataFileBuffer.Clear();
 
                 Inc(Destination.RecordsDone);
-                if (Destination.RecordsDone mod 100 = 0) then DoUpdateGUI();
+                if (Destination.RecordsDone mod 100 = 0) then
+                  DoUpdateGUI();
 
                 if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
                   Success := daAbort;
@@ -7105,15 +7152,24 @@ begin
               if (not FlushFileBuffers(Pipe) or not WriteFile(Pipe, DataFileBuffer.Mem^, 0, WrittenSize, nil) or not FlushFileBuffers(Pipe)) then
                 DoError(SysError(), ToolsItem(Destination))
               else
+              begin
+                DoUpdateGUI();
                 SQLThread.WaitFor();
+              end;
 
               DisconnectNamedPipe(Pipe);
 
               if (Destination.Client.ErrorCode <> 0) then
+              begin
                 DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
+                if ((0 < Destination.Client.ExecutedStmts) and (Destination.Client.ExecutedStmts < 3)) then
+                  Destination.Client.ExecuteSQL('ROLLBACK;');
+              end;
+
+              DataFileBuffer.Free();
             end;
 
-            FreeAndNil(SQLThread);
+            SQLThread.Free();
             CloseHandle(Pipe);
           end;
         end
@@ -7127,11 +7183,16 @@ begin
               DestinationPrimaryIndexFieldNames := DestinationPrimaryIndexFieldNames + DestinationTable.Fields[I].Name;
             end;
 
-          Buffer := TTStringBuffer.Create(SQLPacketSize);
-          InsertStmtInBuffer := False;
+          StringBuffer := TTStringBuffer.Create(SQLPacketSize);
+          InsertStmtInStringBuffer := False;
+
+          StringBuffer.Write('START TRANSACTION;' + #13#10);
+          StringBuffer.Write('LOCK TABLES ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' WRITE;' + #13#10);
+          if (Destination.Client.ServerVersion >= 40000) then
+            StringBuffer.Write('ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' DISABLE KEYS;' + #13#10);
 
           if (DestinationDatabase.Name <> Destination.Client.DatabaseName) then
-            Buffer.Write(DestinationDatabase.SQLUse());
+            StringBuffer.Write(DestinationDatabase.SQLUse());
 
           SetLength(SQLValues, DestinationTable.Fields.Count);
           repeat
@@ -7161,37 +7222,37 @@ begin
 
             if (Update) then
             begin
-              if (InsertStmtInBuffer) then
+              if (InsertStmtInStringBuffer) then
               begin
-                Buffer.Write(';' + #13#10);
-                InsertStmtInBuffer := False;
+                StringBuffer.Write(';' + #13#10);
+                InsertStmtInStringBuffer := False;
               end;
-              Buffer.Write(SQLUpdate(DestinationTable, Values, WhereClausel));
+              StringBuffer.Write(SQLUpdate(DestinationTable, Values, WhereClausel));
             end
-            else if (not InsertStmtInBuffer) then
+            else if (not InsertStmtInStringBuffer) then
             begin
               SQL := 'INSERT INTO ';
               SQL := SQL + Destination.Client.EscapeIdentifier(DestinationTable.Name);
               if (DestinationFieldNames <> '') then
                 SQL := SQL + ' (' + DestinationFieldNames + ')';
               SQL := SQL + ' VALUES (' + Values + ')';
-              Buffer.Write(SQL);
-              InsertStmtInBuffer := True;
+              StringBuffer.Write(SQL);
+              InsertStmtInStringBuffer := True;
             end
             else
-              Buffer.Write(',(' + Values + ')');
+              StringBuffer.Write(',(' + Values + ')');
 
-            if ((Buffer.Size > 0) and (Update and not Destination.Client.MultiStatements or (Buffer.Size >= SQLPacketSize))) then
+            if ((StringBuffer.Size > 0) and (Update and not Destination.Client.MultiStatements or (StringBuffer.Size >= SQLPacketSize))) then
             begin
-              if (InsertStmtInBuffer) then
+              if (InsertStmtInStringBuffer) then
               begin
-                Buffer.Write(';' + #13#10);
-                InsertStmtInBuffer := False;
+                StringBuffer.Write(';' + #13#10);
+                InsertStmtInStringBuffer := False;
               end;
-              S := Buffer.Read();
-              while ((Success = daSuccess) and not DoExecuteSQL(Destination, Destination.Client, S)) do
-                DoError(DatabaseError(Destination.Client), ToolsItem(Destination), S);
-              Buffer.Write(S);
+              SQL := StringBuffer.Read();
+              while ((Success = daSuccess) and not DoExecuteSQL(Destination, Destination.Client, SQL)) do
+                DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
+              StringBuffer.Write(SQL);
             end;
 
             Inc(Destination.RecordsDone);
@@ -7201,30 +7262,32 @@ begin
               Success := daAbort;
           until ((Success <> daSuccess) or not SourceDataSet.FindNext());
 
-          if (InsertStmtInBuffer) then
-            Buffer.Write(';' + #13#10);
-          S := Buffer.Read();
+          if (InsertStmtInStringBuffer) then
+            StringBuffer.Write(';' + #13#10);
+          if (Destination.Client.ServerVersion >= 40000) then
+            StringBuffer.Write('ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' ENABLE KEYS;' + #13#10);
+          StringBuffer.Write('UNLOCK TABLES;' + #13#10);
+          StringBuffer.Write('COMMIT;' + #13#10);
+          S := StringBuffer.Read();
           while ((Success = daSuccess) and (S <> '') and not DoExecuteSQL(Destination, Destination.Client, S)) do
             DoError(DatabaseError(Destination.Client), ToolsItem(Destination), S);
 
-          Buffer.Free();
-        end;
+          StringBuffer.Free();
 
-        if (Success = daSuccess) then
-          Destination.Client.CommitTransaction()
-        else
-          Destination.Client.RollbackTransaction();
+          if (Success <> daSuccess) then
+          begin
+            SQL := '';
+            if (Destination.Client.ServerVersion >= 40000) then
+              SQL := SQL + 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' ENABLE KEYS;' + #13#10;
+            SQL := SQL + 'UNLOCK TABLES;' + #13#10;
+            SQL := SQL + 'ROLLBACK;' + #13#10;
+            Destination.Client.ExecuteSQL(SQL);
+          end;
+        end;
       end;
 
       if (Success = daAbort) then while SourceDataSet.FindNext() do ;
       SourceDataSet.Free();
-    end;
-
-    if (DisableKeys and (Destination.Client.ServerVersion >= 40000)) then
-    begin
-      SQL := 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' ENABLE KEYS;';
-      if (not Destination.Client.ExecuteSQL(SQL)) then
-        DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
     end;
   end;
 end;
@@ -7323,8 +7386,6 @@ begin
 
     NewDestinationTable.AutoIncrement := 0;
     while ((Success = daSuccess) and not DestinationDatabase.AddTable(NewDestinationTable)) do
-      DoError(DatabaseError(Destination.Client), ToolsItem(Destination));
-    while ((Success = daSuccess) and not Destination.Client.Update()) do
       DoError(DatabaseError(Destination.Client), ToolsItem(Destination));
   end;
 
