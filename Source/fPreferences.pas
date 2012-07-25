@@ -168,7 +168,6 @@ type
     CSVSeparatorType: TPSeparatorType;
     ExcelHeadline: Boolean;
     ImportType: TPImportType;
-    LoadDataFile: Boolean;
     ODBCData: Boolean;
     ODBCObjects: Boolean;
     ODBCRowType: Integer;
@@ -996,7 +995,6 @@ begin
   CSVSeparatorType := stChar;
   ExcelHeadline := False;
   ImportType := itInsert;
-  LoadDataFile := False;
   ODBCData := True;
   ODBCObjects := True;
   ODBCRowType := 0;
@@ -1016,7 +1014,6 @@ begin
   if (Assigned(XMLNode(XML, 'odbc/data'))) then TryStrToBool(XMLNode(XML, 'odbc/data').Attributes['enabled'], ODBCData);
   if (Assigned(XMLNode(XML, 'odbc/objects'))) then TryStrToBool(XMLNode(XML, 'odbc/objects').Attributes['enabled'], ODBCObjects);
   if (Assigned(XMLNode(XML, 'odbc/rowformat'))) then TryStrToRowType(XMLNode(XML, 'odbc/rowformat').Text, ODBCRowType);
-  if (Assigned(XMLNode(XML, 'usecsv'))) then TryStrToBool(XMLNode(XML, 'usecsv').Text, LoadDataFile);
 end;
 
 procedure TPImport.SaveToXML(const XML: IXMLNode);
@@ -1032,7 +1029,6 @@ begin
   XMLNode(XML, 'odbc/data').Attributes['enabled'] := ODBCData;
   XMLNode(XML, 'odbc/objects').Attributes['enabled'] := ODBCObjects;
   XMLNode(XML, 'odbc/rowformat').Text := RowTypeToStr(ODBCRowType);
-  XMLNode(XML, 'usecsv').Text := BoolToStr(LoadDataFile, True);
 end;
 
 { TPODBC **********************************************************************}

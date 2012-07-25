@@ -370,7 +370,7 @@ type
   TCTableFields = class(TCItems)
   private
     FTable: TCTable;
-    function GetField(Index: Integer): TCTableField;
+    function GetField(Index: Integer): TCTableField; inline;
   protected
     function FieldByName(const FieldName: string): TCTableField; virtual;
     function InsertIndex(const Name: string; out Index: Integer): Boolean; override;
@@ -563,6 +563,7 @@ type
     FUnusedSize: Int64;
     FUpdated: TDateTime;
     function GetAutoIncrementField(): TCBaseTableField;
+    function GetBaseTableFields(): TCBaseTableFields; inline;
     function GetCollation(): string;
     function GetComment(): string;
     function GetDefaultCharset(): string;
@@ -577,7 +578,6 @@ type
   protected
     FValidStatus: Boolean;
     procedure BuildStatus(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean); virtual;
-    function GetBaseTableFields(): TCBaseTableFields; virtual;
     function GetFields(): TCTableFields; override;
     function GetInServerCache(): Boolean; override;
     function GetValid(): Boolean; override;
@@ -1395,7 +1395,7 @@ type
     procedure ExecuteEvent(const EventType: TEventType; const Sender: TObject; const CItems: TCItems = nil; const CItem: TCEntity = nil); overload; virtual;
     function GetAutoCommit(): Boolean; override;
     function GetHosts(): TCHosts; virtual;
-    function GetLoadDataFile(): Boolean; override;
+    function GetDataFileAllowed(): Boolean; override;
     function GetLog(): string; virtual;
     function GetMaxAllowedPacket(): Integer; override;
     function GetSlowLog(): string; virtual;
@@ -2502,7 +2502,7 @@ begin
   else if (FieldType in NotQuotedFieldTypes) then
     if (Value = '') then Result := 'NULL' else Result := Value
   else if (FieldType in BinaryFieldTypes) then
-    Result := SQLEscape(Value, FieldTypes.Client.ServerVersion <= 40000)
+    Result := SQLEscapeBin(Value, FieldTypes.Client.ServerVersion <= 40000)
   else
     Result := SQLEscape(Value);
 end;
@@ -3252,7 +3252,7 @@ end;
 
 constructor TCTable.Create(const ACDBObjects: TCDBObjects; const AName: string = '');
 begin
-  inherited Create(ACDBObjects, AName);
+  inherited Create(ACDBObjects, ACDBObjects.Client.TableName(AName));
 
   FDataSet := nil;
   if (Self is TCBaseTable) then
@@ -6517,9 +6517,7 @@ end;
 
 constructor TCDatabase.Create(const AClient: TCClient = nil; const AName: string = '');
 begin
-  inherited Create(AClient.Databases);
-
-  FName := AName;
+  inherited Create(AClient.Databases, AClient.TableName(AName));
 
   FCollation := '';
   FDefaultCharset := '';
@@ -6528,7 +6526,7 @@ begin
   if ((Client.ServerVersion < 50004) or (Self is TCSystemDatabase)) then FRoutines := nil else FRoutines := TCRoutines.Create(Self);
   FTables := TCTables.Create(Self);
   if ((Client.ServerVersion < 50010) or (Self is TCSystemDatabase)) then FTriggers := nil else FTriggers := TCTriggers.Create(Self);
-  if ((Client.ServerVersion < 50106) or (Self is TCSystemDatabase) or not Client.VariableByName('event_scheduler').AsBoolean) then FEvents := nil else FEvents := TCEvents.Create(Self);
+  if ((Client.ServerVersion < 50106) or (Self is TCSystemDatabase) or not Assigned(Client.VariableByName('event_scheduler')) or not Client.VariableByName('event_scheduler').AsBoolean) then FEvents := nil else FEvents := TCEvents.Create(Self);
 end;
 
 function TCDatabase.DeleteObject(const DBObject: TCDBObject): Boolean;
@@ -10806,9 +10804,9 @@ begin
     Result := FHosts;
 end;
 
-function TCClient.GetLoadDataFile(): Boolean;
+function TCClient.GetDataFileAllowed(): Boolean;
 begin
-  Result := inherited GetLoadDataFile() and ((ServerVersion < 40003) or VariableByName('local_infile').AsBoolean);
+  Result := inherited GetDataFileAllowed() and ((ServerVersion < 40003) or VariableByName('local_infile').AsBoolean);
 end;
 
 function TCClient.GetLogActive(): Boolean;

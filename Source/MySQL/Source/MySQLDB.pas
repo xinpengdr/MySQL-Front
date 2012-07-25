@@ -288,7 +288,7 @@ type
     function GetAutoCommit(): Boolean; virtual;
     function GetConnected(): Boolean; override;
     function GetInsertId(): my_ulonglong; virtual;
-    function GetLoadDataFile(): Boolean; virtual;
+    function GetDataFileAllowed(): Boolean; virtual;
     function GetMaxAllowedPacket(): Integer; virtual;
     function LibDecode(const Data: my_char; const Length: my_int = -1): string; virtual;
     function LibUnpack(const Data: my_char; const Length: my_int = -1): string; virtual;
@@ -364,7 +364,7 @@ type
     property Info: string read GetInfo;
     property LatestConnect: TDateTime read FLatestConnect;
     property Lib: TMySQLLibrary read FLib;
-    property LoadDataFile: Boolean read GetLoadDataFile;
+    property DataFileAllowed: Boolean read GetDataFileAllowed;
     property MaxAllowedPacket: Integer read GetMaxAllowedPacket;
     property MultiStatements: Boolean read FMultiStatements;
     property ResultCount: Integer read FResultCount;
@@ -2504,7 +2504,7 @@ begin
     Result := Lib.mysql_insert_id(Handle);
 end;
 
-function TMySQLConnection.GetLoadDataFile(): Boolean;
+function TMySQLConnection.GetDataFileAllowed(): Boolean;
 begin
   Result := Assigned(Lib) and not (Lib.FLibraryType in [ltHTTP]);
 end;
@@ -4009,7 +4009,7 @@ begin
               PChar(Dest), Field.DataSize)
           else if (GetLastError() <> 0) then
           begin
-            S := SQLEscape(PRecordBufferData(Source^)^.LibRow^[Field.FieldNo - 1], PRecordBufferData(Source^)^.LibLengths^[Field.FieldNo - 1], False);
+            S := SQLEscapeBin(PRecordBufferData(Source^)^.LibRow^[Field.FieldNo - 1], PRecordBufferData(Source^)^.LibLengths^[Field.FieldNo - 1], False);
             DatabaseErrorFmt(SysErrorMessage(GetLastError()) + ' (%s - %s)', [IntToStr(Connection.CodePage), S]);
           end;
         end;
@@ -4646,11 +4646,7 @@ begin
     if (not (Self is TMySQLDataSet)) then
       Data := PRecordBufferData(ActiveBuffer())
     else
-try
       Data := TMySQLDataSet.PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData;
-except
-      Data := TMySQLDataSet.PExternRecordBuffer(ActiveBuffer())^.InternRecordBuffer^.NewData;
-end;
 
   if (not Assigned(Data) or not Assigned(Data^.LibRow^[Field.FieldNo - 1]) and (not Field.Required or (Field.AutoGenerateValue = arAutoInc))) then
     Result := 'NULL'
@@ -4695,7 +4691,7 @@ end;
       ftDateTime,
       ftTime: Result := '''' + Connection.LibUnpack(Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]) + '''';
       ftTimeStamp: Connection.LibUnpack(Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]);
-      ftBlob: Result := SQLEscape(Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1], Connection.ServerVersion <= 40000);
+      ftBlob: Result := SQLEscapeBin(Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1], Connection.ServerVersion <= 40000);
       ftWideMemo,
       ftWideString: Result := SQLEscape(Connection.LibDecode(Data^.LibRow^[Field.FieldNo - 1], Data^.LibLengths^[Field.FieldNo - 1]));
       else raise EDatabaseError.CreateFMT(SUnknownFieldType + '(%d)', [Field.Name, Integer(Field.DataType)]);

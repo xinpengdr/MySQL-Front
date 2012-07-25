@@ -44,9 +44,11 @@ type
 function BitStringToInt(const BitString: PChar; const Length: Integer; const Error: PBoolean = nil): UInt64;
 function IntToBitString(const Value: UInt64; const Width: Integer = 1): string;
 function SQLCreateParse(out Handle: TSQLParse; const SQL: PChar; const Len: Integer; const Version: Integer; const InCondCode: Boolean = False): Boolean;
-function SQLEscape(const Value: string; const ODBCEncoding: Boolean): string; overload;
 function SQLEscape(const Value: string; const Quoter: Char = ''''): string; overload;
-function SQLEscape(const Value: PAnsiChar; const Length: Integer; const ODBCEncoding: Boolean): string; overload;
+function SQLEscape(const Value: PChar; const ValueLen: Integer; const Escaped: PChar; const EscapedLen: Integer; const Quoter: Char = ''''): Integer; overload;
+function SQLEscapeBin(const Data: Pointer; const Size: Integer; const Escaped: PChar; const EscapedLen: Integer; const ODBCEncoding: Boolean): Integer; overload;
+function SQLEscapeBin(const Data: Pointer; const Size: Integer; const ODBCEncoding: Boolean): string; overload;
+function SQLEscapeBin(const Value: string; const ODBCEncoding: Boolean): string; overload;
 function SQLParseCallStmt(const SQL: PChar; const Len: Integer; out ProcedureName: string; const Version: Integer): Boolean;
 function SQLParseChar(var Handle: TSQLParse; const IncrementIndex: Boolean = True): Char; overload;
 function SQLParseChar(var Handle: TSQLParse; const Character: Char; const IncrementIndex: Boolean = True): Boolean; overload;
@@ -757,7 +759,286 @@ begin
   end;
 end;
 
-function SQLEscape(const Value: string; const ODBCEncoding: Boolean): string;
+function SQLEscape(const Value: string; const Quoter: Char = ''''): string;
+var
+  Len: Integer;
+begin
+//  if (Length(Value) = 0) then
+//    Result := StringOfChar(Quoter, 2)
+//  else
+  begin
+    Len := 1 + 2 * Length(Value) + 1;
+    SetLength(Result, Len); // reserve space
+
+    Len := SQLEscape(PChar(Value), Length(Value), PChar(Result), Len, Quoter);
+
+    SetLength(Result, Len);
+  end;
+end;
+
+function SQLEscape(const Value: PChar; const ValueLen: Integer; const Escaped: PChar; const EscapedLen: Integer; const Quoter: Char = ''''): Integer; overload;
+label
+  StartL,
+  String_, StringL, String2, String3,
+  PosL, PosE,
+  FindPos, FindPos2,
+  Error,
+  Finish, FinishE;
+const
+  SearchLen = 7;
+  Search: array [0 .. SearchLen - 1] of Char = (#0, #9, #10, #13, '''', '"', '\');
+  Replace: array [0 .. 2 * SearchLen - 1] of Char = ('\','0', '\','t', '\','n', '\','r', '\','''', '\','"', '\','\');
+var
+  Len: Integer;
+  Poss: packed array [0 .. SearchLen - 1] of Cardinal;
+begin
+  Result := 0;
+  Len := EscapedLen;
+
+  asm
+        PUSH ES
+        PUSH ESI
+        PUSH EDI
+        PUSH EBX
+
+        PUSH DS                          // string operations uses ES
+        POP ES
+        CLD                              // string operations uses forward direction
+
+        MOV ESI,PChar(Value)             // Copy characters from Value
+        MOV EDI,Escaped                  //   to Escaped
+        MOV ECX,ValueLen                 // Length of Value string
+
+      // -------------------
+
+        MOV EBX,0                        // Numbers of characters in Search
+      StartL:
+        CALL FindPos                     // Find Search character Pos
+        INC EBX                          // Next character in Search
+        CMP EBX,SearchLen                // All Search characters handled?
+        JNE StartL                       // No!
+
+      // -------------------
+
+        INC @Result                      // One character needed
+        CMP Escaped,0                    // Calculate length only?
+        JE String_                       // Yes!
+        CMP Len,1                        // One character left in Escaped?
+        JB Error                         // No!
+        DEC Len                          // One character less in Escaped!
+        MOV AX,Quoter                    // Start2 quoting
+        STOSW                            //   to Escaped
+
+      String_:
+        CMP ECX,0                        // Empty string?
+        JE Finish                        // Yes!
+      StringL:
+        PUSH ECX
+
+        MOV ECX,0                        // Numbers of characters in Search
+        MOV EBX,-1                       // Index of first Pos
+        MOV EAX,0                        // Last character
+        LEA EDX,Poss
+      PosL:
+        CMP [EDX + ECX * 4],EAX          // Pos before other Poss?
+        JB PosE                          // No!
+        MOV EBX,ECX                      // Index of first Pos
+        MOV EAX,[EDX + EBX * 4]          // Value of first Pos
+      PosE:
+        INC ECX                          // Next Pos
+        CMP ECX,SearchLen                // All Poss compared?
+        JNE PosL                         // No!
+
+        POP ECX
+
+        SUB ECX,EAX                      // Copy normal characters from Value
+        JZ String2                       // End of Value!
+        ADD @Result,ECX                  // Characters to copy
+        CMP Escaped,0                    // Calculate length only?
+        JE String2                       // Yes!
+        CMP Len,ECX                      // Enough character left in Escaped?
+        JB Error                         // No!
+        SUB Len,ECX                      // Calc new len space in Escaped
+        REPNE MOVSW                      // Copy normal characters to Result
+
+      String2:
+        MOV ECX,EAX
+        JECXZ Finish                     // End of Value!
+
+        ADD ESI,2                        // Step of Search character
+        LEA EDX,Replace                  // Insert Replace characters
+        MOV EAX,[EDX + EBX * 4]
+        ADD @Result,2                    // Characters to copy
+        CMP Escaped,0                    // Calculate length only?
+        JE String3                       // Yes!
+        CMP Len,ECX                      // Enough character left in Escaped?
+        JB Error                         // No!
+        SUB Len,2                        // Calc new len space in Escaped
+        STOSD
+
+      String3:
+        DEC ECX                          // Ignore Search character
+        JZ Finish                        // All character in Value handled!
+        CALL FindPos                     // Find Search character
+        JMP StringL
+
+      // -------------------
+
+      FindPos:
+        PUSH ECX
+        PUSH EDI
+        LEA EDI,Search                   // Character to Search
+        MOV AX,[EDI + EBX * 2]
+        MOV EDI,ESI                      // Search in Value
+        REPNE SCASW                      // Find Search character
+        JNE FindPos2                     // Search character not found!
+        INC ECX
+      FindPos2:
+        LEA EDI,Poss
+        MOV [EDI + EBX * 4],ECX          // Store found Position
+        POP EDI
+        POP ECX
+        RET
+
+      // -------------------
+
+      Error:
+        MOV @Result,0                    // Too few space in Escaped
+        JMP FinishE
+
+      Finish:
+        INC @Result                      // One character needed
+        CMP Escaped,0                    // Calculate length only?
+        JE FinishE                       // Yes!
+        CMP Len,1                        // One character left in Escaped?
+        JB Error                         // No!
+        DEC Len                          // One character less in Escaped!
+        MOV AX,Quoter                    // End quoting
+        STOSW                            //   into Escaped
+
+      FinishE:
+        POP EBX
+        POP EDI
+        POP ESI
+        POP ES
+  end;
+end;
+
+function SQLEscapeBin(const Data: Pointer; const Size: Integer; const Escaped: PChar; const EscapedLen: Integer; const ODBCEncoding: Boolean): Integer;
+const
+  HexDigits: PChar = '0123456789ABCDEF';
+label
+  Start2,
+  BinL, BinE,
+  Error,
+  Finish;
+var
+  Len: Integer;
+begin
+  Result := 0;
+  Len := EscapedLen;
+  asm
+        PUSH ES
+        PUSH ESI
+        PUSH EDI
+        PUSH EBX
+
+        PUSH DS                          // string operations uses ES
+        POP ES
+        CLD                              // string operations uses forward direction
+
+        MOV EBX,Pointer(HexDigits)       // Hex digits
+
+        MOV ESI,Data                     // Read bytes from Data
+        MOV EDI,Escaped                  // Store into Escaped
+        MOV ECX,Size                     // Number of bytes to handle
+
+      // -------------------
+
+        ADD @Result,2                    // Two character needed
+        CMP Escaped,0                    // Calculate length only?
+        JE BinL                          // Yes!
+        CMP Len,4                        // Two characters left in Escaped?
+        JB Error                         // No!
+        SUB Len,4                        // Two character less in Escaped!
+        CMP ODBCEncoding,True            // ODBC Encoding?
+        JNE Start2                       // No!
+        MOV AX,'0'
+        STOSW
+        MOV AX,'x'
+        STOSW
+      Start2:
+        MOV AX,'X'
+        STOSW
+        MOV AX,''''
+        STOSW
+
+      BinL:
+        MOV EAX,0                        // Clear EAX since AL will be loaded, but be EAX used
+        LODSB                            // Read byte
+        PUSH EAX
+        SHR AL,4                         // Use high octet
+        MOV AX,[EBX + EAX * 2]           // Get hex character
+        STOSW                            // Store character
+        POP EAX
+        AND AL,$F                        // Use low octet
+        MOV AX,[EBX + EAX * 2]           // Get hex character
+
+        INC @Result                      // One character needed
+        CMP Escaped,0                    // Calculate length only?
+        JE BinE                          // Yes!
+        CMP Len,4                        // Two characters left in Escaped?
+        JB Error                         // No!
+        SUB Len,4                        // Two character less in Escaped!
+        STOSW                            // Store character
+
+      BinE:
+        LOOP BinL                        // Next Bin byte
+
+        CMP ODBCEncoding,True            // ODBC Encoding?
+        JNE Finish                       // No!
+        INC @Result                      // One character needed
+        CMP Escaped,0                    // Calculate length only?
+        JE Finish                        // Yes!
+        CMP Len,2                        // Two characters left in Escaped?
+        JB Error                         // No!
+        SUB Len,2                        // Two character less in Escaped!
+        MOV AX,''''
+        STOSW
+        JMP Finish
+
+      // -------------------
+
+      Error:
+        MOV @Result,0
+
+      Finish:
+        POP EBX
+        POP EDI
+        POP ESI
+        POP ES
+  end;
+end;
+
+function SQLEscapeBin(const Data: Pointer; const Size: Integer; const ODBCEncoding: Boolean): string;
+const
+  HexDigits: PChar = '0123456789ABCDEF';
+label
+  BinL;
+begin
+  if (Size = 0) then
+    Result := ''''''
+  else
+  begin
+    if (ODBCEncoding) then
+      SetLength(Result, 2 + 2 * Size)
+    else
+      SetLength(Result, 2 + 2 * Size + 1);
+    SQLEscapeBin(Data, Size, @Result[3], Length(Result) - 2, ODBCEncoding);
+  end;
+end;
+
+function SQLEscapeBin(const Value: string; const ODBCEncoding: Boolean): string;
 const
   HexDigits: PChar = '0123456789ABCDEF';
 label
@@ -809,201 +1090,6 @@ begin
         MOV EAX,0                        // Clear EAX since AX will be loaded, but be EAX used
         LODSW                            // Read byte
         AND AX,$00FF                     // Interpret value as binary
-        PUSH EAX
-        SHR AL,4                         // Use high octet
-        MOV AX,[EBX + EAX * 2]           // Get hex character
-        STOSW                            // Store character
-        POP EAX
-        AND AL,$F                        // Use low octet
-        MOV AX,[EBX + EAX * 2]           // Get hex character
-        STOSW                            // Store character
-
-        LOOP BinL                        // Next Bin byte
-
-      // -------------------
-
-        POP EBX
-        POP EDI
-        POP ESI
-        POP ES
-    end;
-end;
-
-function SQLEscape(const Value: string; const Quoter: Char = ''''): string;
-label
-  StartL,
-  StringL, String2,
-  PositionL, PositionE,
-  FindPos, FindPos2,
-  Finish;
-const
-  SearchLen = 7;
-  Search: array [0 .. SearchLen - 1] of Char = (#0, #9, #10, #13, '''', '"', '\');
-  Replace: array [0 .. 2 * SearchLen - 1] of Char = ('\','0', '\','t', '\','n', '\','r', '\','''', '\','"', '\','\');
-var
-  Len: Integer;
-  Positions: packed array [0 .. SearchLen - 1] of Cardinal;
-begin
-  Len := Length(Value);
-
-  if (Len = 0) then
-    Result := StringOfChar(Quoter, 2)
-  else
-  begin
-    SetLength(Result, 2 * Len + 2); // reserve space
-
-    asm
-        PUSH ES
-        PUSH ESI
-        PUSH EDI
-        PUSH EBX
-
-        PUSH DS                          // string operations uses ES
-        POP ES
-        CLD                              // string operations uses forward direction
-
-        MOV ESI,PChar(Value)             // Copy characters from Value
-        MOV EAX,Result                   //   to Result
-        MOV EDI,[EAX]
-        MOV ECX,Len                      // Length of Value string
-
-        MOV AX,Quoter                    // Start quoting
-        STOSW
-
-      // -------------------
-
-        MOV EBX,0                        // Numbers of characters in Search
-      StartL:
-        CALL FindPos                     // Find Search character position
-        INC EBX                          // Next character in Search
-        CMP EBX,SearchLen                // All Search characters handled?
-        JNE StartL                       // No!
-
-      // -------------------
-
-      StringL:
-        PUSH ECX
-
-        MOV ECX,0                        // Numbers of characters in Search
-        MOV EBX,-1                       // Index of first position
-        MOV EAX,0                        // Last character
-        LEA EDX,Positions
-      PositionL:
-        CMP [EDX + ECX * 4],EAX          // Position before other positions?
-        JB PositionE                     // No!
-        MOV EBX,ECX                      // Index of first position
-        MOV EAX,[EDX + EBX * 4]          // Value of first position
-      PositionE:
-        INC ECX                          // Next Position
-        CMP ECX,SearchLen                // All Positions compared?
-        JNE PositionL                    // No!
-
-        POP ECX
-
-        SUB ECX,EAX                      // Copy normal characters from Value
-        JZ String2                       // End of Value!
-        REPNE MOVSW                      // Copy normal characters to Result
-
-      String2:
-        MOV ECX,EAX
-        JECXZ Finish                     // End of Value!
-
-        ADD ESI,2                        // Step of Search character
-        LEA EDX,Replace                  // Insert Replace characters
-        MOV EAX,[EDX + EBX * 4]
-        STOSD
-
-        DEC ECX                          // Ignore Search character
-        JZ Finish                        // All character in Value handled!
-        CALL FindPos                     // Find Search character
-        JMP StringL
-
-      // -------------------
-
-      FindPos:
-        PUSH ECX
-        PUSH EDI
-        LEA EDI,Search                   // Character to Search
-        MOV AX,[EDI + EBX * 2]
-        MOV EDI,ESI                      // Search in Value
-        REPNE SCASW                      // Find Search character
-        JNE FindPos2                     // Search character not found!
-        INC ECX
-      FindPos2:
-        LEA EDI,Positions
-        MOV [EDI + EBX * 4],ECX          // Store found position
-        POP EDI
-        POP ECX
-        RET
-
-      // -------------------
-
-      Finish:
-        MOV AX,Quoter                    // End quoting
-        STOSW
-
-        MOV EAX,Result                   // Calculate new length of Result
-        MOV EAX,[EAX]
-        SUB EDI,EAX
-        SHR EDI,1                        // 2 Bytes = 1 character
-        MOV Len,EDI
-
-        POP EBX
-        POP EDI
-        POP ESI
-        POP ES
-    end;
-
-    SetLength(Result, Len);
-  end;
-end;
-
-function SQLEscape(const Value: PAnsiChar; const Length: Integer; const ODBCEncoding: Boolean): string;
-const
-  HexDigits: PChar = '0123456789ABCDEF';
-label
-  BinL;
-begin
-  if (Length = 0) then
-    Result := ''''''
-  else if (ODBCEncoding) then
-  begin // ODBC notation
-    SetLength(Result, 2 * Length + 2);
-    Result[1] := '0';
-    Result[2] := 'x';
-  end
-  else
-  begin // Ansi SQL notation
-    SetLength(Result, 2 * Length + 3);
-    Result[1] := 'X';
-    Result[2] := '''';
-    Result[2 * Length + 3] := '''';
-  end;
-
-  if (Length > 0) then
-    asm
-        PUSH ES
-        PUSH ESI
-        PUSH EDI
-        PUSH EBX
-
-        PUSH DS                          // string operations uses ES
-        POP ES
-        CLD                              // string operations uses forward direction
-
-        MOV EBX,Pointer(HexDigits)       // Hex digits
-
-        MOV ESI,Value                    // Read bytes from Value
-        MOV EAX,Result                   // Store into Result
-        MOV EDI,[EAX]
-        ADD EDI,4                        // Step over "X'"
-        MOV ECX,Length
-
-      // -------------------
-
-      BinL:
-        MOV EAX,0                        // Clear EAX since AL will be loaded, but be EAX used
-        LODSB                            // Read byte
         PUSH EAX
         SHR AL,4                         // Use high octet
         MOV AX,[EBX + EAX * 2]           // Get hex character

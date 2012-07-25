@@ -107,6 +107,12 @@ var
   Sum: Int64;
 begin
   CriticalSection.Enter();
+  Index := Length(Points);
+  CriticalSection.Leave();
+
+  ProfilingPoint(Index);
+
+  CriticalSection.Enter();
 
   Result := '';
 
