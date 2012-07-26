@@ -1049,7 +1049,7 @@ begin
 
   Size := MaxCharSize * Len;
   Resize(Size);
-  Len := WideCharToAnsiChar(CodePage, PChar(Temp2.Mem), Len, Buffer.Mem, Buffer.Size - Self.Size);
+  Len := WideCharToAnsiChar(CodePage, PChar(Temp2.Mem), Len, Buffer.Write, Buffer.Size - Self.Size);
   if (Len = 0) then
     raise ERangeError.Create(SRangeError);
   Buffer.Write := @Buffer.Write[Len];
@@ -4789,6 +4789,7 @@ procedure TTExportText.ExecuteTableRecord(const Table: TCTable; const Fields: ar
 var
   Content: string;
   I: Integer;
+  Value: UInt64;
 begin
   Content := '';
   for I := 0 to Length(Fields) - 1 do
@@ -4796,6 +4797,12 @@ begin
     if (I > 0) then Content := Content + Delimiter;
     if (not Assigned(DataSet.LibRow^[Fields[I].FieldNo - 1])) then
       // NULL values are empty in MS Text files
+    else if (BitField(Fields[I])) then
+    begin
+      ZeroMemory(@Value, SizeOf(Value));
+      MoveMemory(@Value, DataSet.LibRow^[Fields[I].FieldNo - 1], DataSet.LibLengths^[Fields[I].FieldNo - 1]);
+      Content := Content + CSVEscape(UInt64ToStr(Value), Quoter, QuoteValues)
+    end
     else if (Fields[I].DataType in BinaryDataTypes) then
       Content := Content + CSVEscape(DataSet.LibRow^[Fields[I].FieldNo - 1], DataSet.LibLengths^[Fields[I].FieldNo - 1], Quoter, QuoteStringValues)
     else
@@ -5760,8 +5767,8 @@ begin
       begin
         ValueType := SQL_C_BIT;
         ParameterType := SQL_BIT;
-        ColumnSize := Fields[I].Size;
-        Parameter[I].BufferSize := Fields[I].Size;
+        ColumnSize := Fields[I].DataSize;
+        Parameter[I].BufferSize := Fields[I].DataSize;
         GetMem(Parameter[I].Buffer, Parameter[I].BufferSize);
       end
     else
@@ -6043,7 +6050,7 @@ procedure TTExportExcel.ExecuteHeader();
 var
   ConnStrIn: WideString;
 begin
-  ConnStrIn := 'Driver={Microsoft Excel Driver (*.xls)};' + 'DBQ=' + Filename + ';' + 'READONLY=FALSE';
+  ConnStrIn := 'Driver={Microsoft Excel Driver (*.xls)};DBQ=' + Filename + ';DriverID=790;READONLY=FALSE';
 
   if (FileExists(Filename) and not DeleteFile(Filename)) then
     DoError(SysError(), EmptyToolsItem())
@@ -6090,6 +6097,9 @@ begin
       SQL := SQL + '"' + Table.Fields[I].Name + '" '
     else
       SQL := SQL + '"' + Fields[I].DisplayName + '" ';
+    if (BitField(Fields[I])) then
+      SQL := SQL + 'BIT'
+    else
     case (Fields[I].DataType) of
       ftString:
         SQL := SQL + 'BINARY';
@@ -6110,16 +6120,12 @@ begin
       ftTime:
         SQL := SQL + 'DATETIME';
       ftWideString,
-      ftWideMemo:
+      ftWideMemo,
+      ftBlob:
         if (Fields[I].Size <= 255) then
           SQL := SQL + 'STRING'
         else
           SQL := SQL + 'LONGTEXT';
-      ftBlob:
-        if (Fields[I].Size <= 255) then
-          SQL := SQL + 'BINARY'
-        else
-          SQL := SQL + 'LONGBINARY';
       else
         raise EDatabaseError.CreateFMT(SUnknownFieldType + ' (%d)', [Fields[I].DisplayName, Ord(Fields[I].DataType)]);
     end;

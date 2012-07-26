@@ -4559,8 +4559,6 @@ end;
 
 procedure TMySQLQuery.Open(const DataHandle: TMySQLConnection.TDataResult);
 begin
-  Assert(not Assigned(Connection));
-
   Connection := DataHandle.Connection;
 
   if (CommandType = ctQuery) then
@@ -6138,7 +6136,6 @@ begin
   ValueHandled := False;
   for I := 0 to FieldCount - 1 do
     if ((PExternRecordBuffer(Buffer)^.InternRecordBuffer^.NewData^.LibLengths^[I] <> PExternRecordBuffer(Buffer)^.InternRecordBuffer^.OldData^.LibLengths^[I])
-      or (PExternRecordBuffer(Buffer)^.InternRecordBuffer^.NewData^.LibRow^[I] <> PExternRecordBuffer(Buffer)^.InternRecordBuffer^.OldData^.LibRow^[I])
       or (not CompareMem(PExternRecordBuffer(Buffer)^.InternRecordBuffer^.NewData^.LibRow^[I], PExternRecordBuffer(Buffer)^.InternRecordBuffer^.OldData^.LibRow^[I], PExternRecordBuffer(Buffer)^.InternRecordBuffer^.OldData^.LibLengths^[I]))) then
     begin
       if (ValueHandled) then Result := Result + ',';
