@@ -61,6 +61,8 @@ end;
 
 procedure TDVariable.CMChangePreferences(var Message: TMessage);
 begin
+  PSQLWait.Caption := Preferences.LoadStr(882);
+
   GroupBox.Caption := Preferences.LoadStr(342);
   FLValue.Caption := Preferences.LoadStr(343) + ':';
   FLModify.Caption := Preferences.LoadStr(344) + ':';
@@ -149,6 +151,9 @@ begin
   FSession.Visible := Client.ServerVersion >= 40003;
 
   FGlobal.Enabled := not Assigned(Client.UserRights) or Client.UserRights.RSuper;
+
+  GroupBox.Visible := True;
+  PSQLWait.Visible := not GroupBox.Visible;
 
   FBOk.Enabled := False;
 

@@ -1778,8 +1778,6 @@ end;
 
 destructor TMySQLConnection.TSynchroThread.Destroy();
 begin
-  Assert(not Assigned(DataSet));
-
   RunExecute.Free();
   SynchronizeStarted.Free();
   SQLStmtLengths.Free();
@@ -2964,8 +2962,6 @@ end;
 
 procedure TMySQLConnection.SyncCancel(const SynchroThread: TSynchroThread);
 begin
-  Assert(not Assigned(SynchroThread.DataSet));
-
   repeat
     if (not SynchroThread.Terminated and not Assigned(SynchroThread.ResultHandle)) then
       SynchroThread.ResultHandle := Lib.mysql_use_result(SynchroThread.LibHandle);
@@ -3314,12 +3310,6 @@ begin
   FErrorCode := SynchroThread.ErrorCode;
   FErrorMessage := SynchroThread.ErrorMessage;
 
-  if (not SynchroThread.Terminated and (SynchroThread.State = ssResult)) then
-  begin
-    if (Assigned(SynchroThread.ResultHandle)) then
-      while (Assigned(Lib.mysql_fetch_row(SynchroThread.ResultHandle))) do ;
-  end;
-
   if (not SynchroThread.Terminated) then
     if (FErrorCode > 0) then
     begin
@@ -3335,6 +3325,7 @@ begin
         S := '--> ' + IntToStr(Lib.mysql_num_rows(SynchroThread.ResultHandle)) + ' Record(s) received';
         WriteMonitor(PChar(S), Length(S), ttInfo);
 
+        while (Assigned(Lib.mysql_fetch_row(SynchroThread.ResultHandle))) do ;
         Lib.mysql_free_result(SynchroThread.ResultHandle);
         SynchroThread.ResultHandle := nil;
       end;
@@ -4563,8 +4554,6 @@ end;
 
 procedure TMySQLQuery.Open(const DataHandle: TMySQLConnection.TDataResult);
 begin
-  Assert(not Assigned(Connection));
-
   Connection := DataHandle.Connection;
 
   if (CommandType = ctQuery) then

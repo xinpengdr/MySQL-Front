@@ -20,7 +20,6 @@ uses
 const
   CM_ACTIVATE_DBGRID = WM_USER + 500;
   CM_ACTIVATEFTEXT = WM_USER + 501;
-  CM_POSTSCROLL = WM_USER + 502;
   CM_POST_BUILDER_QUERY_CHANGE = WM_USER + 503;
   CM_POST_MONITOR = WM_USER + 504;
   CM_WANTED_SYNCHRONIZE = WM_USER + 505;
@@ -1043,7 +1042,6 @@ type
     procedure CMFrameDeactivate(var Message: TMessage); message CM_DEACTIVATEFRAME;
     procedure CMPostBuilderQueryChange(var Message: TMessage); message CM_POST_BUILDER_QUERY_CHANGE;
     procedure CMPostMonitor(var Message: TMessage); message CM_POST_MONITOR;
-    procedure CMPostScroll(var Message: TMessage); message CM_POSTSCROLL;
     procedure CMPostShow(var Message: TMessage); message CM_POSTSHOW;
     procedure CMSysFontChanged(var Message: TMessage); message CM_SYSFONTCHANGED;
     procedure CMWantedSynchronize(var Message: TWMTimer); message CM_WANTED_SYNCHRONIZE;
@@ -1560,9 +1558,12 @@ var
   I: Integer;
   Width: Integer;
 begin
+  DBGrid.DataSource.DataSet := DataSet;
+
   FClient.DataSetAfterOpen(DataSet);
 
   DBGrid.ReadOnly := Table is TCSystemView;
+
   for I := 0 to DBGrid.Columns.Count - 1 do
     if (GetFieldInfo(DBGrid.Columns[I].Field.Origin, FieldInfo)) then
     begin
@@ -5158,11 +5159,6 @@ begin
   end;
 end;
 
-procedure TFClient.CMPostScroll(var Message: TMessage);
-begin
-//  StatusBarRefresh();
-end;
-
 procedure TFClient.CMPostShow(var Message: TMessage);
 var
   URI: TUURI;
@@ -6134,7 +6130,6 @@ begin
     MainAction('aDDeleteRecord').Enabled := aDDeleteRecord.Enabled and (DataSet.State in [dsBrowse, dsEdit]) and not DataSet.IsEmpty() and not InputDataSet;
 
     StatusBarRefresh();
-//    PostMessage(Handle, CM_POSTSCROLL, 0, 0);
   end;
 end;
 
@@ -7655,6 +7650,8 @@ procedure TFClient.FLogSelectionChange(Sender: TObject);
 begin
   if (PLog.Visible and (Window.ActiveControl = FLog)) then
     MainAction('aECopyToFile').Enabled := FLog.SelText <> '';
+
+  StatusBarRefresh();
 end;
 
 procedure TFClient.FNavigatorAdvancedCustomDrawItem(Sender: TCustomTreeView;
@@ -9740,7 +9737,7 @@ procedure TFClient.ListViewAdvancedCustomDrawItem(
   Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
   Stage: TCustomDrawStage; var DefaultDraw: Boolean);
 begin
-  if ((Stage = cdPrePaint) and Assigned(Item)
+  if ((Stage = cdPrePaint) and not (csDestroying in ComponentState) and Assigned(Item)
     and ((Item.ImageIndex = iiKey) and TCKey(Item.Data).Primary or (Item.ImageIndex = iiField) and TCTableField(Item.Data).InPrimaryKey)) then
     Sender.Canvas.Font.Style := [fsBold]
   else
@@ -13767,6 +13764,8 @@ begin
        StatusBar.Panels[sbNavigation].Text := ReplaceStr(Preferences.LoadStr(164), '&', '') + ': ' + IntToStr(TCTableField(ActiveListView.ItemFocused.Data).Index)
       else if ((Window.ActiveControl = ActiveDBGrid) and Assigned(ActiveDBGrid.SelectedField) and (ActiveDBGrid.DataSource.DataSet.RecNo >= 0)) then
         StatusBar.Panels[sbNavigation].Text := IntToStr(ActiveDBGrid.DataSource.DataSet.RecNo + 1) + ':' + IntToStr(ActiveDBGrid.SelectedField.FieldNo)
+      else if (Window.ActiveControl = FLog) then
+        StatusBar.Panels[sbNavigation].Text := IntToStr(FLog.CaretPos.X) + ':' + IntToStr(FLog.CaretPos.Y)
       else
         StatusBar.Panels[sbNavigation].Text := '';
 
@@ -13802,13 +13801,18 @@ begin
     else if ((Window.ActiveControl = ActiveDBGrid) and Assigned(ActiveDBGrid) and (ActiveDBGrid.SelectedRows.Count > 0)) then
       SelCount := ActiveDBGrid.SelectedRows.Count;
 
-    if (SelCount > 0) then
+    if ((Window.ActiveControl = ActiveDBGrid) and Assigned(ActiveDBGrid)) then
+      if (SelCount > 0) then
+        StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(888, IntToStr(SelCount))
+      else if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView]) and not Client.InUse() and TCBaseTable(FNavigator.Selected.Data).DataSet.LimitedDataReceived and (TCBaseTable(FNavigator.Selected.Data).Rows >= 0)) then
+        if (Assigned(TCBaseTable(FNavigator.Selected.Data).Engine) and (UpperCase(TCBaseTable(FNavigator.Selected.Data).Engine.Name) <> 'INNODB')) then
+          StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(889, IntToStr(Count), IntToStr(TCBaseTable(FNavigator.Selected.Data).Rows))
+        else
+          StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(889, IntToStr(Count), '~' + IntToStr(TCBaseTable(FNavigator.Selected.Data).Rows))
+        else
+          StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(887, IntToStr(ActiveDBGrid.DataSource.DataSet.RecordCount))
+    else if (SelCount > 0) then
       StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(688, IntToStr(SelCount))
-    else if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView]) and not Client.InUse() and TCBaseTable(FNavigator.Selected.Data).DataSet.LimitedDataReceived and (TCBaseTable(FNavigator.Selected.Data).Rows >= 0)) then
-      if (Assigned(TCBaseTable(FNavigator.Selected.Data).Engine) and (UpperCase(TCBaseTable(FNavigator.Selected.Data).Engine.Name) <> 'INNODB')) then
-        StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(691, IntToStr(Count), IntToStr(TCBaseTable(FNavigator.Selected.Data).Rows))
-      else
-        StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(691, IntToStr(Count), '~' + IntToStr(TCBaseTable(FNavigator.Selected.Data).Rows))
     else if (Assigned(ActiveSynMemo) and (Window.ActiveControl = ActiveSynMemo) and (Count >= 0)) then
       StatusBar.Panels[sbSummarize].Text := IntToStr(Count) + ' ' + ReplaceStr(Preferences.LoadStr(600), '&', '')
     else if ((View = vBuilder) and (Count >= 0)) then
@@ -14140,6 +14144,7 @@ begin
       Inc(Widths, ToolBarBlob.Controls[I].Width);
   Inc(Widths, PBlobSpacer.Height + GetSystemMetrics(SM_CXVSCROLL));
   tbBlobSpacer.Width := ToolBarBlob.Width - Widths;
+  ToolBarBlob.ClientHeight := ToolBarBlob.ButtonHeight;
 end;
 
 procedure TFClient.ToolBarResize(Sender: TObject);
@@ -14379,6 +14384,7 @@ end;
 
 procedure TFClient.WMTimer(var Message: TWMTimer);
 begin
+  KillTimer(Handle, Message.TimerID);
   case (Message.TimerID) of
     tiNavigator:
       FNavigatorChange2(FNavigator, FNavigator.Selected);

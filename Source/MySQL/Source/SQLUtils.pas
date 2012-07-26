@@ -763,9 +763,9 @@ function SQLEscape(const Value: string; const Quoter: Char = ''''): string;
 var
   Len: Integer;
 begin
-//  if (Length(Value) = 0) then
-//    Result := StringOfChar(Quoter, 2)
-//  else
+  if (Length(Value) = 0) then
+    Result := StringOfChar(Quoter, 2)
+  else
   begin
     Len := 1 + 2 * Length(Value) + 1;
     SetLength(Result, Len); // reserve space
@@ -929,7 +929,7 @@ const
   HexDigits: PChar = '0123456789ABCDEF';
 label
   Start2,
-  BinL, BinE,
+  BinL, Bin1, BinE,
   Error,
   Finish;
 var
@@ -958,9 +958,8 @@ begin
         ADD @Result,2                    // Two character needed
         CMP Escaped,0                    // Calculate length only?
         JE BinL                          // Yes!
-        CMP Len,4                        // Two characters left in Escaped?
-        JB Error                         // No!
-        SUB Len,4                        // Two character less in Escaped!
+        SUB Len,2                        // Two character less in Escaped!
+        JC Error                         // Not enough space in Escaped!
         CMP ODBCEncoding,True            // ODBC Encoding?
         JNE Start2                       // No!
         MOV AX,'0'
@@ -974,6 +973,12 @@ begin
         STOSW
 
       BinL:
+        ADD @Result,2                    // Two characters needed
+        CMP Escaped,0                    // Calculate length only?
+        JE Bin1                          // Yes!
+        SUB Len,2                        // Two character less in Escaped!
+        JC Error                         // Not enough space in Escaped!
+      Bin1:
         MOV EAX,0                        // Clear EAX since AL will be loaded, but be EAX used
         LODSB                            // Read byte
         PUSH EAX
@@ -981,28 +986,19 @@ begin
         MOV AX,[EBX + EAX * 2]           // Get hex character
         STOSW                            // Store character
         POP EAX
-        AND AL,$F                        // Use low octet
+        AND AL,$0F                       // Use low octet
         MOV AX,[EBX + EAX * 2]           // Get hex character
-
-        INC @Result                      // One character needed
-        CMP Escaped,0                    // Calculate length only?
-        JE BinE                          // Yes!
-        CMP Len,4                        // Two characters left in Escaped?
-        JB Error                         // No!
-        SUB Len,4                        // Two character less in Escaped!
         STOSW                            // Store character
-
       BinE:
         LOOP BinL                        // Next Bin byte
 
         CMP ODBCEncoding,True            // ODBC Encoding?
-        JNE Finish                       // No!
+        JE Finish                        // No!
         INC @Result                      // One character needed
         CMP Escaped,0                    // Calculate length only?
         JE Finish                        // Yes!
-        CMP Len,2                        // Two characters left in Escaped?
-        JB Error                         // No!
-        SUB Len,2                        // Two character less in Escaped!
+        DEC Len                          // One character less in Escaped!
+        JC Error                         // Not enough space in Escaped!
         MOV AX,''''
         STOSW
         JMP Finish
@@ -1034,7 +1030,7 @@ begin
       SetLength(Result, 2 + 2 * Size)
     else
       SetLength(Result, 2 + 2 * Size + 1);
-    SQLEscapeBin(Data, Size, @Result[3], Length(Result) - 2, ODBCEncoding);
+    SQLEscapeBin(Data, Size, PChar(Result), Length(Result), ODBCEncoding);
   end;
 end;
 
@@ -2149,6 +2145,10 @@ begin
       PUSH ESI
       PUSH EDI
       PUSH EBX
+
+      PUSH DS                          // string operations uses ES
+      POP ES
+      CLD                              // string operations uses forward direction
 
       MOV ESI,PChar(SQL)               // ESI := @SQL[Index]
       ADD ESI,Index                    // Add Index twice

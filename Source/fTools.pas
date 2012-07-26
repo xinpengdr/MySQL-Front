@@ -74,11 +74,11 @@ type
       constructor Create(const ACodePage: Cardinal);
       destructor Destroy(); override;
       procedure Write(const Data: Pointer; const Size: Integer; const Quote: Boolean = False); overload;
-      procedure Write(const Text: PChar; const Length: Integer; const Quote: Boolean = False); overload;
-      procedure WriteEncoded(const Text: PChar; const Length: Integer); overload;
-      procedure WriteEncoded(const Value: my_char; const Length: Integer; const CodePage: Cardinal); overload;
-      procedure WriteEscaped(const Text: PChar; const Length: Integer); overload;
-      procedure WriteEscaped(const Value: my_char; const Length: Integer); overload;
+      procedure WriteData(const Text: PChar; const Length: Integer; const Quote: Boolean = False); overload;
+      procedure WriteText(const Text: PChar; const Length: Integer); overload;
+      procedure WriteText(const Text: my_char; const Length: Integer; const CodePage: Cardinal); overload;
+      procedure WriteBinary(const Value: PChar; const Length: Integer); overload;
+      procedure WriteBinary(const Value: my_char; const Length: Integer); overload;
       property Data: Pointer read GetData;
       property Size: Integer read GetSize;
     end;
@@ -102,12 +102,12 @@ type
       constructor Create(const MemSize: Integer);
       destructor Destroy(); override;
       function Read(): string; virtual;
-      procedure Write(const Str: my_char; const Length: Integer; const Quote: Boolean = False); overload;
-      procedure Write(const Str: PChar; const Length: Integer); overload;
-      procedure Write(const Str: string); overload; inline;
-      procedure WriteBinary(const Data: Pointer; const Size: Integer; const ODBCEncoding: Boolean);
-      procedure WriteEncoded(const Value: my_char; const Length: Integer; const CodePage: Cardinal); overload;
-      procedure WriteEscaped(const Str: PChar; const Length: Integer); overload;
+      procedure Write(const Text: PChar; const Length: Integer); overload;
+      procedure Write(const Text: string); overload; inline;
+      procedure WriteSQLBinaryValue(const Data: Pointer; const Size: Integer; const ODBCEncoding: Boolean);
+      procedure WriteSQLTextValue(const Value: my_char; const Length: Integer; const CodePage: Cardinal); overload;
+      procedure WriteSQLTextValue(const Value: PChar; const Length: Integer); overload;
+      procedure WriteSQLValue(const Value: my_char; const Length: Integer; const Quote: Boolean = False); overload;
       property Data: Pointer read GetData;
       property Size: Integer read GetSize;
     end;
@@ -979,7 +979,7 @@ begin
   end;
 end;
 
-procedure TTools.TDataFileBuffer.Write(const Text: PChar; const Length: Integer; const Quote: Boolean = False);
+procedure TTools.TDataFileBuffer.WriteData(const Text: PChar; const Length: Integer; const Quote: Boolean = False);
 label
   StringL,
   Finish;
@@ -1032,67 +1032,86 @@ begin
   Buffer.Write := Write;
 end;
 
-procedure TTools.TDataFileBuffer.WriteEncoded(const Text: PChar; const Length: Integer);
+procedure TTools.TDataFileBuffer.WriteText(const Text: PChar; const Length: Integer);
 var
   Len: Integer;
   Size: Integer;
 begin
-  Size := MaxCharSize * Length;
+  Size := 2 * Length * SizeOf(Char);
   if (Size > Temp2.Size) then
   begin
-    Temp2.Size := Temp2.Size + 2 * (Size - Temp2.Size);
+    Temp2.Size := Size;
     ReallocMem(Temp2.Mem, Temp2.Size);
   end;
+  Len := SQLEscape(Text, Length, PChar(Temp2.Mem), Size);
+  if (Len = 0) then
+    raise ERangeError.Create(SRangeError);
 
-  Len := WideCharToAnsiChar(CodePage, Text, Length, Temp2.Mem, Temp2.Size);
-
-  WriteEscaped(Temp2.Mem, Len);
+  Size := MaxCharSize * Len;
+  Resize(Size);
+  Len := WideCharToAnsiChar(CodePage, PChar(Temp2.Mem), Len, Buffer.Mem, Buffer.Size - Self.Size);
+  if (Len = 0) then
+    raise ERangeError.Create(SRangeError);
+  Buffer.Write := @Buffer.Write[Len];
 end;
 
-procedure TTools.TDataFileBuffer.WriteEncoded(const Value: my_char; const Length: Integer; const CodePage: Cardinal);
+procedure TTools.TDataFileBuffer.WriteText(const Text: my_char; const Length: Integer; const CodePage: Cardinal);
 var
   Len: Integer;
   Size: Integer;
 begin
-  if (CodePage <> Self.CodePage) then
+  Size := SizeOf(Char) * Length;
+  if (Size = 0) then
   begin
-    Size := SizeOf(Char) * Length;
+    Resize(2);
+    Buffer.Write[0] := ''''; Buffer.Write := @Buffer.Write[1];
+    Buffer.Write[0] := ''''; Buffer.Write := @Buffer.Write[1];
+  end
+  else
+  begin
     if (Size > Temp1.Size) then
     begin
       ReallocMem(Temp1.Mem, Size);
       Temp1.Size := Size;
     end;
-    Len := AnsiCharToWideChar(CodePage, Value, Length, Temp1.Mem, Temp1.Size div SizeOf(Char));
-
-    Size := MaxCharSize * Len;
-    if (Size < Temp2.Size) then
-    begin
-      ReallocMem(Temp2.Mem, Size);
-      Temp2.Size := Size;
-    end;
-    Len := WideCharToAnsiChar(Self.CodePage, PChar(Temp1.Mem), Len, Temp2.Mem, Size);
-
-    WriteEscaped(Temp2.Mem, Len);
-  end
-  else if (Length > 0) then
-    WriteEscaped(Value, Length);
+    Len := AnsiCharToWideChar(CodePage, Text, Length, PChar(Temp1.Mem), Temp1.Size div SizeOf(Char));
+    if (Len = 0) then
+      raise ERangeError.Create(SRangeError);
+    WriteText(PChar(Temp1.Mem), Len);
+  end;
 end;
 
-procedure TTools.TDataFileBuffer.WriteEscaped(const Text: PChar; const Length: Integer);
+procedure TTools.TDataFileBuffer.WriteBinary(const Value: PChar; const Length: Integer);
 label
-  StringL,
-  Finish;
+  StringL;
 var
+  Len: Integer;
   Size: Integer;
+  Write: my_char;
 begin
-  Size := Length;
-  if (Size > Temp2.Size) then
+  if (Length = 0) then
   begin
-    Temp2.Size := Temp2.Size + 2 * (Size - Temp2.Size);
-    ReallocMem(Temp2.Mem, Temp2.Size);
-  end;
+    Resize(2);
+    Buffer.Write[0] := ''''; Buffer.Write := @Buffer.Write[1];
+    Buffer.Write[0] := ''''; Buffer.Write := @Buffer.Write[1];
+  end
+  else
+  begin
+    Len := 1 + 2 * Length + 1;
+    Size := Len * SizeOf(Char);
+    if (Size > Temp1.Size) then
+    begin
+      Temp1.Size := Size;
+      ReallocMem(Temp1.Mem, Temp1.Size);
+    end;
+    Len := SQLEscape(Value, Length, PChar(Temp1.Mem), Len);
+    if (Len = 0) then
+      raise ERangeError.Create(SRangeError);
 
-  asm
+    Resize(Len);
+
+    Write := Buffer.Write; // How can I remove this???
+    asm
         PUSH ES
         PUSH ESI
         PUSH EDI
@@ -1101,145 +1120,68 @@ begin
         POP ES
         CLD                              // string operations uses forward direction
 
-        MOV ESI,PChar(Text)              // Copy characters from Text
-        MOV EDI,Temp2.Mem                 //   to Temp2.Mem
-        MOV ECX,Length                   // Character count
+        MOV ESI,Temp1.Mem                // Copy characters from Temp1.Mem
+        MOV EDI,Write                    //   to Buffer.Write
+        MOV ECX,Len                      // Character count
 
       StringL:
-        LODSW                            // Load WideChar from Text
-        STOSB                            // Store AnsiChar into Temp2.Mem
+        LODSW                            // Load WideChar
+        STOSB                            // Store AnsiChar
         LOOP StringL                     // Repeat for all characters
 
-      Finish:
         POP EDI
         POP ESI
         POP ES
+    end;
+    Buffer.Write := @Buffer.Write[Len];
   end;
-
-  WriteEscaped(Temp2.Mem, Length);
 end;
 
-procedure TTools.TDataFileBuffer.WriteEscaped(const Value: my_char; const Length: Integer);
+procedure TTools.TDataFileBuffer.WriteBinary(const Value: my_char; const Length: Integer);
 label
-  StartL,
-  StringL, String2,
-  PositionL, PositionE,
-  FindPos, FindPos2,
-  Finish;
-const
-  SearchLen = 7;
-  Search: array [0 .. SearchLen - 1] of AnsiChar = (#0, #9, #10, #13, '''', '"', '\');
-  Replace: array [0 .. 2 * SearchLen - 1] of AnsiChar = ('\','0', '\','t', '\','n', '\','r', '\','''', '\','"', '\','\');
+  StringL;
 var
-  Write: PAnsiChar;
-  Positions: packed array [0 .. SearchLen - 1] of Cardinal;
+  Size: Integer;
 begin
-  if (Assigned(Value) and (Length > 0)) then
+  if (Length = 0) then
   begin
-    Resize(1 + 2 * Length + 1);
-    Write := Buffer.Write;
+    Resize(2);
+    Buffer.Write[0] := ''''; Buffer.Write := @Buffer.Write[1];
+    Buffer.Write[0] := ''''; Buffer.Write := @Buffer.Write[1];
+  end
+  else
+  begin
+    Size := Length * SizeOf(Char);
+    if (Size > Temp2.Size) then
+    begin
+      Temp2.Size := Size;
+      ReallocMem(Temp2.Mem, Temp2.Size);
+    end;
 
     asm
         PUSH ES
         PUSH ESI
         PUSH EDI
-        PUSH EBX
 
         PUSH DS                          // string operations uses ES
         POP ES
         CLD                              // string operations uses forward direction
 
         MOV ESI,Value                    // Copy characters from Value
-        MOV EDI,Write                    //   to Write
-        MOV ECX,Length                   // Length of Value string
-
-        MOV AL,''''                      // Start quoting
-        STOSB
-
-      // -------------------
-
-        MOV EBX,0                        // Numbers of characters in Search
-      StartL:
-        CALL FindPos                     // Find Search character position
-        INC EBX                          // Next character in Search
-        CMP EBX,SearchLen                // All Search characters handled?
-        JNE StartL                       // No!
-
-      // -------------------
+        MOV EDI,Temp2.Mem                //   to Temp2.Mem
+        MOV ECX,Length                   // Character count
 
       StringL:
-        PUSH ECX
+        LODSB                            // Load WideChar
+        STOSW                            // Store AnsiChar
+        LOOP StringL                     // Repeat for all characters
 
-        MOV ECX,0                        // Numbers of characters in Search
-        MOV EBX,-1                       // Index of first position
-        MOV EAX,0                        // Last character
-        LEA EDX,Positions
-      PositionL:
-        CMP [EDX + ECX * 4],EAX          // Position before other positions?
-        JB PositionE                     // No!
-        MOV EBX,ECX                      // Index of first position
-        MOV EAX,[EDX + EBX * 4]          // Value of first position
-      PositionE:
-        INC ECX                          // Next Position
-        CMP ECX,SearchLen                // All Positions compared?
-        JNE PositionL                    // No!
-
-        POP ECX
-
-        SUB ECX,EAX                      // Copy normal characters from Value
-        CMP ECX,0                        // Is there something to copy?
-        JE String2                       // No!
-        REPNE MOVSB                      //   to Result
-
-      String2:
-        MOV ECX,EAX
-
-        CMP ECX,0                        // Is there a character to replace?
-        JE Finish                        // No!
-
-        ADD ESI,1                        // Step of Search character
-        LEA EDX,Replace                  // Insert Replace characters
-        MOV AX,[EDX + EBX * 2]
-        STOSW
-
-        DEC ECX                          // Ignore Search character
-        JZ Finish                        // All character in Value handled!
-        CALL FindPos                     // Find Search character
-        JMP StringL
-
-      // -------------------
-
-      FindPos:
-        PUSH ECX
-        PUSH EDI
-        LEA EDI,Search                   // Character to Search
-        MOV AL,[EDI + EBX * 1]
-        MOV EDI,ESI                      // Search in Value
-        REPNE SCASB                      // Find Search character
-        JNE FindPos2                     // Search character not found!
-        INC ECX
-      FindPos2:
-        LEA EDI,Positions
-        MOV [EDI + EBX * 4],ECX          // Store found position
-        POP EDI
-        POP ECX
-        RET
-
-      // -------------------
-
-      Finish:
-        MOV AL,''''                      // End quoting
-        STOSB
-
-        MOV Write,EDI
-
-        POP EBX
         POP EDI
         POP ESI
         POP ES
     end;
 
-    Buffer.Write := Write;
+    WriteBinary(PChar(Temp2.Mem), Length);
   end;
 end;
 
@@ -1324,92 +1266,27 @@ begin
   end;
 end;
 
-procedure TTools.TStringBuffer.Write(const Str: my_char; const Length: Integer; const Quote: Boolean = False);
-label
-  String_, StringL,
-  Finish;
+procedure TTools.TStringBuffer.Write(const Text: PChar; const Length: Integer);
 var
-  Write: PChar;
-begin
-  if (not Quote) then
-    Resize(Length)
-  else
-    Resize(1 + Length + 1);
-  Write := Buffer.Write; // How can I remove this???
-
-  asm
-        PUSH ES
-        PUSH ESI
-        PUSH EDI
-        PUSH EAX
-        PUSH ECX
-
-        PUSH DS                          // string operations uses ES
-        POP ES
-        CLD                              // string operations uses forward direction
-
-        MOV ESI,Str                      // Copy characters from Str
-        MOV EDI,Write                    //   to Write
-        MOV ECX,Length                   // Character count
-
-        CMP Quote,False                  // Quote Value?
-        JE String_                       // No!
-        MOV AX,''''                      // Starting quoter
-        STOSW                            //   into Write
-
-      String_:
-        MOV AH,0
-      StringL:
-        LODSB                            // Load AnsiChar from Str
-        STOSW                            // Store WideChar into Buffer.Mem
-        LOOP StringL                     // Repeat for all characters
-
-        CMP Quote,False                  // Quote Value?
-        JE Finish                        // No!
-        MOV AX,''''                      // Ending quoter
-        STOSW                            //   into Write
-
-      Finish:
-        MOV Write,EDI
-
-        POP ECX
-        POP EAX
-        POP EDI
-        POP ESI
-        POP ES
-    end;
-
-  Buffer.Write := Write;
-end;
-
-procedure TTools.TStringBuffer.Write(const Str: PChar; const Length: Integer);
-var
-  Index: Integer;
   Size: Integer;
 begin
-  Size := Length * SizeOf(Str[0]);
+  Size := Length * SizeOf(Text[0]);
 
   if (Size > 0) then
   begin
-    if (Self.Size + Size > Buffer.Size) then
-    begin
-      Index := Self.Size div SizeOf(Buffer.Mem[0]);
-      Buffer.Size := Buffer.Size + 2 * (Self.Size + Size - Buffer.Size);
-      ReallocMem(Buffer.Mem, Buffer.Size);
-      Buffer.Write := @Buffer.Mem[Index];
-    end;
+    Resize(Size);
 
-    MoveMemory(Buffer.Write, Str, Size);
+    MoveMemory(Buffer.Write, Text, Size);
     Buffer.Write := @Buffer.Write[Length];
   end;
 end;
 
-procedure TTools.TStringBuffer.Write(const Str: string);
+procedure TTools.TStringBuffer.Write(const Text: string);
 begin
-  Write(PChar(Str), Length(Str))
+  Write(PChar(Text), Length(Text))
 end;
 
-procedure TTools.TStringBuffer.WriteBinary(const Data: Pointer; const Size: Integer; const ODBCEncoding: Boolean);
+procedure TTools.TStringBuffer.WriteSQLBinaryValue(const Data: Pointer; const Size: Integer; const ODBCEncoding: Boolean);
 begin
   if (ODBCEncoding) then
     Resize((2 + 2 * Size) * SizeOf(Char))
@@ -1419,7 +1296,7 @@ begin
   SQLEscapeBin(Data, Size, Buffer.Write, Size div SizeOf(Char), ODBCEncoding);
 end;
 
-procedure TTools.TStringBuffer.WriteEncoded(const Value: my_char; const Length: Integer; const CodePage: Cardinal);
+procedure TTools.TStringBuffer.WriteSQLTextValue(const Value: my_char; const Length: Integer; const CodePage: Cardinal);
 var
   CPInfoEx: TCpInfoEx;
   Len: Integer;
@@ -1443,14 +1320,71 @@ begin
   Buffer.Write := @Buffer.Write[Len];
 end;
 
-procedure TTools.TStringBuffer.WriteEscaped(const Str: PChar; const Length: Integer);
+procedure TTools.TStringBuffer.WriteSQLTextValue(const Value: PChar; const Length: Integer);
 var
   Len: Integer;
+  Size: Integer;
 begin
-  Resize((1 + 2 * Length + 1) * SizeOf(Char));
-  Len := SQLEscape(Str, Length, PChar(Buffer.Write), (1 + 2 * Length + 1));
+  Len := 1 + 2 * Length + 1;
+  Size := Len * SizeOf(Char);
+  Resize(Size);
+  Len := SQLEscape(Value, Length, PChar(Buffer.Write), Len);
   if (Len = 0) then
     raise ERangeError.Create(SRangeError);
+  Buffer.Write := @Buffer.Write[Len];
+end;
+
+procedure TTools.TStringBuffer.WriteSQLValue(const Value: my_char; const Length: Integer; const Quote: Boolean = False);
+label
+  String_, StringL,
+  Finish;
+var
+  Write: PChar;
+begin
+  if (not Quote) then
+    Resize(Length)
+  else
+    Resize(1 + Length + 1);
+
+  Write := Buffer.Write; // How can I remove this???
+  asm
+        PUSH ES
+        PUSH ESI
+        PUSH EDI
+
+        PUSH DS                          // string operations uses ES
+        POP ES
+        CLD                              // string operations uses forward direction
+
+        MOV ESI,Value                    // Copy characters from Value
+        MOV EDI,Write                    //   to Write
+        MOV ECX,Length                   // Character count
+
+        CMP Quote,False                  // Quote Value?
+        JE String_                       // No!
+        MOV AX,''''                      // Starting quoter
+        STOSW                            //   into Write
+
+      String_:
+        MOV AH,0
+      StringL:
+        LODSB                            // Load AnsiChar
+        STOSW                            // Store WideChar
+        LOOP StringL                     // Repeat for all characters
+
+        CMP Quote,False                  // Quote Value?
+        JE Finish                        // No!
+        MOV AX,''''                      // Ending quoter
+        STOSW                            //   into Write
+
+      Finish:
+        MOV Write,EDI
+
+        POP EDI
+        POP ESI
+        POP ES
+    end;
+  Buffer.Write := @Buffer.Write[Length];
 end;
 
 { TTools **********************************************************************}
@@ -1628,10 +1562,14 @@ begin
   while ((Success = daSuccess) and (SQL <> '')) do
   begin
     Result := Client.ExecuteSQL(SQL);
-    Delete(SQL, 1, Client.ExecutedSQLLength);
-    SQL := Trim(SQL);
     if (not Result) then
+    begin
+      Delete(SQL, 1, Client.ExecutedSQLLength);
+      SQL := Trim(SQL);
       DoError(DatabaseError(Client), ToolsItem(Item), SQL);
+    end
+    else
+      SQL := '';
   end
 end;
 
@@ -2577,14 +2515,12 @@ begin
             Len := CSVUnquote(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, CSVUnquoteMem, CSVUnquoteMemSize, Quoter);
           end;
 
-          if (Fields[I].FieldType in NotQuotedFieldTypes) then
-            DataFileBuffer.Write(CSVUnquoteMem, Len)
+          if (Fields[I].FieldType in BinaryFieldTypes) then
+            DataFileBuffer.WriteBinary(CSVUnquoteMem, Len)
           else if (Fields[I].FieldType in TextFieldTypes) then
-            DataFileBuffer.WriteEncoded(CSVUnquoteMem, Len)
-          else if (Fields[I].FieldType in BinaryFieldTypes) then
-            DataFileBuffer.WriteEscaped(CSVUnquoteMem, Len)
+            DataFileBuffer.WriteText(CSVUnquoteMem, Len)
           else
-            DataFileBuffer.Write(CSVUnquoteMem, Len, True);
+            DataFileBuffer.WriteData(CSVUnquoteMem, Len, not (Fields[I].FieldType in NotQuotedFieldTypes));
         end;
       end;
     end;
@@ -2981,7 +2917,7 @@ begin
             else if ((Size = 0) and (cbData = SQL_NULL_DATA)) then
               DataFileBuffer.Write(PAnsiChar('NULL'), 4)
             else
-              DataFileBuffer.WriteEncoded(PChar(ODBCMem), Size div SizeOf(Char));
+              DataFileBuffer.WriteText(PChar(ODBCMem), Size div SizeOf(Char));
           end;
         SQL_BINARY,
         SQL_VARBINARY,
@@ -3006,7 +2942,7 @@ begin
             else if (cbData = SQL_NULL_DATA) then
               DataFileBuffer.Write(PAnsiChar('NULL'), 4)
             else
-              DataFileBuffer.WriteEscaped(my_char(ODBCMem), Size);
+              DataFileBuffer.WriteBinary(my_char(ODBCMem), Size);
           end;
         else
           raise EDatabaseError.CreateFMT(SUnknownFieldType + ' (%d)', [Fields[I].Name, ColumnDesc[I].SQLDataType]);
@@ -3474,14 +3410,12 @@ begin
         DataFileBuffer.Write(PAnsiChar(',_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
       if (sqlite3_column_type(Stmt, I) = SQLITE_NULL) then
         DataFileBuffer.Write(PAnsiChar('NULL'), 4)
-      else if ((Fields[I].FieldType in NotQuotedFieldTypes) and (sqlite3_column_type(Stmt, I) in [SQLITE_INTEGER, SQLITE_FLOAT])) then
-        DataFileBuffer.Write(sqlite3_column_text(Stmt, I), sqlite3_column_bytes(Stmt, I))
-      else if (Fields[I].FieldType in TextFieldTypes) then
-        DataFileBuffer.WriteEncoded(sqlite3_column_text(Stmt, I), sqlite3_column_bytes(Stmt, I), CP_UTF8)
       else if (Fields[I].FieldType in BinaryFieldTypes) then
-        DataFileBuffer.WriteEscaped(my_char(sqlite3_column_blob(Stmt, I)), sqlite3_column_bytes(Stmt, I))
+        DataFileBuffer.WriteBinary(my_char(sqlite3_column_blob(Stmt, I)), sqlite3_column_bytes(Stmt, I))
+      else if (Fields[I].FieldType in TextFieldTypes) then
+        DataFileBuffer.WriteText(sqlite3_column_text(Stmt, I), sqlite3_column_bytes(Stmt, I), CP_UTF8)
       else
-        DataFileBuffer.Write(sqlite3_column_text(Stmt, I), sqlite3_column_bytes(Stmt, I));
+        DataFileBuffer.Write(sqlite3_column_text(Stmt, I), sqlite3_column_bytes(Stmt, I), not (Fields[I].FieldType in NotQuotedFieldTypes));
     end;
   end;
 end;
@@ -3770,14 +3704,12 @@ begin
         DataFileBuffer.Write(PAnsiChar(',_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
       if (not Assigned(XMLValueNode) or (XMLValueNode.text = '') and Assigned(XMLValueNode.selectSingleNode('@xsi:nil')) and (XMLValueNode.selectSingleNode('@xsi:nil').text = 'true')) then
         DataFileBuffer.Write(PAnsiChar('NULL'), 4)
-      else if (Fields[I].FieldType in NotQuotedFieldTypes) then
-        DataFileBuffer.Write(PChar(XMLValueNode.text), Length(XMLValueNode.text))
-      else if (Fields[I].FieldType in TextFieldTypes) then
-        DataFileBuffer.WriteEncoded(PChar(XMLValueNode.text), Length(XMLValueNode.text))
       else if (Fields[I].FieldType in BinaryFieldTypes) then
-        DataFileBuffer.WriteEscaped(PChar(XMLValueNode.text), Length(XMLValueNode.text))
+        DataFileBuffer.WriteBinary(PChar(XMLValueNode.text), Length(XMLValueNode.text))
+      else if (Fields[I].FieldType in TextFieldTypes) then
+        DataFileBuffer.WriteText(PChar(XMLValueNode.text), Length(XMLValueNode.text))
       else
-        DataFileBuffer.Write(PChar(XMLValueNode.text), Length(XMLValueNode.text), True);
+        DataFileBuffer.WriteData(PChar(XMLValueNode.text), Length(XMLValueNode.text), not (Fields[I].FieldType in NotQuotedFieldTypes));
     end;
 
     repeat
@@ -4259,7 +4191,7 @@ begin
   if (Success = daSuccess) then
     ExportObject.RecordsSum := ExportObject.RecordsDone;
 
-  if (Assigned(DataSet)) then
+  if (Assigned(DataSet) and (Success <> daAbort)) then
     DataSet.Free();
 end;
 
@@ -7300,11 +7232,11 @@ begin
                   if (not Assigned(LibRow^[I])) then
                     DataFileBuffer.Write(PAnsiChar('NULL'), 4)
                   else if (BitField(SourceDataSet.Fields[I])) then
-                    begin S := UInt64ToStr(UInt64(LibRow^[I]^)); DataFileBuffer.Write(PChar(S), Length(S)); end
+                    begin S := UInt64ToStr(UInt64(LibRow^[I]^)); DataFileBuffer.WriteData(PChar(S), Length(S)); end
                   else if (DestinationTable.Fields[I].FieldType in BinaryFieldTypes) then
-                    DataFileBuffer.WriteEscaped(LibRow^[I], LibLengths^[I])
+                    DataFileBuffer.WriteBinary(LibRow^[I], LibLengths^[I])
                   else if (DestinationField.FieldType in TextFieldTypes) then
-                    DataFileBuffer.WriteEncoded(LibRow^[I], LibLengths^[I], Source.Client.CodePage)
+                    DataFileBuffer.WriteText(LibRow^[I], LibLengths^[I], Source.Client.CodePage)
                   else
                     DataFileBuffer.Write(LibRow^[I], LibLengths^[I], not (DestinationField.FieldType in NotQuotedFieldTypes));
                 end;
@@ -7403,11 +7335,11 @@ begin
               else if (BitField(SourceDataSet.Fields[I])) then
                 StringBuffer.Write('b''' + IntToBitString(UInt64(LibRow^[I]^)) + '''')
               else if (DestinationField.FieldType in BinaryFieldTypes) then
-                StringBuffer.WriteBinary(LibRow^[I], LibLengths^[I], False)
+                StringBuffer.WriteSQLBinaryValue(LibRow^[I], LibLengths^[I], Source.Client.ServerVersion <= 40000)
               else if (DestinationField.FieldType in TextFieldTypes) then
-                StringBuffer.WriteEncoded(LibRow^[I], LibLengths^[I], Source.Client.CodePage)
+                StringBuffer.WriteSQLTextValue(LibRow^[I], LibLengths^[I], Source.Client.CodePage)
               else
-                StringBuffer.Write(LibRow^[I], LibLengths^[I], not (DestinationField.FieldType in NotQuotedFieldTypes));
+                StringBuffer.WriteSQLValue(LibRow^[I], LibLengths^[I], not (DestinationField.FieldType in NotQuotedFieldTypes));
             end;
             StringBuffer.Write(')');
 
@@ -7456,8 +7388,8 @@ begin
         end;
       end;
 
-      if (Success = daAbort) then while SourceDataSet.FindNext() do ;
-      SourceDataSet.Free();
+      if (Success <> daAbort) then
+        SourceDataSet.Free();
     end;
   end;
 end;
@@ -7578,7 +7510,7 @@ begin
     DestinationDatabase := TCDatabase.Create(Destination.Client, Destination.DatabaseName);
     while ((Success = daSuccess) and not Destination.Client.AddDatabase(DestinationDatabase)) do
       DoError(DatabaseError(Destination.Client), ToolsItem(Destination));
-    FreeAndNil(DestinationDatabase);
+    DestinationDatabase.Free();
 
     DestinationDatabase := Destination.Client.DatabaseByName(Destination.DatabaseName);
   end;

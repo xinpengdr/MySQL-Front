@@ -670,6 +670,7 @@ end;
 
 procedure mysql_free_result(res: MYSQL_RES); stdcall;
 begin
+  res.mysql.Seterror(0);
   res.Free();
 end;
 

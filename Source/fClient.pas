@@ -7940,6 +7940,8 @@ begin
         Variable[Index].Value := DataSet.FieldByName('Value').AsString
       else
         Variable[Index].Value := DataSet.FieldByName('VARIABLE_VALUE').AsString;
+      if (Filtered) then
+        Client.ExecuteEvent(ceItemValid, Client, Self, Variable[Index]);
     until (not DataSet.FindNext());
 
   if (Count > 0) then
@@ -7992,12 +7994,22 @@ end;
 function TCVariables.SQLGetItems(const Name: string = ''): string;
 begin
   if (not Client.UseInformationSchema or (Client.ServerVersion < 50112)) then
+  begin
     if (Client.ServerVersion < 40003) then
-      Result := 'SHOW VARIABLES;' + #13#10
+      Result := 'SHOW VARIABLES'
     else
-      Result := 'SHOW SESSION VARIABLES;' + #13#10
+      Result := 'SHOW SESSION VARIABLES';
+    if (Name <> '') then
+      Result := Result + ' LIKE ' + SQLEscape(Name);
+    Result := Result + ';' + #13#10;
+  end
   else
-    Result := 'SELECT * FROM ' + Client.EscapeIdentifier(information_schema) + '.' + Client.EscapeIdentifier('SESSION_VARIABLES') + ';' + #13#10;
+  begin
+    Result := 'SELECT * FROM ' + Client.EscapeIdentifier(information_schema) + '.' + Client.EscapeIdentifier('SESSION_VARIABLES');
+    if (Name <> '') then
+      Result := Result + ' WHERE ' + Client.EscapeIdentifier('VARIABLE_NAME') + '=' + SQLEscape(Name);
+    Result := Result + ';' + #13#10;
+  end;
 end;
 
 { TCStati *********************************************************************}
@@ -11295,13 +11307,31 @@ begin
     else if (SQLParseKeyword(Parse, 'SET')) then
     begin
       repeat
-        if (SQLParseKeyword(Parse, 'SESSION') and not SQLParseChar(Parse, '@', False)) then
+        if ((SQLParseKeyword(Parse, 'GLOBAL') or SQLParseKeyword(Parse, 'SESSION')) and not SQLParseChar(Parse, '@', False)) then
         begin
           Variable := VariableByName(SQLParseValue(Parse));
           if (Assigned(Variable) and SQLParseChar(Parse, '=')) then
           begin
             Variable.FValue := SQLParseValue(Parse);
             ExecuteEvent(ceItemAltered, Self, Variables, Variable);
+          end;
+        end
+        else
+        begin
+          ObjectName := SQLParseValue(Parse);
+          if (Copy(ObjectName, 1, 2) = '@@') then
+          begin
+            Delete(ObjectName, 1, 2);
+            if (LowerCase(Copy(ObjectName, 1, 7)) = 'global.') then
+              Delete(ObjectName, 1, 7)
+            else if (LowerCase(Copy(ObjectName, 1, 8)) = 'session.') then
+              Delete(ObjectName, 1, 8);
+            Variable := VariableByName(ObjectName);
+            if (Assigned(Variable) and SQLParseChar(Parse, '=')) then
+            begin
+              Variable.FValue := SQLParseValue(Parse);
+              ExecuteEvent(ceItemAltered, Self, Variables, Variable);
+            end;
           end;
         end;
       until (not SQLParseChar(Parse, ','));
@@ -12210,7 +12240,9 @@ begin
   else
     SQL := SQL + Variable.Name + '=' + SQLEscape(NewVariable.Value) + ';';
 
-  Result := (SQL = '') or SendSQL(SQL);
+  SQL := SQL + Variables.SQLGetItems(Variable.Name);
+
+  Result := (SQL = '') or SendSQL(SQL, ClientResult);
 end;
 
 function TCClient.UserByCaption(const Caption: string): TCUser;

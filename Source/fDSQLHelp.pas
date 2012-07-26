@@ -182,13 +182,13 @@ procedure TDSQLHelp.CMSysFontChanged(var Message: TMessage);
 begin
   inherited;
 
-  FBContent.Width := Canvas.TextWidth(FBContent.Caption) + FBContent.Height - Canvas.TextHeight(FBContent.Caption);
+  FBContent.Width := Canvas.TextWidth(FBContent.Caption) + 2 * (FBContent.Height - Canvas.TextHeight(FBContent.Caption));
   FBDescription.Left := FBContent.Left + FBContent.Width;
-  FBDescription.Width := Canvas.TextWidth(FBDescription.Caption) + FBDescription.Height - Canvas.TextHeight(FBDescription.Caption);
+  FBDescription.Width := Canvas.TextWidth(FBDescription.Caption) + 2 * (FBDescription.Height - Canvas.TextHeight(FBDescription.Caption));
   FBExample.Left := FBDescription.Left + FBDescription.Width;
-  FBExample.Width := Canvas.TextWidth(FBExample.Caption) + FBExample.Height - Canvas.TextHeight(FBExample.Caption);
+  FBExample.Width := Canvas.TextWidth(FBExample.Caption) + 2 * (FBExample.Height - Canvas.TextHeight(FBExample.Caption));
   FBManual.Left := FBExample.Left + FBExample.Width;
-  FBManual.Width := Canvas.TextWidth(FBManual.Caption) + FBManual.Height - Canvas.TextHeight(FBManual.Caption);
+  FBManual.Width := Canvas.TextWidth(FBManual.Caption) + 2 * (FBManual.Height - Canvas.TextHeight(FBManual.Caption));
 
   Constraints.MinWidth := 2 * GetSystemMetrics(SM_CXFRAME) + 2 * Panel.BevelWidth + FBDescription.Width + FBExample.Width + FBManual.Width + FQuickSearch.Width + TBQuickSearchEnabled.Width + 50;
 end;
