@@ -1853,6 +1853,12 @@ end;
 
 function TMySQLConnection.TSynchroThread.GetIsRunning(): Boolean;
 begin
+  if (not Assigned(Self)) then
+    raise ERangeError.CreateFmt(SPropertyOutOfRange, ['Self']);
+  if (not Assigned(RunExecute)) then
+    raise ERangeError.CreateFmt(SPropertyOutOfRange, ['RunExecute']);
+  // in InUse() there are TerminateCS call. Are they needed?
+
   Result := (RunExecute.WaitFor(IGNORE) = wrSignaled) or not (State in [ssClose, ssReady]);
 end;
 
@@ -2515,7 +2521,9 @@ end;
 
 function TMySQLConnection.InUse(): Boolean;
 begin
+  TerminateCS.Enter(); // Why is this needed here?
   Result := Assigned(SynchroThread) and SynchroThread.IsRunning;
+  TerminateCS.Leave(); // Why is this needed here?
 end;
 
 function TMySQLConnection.LibDecode(const Data: my_char; const Length: my_int = -1): string;
@@ -4758,6 +4766,8 @@ var
   I: Integer;
 begin
   CriticalSection.Enter();
+  if ((DataSet.State = dsBrowse) and Assigned(DataSet.ActiveBuffer()) and Assigned(PExternRecordBuffer(DataSet.ActiveBuffer())^.InternRecordBuffer)) then
+    PExternRecordBuffer(DataSet.ActiveBuffer())^.InternRecordBuffer := nil;
   for I := 0 to Count - 1 do
     DataSet.FreeInternRecordBuffer(Items[I]);
   inherited Clear();
