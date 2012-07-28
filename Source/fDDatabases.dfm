@@ -27,7 +27,7 @@ object DDatabases: TDDatabases
     Top = 8
     Width = 242
     Height = 186
-    Cursor = crSQLWait
+    Cursor = crHourGlass
     Anchors = [akLeft, akTop, akRight, akBottom]
     BevelOuter = bvNone
     Caption = 'PSQLWait'

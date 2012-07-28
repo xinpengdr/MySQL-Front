@@ -761,7 +761,7 @@ function StrToDateTime(const S: string; const FormatSettings: TFormatSettings): 
 function SQLFormatToDisplayFormat(const SQLFormat: string): string;
 
 const
-  UnquotedDataTypes = [ftShortInt, ftByte, ftSmallInt, ftWord, ftInteger, ftLongWord, ftLargeint, ftSingle, ftFloat, ftExtended];
+  NotQuotedDataTypes = [ftShortInt, ftByte, ftSmallInt, ftWord, ftInteger, ftLongWord, ftLargeint, ftSingle, ftFloat, ftExtended];
   BinaryDataTypes = [ftString, ftBlob];
   TextDataTypes = [ftWideString, ftWideMemo];
 
@@ -4069,7 +4069,7 @@ begin
     Result := ''
   else if (BitField(Fields[FieldNo - 1])) then
     Result := Fields[FieldNo - 1].AsString
-  else if (Fields[FieldNo - 1].DataType in UnquotedDataTypes + BinaryDataTypes) then
+  else if (Fields[FieldNo - 1].DataType in NotQuotedDataTypes + BinaryDataTypes) then
     Result := Connection.LibUnpack(LibRow^[FieldNo - 1], LibLengths^[FieldNo - 1])
   else
     Result := Connection.LibDecode(LibRow^[FieldNo - 1], LibLengths^[FieldNo - 1]);

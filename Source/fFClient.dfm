@@ -708,7 +708,6 @@ object FClient: TFClient
         Height = 23
         Align = alNone
         Caption = 'TBLimitEnabled'
-        GradientEndColor = 11319229
         TabOrder = 4
         Transparent = False
         object FLimitEnabled: TToolButton
@@ -740,7 +739,6 @@ object FClient: TFClient
         Align = alNone
         Anchors = [akTop]
         Caption = 'TBFilterEnabled'
-        GradientEndColor = 11319229
         TabOrder = 6
         Transparent = False
         object FFilterEnabled: TToolButton
@@ -771,7 +769,6 @@ object FClient: TFClient
         Align = alNone
         Anchors = [akTop]
         AutoSize = True
-        GradientEndColor = 11319229
         TabOrder = 8
         Transparent = False
         object FQuickSearchEnabled: TToolButton
@@ -919,14 +916,14 @@ object FClient: TFClient
             FixedSize = True
             ImageIndex = -1
             MinHeight = 22
-            Width = 461
+            Width = 463
           end>
         EdgeInner = esNone
         EdgeOuter = esNone
         FixedSize = True
         OnResize = CBlobResize
         object TBBlob: TToolBar
-          Left = 2
+          Left = 0
           Top = 0
           Width = 396
           Height = 22
@@ -935,7 +932,6 @@ object FClient: TFClient
           ButtonWidth = 97
           Color = clBtnFace
           DoubleBuffered = False
-          GradientEndColor = 11319229
           ParentColor = False
           ParentDoubleBuffered = False
           ShowCaptions = True
@@ -1162,7 +1158,6 @@ object FClient: TFClient
       Height = 22
       Align = alNone
       AutoSize = True
-      GradientEndColor = 11319229
       TabOrder = 0
       Transparent = True
       Wrapable = False
@@ -1204,7 +1199,6 @@ object FClient: TFClient
       Align = alNone
       ButtonHeight = 20
       ButtonWidth = 68
-      GradientEndColor = 11319229
       List = True
       PopupMenu = MToolBar
       ShowCaptions = True

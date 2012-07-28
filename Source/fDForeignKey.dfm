@@ -28,7 +28,7 @@ object DForeignKey: TDForeignKey
     Top = 8
     Width = 389
     Height = 413
-    Cursor = crSQLWait
+    Cursor = crHourGlass
     Anchors = [akLeft, akTop, akRight, akBottom]
     BevelOuter = bvNone
     Caption = 'PSQLWait'

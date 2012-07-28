@@ -11716,7 +11716,7 @@ begin
       SQL := SQL + 'SHOW GRANTS FOR CURRENT_USER();' + #13#10;
 
 
-  if (Assigned(InvalidObjects)) then
+  if (Assigned(InvalidObjects) and (InvalidObjects.Count < 10)) then
     List.Assign(InvalidObjects, laOr);
   List.Sort(Compare);
 

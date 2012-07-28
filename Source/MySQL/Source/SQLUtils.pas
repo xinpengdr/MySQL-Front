@@ -596,10 +596,7 @@ begin
 
   asm
         PUSH ES
-        PUSH EAX
         PUSH EBX
-        PUSH ECX
-        PUSH EDX
         PUSH ESI
         PUSH EDI
 
@@ -657,10 +654,7 @@ begin
       Finish:
         POP EDI
         POP ESI
-        POP EDX
-        POP ECX
         POP EBX
-        POP EAX
         POP ES
   end;
 end;
@@ -680,9 +674,6 @@ begin
   asm
         PUSH ES
         PUSH EDI
-        PUSH EAX
-        PUSH ECX
-        PUSH EDX
 
         MOV EAX,Result                   // Store into Result
         MOV EDI,[EAX]
@@ -735,9 +726,6 @@ begin
       Finish:
         MOV Len,BX
 
-        POP EDX
-        POP ECX
-        POP EAX
         POP EDI
         POP ES
   end;

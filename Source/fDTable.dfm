@@ -30,7 +30,7 @@ object DTable: TDTable
     Top = 8
     Width = 321
     Height = 325
-    Cursor = crSQLWait
+    Cursor = crHourGlass
     ParentCustomHint = False
     Anchors = [akLeft, akTop, akRight, akBottom]
     BevelOuter = bvNone

@@ -28,7 +28,7 @@ object DRoutine: TDRoutine
     Top = 8
     Width = 321
     Height = 325
-    Cursor = crSQLWait
+    Cursor = crHourGlass
     Anchors = [akLeft, akTop, akRight, akBottom]
     BevelOuter = bvNone
     Caption = 'PSQLWait'

@@ -40,15 +40,6 @@ type
     end;
     TOnUpdate = procedure(const ProgressInfos: TProgressInfos) of object;
 
-    TSQLThread = class(TThread)
-    private
-      Client: TCClient;
-      SQL: string;
-    public
-      constructor Create(const AClient: TCClient; const ASQL: string);
-      procedure Execute(); override;
-    end;
-
     TDataFileBuffer = class
     private
       Buffer: record
@@ -90,24 +81,15 @@ type
         Size: Integer;
         Write: PChar;
       end;
-      Temp1: record
-        Mem: Pointer;
-        Size: Integer;
-      end;
       function GetData(): Pointer; inline;
       function GetSize(): Integer; inline;
-      procedure Resize(const NeededSize: Integer);
+      procedure Resize(const NeededLength: Integer);
     public
       procedure Clear(); virtual;
       constructor Create(const MemSize: Integer);
       destructor Destroy(); override;
       function Read(): string; virtual;
-      procedure Write(const Text: PChar; const Length: Integer); overload;
       procedure Write(const Text: string); overload; inline;
-      procedure WriteSQLBinaryValue(const Data: Pointer; const Size: Integer; const ODBCEncoding: Boolean);
-      procedure WriteSQLTextValue(const Value: my_char; const Length: Integer; const CodePage: Cardinal); overload;
-      procedure WriteSQLTextValue(const Value: PChar; const Length: Integer); overload;
-      procedure WriteSQLValue(const Value: my_char; const Length: Integer; const Quote: Boolean = False); overload;
       property Data: Pointer read GetData;
       property Size: Integer read GetSize;
     end;
@@ -164,7 +146,7 @@ type
     procedure BeforeExecute(); override;
     procedure BeforeExecuteData(var Item: TItem); virtual;
     procedure Close(); virtual;
-    procedure DoExecuteSQL(const Item: TItem; var SQL: string); virtual;
+    function DoExecuteSQL(const Item: TItem; var SQL: string): Boolean; virtual;
     procedure DoUpdateGUI(); override;
     procedure ExecuteData(var Item: TItem; const Table: TCTable); virtual;
     procedure ExecuteStructure(var Item: TItem); virtual;
@@ -899,21 +881,6 @@ begin
   end;
 end;
 
-{ TTools.TSQLThread ***********************************************************}
-
-constructor TTools.TSQLThread.Create(const AClient: TCClient; const ASQL: string);
-begin
-  inherited Create(False);
-
-  Client := AClient;
-  SQL := ASQL;
-end;
-
-procedure TTools.TSQLThread.Execute();
-begin
-  Client.ExecuteSQL(SQL);
-end;
-
 { TTools.TTDataFileBuffer *****************************************************}
 
 procedure TTools.TDataFileBuffer.Clear();
@@ -984,17 +951,21 @@ label
   StringL,
   Finish;
 var
+  Len: Integer;
   Write: PAnsiChar;
 begin
-  Resize(1 + Length + 1);
-  Write := Buffer.Write; // How can I remove this???
+  if (not Quote) then
+    Len := Length
+  else
+    Len := 1 + Length + 1;
 
+  Resize(Len);
+
+  Write := Buffer.Write; // How can I remove this???
   asm
         PUSH ES
         PUSH ESI
         PUSH EDI
-        PUSH EAX
-        PUSH ECX
 
         PUSH DS                          // string operations uses ES
         POP ES
@@ -1020,16 +991,12 @@ begin
         STOSB                            //   into Write
 
       Finish:
-        MOV Write,EDI
-
-        POP ECX
-        POP EAX
         POP EDI
         POP ESI
         POP ES
     end;
 
-  Buffer.Write := Write;
+  Buffer.Write := @Buffer.Write[Len];
 end;
 
 procedure TTools.TDataFileBuffer.WriteText(const Text: PChar; const Length: Integer);
@@ -1204,7 +1171,7 @@ begin
   end;
 end;
 
-{ TTools.TTStringBuffer *******************************************************}
+{ TTools.TStringBuffer ********************************************************}
 
 procedure TTools.TStringBuffer.Clear();
 begin
@@ -1216,8 +1183,6 @@ begin
   Buffer.Size := 0;
   Buffer.Mem := nil;
   Buffer.Write := nil;
-  Temp1.Mem := nil;
-  Temp1.Size := 0;
 
   Resize(MemSize);
 end;
@@ -1225,8 +1190,6 @@ end;
 destructor TTools.TStringBuffer.Destroy();
 begin
   FreeMem(Buffer.Mem);
-  if (Assigned(Temp1.Mem)) then FreeMem(Temp1.Mem);
-
 
   inherited;
 end;
@@ -1243,151 +1206,42 @@ end;
 
 function TTools.TStringBuffer.Read(): string;
 begin
-  SetString(Result, PChar(Data), Size div SizeOf(Result[1]));
+  SetString(Result, PChar(Buffer.Mem), Size * SizeOf(Result[1]));
   Clear();
 end;
 
-procedure TTools.TStringBuffer.Resize(const NeededSize: Integer);
+procedure TTools.TStringBuffer.Resize(const NeededLength: Integer);
 var
   Index: Integer;
 begin
   if (Buffer.Size = 0) then
   begin
-    Buffer.Size := NeededSize;
+    Buffer.Size := NeededLength * SizeOf(Char);
     GetMem(Buffer.Mem, Buffer.Size);
     Buffer.Write := Buffer.Mem;
   end
-  else if (Size + NeededSize > Buffer.Size) then
+  else if (Size + NeededLength * SizeOf(Char) > Buffer.Size) then
   begin
-    Index := Size div SizeOf(Buffer.Mem[0]);
-    Inc(Buffer.Size, 2 * (Size + NeededSize - Buffer.Size));
+    Index := Size * SizeOf(Buffer.Write[0]);
+    Inc(Buffer.Size, 2 * (Size + NeededLength * SizeOf(Char) - Buffer.Size));
     ReallocMem(Buffer.Mem, Buffer.Size);
     Buffer.Write := @Buffer.Mem[Index];
   end;
 end;
 
-procedure TTools.TStringBuffer.Write(const Text: PChar; const Length: Integer);
+procedure TTools.TStringBuffer.Write(const Text: string);
 var
   Size: Integer;
 begin
-  Size := Length * SizeOf(Text[0]);
+  Size := System.Length(Text) * SizeOf(Text[1]);
 
   if (Size > 0) then
   begin
     Resize(Size);
 
-    MoveMemory(Buffer.Write, Text, Size);
-    Buffer.Write := @Buffer.Write[Length];
+    MoveMemory(Buffer.Write, PChar(Text), Size);
+    Buffer.Write := @Buffer.Write[System.Length(Text)];
   end;
-end;
-
-procedure TTools.TStringBuffer.Write(const Text: string);
-begin
-  Write(PChar(Text), Length(Text))
-end;
-
-procedure TTools.TStringBuffer.WriteSQLBinaryValue(const Data: Pointer; const Size: Integer; const ODBCEncoding: Boolean);
-begin
-  if (ODBCEncoding) then
-    Resize((2 + 2 * Size) * SizeOf(Char))
-  else
-    Resize((2 + 2 * Size + 1) * SizeOf(Char));
-
-  SQLEscapeBin(Data, Size, Buffer.Write, Size div SizeOf(Char), ODBCEncoding);
-end;
-
-procedure TTools.TStringBuffer.WriteSQLTextValue(const Value: my_char; const Length: Integer; const CodePage: Cardinal);
-var
-  CPInfoEx: TCpInfoEx;
-  Len: Integer;
-  Size: Integer;
-begin
-  if (not GetCPInfoEx(CodePage, 0, CPInfoEx)) then
-    RaiseLastOSError();
-
-  Size := Integer(CPInfoEx.MaxCharSize) * Length * SizeOf(Char);
-  if (Size > Temp1.Size) then
-  begin
-    Temp1.Size := Size;
-    ReallocMem(Temp1.Mem, Temp1.Size);
-  end;
-  Len := AnsiCharToWideChar(CodePage, Value, Length, Temp1.Mem, Temp1.Size div SizeOf(Char));
-
-  Resize((1 + 2 * Len + 1) * SizeOf(Char));
-  Len := SQLEscape(PChar(Temp1.Mem), Len, PChar(Buffer.Write), (1 + 2 * Len + 1));
-  if (Len = 0) then
-    raise ERangeError.Create(SRangeError);
-  Buffer.Write := @Buffer.Write[Len];
-end;
-
-procedure TTools.TStringBuffer.WriteSQLTextValue(const Value: PChar; const Length: Integer);
-var
-  Len: Integer;
-  Size: Integer;
-begin
-  Len := 1 + 2 * Length + 1;
-  Size := Len * SizeOf(Char);
-  Resize(Size);
-  Len := SQLEscape(Value, Length, PChar(Buffer.Write), Len);
-  if (Len = 0) then
-    raise ERangeError.Create(SRangeError);
-  Buffer.Write := @Buffer.Write[Len];
-end;
-
-procedure TTools.TStringBuffer.WriteSQLValue(const Value: my_char; const Length: Integer; const Quote: Boolean = False);
-label
-  String_, StringL,
-  Finish;
-var
-  Len: Integer;
-  Write: PChar;
-begin
-  if (not Quote) then
-    Len := Length
-  else
-    Len := 1 + Length + 1;
-
-  Resize(Len);
-
-  Write := Buffer.Write; // How can I remove this???
-  asm
-        PUSH ES
-        PUSH ESI
-        PUSH EDI
-
-        PUSH DS                          // string operations uses ES
-        POP ES
-        CLD                              // string operations uses forward direction
-
-        MOV ESI,Value                    // Copy characters from Value
-        MOV EDI,Write                    //   to Write
-        MOV ECX,Length                   // Character count
-
-        CMP Quote,False                  // Quote Value?
-        JE String_                       // No!
-        MOV AX,''''                      // Starting quoter
-        STOSW                            //   into Write
-
-      String_:
-        MOV AH,0
-      StringL:
-        LODSB                            // Load AnsiChar
-        STOSW                            // Store WideChar
-        LOOP StringL                     // Repeat for all characters
-
-        CMP Quote,False                  // Quote Value?
-        JE Finish                        // No!
-        MOV AX,''''                      // Ending quoter
-        STOSW                            //   into Write
-
-      Finish:
-        MOV Write,EDI
-
-        POP EDI
-        POP ESI
-        POP ES
-    end;
-  Buffer.Write := @Buffer.Write[Len];
 end;
 
 { TTools **********************************************************************}
@@ -1558,22 +1412,17 @@ begin
   Structure := False;
 end;
 
-procedure TTImport.DoExecuteSQL(const Item: TItem; var SQL: string);
-var
-  Result: Boolean;
+function TTImport.DoExecuteSQL(const Item: TItem; var SQL: string): Boolean;
 begin
-  while ((Success = daSuccess) and (SQL <> '')) do
+  Result := Client.ExecuteSQL(SQL);
+  if (not Result) then
   begin
-    Result := Client.ExecuteSQL(SQL);
-    if (not Result) then
-    begin
-      Delete(SQL, 1, Client.ExecutedSQLLength);
-      SQL := Trim(SQL);
-      DoError(DatabaseError(Client), ToolsItem(Item), SQL);
-    end
-    else
-      SQL := '';
+    Delete(SQL, 1, Client.ExecutedSQLLength);
+    SQL := Trim(SQL);
+    DoError(DatabaseError(Client), ToolsItem(Item), SQL);
   end
+  else
+    SQL := '';
 end;
 
 procedure TTImport.DoUpdateGUI();
@@ -1719,26 +1568,36 @@ var
   EscapedFieldName: array of string;
   EscapedTableName: string;
   I: Integer;
+  InsertStmtInSQL: Boolean;
   Pipe: THandle;
   Pipename: string;
   SQL: string;
-  SQLThread: TSQLThread;
+  SQLExecuted: TEvent;
+  SQLExecuteLength: Integer;
   SQLValues: TSQLStrings;
-  StringBuffer: TStringBuffer;
-  Values: TStringBuffer;
-  WhereClausel: TStringBuffer;
+  Values: string;
+  WhereClausel: string;
 begin
   BeforeExecuteData(Item);
 
   if (Success = daSuccess) then
   begin
+    SQLExecuted := TEvent.Create(nil, False, False, '');
+
     SQL := '';
     if (Client.DatabaseName <> Database.Name) then
       SQL := SQL + Database.SQLUse() + #13#10;
-    if (Structure and (Client.ServerVersion >= 40000)) then
-      SQL := SQL + 'ALTER TABLE ' + Client.EscapeIdentifier(Table.Name) + ' DISABLE KEYS;' + #13#10;
-    if (SQL <> '') then
-      DoExecuteSQL(Item, SQL);
+    if (Structure) then
+    begin
+      SQL := SQL + 'LOCK TABLES ' + EscapedTableName + ' WRITE;' + #13#10;
+      if (Client.ServerVersion >= 40000) then
+        SQL := SQL + 'ALTER TABLE ' + Client.EscapeIdentifier(Table.Name) + ' DISABLE KEYS;' + #13#10;
+    end;
+    if (Client.Lib.LibraryType <> ltHTTP) then
+      if (Client.ServerVersion < 40011) then
+        SQL := SQL + 'BEGIN;' + #13#10
+      else
+        SQL := SQL + 'START TRANSACTION;' + #13#10;
 
     if ((ImportType <> itUpdate) and Client.DataFileAllowed) then
     begin
@@ -1750,13 +1609,17 @@ begin
         DoError(SysError(), ToolsItem(Item))
       else
       begin
-        SQL := 'START TRANSACTION;' + #13#10;
-        if (Database.Name <> Client.DatabaseName) then
-          SQL := SQL + Database.SQLUse();
         SQL := SQL + SQLLoadDataInfile(Database, ImportType = itReplace, Pipename, Client.Charset, Database.Name, Table.Name, EscapedFieldNames);
-        SQL := SQL + 'COMMIT;' + #13#10;
+        if (Structure) then
+        begin
+          if (Client.ServerVersion >= 40000) then
+            SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
+          SQL := SQL + 'UNLOCK TABLES;' + #13#10;
+        end;
+        if (Client.Lib.LibraryType <> ltHTTP) then
+          SQL := SQL + 'COMMIT;' + #13#10;
 
-        SQLThread := TSQLThread.Create(Client, SQL);
+        Client.SendSQL(SQL, SQLExecuted);
 
         if (ConnectNamedPipe(Pipe, nil)) then
         begin
@@ -1787,7 +1650,7 @@ begin
               DataFileBuffer.Clear();
 
           if (FlushFileBuffers(Pipe) and WriteFile(Pipe, PAnsiChar(DBValues)^, 0, BytesWritten, nil) and FlushFileBuffers(Pipe)) then
-            SQLThread.WaitFor();
+            SQLExecuted.WaitFor(INFINITE);
           DisconnectNamedPipe(Pipe);
 
           if (not Client.ErrorCode = 0) then
@@ -1800,7 +1663,6 @@ begin
           DataFileBuffer.Free();
         end;
 
-        SQLThread.Free();
         CloseHandle(Pipe);
       end;
 
@@ -1825,14 +1687,7 @@ begin
     end
     else
     begin
-      StringBuffer := TStringBuffer.Create(SQLPacketSize);
-      if (Database.Name <> Client.DatabaseName) then
-        StringBuffer.Write(Database.SQLUse());
-      StringBuffer.Write('START TRANSACTION;' + #13#10);
-      StringBuffer.Write('LOCK TABLES ' + Client.EscapeIdentifier(Table.Name) + ' WRITE;' + #13#10);
-
-      Values := TStringBuffer.Create(1024);
-      WhereClausel := TStringBuffer.Create(1024);
+      SQLExecuteLength := 0; InsertStmtInSQL := False;
 
       EscapedTableName := Client.EscapeIdentifier(Table.Name);
       SetLength(EscapedFieldName, Length(Fields));
@@ -1842,69 +1697,67 @@ begin
       SetLength(SQLValues, Length(Fields));
       while ((Success = daSuccess) and GetValues(Item, SQLValues)) do
       begin
-        Values.Clear(); WhereClausel.Clear();
+        Values := ''; WhereClausel := '';
         for I := 0 to Length(Fields) - 1 do
           if (ImportType <> itUpdate) then
           begin
-            if (Values.Size > 0) then Values.Write(',');
-            Values.Write(SQLValues[I]);
+            if (Values <> '') then Values := Values + ',';
+            Values := Values + SQLValues[I];
           end
           else if (not Fields[I].InPrimaryKey) then
           begin
-            if (Values.Size > 0) then Values.Write(',');
-            Values.Write(EscapedFieldName[I]);
-            Values.Write('=');
-            Values.Write(SQLValues[I]);
+            if (Values <> '') then Values := Values + ',';
+            Values := Values + EscapedFieldName[I] + '=' + SQLValues[I];
           end
           else
           begin
-            if (WhereClausel.Size > 0) then WhereClausel.Write(' AND ');
-            WhereClausel.Write(EscapedFieldName[I]);
-            WhereClausel.Write('=');
-            WhereClausel.Write(SQLValues[I]);
+            if (WhereClausel <> '') then WhereClausel := WhereClausel + ' AND ';
+            WhereClausel := WhereClausel + EscapedFieldName[I] + '=' + SQLValues[I];
           end;
 
         if (ImportType = itUpdate) then
         begin
-          StringBuffer.Write('UPDATE ');
-          StringBuffer.Write(EscapedTableName);
-          StringBuffer.Write(' SET ');
-          StringBuffer.Write(PChar(Values.Data), Values.Size div SizeOf(Char));
-          StringBuffer.Write(' WHERE ');
-          StringBuffer.Write(PChar(WhereClausel.Data), WhereClausel.Size div SizeOf(Char));
-          StringBuffer.Write(';' + #13#10);
+          if (not InsertStmtInSQL) then
+            SQL := SQL + ';' + #13#10;
+          SQL := SQL + 'UPDATE ' + EscapedTableName + ' SET ' + Values + ' WHERE ' + WhereClausel + ';' + #13#10;
+          InsertStmtInSQL := False;
         end
-        else if (StringBuffer.Size = 0) then
+        else if (not InsertStmtInSQL) then
         begin
           if (ImportType = itReplace) then
-            StringBuffer.Write('REPLACE INTO ')
+            SQL := SQL + 'REPLACE INTO ' + EscapedTableName
           else
-            StringBuffer.Write('INSERT INTO ');
-          StringBuffer.Write(EscapedTableName);
+            SQL := SQL + 'INSERT INTO ' + EscapedTableName;
           if (EscapedFieldNames <> '') then
-          begin
-            StringBuffer.Write(' (');
-            StringBuffer.Write(EscapedFieldNames);
-            StringBuffer.Write(')');
-          end;
-          StringBuffer.Write(' VALUES (');
-          StringBuffer.Write(PChar(Values.Data), Values.Size div SizeOf(Char));
-          StringBuffer.Write(')');
+            SQL := SQL + ' (' + EscapedFieldNames + ')';
+          SQL := SQL + ' VALUES (' + Values + ')';
+          InsertStmtInSQL := True;
         end
         else
-        begin
-          StringBuffer.Write(',(');
-          StringBuffer.Write(PChar(Values.Data), Values.Size div SizeOf(Char));
-          StringBuffer.Write(')');
-        end;
+          SQL := SQL + ',(' + Values + ')';
 
-        if ((StringBuffer.Size > 0) and ((ImportType = itUpdate) and not Client.MultiStatements or (StringBuffer.Size >= SQLPacketSize))) then
+        if ((ImportType = itUpdate) and not Client.MultiStatements or (Length(SQL) - SQLExecuteLength >= SQLPacketSize)) then
         begin
-          if (ImportType = itUpdate) then
-            StringBuffer.Write(';' + #13#10);
-          SQL := StringBuffer.Read();
-          DoExecuteSQL(Item, SQL);
-          StringBuffer.Write(SQL);
+          if (InsertStmtInSQL) then
+          begin
+            SQL := SQL + ';' + #13#10;
+            InsertStmtInSQL := False;
+          end;
+
+          if (SQLExecuteLength > 0) then
+          begin
+            SQLExecuted.WaitFor(INFINITE);
+            Delete(SQL, 1, Client.ExecutedSQLLength);
+            SQLExecuteLength := 0;
+            if (Client.ErrorCode <> 0) then
+              DoError(DatabaseError(Client), ToolsItem(Item), SQL);
+          end;
+
+          if (SQL <> '') then
+          begin
+            Client.SendSQL(SQL, SQLExecuted);
+            SQLExecuteLength := Length(SQL);
+          end;
         end;
 
         Inc(Item.RecordsDone);
@@ -1915,33 +1768,41 @@ begin
       end;
       SetLength(SQLValues, 0);
 
-      if (Success = daSuccess) then
+      if ((Success = daSuccess) and (SQLExecuteLength > 0)) then
       begin
-        if ((ImportType <> itUpdate) and (StringBuffer.Size > 0)) then
-          StringBuffer.Write(';' + #13#10);
-        StringBuffer.Write('UNLOCK TABLES;' + #13#10);
-        StringBuffer.Write('COMMIT;' + #13#10);
-
-        SQL := StringBuffer.Read();
-        DoExecuteSQL(Item, SQL);
-      end
-      else
-      begin
-        SQL := 'UNLOCK TABLES;' + #13#10;
-        SQL := SQL + 'ROLLBACK;' + #13#10;
-        DoExecuteSQL(Item, SQL);
+        SQLExecuted.WaitFor(INFINITE);
+        Delete(SQL, 1, Client.ExecutedSQLLength);
+        if (Client.ErrorCode <> 0) then
+          DoError(DatabaseError(Client), ToolsItem(Item), SQL);
       end;
 
-      StringBuffer.Free();
-      Values.Free();
-      WhereClausel.Free();
+      if (InsertStmtInSQL) then
+        SQL := SQL + ';' + #13#10;
+      if (Structure) then
+      begin
+        if (Client.ServerVersion >= 40000) then
+          SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
+        SQL := SQL + 'UNLOCK TABLES;' + #13#10;
+      end;
+      if (Client.Lib.LibraryType <> ltHTTP) then
+        SQL := SQL + 'COMMIT;' + #13#10;
+
+      while ((Success = daSuccess) and not DoExecuteSQL(Item, SQL)) do
+        DoError(DatabaseError(Client), ToolsItem(Item), SQL);
+
+      SQLExecuted.Free();
     end;
 
-    SQL := '';
-    if (Structure and (Client.ServerVersion >= 40000)) then
-      SQL := SQL + 'ALTER TABLE ' + Client.EscapeIdentifier(Table.Name) + ' ENABLE KEYS;' + #13#10;
-    if (SQL <> '') then
+    if (Success <> daSuccess) then
+    begin
+      SQL := '';
+      if (Client.ServerVersion >= 40000) then
+        SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
+      SQL := SQL + 'UNLOCK TABLES;' + #13#10;
+      if (Client.Lib.LibraryType <> ltHTTP) then
+        SQL := SQL + 'ROLLBACK;' + #13#10;
       DoExecuteSQL(Item, SQL);
+    end;
   end;
 
   AfterExecuteData(Item);
@@ -2224,7 +2085,8 @@ begin
   else if ((Success = daSuccess) and Assigned(Database) and (Client.DatabaseName <> Database.Name)) then
   begin
     SQL := Database.SQLUse();
-    DoExecuteSQL(Items[0], SQL);
+    while ((Success = daSuccess) and not DoExecuteSQL(Items[0], SQL)) do
+      DoError(DatabaseError(Client), ToolsItem(Items[0]), SQL);
   end;
 
   Index := 1; Eof := False;
@@ -2259,7 +2121,8 @@ begin
       else
       begin
         SQL := Copy(FileContent.Str, 1, Index - 1);
-        DoExecuteSQL(Items[0], SQL);
+        while ((Success = daSuccess) and not DoExecuteSQL(Items[0], SQL)) do
+          DoError(DatabaseError(Client), ToolsItem(Items[0]), SQL);
       end;
       Delete(FileContent.Str, 1, Index - 1); Index := 1;
 
@@ -2290,7 +2153,8 @@ begin
     else
     begin
       SQL := FileContent.Str;
-      DoExecuteSQL(Items[0], SQL);
+      while ((Success = daSuccess) and not DoExecuteSQL(Items[0], SQL)) do
+        DoError(DatabaseError(Client), ToolsItem(Items[0]), SQL);
     end;
 
   Close();
@@ -4809,7 +4673,7 @@ begin
     else if (Fields[I].DataType in BinaryDataTypes) then
       Content := Content + CSVEscape(DataSet.LibRow^[Fields[I].FieldNo - 1], DataSet.LibLengths^[Fields[I].FieldNo - 1], Quoter, QuoteStringValues)
     else
-      Content := Content + CSVEscape(DataSet.GetAsString(Fields[I].FieldNo), Quoter, (BitField(Fields[I]) or (Fields[I].DataType in UnquotedDataTypes)) and QuoteValues or not (Fields[I].DataType in UnquotedDataTypes) and QuoteStringValues);
+      Content := Content + CSVEscape(DataSet.GetAsString(Fields[I].FieldNo), Quoter, (BitField(Fields[I]) or (Fields[I].DataType in NotQuotedDataTypes)) and QuoteValues or not (Fields[I].DataType in NotQuotedDataTypes) and QuoteStringValues);
   end;
   WriteContent(Content + #13#10);
 end;
@@ -6587,7 +6451,7 @@ begin
                   SQL := SQL + Client.EscapeIdentifier(Fields[I].FieldName) + '=';
                   if (BitField(Fields[I])) then
                     SQL := SQL + 'b''' + Fields[I].AsString + ''''
-                  else if (Fields[I].DataType in UnquotedDataTypes) then
+                  else if (Fields[I].DataType in NotQuotedDataTypes) then
                     SQL := SQL + NewValue
                   else
                     SQL := SQL + SQLEscape(NewValue);
@@ -6614,7 +6478,7 @@ begin
                     SQL := SQL + 'NULL'
                   else if (BitField(Fields[I])) then
                     SQL := SQL + 'b''' + Fields[I].AsString + ''''
-                  else if (Fields[I].DataType in UnquotedDataTypes + [ftTimestamp]) then
+                  else if (Fields[I].DataType in NotQuotedDataTypes + [ftTimestamp]) then
                     SQL := SQL + DataSet.GetAsString(Fields[I].FieldNo)
                   else if (Fields[I].DataType in [ftDate, ftDateTime, ftTime]) then
                     SQL := SQL + '''' + DataSet.GetAsString(Fields[I].FieldNo) + ''''
@@ -7162,7 +7026,7 @@ var
   FieldInfo: TFieldInfo;
   FilenameP: array [0 .. MAX_PATH] of Char;
   I: Integer;
-  InsertStmtInStringBuffer: Boolean;
+  InsertStmtInSQL: Boolean;
   J: Integer;
   LibLengths: MYSQL_LENGTHS;
   LibRow: MYSQL_ROW;
@@ -7175,8 +7039,9 @@ var
   SourceValues: string;
   SQL: string;
   SQLExecuted: TEvent;
-  StringBuffer: TStringBuffer;
+  SQLExecuteLength: Integer;
   WrittenSize: Cardinal;
+  Values: string;
 begin
   SourceValues := ''; FilenameP[0] := #0;
   SourceDatabase := Source.Client.DatabaseByName(Source.DatabaseName);
@@ -7205,6 +7070,8 @@ begin
 
       if ((Success = daSuccess) and not SourceDataSet.IsEmpty()) then
       begin
+        SQLExecuted := TEvent.Create(nil, False, False, '');
+
         if (Destination.Client.DataFileAllowed) then
         begin
           Pipename := '\\.\pipe\' + LoadStr(1000);
@@ -7216,7 +7083,11 @@ begin
           else
           begin
             SQL := '';
-            SQL := SQL + 'START TRANSACTION;' + #13#10;
+            if (Destination.Client.Lib.LibraryType <> ltHTTP) then
+              if (Destination.Client.ServerVersion < 40011) then
+                SQL := SQL + 'BEGIN;' + #13#10
+              else
+                SQL := SQL + 'START TRANSACTION;' + #13#10;
             if (Destination.Client.ServerVersion >= 40000) then
               SQL := SQL + 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' DISABLE KEYS;' + #13#10;
             if (DestinationDatabase.Name <> Destination.Client.DatabaseName) then
@@ -7224,9 +7095,9 @@ begin
             SQL := SQL + SQLLoadDataInfile(DestinationDatabase, False, Pipename, Destination.Client.Charset, DestinationDatabase.Name, DestinationTable.Name, '');
             if (Destination.Client.ServerVersion >= 40000) then
               SQL := SQL + 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' ENABLE KEYS;' + #13#10;
-            SQL := SQL + 'COMMIT;' + #13#10;
+            if (Destination.Client.Lib.LibraryType <> ltHTTP) then
+              SQL := SQL + 'COMMIT;' + #13#10;
 
-            SQLExecuted := TEvent.Create(nil, False, False, '');
             Destination.Client.SendSQL(SQL, SQLExecuted);
 
             if (ConnectNamedPipe(Pipe, nil)) then
@@ -7286,92 +7157,76 @@ begin
               DisconnectNamedPipe(Pipe);
 
               if (Destination.Client.ErrorCode <> 0) then
-              begin
                 DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
-                if ((0 < Destination.Client.ExecutedStmts) and (Destination.Client.ExecutedStmts < 3)) then
-                  Destination.Client.ExecuteSQL('ROLLBACK;');
-              end;
 
               DataFileBuffer.Free();
             end;
 
-            SQLExecuted.Free();
             CloseHandle(Pipe);
           end;
         end
         else
         begin
-          SQL := '';
-          SQLExecuted := TEvent.Create(nil, False, False, '');
+          SQL := ''; SQLExecuteLength := 0;
 
-          StringBuffer := TStringBuffer.Create(2 * SQLPacketSize);
-          InsertStmtInStringBuffer := False;
+          InsertStmtInSQL := False;
 
           EscapedTableName := Destination.Client.EscapeIdentifier(DestinationTable.Name);
           SetLength(EscapedFieldName, DestinationTable.Fields.Count);
           for I := 0 to DestinationTable.Fields.Count - 1 do
              EscapedFieldName[I] := Destination.Client.EscapeIdentifier(DestinationTable.Fields[I].Name);
 
-          StringBuffer.Write('START TRANSACTION;' + #13#10);
-          StringBuffer.Write('LOCK TABLES ' + EscapedTableName + ' WRITE;' + #13#10);
+          if (Destination.Client.Lib.LibraryType <> ltHTTP) then
+            if (Destination.Client.ServerVersion < 40011) then
+              SQL := SQL + 'BEGIN;' + #13#10
+            else
+              SQL := SQL + 'START TRANSACTION;' + #13#10;
+          SQL := SQL + 'LOCK TABLES ' + EscapedTableName + ' WRITE;' + #13#10;
           if (Destination.Client.ServerVersion >= 40000) then
-            StringBuffer.Write('ALTER TABLE ' + EscapedTableName + ' DISABLE KEYS;' + #13#10);
+            SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' DISABLE KEYS;' + #13#10;
 
           if (DestinationDatabase.Name <> Destination.Client.DatabaseName) then
-            StringBuffer.Write(DestinationDatabase.SQLUse());
+            SQL := SQL + DestinationDatabase.SQLUse();
 
           repeat
-            LibLengths := SourceDataSet.LibLengths;
-            LibRow := SourceDataSet.LibRow;
-
-            if (not InsertStmtInStringBuffer) then
+            if (not InsertStmtInSQL) then
             begin
-              InsertStmtInStringBuffer := True;
+              InsertStmtInSQL := True;
 
-              StringBuffer.Write('INSERT INTO ');
-              StringBuffer.Write(EscapedTableName);
-              StringBuffer.Write(' VALUES (');
+              SQL := SQL + 'INSERT INTO ' + EscapedTableName + ' VALUES (';
             end
             else
-              StringBuffer.Write(',(');
-            for I := 0 to DestinationTable.Fields.Count - 1 do
+              SQL := SQL + ',(';
+            Values := '';
+            for I := 0 to SourceDataSet.FieldCount - 1 do
             begin
-              DestinationField := DestinationTable.Fields[I];
-              if (I > 0) then StringBuffer.Write(',');
-              if (not Assigned(LibRow^[I])) then
-                StringBuffer.Write(PChar('NULL'), 4)
-              else if (BitField(SourceDataSet.Fields[I])) then
-                StringBuffer.Write('b''' + IntToBitString(UInt64(LibRow^[I]^)) + '''')
-              else if (DestinationField.FieldType in BinaryFieldTypes) then
-                StringBuffer.WriteSQLBinaryValue(LibRow^[I], LibLengths^[I], Source.Client.ServerVersion <= 40000)
-              else if (DestinationField.FieldType in TextFieldTypes) then
-                StringBuffer.WriteSQLTextValue(LibRow^[I], LibLengths^[I], Source.Client.CodePage)
-              else
-                StringBuffer.WriteSQLValue(LibRow^[I], LibLengths^[I], not (DestinationField.FieldType in NotQuotedFieldTypes));
+              if (I > 0) then Values := Values + ',';
+              Values := Values + SourceDataSet.SQLFieldValue(SourceDataSet.Fields[I]);
             end;
-            StringBuffer.Write(')');
+            SQL := SQL + Values + ')';
 
-            if (StringBuffer.Size >= SQLPacketSize) then
+            if (Length(SQL) - SQLExecuteLength >= SQLPacketSize) then
             begin
-              if (InsertStmtInStringBuffer) then
+              if (InsertStmtInSQL) then
               begin
-                StringBuffer.Write(';' + #13#10);
-                InsertStmtInStringBuffer := False;
+                SQL := SQL + ';' + #13#10;
+                InsertStmtInSQL := False;
               end;
 
-              if (SQL = '') then
-                SQL := StringBuffer.Read()
-              else
+              if (SQLExecuteLength > 0) then
               begin
                 SQLExecuted.WaitFor(INFINITE);
+                Delete(SQL, 1, Destination.Client.ExecutedSQLLength);
+                SQLExecuteLength := 0;
                 if (Destination.Client.ErrorCode <> 0) then
-                  DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL)
-                else
-                  SQL := StringBuffer.Read();
+                  DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
               end;
 
               if (SQL <> '') then
+              begin
                 Destination.Client.SendSQL(SQL, SQLExecuted);
+                SQLExecuteLength := Length(SQL);
+              end;
             end;
 
             Inc(Destination.RecordsDone);
@@ -7385,45 +7240,38 @@ begin
             end;
           until ((Success <> daSuccess) or not SourceDataSet.FindNext());
 
-          if (InsertStmtInStringBuffer) then
-            StringBuffer.Write(';' + #13#10);
+          if ((Success = daSuccess) and (SQLExecuteLength > 0)) then
+          begin
+            SQLExecuted.WaitFor(INFINITE);
+            Delete(SQL, 1, Destination.Client.ExecutedSQLLength);
+            if (Destination.Client.ErrorCode <> 0) then
+              DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
+          end;
+
+          if (InsertStmtInSQL) then
+            SQL := SQL + ';' + #13#10;
           if (Destination.Client.ServerVersion >= 40000) then
-            StringBuffer.Write('ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10);
-          StringBuffer.Write('UNLOCK TABLES;' + #13#10);
-          StringBuffer.Write('COMMIT;' + #13#10);
+            SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
+          SQL := SQL + 'UNLOCK TABLES;' + #13#10;
+          if (Destination.Client.Lib.LibraryType <> ltHTTP) then
+            SQL := SQL + 'COMMIT;' + #13#10;
 
-          while ((Success = daSuccess) and ((SQL <> '') or (StringBuffer.Size > 0))) do
-          begin
-            if (SQL = '') then
-              SQL := StringBuffer.Read()
-            else
-            begin
-              SQLExecuted.WaitFor(INFINITE);
-              if (Destination.Client.ErrorCode <> 0) then
-                DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL)
-              else
-                SQL := StringBuffer.Read();
-              if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
-                Success := daAbort;
-            end;
-
-            if ((Success = daSuccess) and (SQL <> '')) then
-              Destination.Client.SendSQL(SQL, SQLExecuted);
-          end;
-
-          SQLExecuted.Free();
-          StringBuffer.Free();
-
-          if (Success <> daSuccess) then
-          begin
-            SQL := '';
-            if (Destination.Client.ServerVersion >= 40000) then
-              SQL := SQL + 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' ENABLE KEYS;' + #13#10;
-            SQL := SQL + 'UNLOCK TABLES;' + #13#10;
-            SQL := SQL + 'ROLLBACK;' + #13#10;
-            Destination.Client.ExecuteSQL(SQL);
-          end;
+          while ((Success = daSuccess) and not DoExecuteSQL(TElement(Elements[0]^).Destination, Destination.Client, SQL)) do
+            DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
         end;
+
+        if (Success <> daSuccess) then
+        begin
+          SQL := '';
+          if (Destination.Client.ServerVersion >= 40000) then
+            SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
+          SQL := SQL + 'UNLOCK TABLES;' + #13#10;
+          if (Destination.Client.Lib.LibraryType <> ltHTTP) then
+            SQL := SQL + 'ROLLBACK;' + #13#10;
+          DoExecuteSQL(TElement(Elements[0]^).Destination, Destination.Client, SQL);
+        end;
+
+        SQLExecuted.Free();
       end;
 
       if (Success <> daAbort) then

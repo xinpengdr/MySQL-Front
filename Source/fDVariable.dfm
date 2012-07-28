@@ -27,7 +27,7 @@ object DVariable: TDVariable
     Top = 8
     Width = 233
     Height = 89
-    Cursor = crSQLWait
+    Cursor = crHourGlass
     Anchors = [akLeft, akTop, akRight, akBottom]
     BevelOuter = bvNone
     Caption = 'PSQLWait'

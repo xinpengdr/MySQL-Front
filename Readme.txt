@@ -68,8 +68,7 @@ IDE with the project manager (Menu: View -> Project Manager). For each
 package, you have to make a right click -> Install.
 
 To get detailed memory leak informations while debugging, you have to store
-FastMM_FullDebugMode.dll inside the Temp folder. This .dll is inside the
-Source\FastMM folder.
+FastMM_FullDebugMode.dll inside the Temp folder.
 
 
 Building the setup program:

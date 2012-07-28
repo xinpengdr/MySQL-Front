@@ -1734,7 +1734,6 @@ end;
 procedure TWWindow.EurekaLogCustomDataRequest(
   EurekaExceptionRecord: TEurekaExceptionRecord; DataFields: TStrings);
 var
-  Frequency: Int64;
   I: Integer;
   Log: TStringList;
 begin

@@ -60,7 +60,7 @@ object DEvent: TDEvent
     Top = 8
     Width = 381
     Height = 483
-    Cursor = crSQLWait
+    Cursor = crHourGlass
     Anchors = [akLeft, akTop, akRight, akBottom]
     BevelOuter = bvNone
     Caption = 'PSQLWait'

@@ -28,7 +28,7 @@ object DHost: TDHost
     Top = 8
     Width = 321
     Height = 241
-    Cursor = crSQLWait
+    Cursor = crHourGlass
     Anchors = [akLeft, akTop, akRight, akBottom]
     BevelOuter = bvNone
     Caption = 'PSQLWait'

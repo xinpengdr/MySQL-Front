@@ -1681,7 +1681,9 @@ end;
 function TFClient.TTableDesktop.GetLimited(): Boolean;
 begin
   Result := True;
-  if (Assigned(XML) and Assigned(XMLNode(XML, 'limit'))) then
+  if ((Table is TCBaseTable) and TCBaseTable(Table).ValidStatus) then
+    Result := (TCBaseTable(Table).Rows > 2 * DefaultLimit) and (DefaultLimitSize div TCBaseTable(Table).AvgRowLength < 2 * DefaultLimit)
+  else if (Assigned(XML) and Assigned(XMLNode(XML, 'limit'))) then
     TryStrToBool(XMLNode(XML, 'limit').Attributes['used'], Result);
 end;
 
@@ -9651,7 +9653,7 @@ begin
   Success := True;
   case (Filters[FilterIndex].ValueType) of
     0: Value := '';
-    1: if (ActiveDBGrid.SelectedField.DataType in UnquotedDataTypes) then
+    1: if (ActiveDBGrid.SelectedField.DataType in NotQuotedDataTypes) then
          Value := ActiveDBGrid.SelectedField.DisplayText
        else
          Value := SQLEscape(ActiveDBGrid.SelectedField.DisplayText);
@@ -9664,7 +9666,7 @@ begin
           DQuickFilter.Data := '%' + ActiveDBGrid.SelectedField.DisplayText + '%';
         Success := DQuickFilter.Execute();
         if (Success) then
-          if (ActiveDBGrid.SelectedField.DataType in UnquotedDataTypes) then
+          if (ActiveDBGrid.SelectedField.DataType in NotQuotedDataTypes) then
             Value := DQuickFilter.Data
           else
             Value := SQLEscape(DQuickFilter.Data);
@@ -11684,7 +11686,7 @@ begin
 
       if (not ActiveDBGrid.SelectedField.IsNull) then
       begin
-        if (ActiveDBGrid.SelectedField.DataType in UnquotedDataTypes) then
+        if (ActiveDBGrid.SelectedField.DataType in NotQuotedDataTypes) then
           Value := ActiveDBGrid.SelectedField.DisplayText
         else
           Value := SQLEscape(ActiveDBGrid.SelectedField.DisplayText);
@@ -11697,7 +11699,7 @@ begin
         AddFilterMenuItem(ActiveDBGrid.SelectedField, '', -1);
       end;
 
-      if (ActiveDBGrid.SelectedField.DataType in UnquotedDataTypes) then
+      if (ActiveDBGrid.SelectedField.DataType in NotQuotedDataTypes) then
         Value := '...'
       else
         Value := SQLEscape('...');

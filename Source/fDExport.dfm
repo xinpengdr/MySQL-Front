@@ -27,7 +27,7 @@ object DExport: TDExport
     Top = 8
     Width = 341
     Height = 281
-    Cursor = crSQLWait
+    Cursor = crHourGlass
     Anchors = [akLeft, akTop, akRight, akBottom]
     BevelOuter = bvNone
     Caption = 'PSQLWait'
