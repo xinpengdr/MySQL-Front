@@ -1339,12 +1339,15 @@ label
   String_, StringL,
   Finish;
 var
+  Len: Integer;
   Write: PChar;
 begin
   if (not Quote) then
-    Resize(Length)
+    Len := Length
   else
-    Resize(1 + Length + 1);
+    Len := 1 + Length + 1;
+
+  Resize(Len);
 
   Write := Buffer.Write; // How can I remove this???
   asm
@@ -1384,7 +1387,7 @@ begin
         POP ESI
         POP ES
     end;
-  Buffer.Write := @Buffer.Write[Length];
+  Buffer.Write := @Buffer.Write[Len];
 end;
 
 { TTools **********************************************************************}
@@ -1446,7 +1449,7 @@ begin
 
   FErrorCount := 0;
 
-  FUserAbort := TEvent.Create(nil, False, False, '');
+  FUserAbort := TEvent.Create(nil, True, False, '');
   CriticalSection := TCriticalSection.Create();
 end;
 
@@ -6089,20 +6092,21 @@ begin
   SQL := 'CREATE TABLE "' + TableName + '" (';
   for I := 0 to Length(Fields) - 1 do
   begin
-    if (I > 0) then
-      SQL := SQL + ',';
+    if (I > 0) then SQL := SQL + ',';
+
     if (Length(DestinationFields) > 0) then
       SQL := SQL + '"' + DestinationFields[I].Name + '" '
     else if (Assigned(Table)) then
       SQL := SQL + '"' + Table.Fields[I].Name + '" '
     else
       SQL := SQL + '"' + Fields[I].DisplayName + '" ';
+
     if (BitField(Fields[I])) then
       SQL := SQL + 'BIT'
     else
     case (Fields[I].DataType) of
       ftString:
-        SQL := SQL + 'BINARY';
+        SQL := SQL + 'STRING';
       ftShortInt,
       ftByte,
       ftSmallInt,
@@ -6122,10 +6126,7 @@ begin
       ftWideString,
       ftWideMemo,
       ftBlob:
-        if (Fields[I].Size <= 255) then
-          SQL := SQL + 'STRING'
-        else
-          SQL := SQL + 'LONGTEXT';
+        SQL := SQL + 'STRING';
       else
         raise EDatabaseError.CreateFMT(SUnknownFieldType + ' (%d)', [Fields[I].DisplayName, Ord(Fields[I].DataType)]);
     end;
@@ -7154,7 +7155,6 @@ var
   DataFileBuffer: TDataFileBuffer;
   DestinationDatabase: TCDatabase;
   DestinationField: TCTableField;
-  DestinationPrimaryIndexFieldNames: string;
   DestinationTable: TCBaseTable;
   EscapedFieldName: array of string;
   EscapedTableName: string;
@@ -7174,7 +7174,7 @@ var
   SourceTable: TCBaseTable;
   SourceValues: string;
   SQL: string;
-  SQLThread: TSQLThread;
+  SQLExecuted: TEvent;
   StringBuffer: TStringBuffer;
   WrittenSize: Cardinal;
 begin
@@ -7196,6 +7196,12 @@ begin
     begin
       SourceDataSet := TMySQLQuery.Create(nil);
       SourceDataSet.Open(DataHandle);
+      while ((Success = daSuccess) and not SourceDataSet.Active) do
+      begin
+        SourceDataSet.Open();
+        if (Source.Client.ErrorCode > 0) then
+          DoError(DatabaseError(Source.Client), ToolsItem(TElement(Elements[0]^).Source), SQL);
+      end;
 
       if ((Success = daSuccess) and not SourceDataSet.IsEmpty()) then
       begin
@@ -7220,7 +7226,8 @@ begin
               SQL := SQL + 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' ENABLE KEYS;' + #13#10;
             SQL := SQL + 'COMMIT;' + #13#10;
 
-            SQLThread := TSQLThread.Create(Destination.Client, SQL);
+            SQLExecuted := TEvent.Create(nil, False, False, '');
+            Destination.Client.SendSQL(SQL, SQLExecuted);
 
             if (ConnectNamedPipe(Pipe, nil)) then
             begin
@@ -7273,7 +7280,7 @@ begin
               else
               begin
                 DoUpdateGUI();
-                SQLThread.WaitFor();
+                SQLExecuted.WaitFor(INFINITE);
               end;
 
               DisconnectNamedPipe(Pipe);
@@ -7288,19 +7295,14 @@ begin
               DataFileBuffer.Free();
             end;
 
-            SQLThread.Free();
+            SQLExecuted.Free();
             CloseHandle(Pipe);
           end;
         end
         else
         begin
-          DestinationPrimaryIndexFieldNames := '';
-          for I := 0 to DestinationTable.Fields.Count - 1 do
-            if (DestinationTable.Fields[I].InPrimaryKey) then
-            begin
-              if (DestinationPrimaryIndexFieldNames <> '') then DestinationPrimaryIndexFieldNames := DestinationPrimaryIndexFieldNames + ';';
-              DestinationPrimaryIndexFieldNames := DestinationPrimaryIndexFieldNames + DestinationTable.Fields[I].Name;
-            end;
+          SQL := '';
+          SQLExecuted := TEvent.Create(nil, False, False, '');
 
           StringBuffer := TStringBuffer.Create(2 * SQLPacketSize);
           InsertStmtInStringBuffer := False;
@@ -7356,17 +7358,31 @@ begin
                 StringBuffer.Write(';' + #13#10);
                 InsertStmtInStringBuffer := False;
               end;
-              SQL := StringBuffer.Read();
-              while ((Success = daSuccess) and not DoExecuteSQL(Destination, Destination.Client, SQL)) do
-                DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
-              StringBuffer.Write(SQL);
+
+              if (SQL = '') then
+                SQL := StringBuffer.Read()
+              else
+              begin
+                SQLExecuted.WaitFor(INFINITE);
+                if (Destination.Client.ErrorCode <> 0) then
+                  DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL)
+                else
+                  SQL := StringBuffer.Read();
+              end;
+
+              if (SQL <> '') then
+                Destination.Client.SendSQL(SQL, SQLExecuted);
             end;
 
             Inc(Destination.RecordsDone);
             if (Destination.RecordsDone mod 100 = 0) then DoUpdateGUI();
 
             if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
+            begin
+              if (SQL <> '') then
+                Destination.Client.Terminate();
               Success := daAbort;
+            end;
           until ((Success <> daSuccess) or not SourceDataSet.FindNext());
 
           if (InsertStmtInStringBuffer) then
@@ -7375,11 +7391,27 @@ begin
             StringBuffer.Write('ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10);
           StringBuffer.Write('UNLOCK TABLES;' + #13#10);
           StringBuffer.Write('COMMIT;' + #13#10);
-          SQL := StringBuffer.Read();
-          while ((Success = daSuccess) and (SQL <> '') and not DoExecuteSQL(Destination, Destination.Client, SQL)) do
-            DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
 
+          while ((Success = daSuccess) and ((SQL <> '') or (StringBuffer.Size > 0))) do
+          begin
+            if (SQL = '') then
+              SQL := StringBuffer.Read()
+            else
+            begin
+              SQLExecuted.WaitFor(INFINITE);
+              if (Destination.Client.ErrorCode <> 0) then
+                DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL)
+              else
+                SQL := StringBuffer.Read();
+              if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
+                Success := daAbort;
+            end;
 
+            if ((Success = daSuccess) and (SQL <> '')) then
+              Destination.Client.SendSQL(SQL, SQLExecuted);
+          end;
+
+          SQLExecuted.Free();
           StringBuffer.Free();
 
           if (Success <> daSuccess) then

@@ -164,6 +164,7 @@ type
       TMode = (smSQL, smDataHandle, smDataSet);
       TState = (ssClose, ssConnecting, ssReady, ssExecutingSQL, ssResult, ssReceivingResult, ssNextResult, ssCancel, ssDisconnecting, ssError);
     private
+      Done: TEvent;
       FConnection: TMySQLConnection;
       RunExecute: TEvent;
       SynchronizeStarted: TEvent;
@@ -284,7 +285,7 @@ type
     procedure DoDisconnect(); override;
     procedure DoError(const AErrorCode: Integer; const AErrorMessage: string); virtual;
     function ErrorMsg(const AHandle: MySQLConsts.MYSQL): string; virtual;
-    function ExecuteSQL(const Mode: TSynchroThread.TMode; const Synchron: Boolean; const SQL: string; const OnResult: TResultEvent = nil): Boolean; overload; virtual;
+    function ExecuteSQL(const Mode: TSynchroThread.TMode; const Synchron: Boolean; const SQL: string; const OnResult: TResultEvent = nil; const Done: TEvent = nil): Boolean; overload; virtual;
     function GetAutoCommit(): Boolean; virtual;
     function GetConnected(): Boolean; override;
     function GetInsertId(): my_ulonglong; virtual;
@@ -344,7 +345,8 @@ type
     function local_infile_read(const local_infile: Plocal_infile; buf: my_char; const buf_len: my_uint): my_int; virtual;
     function NextResult(const DataHandle: TDataResult): Boolean; virtual;
     procedure RollbackTransaction(); virtual;
-    function SendSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean; virtual;
+    function SendSQL(const SQL: string; const Done: TEvent): Boolean; overload; virtual;
+    function SendSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean; overload; virtual;
     function Shutdown(): Boolean; virtual;
     function SQLUse(const DatabaseName: string): string; virtual;
     procedure StartTransaction(); virtual;
@@ -2274,7 +2276,7 @@ begin
 end;
 
 function TMySQLConnection.ExecuteSQL(const Mode: TSynchroThread.TMode; const Synchron: Boolean;
-  const SQL: string; const OnResult: TResultEvent = nil): Boolean;
+  const SQL: string; const OnResult: TResultEvent = nil; const Done: TEvent = nil): Boolean;
 var
   AlterTableAfterCreateTable: Boolean;
   AlterTableAfterCreateTableFix: Boolean;
@@ -2284,12 +2286,14 @@ var
   OldStmt: Integer;
   PacketComplete: (pcNo, pcExclusiveCurrentStmt, pcInclusiveCurrentStmt, pcStmtTooLarge);
   ProcedureName: string;
+  RunSynchron: Boolean;
   S: string;
   SetNames: Boolean;
   SQLPacketIndex: Integer;
   StmtLength: Integer;
 begin
   Assert(SQL <> '');
+  Assert(not Assigned(Done) or (Mode = smSQL));
 
   if (InOnResult) then
     raise Exception.Create(SOutOfSync + ' (in OnResult): ' + CommandText);
@@ -2304,6 +2308,7 @@ begin
   SynchroThread.DataSet := nil;
   SynchroThread.Mode := Mode;
   SynchroThread.OnResult := OnResult;
+  SynchroThread.Done := Done;
   SynchroThread.SQL := SQL;
   SynchroThread.SQLStmtLengths.Clear();
   SynchroThread.SQLStmtsInPackets.Clear();
@@ -2433,11 +2438,12 @@ begin
     end
     else
     begin
-      SynchroThread.RunAction(ssExecutingSQL, Synchron or not UseSynchroThread());
-      if ((Synchron or not UseSynchroThread()) and Assigned(SynchroThread.LibHandle)) then
-        Result := ErrorCode = 0
+      RunSynchron := Synchron or not UseSynchroThread() and not Assigned(Done);
+      SynchroThread.RunAction(ssExecutingSQL, RunSynchron);
+      if (not RunSynchron or not Assigned(SynchroThread.LibHandle)) then
+        Result := False
       else
-        Result := False;
+        Result := ErrorCode = 0;
     end;
   end;
 end;
@@ -2877,6 +2883,11 @@ begin
   FLibraryType := ALibraryType;
 end;
 
+function TMySQLConnection.SendSQL(const SQL: string; const Done: TEvent): Boolean;
+begin
+  Result := ExecuteSQL(smSQL, False, SQL, TResultEvent(nil), Done) and not UseSynchroThread();
+end;
+
 function TMySQLConnection.SendSQL(const SQL: string; const OnResult: TResultEvent = nil): Boolean;
 begin
   Result := ExecuteSQL(smSQL, False, SQL, OnResult) and not UseSynchroThread();
@@ -3179,6 +3190,9 @@ begin
 
   if ((FErrorCode = CR_SERVER_HANDSHAKE_ERR)) then
     SyncDisconncting(SynchroThread);
+
+  if (Assigned(SynchroThread.Done)) then
+    SynchroThread.Done.SetEvent();
 end;
 
 procedure TMySQLConnection.SyncExecutingSQL(const SynchroThread: TSynchroThread);
@@ -3262,9 +3276,12 @@ begin
     if (SynchroThread.SQLUseStmts.IndexOf(Pointer(SynchroThread.SQLStmt)) >= 0) then
     begin
       SQLParseCLStmt(CLStmt, @SynchroThread.SQL[SynchroThread.SQLStmtIndex], StmtLength, ServerVersion);
-      FDatabaseName := CLStmt.ObjectName;
-      S := '--> Database selected: ' + DatabaseName;
-      WriteMonitor(PChar(S), Length(S), ttInfo);
+      if (CLStmt.ObjectName <> FDatabaseName) then
+      begin
+        FDatabaseName := CLStmt.ObjectName;
+        S := '--> Database selected: ' + DatabaseName;
+        WriteMonitor(PChar(S), Length(S), ttInfo);
+      end;
     end
     else if (not Assigned(SynchroThread.ResultHandle)) then
     begin

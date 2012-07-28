@@ -83,14 +83,13 @@ object FClient: TFClient
         Left = 2
         Top = 106
         Width = 116
-        Height = 461
+        Height = 126
         Align = alClient
         BevelOuter = bvNone
         Color = clWindow
         Constraints.MinHeight = 50
         ParentBackground = False
         TabOrder = 0
-        ExplicitHeight = 126
       end
       object PFolders: TPanel_Ext
         Left = 2
@@ -165,7 +164,7 @@ object FClient: TFClient
         Left = 2
         Top = 2
         Width = 116
-        Height = 565
+        Height = 230
         HelpContext = 1082
         Align = alClient
         BorderStyle = bsNone
@@ -187,7 +186,6 @@ object FClient: TFClient
         OnExit = FBookmarksExit
         OnDragDrop = FBookmarksDragDrop
         OnDragOver = FBookmarksDragOver
-        ExplicitHeight = 230
       end
     end
     object PNavigator: TPanel_Ext
@@ -710,6 +708,7 @@ object FClient: TFClient
         Height = 23
         Align = alNone
         Caption = 'TBLimitEnabled'
+        GradientEndColor = 11319229
         TabOrder = 4
         Transparent = False
         object FLimitEnabled: TToolButton
@@ -734,13 +733,14 @@ object FClient: TFClient
         OnKeyPress = FFilterKeyPress
       end
       object TBFilterEnabled: TToolBar
-        Left = 340
+        Left = 403
         Top = 0
         Width = 31
         Height = 23
         Align = alNone
         Anchors = [akTop]
         Caption = 'TBFilterEnabled'
+        GradientEndColor = 11319229
         TabOrder = 6
         Transparent = False
         object FFilterEnabled: TToolButton
@@ -753,7 +753,7 @@ object FClient: TFClient
         end
       end
       object FQuickSearch: TEdit
-        Left = 372
+        Left = 455
         Top = 0
         Width = 136
         Height = 21
@@ -764,13 +764,14 @@ object FClient: TFClient
         OnKeyPress = FQuickSearchKeyPress
       end
       object TBQuickSearchEnabled: TToolBar
-        Left = 509
+        Left = 601
         Top = 0
         Width = 23
         Height = 22
         Align = alNone
         Anchors = [akTop]
         AutoSize = True
+        GradientEndColor = 11319229
         TabOrder = 8
         Transparent = False
         object FQuickSearchEnabled: TToolButton
@@ -893,42 +894,54 @@ object FClient: TFClient
       Visible = False
       object FImage: TImage
         Left = 2
-        Top = 27
+        Top = 26
         Width = 463
-        Height = 30
+        Height = 31
         Align = alClient
         Center = True
         PopupMenu = MText
         Proportional = True
+        ExplicitTop = 27
         ExplicitWidth = 315
+        ExplicitHeight = 30
       end
-      object PToolBarBlob: TPanel_Ext
+      object CBlob: TCoolBar
         Left = 2
         Top = 2
         Width = 463
-        Height = 23
-        Align = alTop
-        AutoSize = True
-        BevelOuter = bvNone
-        DoubleBuffered = False
-        ParentBackground = False
-        ParentDoubleBuffered = False
-        TabOrder = 4
-        object ToolBarBlob: TToolBar
-          Left = 0
+        Height = 22
+        BandBorderStyle = bsNone
+        BandMaximize = bmNone
+        Bands = <
+          item
+            Break = False
+            Control = TBBlob
+            FixedSize = True
+            ImageIndex = -1
+            MinHeight = 22
+            Width = 461
+          end>
+        EdgeInner = esNone
+        EdgeOuter = esNone
+        FixedSize = True
+        OnResize = CBlobResize
+        object TBBlob: TToolBar
+          Left = 2
           Top = 0
-          Width = 463
-          Height = 23
+          Width = 396
+          Height = 22
+          Align = alNone
+          AutoSize = True
           ButtonWidth = 97
           Color = clBtnFace
           DoubleBuffered = False
+          GradientEndColor = 11319229
           ParentColor = False
           ParentDoubleBuffered = False
           ShowCaptions = True
           TabOrder = 0
-          Transparent = False
+          Transparent = True
           Wrapable = False
-          OnResize = ToolBarBlobResize
           object tbBlobText: TToolButton
             Left = 0
             Top = 0
@@ -969,32 +982,23 @@ object FClient: TFClient
             Grouped = True
             Style = tbsCheck
           end
-          object tbBlobSpacer: TPanel_Ext
-            Left = 396
-            Top = 0
-            Width = 49
-            Height = 22
-            BevelOuter = bvNone
-            ParentBackground = False
-            TabOrder = 1
-          end
-          object FBlobSearch: TEdit
-            Left = 445
-            Top = 0
-            Width = 136
-            Height = 22
-            AutoSize = False
-            TabOrder = 0
-            OnChange = FBlobSearchChange
-            OnKeyPress = FBlobSearchKeyPress
-          end
+        end
+        object FBlobSearch: TEdit
+          Left = 400
+          Top = 0
+          Width = 136
+          Height = 25
+          AutoSize = False
+          TabOrder = 1
+          OnChange = FBlobSearchChange
+          OnKeyPress = FBlobSearchKeyPress
         end
       end
       object FText: TMemo_Ext
         Left = 2
-        Top = 27
+        Top = 26
         Width = 463
-        Height = 30
+        Height = 31
         Align = alClient
         BorderStyle = bsNone
         HideSelection = False
@@ -1009,9 +1013,9 @@ object FClient: TFClient
       end
       object FRTF: TRichEdit
         Left = 2
-        Top = 27
+        Top = 26
         Width = 463
-        Height = 30
+        Height = 31
         Align = alClient
         BorderStyle = bsNone
         Font.Charset = ANSI_CHARSET
@@ -1032,9 +1036,9 @@ object FClient: TFClient
       end
       object FHexEditor: TMPHexEditorEx
         Left = 2
-        Top = 27
+        Top = 26
         Width = 463
-        Height = 30
+        Height = 31
         Cursor = crIBeam
         BackupExtension = '.bak'
         PrintOptions.MarginLeft = 20
@@ -1086,7 +1090,7 @@ object FClient: TFClient
       end
       object PBlobSpacer: TPanel_Ext
         Left = 2
-        Top = 25
+        Top = 24
         Width = 463
         Height = 2
         Align = alTop
@@ -1158,6 +1162,7 @@ object FClient: TFClient
       Height = 22
       Align = alNone
       AutoSize = True
+      GradientEndColor = 11319229
       TabOrder = 0
       Transparent = True
       Wrapable = False
@@ -1199,6 +1204,7 @@ object FClient: TFClient
       Align = alNone
       ButtonHeight = 20
       ButtonWidth = 68
+      GradientEndColor = 11319229
       List = True
       PopupMenu = MToolBar
       ShowCaptions = True

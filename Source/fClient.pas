@@ -10377,7 +10377,8 @@ begin
     begin
       if (not Assigned(Database) or (TCBaseTable(List[I]).Database <> Database) or not Assigned(Database) and (Databases.NameCmp(TCBaseTable(List[I]).Database.Name, DatabaseName) <> 0)) then
       begin
-        SQL := TCBaseTable(List[I]).Database.SQLUse() + SQL;
+        if (Assigned(Database) or (TCBaseTable(List[I]).Database.Name <> DatabaseName)) then
+          SQL := SQL + TCBaseTable(List[I]).Database.SQLUse() + SQL;
         Database := TCBaseTable(List[I]).Database;
         if (Identifiers <> '') then
         begin
@@ -10397,7 +10398,8 @@ begin
     begin
       if (not Assigned(Database) or (TCView(List[I]).Database <> Database) or not Assigned(Database) and (Databases.NameCmp(TCView(List[I]).Database.Name, DatabaseName) <> 0)) then
       begin
-        SQL := TCView(List[I]).Database.SQLUse() + SQL;
+        if (Assigned(Database) or (TCBaseTable(List[I]).Database.Name <> DatabaseName)) then
+          SQL := SQL + TCBaseTable(List[I]).Database.SQLUse() + SQL;
         Database := TCView(List[I]).Database;
         if (Identifiers <> '') then
         begin
@@ -10416,7 +10418,8 @@ begin
     begin
       if (not Assigned(Database) or (TCDBObject(List[I]).Database <> Database) or not Assigned(Database) and (Databases.NameCmp(TCDBObject(List[I]).Database.Name, DatabaseName) <> 0)) then
       begin
-        SQL := TCDBObject(List[I]).Database.SQLUse() + SQL;
+        if (Assigned(Database) or (TCBaseTable(List[I]).Database.Name <> DatabaseName)) then
+          SQL := SQL + TCBaseTable(List[I]).Database.SQLUse() + SQL;
         Database := TCDBObject(List[I]).Database;
       end;
       if (TCObject(List[I]) is TCProcedure) then

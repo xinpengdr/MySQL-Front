@@ -180,36 +180,36 @@ var
   HttpRequestError: Longint;
   Index: DWord;
   InternetError: Longint;
+  ObjectName: string;
   pvData: Pointer;
   S: string;
   Size: DWord;
   StatusCode: array [0..4] of Char;
-  URL: string;
 begin
   if (Assigned(Request)) then
-    InternetCloseHandle(Request);                                 
+    InternetCloseHandle(Request);
 
   ResponseReceived.ResetEvent();
   RequestComplete.ResetEvent();
 
   if (errno() = 0) then
   begin
-    URL := '';
+    ObjectName := '';
     if (URLComponents.dwUrlPathLength > 0) then
-      URL := URL + URLComponents.lpszUrlPath;
+      ObjectName := ObjectName + URLComponents.lpszUrlPath;
     if (URLComponents.dwExtraInfoLength > 0) then
-      URL := URL + URLComponents.lpszExtraInfo;
+      ObjectName := ObjectName + URLComponents.lpszExtraInfo;
     if (SID <> '') then
       if (URLComponents.dwExtraInfoLength = 0) then
-        URL := URL + '?SID=' + SID
+        ObjectName := ObjectName + '?SID=' + SID
       else
-        URL := URL + '&SID=' + SID;
+        ObjectName := ObjectName + '&SID=' + SID;
 
     Flags := INTERNET_FLAG_NO_AUTO_REDIRECT or INTERNET_FLAG_NO_CACHE_WRITE or INTERNET_FLAG_NO_UI or INTERNET_FLAG_KEEP_CONNECTION or INTERNET_FLAG_NO_COOKIES;
     if (URLComponents.lpszScheme = 'https') then
       Flags := Flags or INTERNET_FLAG_SECURE;
 
-    Request := HttpOpenRequest(Connection, 'POST', PChar(URL), 'HTTP/1.1', nil, nil, Flags, Cardinal(Self));
+    Request := HttpOpenRequest(Connection, 'POST', PChar(ObjectName), 'HTTP/1.1', nil, nil, Flags, Cardinal(Self));
     if (not Assigned(Request)) then
       Seterror(CR_IPSOCK_ERROR)
     else
@@ -268,15 +268,15 @@ begin
                     Size := SizeOf(Buffer); Index := 0;
                     if (HttpQueryInfo(Request, HTTP_QUERY_LOCATION, @Buffer, Size, Index)) then
                     begin
-                      SetString(URL, PChar(@Buffer), Size);
+                      SetString(ObjectName, PChar(@Buffer), Size);
                       SetString(S, URLComponents.lpszExtraInfo, URLComponents.dwExtraInfoLength);
                       if (S <> '') then
-                        URL := URL + S;
+                        ObjectName := ObjectName + S;
                       Seterror(CR_HTTPTUNNEL_REDIRECT);
                     end;
                   end;
                 HTTP_STATUS_NOT_FOUND:
-                  Seterror(CR_HTTPTUNNEL_NOT_FOUND, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_NOT_FOUND - CR_HTTPTUNNEL_UNKNOWN_ERROR], [URL])));
+                  Seterror(CR_HTTPTUNNEL_NOT_FOUND, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_NOT_FOUND - CR_HTTPTUNNEL_UNKNOWN_ERROR], [ObjectName])));
                 HTTP_STATUS_OK:
                   begin
                     Size := SizeOf(Buffer);
@@ -286,7 +286,7 @@ begin
                       else
                       begin
                         SetString(S, PChar(@Buffer), Size);
-                        Seterror(CR_HTTPTUNNEL_INVALID_SERVER_RESPONSE, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_INVALID_SERVER_RESPONSE - CR_HTTPTUNNEL_UNKNOWN_ERROR], [URL, S])));
+                        Seterror(CR_HTTPTUNNEL_INVALID_SERVER_RESPONSE, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_INVALID_SERVER_RESPONSE - CR_HTTPTUNNEL_UNKNOWN_ERROR], [ObjectName, S])));
                       end;
                   end;
                 else
@@ -303,7 +303,7 @@ begin
         ERROR_INTERNET_CONNECTION_RESET,
         ERROR_INTERNET_TIMEOUT:
           if (IOType = itNone) then
-            Seterror(CR_CONN_HOST_ERROR, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_CONN_ERROR - CR_HTTPTUNNEL_UNKNOWN_ERROR], [URL, GetLastError()])))
+            Seterror(CR_CONN_HOST_ERROR, RawByteString(Format(HTTPTTUNNEL_ERRORS[CR_HTTPTUNNEL_CONN_ERROR - CR_HTTPTUNNEL_UNKNOWN_ERROR], [ObjectName, GetLastError()])))
           else
             Seterror(CR_SERVER_GONE_ERROR);
         ERROR_INTERNET_NAME_NOT_RESOLVED:
@@ -403,7 +403,7 @@ begin
 
               StrPCopy(@Buffer, 'MF-SID'); Size := SizeOf(Buffer); Index := 0;
               if (HttpQueryInfo(Request, HTTP_QUERY_CUSTOM, @Buffer, Size, Index)) then
-                SetString(SID, PChar(@Buffer), Size);
+                SID := PChar(@Buffer);
 
 
               Direction := idRead;
