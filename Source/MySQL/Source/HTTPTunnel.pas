@@ -39,7 +39,7 @@ type
     SID: string;
     URL: string;
     URLComponents: TURLComponents;
-    function ExecuteHTTPRequest(const Connect: Boolean; const Timeout: Integer): Boolean;
+    function ExecuteHTTPRequest(const Connect: Boolean): Boolean;
   protected
     procedure Close(); override;
     function ExecuteCommand(const Command: enum_server_command;
@@ -109,7 +109,7 @@ end;
 procedure MYSQL.Close();
 begin
   if (SendBuffer.Size - SendBuffer.Offset > 0) then
-    ExecuteHTTPRequest(False, NET_WAIT_TIMEOUT);
+    ExecuteHTTPRequest(False);
 
   if (Assigned(Request)) then
     InternetCloseHandle(Request);
@@ -172,7 +172,10 @@ begin
   FreeMem(URLComponents.lpszExtraInfo);
 end;
 
-function MYSQL.ExecuteHTTPRequest(const Connect: Boolean; const Timeout: Integer): Boolean;
+var
+  Nils: Boolean = False;
+
+function MYSQL.ExecuteHTTPRequest(const Connect: Boolean): Boolean;
 var
   Buffer: array [0..2048] of Char;
   Flags: Cardinal;
@@ -392,7 +395,7 @@ begin
           WriteFile(ftimeout, 2);
           FlushFileBuffers();
 
-          if (ExecuteHTTPRequest(True, ftimeout)) then
+          if (ExecuteHTTPRequest(True)) then
           begin
             StrPCopy(@Buffer, 'MF-Version'); Size := SizeOf(Buffer); Index := 0;
             if (not HttpQueryInfo(Request, HTTP_QUERY_CUSTOM, @Buffer, Size, Index) or (StrToInt(Buffer) < RequiredTunnelVersion)) then
@@ -469,7 +472,7 @@ begin
       end;
     end;
 
-    if ((FlushFileBuffers() or (errno() = CR_SERVER_GONE_ERROR)) and ExecuteHTTPRequest(False, NET_WAIT_TIMEOUT) and (next_result() <= 0)) then
+    if ((FlushFileBuffers() or (errno() = CR_SERVER_GONE_ERROR)) and ExecuteHTTPRequest(False) and (next_result() <= 0)) then
       Result := 0
     else
     begin

@@ -1237,6 +1237,7 @@ end;
 
 procedure TWWindow.CMCloseTab(var Message: TCMCloseTab);
 var
+  Client: TCClient;
   NewTabIndex: Integer;
 begin
   Perform(CM_DEACTIVATETAB, 0, 0);
@@ -1256,7 +1257,11 @@ begin
     if (NewTabIndex >= 0) then
       Perform(CM_ACTIVATETAB, 0, LPARAM(FClients[NewTabIndex]));
 
+    Client := Message.Tab.Client;
+
     Message.Tab.Free();
+
+    Client.Free();
 
     TBTabControl.Visible := Preferences.TabsVisible or not Preferences.TabsVisible and (FClients.Count >= 2);
     TabControl.Visible := TBTabControl.Visible;

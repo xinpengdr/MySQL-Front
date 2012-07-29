@@ -5,10 +5,10 @@
 	# {BuildInternetHomepage}
 	# {BuildName} Version {BuildVerStrFull}
 	#
-	
+
 	/****************************************************************************/
-	
-	$Version = 12;
+
+	$Version = 13;
 
 	$Charsets = array(
 		'big5' => 1, 	
@@ -161,7 +161,7 @@
 				$_SESSION['MBCLen'] = (int) $CharacterSet['Maxlen'];
 			mysql_free_result($CharacterSets);
 		}
-		 
+
 		$Select1 = mysql_query("SELECT '1';", $mysql);
 		$_SESSION['MBCLen'] = (int) ($_SESSION['MBCLen'] / mysql_field_len($Select1, 0));
 		mysql_free_result($Select1);
@@ -171,7 +171,6 @@
 	
 	error_reporting(E_ERROR | E_PARSE);
 	
-	session_name('mysql-front');
 	if (isset($_GET['SID']))
 		session_id($_GET['SID']);
 	session_start();
@@ -303,8 +302,6 @@
 		} else {
 			while (ReceivePacket($Packet, $MorePackets)) {
 				if (substr($Packet, 0, 1) == "\x01") { // COM_QUIT
-					if (isset($_COOKIE[session_name()]))
-    				setcookie(session_name(), '', time()-42000, '/');
 					session_destroy();
 				} else if (substr($Packet, 0, 1) == "\x03") { // COM_QUERY
 					$Query = substr($Packet, 1); 
@@ -539,8 +536,6 @@
 		} else {
 			while (ReceivePacket($Packet, $MorePackets)) {
 				if (substr($Packet, 0, 1) == "\x01") { // COM_QUIT
-					if (isset($_COOKIE[session_name()]))
-						setcookie(session_name(), '', time()-42000, '/');
 					session_destroy();
 				} else if (substr($Packet, 0, 1) == "\x03") { // COM_QUERY
 					$Query = substr($Packet, 1);

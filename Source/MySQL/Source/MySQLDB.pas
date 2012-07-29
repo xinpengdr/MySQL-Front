@@ -2700,7 +2700,7 @@ begin
   end
   else
   begin
-    local_infile^.Handle := CreateFile(@local_infile^.Filename, GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, 0);
+    local_infile^.Handle := CreateFile(@local_infile^.Filename, GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (local_infile^.Handle = INVALID_HANDLE_VALUE) then
     begin
       local_infile^.ErrorCode := EE_FILENOTFOUND;
@@ -4604,7 +4604,7 @@ begin
     inherited
   else if (not Active) then
   begin
-    Synchron := not Asynchron or Connection.UseSynchroThread();
+    Synchron := not Asynchron or not Connection.UseSynchroThread();
     if (CommandType <> ctTable) then
       SQL := CommandText
     else
@@ -6830,7 +6830,9 @@ begin
       FirstField := False;
     until (FieldName = '');
   end;
-  if (Limit > 0) then
+  if (Limit = 0) then
+    RequestedRecordCount := $7fffffff
+  else
   begin
     Result := Result + ' LIMIT ';
     if (Offset + InternRecordBuffers.Count > 0) then

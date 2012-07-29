@@ -149,7 +149,6 @@ type
     private
       FCObject: TCObject;
     protected
-      procedure SaveToXML(); virtual;
       property CObject: TCObject read FCObject;
     public
       constructor Create(const ACObject: TCObject);
@@ -161,6 +160,7 @@ type
     FClient: TCClient;
     FSource: string;
     FValidSource: Boolean;
+    procedure FreeDesktop(); virtual;
     function GetDesktop(): TDesktop; virtual;
     function GetSource(): string; virtual;
     function GetValid(): Boolean; virtual;
@@ -903,6 +903,7 @@ type
     procedure SetDefaultCharset(const ADefaultCharset: string);
   protected
     function Build(const DataSet: TMySQLQuery): Boolean; virtual;
+    procedure FreeDesktop(); override;
     function GetSource(): string; override;
     function GetValid(): Boolean; override;
     function GetValidSource(): Boolean; override;
@@ -1384,6 +1385,7 @@ type
     function GetUseInformationSchema(): Boolean;
     function GetUserRights(): TCUserRight;
     function GetValid(): Boolean;
+    procedure SetCreateDesktop(ACreateDesktop: TCreateDesktop);
   protected
     FLowerCaseTableNames: Byte;
     FMaxAllowedPacket: Integer;
@@ -1469,7 +1471,7 @@ type
     property Charsets: TCCharsets read FCharsets;
     property Collation: string read GetCollation;
     property Collations: TCCollations read FCollations;
-    property CreateDesktop: TCreateDesktop read FCreateDesktop write FCreateDesktop;
+    property CreateDesktop: TCreateDesktop read FCreateDesktop write SetCreateDesktop;
     property CurrentUser: string read FCurrentUser;
     property Databases: TCDatabases read FDatabases;
     property DefaultCharset: string read GetDefaultCharset;
@@ -1530,7 +1532,6 @@ const
   InParameterCaption = '<IN>';
 
 resourcestring
-  SDesktopAlreadyRegistered = 'Desktop already registered';
   SUnknownRoutineType = 'Unknown Routine Type (%s)';
   SUnknownSQLStmt = 'Unknow SQL Stmt (%s)';
   SSourceParseError = 'Source code of "%s" cannot be analyzed (%d):' + #10#10 + '%s';
@@ -1896,10 +1897,6 @@ begin
   FCObject := ACObject;
 end;
 
-procedure TCObject.TDesktop.SaveToXML();
-begin
-end;
-
 { TCObject ********************************************************************}
 
 procedure TCObject.Assign(const Source: TCObject);
@@ -1930,6 +1927,12 @@ begin
     Client.InvalidObjects.Delete(Client.InvalidObjects.IndexOf(Self));
 
   inherited;
+end;
+
+procedure TCObject.FreeDesktop();
+begin
+  if (Assigned(FDesktop)) then
+    FreeAndNil(FDesktop);
 end;
 
 function TCObject.GetDesktop(): TDesktop;
@@ -3200,7 +3203,9 @@ begin
       FirstField := False;
     until (FieldName = '');
   end;
-  if (Limit > 0) then
+  if (Limit = 0) then
+    RequestedRecordCount := $7fffffff
+  else
   begin
     Result := Result + ' LIMIT ';
     if (Offset + RecordCount > 0) then
@@ -3287,9 +3292,6 @@ end;
 
 destructor TCTable.Destroy();
 begin
-  if (Assigned(FDesktop)) then
-    FDesktop.SaveToXML();
-
   if (Assigned(FDataSet)) then
     FDataSet.Free();
   if (Assigned(FFields)) then
@@ -6541,9 +6543,6 @@ end;
 
 destructor TCDatabase.Destroy();
 begin
-  if (Assigned(FDesktop)) then
-    FDesktop.SaveToXML();
-
   FTables.Free();
   if (Assigned(FRoutines)) then FRoutines.Free();
   if (Assigned(FTriggers)) then FTriggers.Free();
@@ -6606,6 +6605,25 @@ begin
     SQL := SQLUse() + SQL;
 
   Result := Client.ExecuteSQL(SQL);
+end;
+
+procedure TCDatabase.FreeDesktop();
+var
+  I: Integer;
+begin
+  for I := 0 to Tables.Count - 1 do
+    Tables[I].FreeDesktop();
+  if (Assigned(Routines)) then
+    for I := 0 to Routines.Count - 1 do
+      Routines[I].FreeDesktop();
+  if (Assigned(Triggers)) then
+    for I := 0 to Triggers.Count - 1 do
+      Triggers[I].FreeDesktop();
+  if (Assigned(Events)) then
+    for I := 0 to Events.Count - 1 do
+      Events[I].FreeDesktop();
+
+  inherited;
 end;
 
 function TCDatabase.FunctionByName(const FunctionName: string): TCFunction;
@@ -11539,6 +11557,21 @@ begin
       VariableByName('character_set_connection').Value := Charset;
       VariableByName('character_set_results').Value := Charset;
     end;
+end;
+
+procedure TCClient.SetCreateDesktop(ACreateDesktop: TCreateDesktop);
+var
+  I: Integer;
+begin
+  if (Assigned(FCreateDesktop) and not Assigned(ACreateDesktop)) then
+  begin
+    for I := 0 to Databases.Count - 1 do
+    begin
+      Databases[I].FreeDesktop();
+    end;
+  end;
+
+  FCreateDesktop := ACreateDesktop;
 end;
 
 procedure TCClient.StartTransaction();

@@ -738,7 +738,6 @@ type
       function CreateListView(): TListView; virtual;
       function CreateWorkbench(): TWWorkbench; virtual;
       destructor Destroy(); override;
-      procedure SaveToXML(); override;
       property DBGrid: TMySQLDBGrid read FDBGrid;
       property Database: TCDatabase read GetDatabase;
       property Workbench: TWWorkbench read FWorkbench;
@@ -760,7 +759,6 @@ type
       procedure SetLimit(const Limit: Integer);
       procedure SetLimited(const ALimited: Boolean);
     protected
-      procedure SaveToXML(); override;
       property GridXML[FieldName: string]: IXMLNode read GetGridXML;
     public
       DBGrid: TMySQLDBGrid;
@@ -1428,7 +1426,16 @@ begin
 end;
 
 destructor TFClient.TDatabaseDesktop.Destroy();
+var
+  I: Integer;
+  TablesXML: IXMLNode;
 begin
+  TablesXML := XMLNode(XML, 'tables');
+  if (Assigned(TablesXML)) then
+    for I := TablesXML.ChildNodes.Count - 1 downto 0 do
+      if ((TablesXML.ChildNodes[I].NodeName = 'table') and not Assigned(Database.TableByName(TablesXML.ChildNodes[I].Attributes['name']))) then
+        TablesXML.ChildNodes.Delete(I);
+
   CloseBuilderResult();
   if (Assigned(PDBGrid)) then
     PDBGrid.Free();
@@ -1474,18 +1481,6 @@ begin
   end;
 
   Result := FXML;
-end;
-
-procedure TFClient.TDatabaseDesktop.SaveToXML();
-var
-  TablesXML: IXMLNode;
-  I: Integer;
-begin
-  TablesXML := XMLNode(XML, 'tables');
-  if (Assigned(TablesXML)) then
-    for I := TablesXML.ChildNodes.Count - 1 downto 0 do
-      if ((TablesXML.ChildNodes[I].NodeName = 'table') and not Assigned(Database.TableByName(TablesXML.ChildNodes[I].Attributes['name']))) then
-        TablesXML.ChildNodes.Delete(I);
 end;
 
 { TFClient.TTableDesktop ******************************************************}
@@ -1603,7 +1598,39 @@ begin
 end;
 
 destructor TFClient.TTableDesktop.Destroy();
+var
+  Child: IXMLNode;
+  FieldInfo: TFieldInfo;
+  FieldName: string;
+  I: Integer;
+  J: Integer;
+  Node: IXMLNode;
 begin
+  Node := XMLNode(XML, 'grid', True);
+  if (Assigned(Node)) then
+  begin
+    for I := Node.ChildNodes.Count - 1 downto 0 do
+      if ((Node.ChildNodes[I].NodeName = 'field') and not Assigned(Table.FieldByName(Node.ChildNodes[I].Attributes['name']))) then
+        Node.ChildNodes.Delete(I);
+
+    if (Assigned(DBGrid) and DBGrid.DataSource.DataSet.Active) then
+      for I := 0 to DBGrid.Columns.Count - 1 do
+        if (Assigned(DBGrid.Columns[I].Field) and GetFieldInfo(DBGrid.Columns[I].Field.Origin, FieldInfo)) then
+        begin
+          FieldName := FieldInfo.OriginalFieldName;
+          Child := nil;
+          for J := 0 to Node.ChildNodes.Count - 1 do
+            if ((Node.ChildNodes[J].NodeName = 'field') and (lstrcmpi(PChar(string(Node.ChildNodes[J].Attributes['name'])), PChar(FieldName)) = 0)) then
+              Child := Node.ChildNodes[J];
+          if (not Assigned(Child)) then
+          begin
+            Child := XMLNode(XML, 'grid', True).AddChild('field');
+            Child.Attributes['name'] := FieldName;
+          end;
+          XMLNode(Child, 'width', True).Text := IntToStr(DBGrid.Columns[I].Width);
+        end;
+  end;
+
   if (Assigned(ListView)) then
     FClient.FreeListView(ListView);
   if (Assigned(DBGrid)) then
@@ -1713,41 +1740,6 @@ end;
 function TFClient.TTableDesktop.GetTable(): TCTable;
 begin
   Result := TCTable(CObject);
-end;
-
-procedure TFClient.TTableDesktop.SaveToXML();
-var
-  Child: IXMLNode;
-  FieldInfo: TFieldInfo;
-  FieldName: string;
-  I: Integer;
-  J: Integer;
-  Node: IXMLNode;
-begin
-  Node := XMLNode(XML, 'grid', True);
-  if (Assigned(Node)) then
-  begin
-    for I := Node.ChildNodes.Count - 1 downto 0 do
-      if ((Node.ChildNodes[I].NodeName = 'field') and not Assigned(Table.FieldByName(Node.ChildNodes[I].Attributes['name']))) then
-        Node.ChildNodes.Delete(I);
-
-    if (Assigned(DBGrid) and DBGrid.DataSource.DataSet.Active) then
-      for I := 0 to DBGrid.Columns.Count - 1 do
-        if (Assigned(DBGrid.Columns[I].Field) and GetFieldInfo(DBGrid.Columns[I].Field.Origin, FieldInfo)) then
-        begin
-          FieldName := FieldInfo.OriginalFieldName;
-          Child := nil;
-          for J := 0 to Node.ChildNodes.Count - 1 do
-            if ((Node.ChildNodes[J].NodeName = 'field') and (lstrcmpi(PChar(string(Node.ChildNodes[J].Attributes['name'])), PChar(FieldName)) = 0)) then
-              Child := Node.ChildNodes[J];
-          if (not Assigned(Child)) then
-          begin
-            Child := XMLNode(XML, 'grid', True).AddChild('field');
-            Child.Attributes['name'] := FieldName;
-          end;
-          XMLNode(Child, 'width', True).Text := IntToStr(DBGrid.Columns[I].Width);
-        end;
-  end;
 end;
 
 procedure TFClient.TTableDesktop.SetLimit(const Limit: Integer);
@@ -6898,6 +6890,9 @@ var
   TempB: Boolean;
   URI: TUURI;
 begin
+  Client.UnRegisterEventProc(FormClientEvent);
+  Client.CreateDesktop := nil;
+
   FNavigatorChanging(nil, nil, TempB);
 
   Window.ActiveControl := nil;
@@ -6959,9 +6954,6 @@ begin
 
   Client.Account.Desktop.AddressMRU.Assign(ToolBarData.AddressMRU);
   Client.Account.UnRegisterDesktop(Self);
-
-  Client.UnRegisterEventProc(FormClientEvent);
-  Client.Free();
 
   FreeAndNil(JPEGImage);
   FreeAndNil(PNGImage);
@@ -7668,7 +7660,7 @@ procedure TFClient.FNavigatorAdvancedCustomDrawItem(Sender: TCustomTreeView;
   Node: TTreeNode; State: TCustomDrawState; Stage: TCustomDrawStage;
   var PaintImages, DefaultDraw: Boolean);
 begin
-  if ((Stage = cdPrePaint) and not (csDestroying in ComponentState) and Assigned(Node)
+  if ((Stage = cdPrePaint) and Assigned(Node)
     and ((Node.ImageIndex = iiKey) and TCKey(Node.Data).Primary or (Node.ImageIndex = iiField) and TCTableField(Node.Data).InPrimaryKey)) then
     Sender.Canvas.Font.Style := Sender.Canvas.Font.Style + [fsBold]
   else
@@ -9747,7 +9739,7 @@ procedure TFClient.ListViewAdvancedCustomDrawItem(
   Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
   Stage: TCustomDrawStage; var DefaultDraw: Boolean);
 begin
-  if ((Stage = cdPrePaint) and not (csDestroying in ComponentState) and Assigned(Item)
+  if ((Stage = cdPrePaint) and Assigned(Item)
     and ((Item.ImageIndex = iiKey) and TCKey(Item.Data).Primary or (Item.ImageIndex = iiField) and TCTableField(Item.Data).InPrimaryKey)) then
     Sender.Canvas.Font.Style := [fsBold]
   else

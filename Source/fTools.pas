@@ -663,7 +663,7 @@ resourcestring
 
 const
   SQLPacketSize = 100 * 1024;
-  FilePacketSize = 500 * 1024;
+  FilePacketSize = 32768;
   ODBCDataSize = 65536;
 
   daSuccess = daRetry;
@@ -1604,7 +1604,7 @@ begin
       Pipename := '\\.\pipe\' + LoadStr(1000);
       Pipe := CreateNamedPipe(PChar(Pipename),
                               PIPE_ACCESS_OUTBOUND, PIPE_TYPE_MESSAGE or PIPE_READMODE_BYTE or PIPE_WAIT,
-                              1, 2 * NET_BUFFER_LENGTH, 0, NMPWAIT_USE_DEFAULT_WAIT, nil);
+                              1, 2 * NET_BUFFER_LENGTH, 0, 0, nil);
       if (Pipe = INVALID_HANDLE_VALUE) then
         DoError(SysError(), ToolsItem(Item))
       else
@@ -1764,7 +1764,11 @@ begin
         if (Item.RecordsDone mod 100 = 0) then DoUpdateGUI();
 
         if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
+        begin
+          if (SQL <> '') then
+            Client.Terminate();
           Success := daAbort;
+        end;
       end;
       SetLength(SQLValues, 0);
 
@@ -7077,7 +7081,7 @@ begin
           Pipename := '\\.\pipe\' + LoadStr(1000);
           Pipe := CreateNamedPipe(PChar(Pipename),
                                   PIPE_ACCESS_OUTBOUND, PIPE_TYPE_MESSAGE or PIPE_READMODE_BYTE or PIPE_WAIT,
-                                  1, 2 * NET_BUFFER_LENGTH, 0, NMPWAIT_USE_DEFAULT_WAIT, nil);
+                                  1, 2 * NET_BUFFER_LENGTH, 0, 0, nil);
           if (Pipe = INVALID_HANDLE_VALUE) then
             DoError(SysError(), ToolsItem(Destination))
           else
@@ -7423,6 +7427,9 @@ begin
       begin
         ExecuteStructure(Source, Destination);
         DestinationTable := DestinationDatabase.BaseTableByName(Destination.TableName);
+
+        if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
+          Success := daAbort;
       end;
 
       if ((Success = daSuccess) and Data and Assigned(DestinationTable) and (DestinationTable.Source <> '')) then
