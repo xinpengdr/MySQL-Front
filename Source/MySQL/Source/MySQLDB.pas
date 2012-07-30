@@ -1868,8 +1868,11 @@ procedure TMySQLConnection.TSynchroThread.ReleaseDataSet();
 begin
   Assert(Assigned(DataSet));
 
-  if (DataSet is TMySQLDataSet) then
+  if ((DataSet is TMySQLDataSet) and (State = ssReceivingResult)) then
+  begin
+    Terminate();
     TMySQLDataSet(DataSet).RecordsReceived.SetEvent();
+  end;
 
   DataSet := nil;
 
@@ -1988,7 +1991,7 @@ begin
     SynchronizingThreads.Delete(Index);
   SynchronizingThreadsCS.Leave();
 
-  inherited Terminate;
+  inherited Terminate();
 
   if (RunExecute.WaitFor(IGNORE) = wrSignaled) then
   begin
@@ -3456,7 +3459,10 @@ begin
     if ((SynchroThread.Terminated) or not Assigned(SynchroThread.DataSet)) then
       LibRow := nil
     else
+    begin
       LibRow := Lib.mysql_fetch_row(SynchroThread.ResultHandle);
+      Sleep(100);
+    end;
 
     TerminateCS.Enter();
     TMySQLDataSet(SynchroThread.DataSet).InternAddRecord(LibRow, Lib.mysql_fetch_lengths(SynchroThread.ResultHandle));
@@ -3472,8 +3478,14 @@ end;
 procedure TMySQLConnection.Terminate();
 var
   S: string;
+  RecordsReceived: TEvent;
 begin
   TerminateCS.Enter();
+
+  if (not Assigned(SynchroThread) or not (SynchroThread.DataSet is TMySQLDataSet) or (SynchroThread.State <> ssReceivingResult)) then
+    RecordsReceived := nil
+  else
+    RecordsReceived := TMySQLDataSet(SynchroThread.DataSet).RecordsReceived;
 
   if (Assigned(SynchroThread)) then
   begin
@@ -3482,11 +3494,15 @@ begin
       S := '----> Connection Terminated <----';
       WriteMonitor(PChar(S), Length(S), ttInfo);
     end;
+
     SynchroThread.Terminate();
     FSynchroThread := nil;
   end;
 
   TerminateCS.Leave();
+
+  if (Assigned(RecordsReceived)) then
+    RecordsReceived.WaitFor(INFINITE);
 end;
 
 procedure TMySQLConnection.UnRegisterSQLMonitor(const AMySQLMonitor: TMySQLMonitor);
@@ -5488,6 +5504,8 @@ procedure TMySQLDataSet.InternalRefresh();
 var
   SQL: string;
 begin
+  Connection.Terminate();
+
   InternRecordBuffers.Clear();
 
   RecordsReceived.ResetEvent();
@@ -6779,7 +6797,7 @@ begin
 
   if (Active and (ASortDef.Fields <> FSortDef.Fields) or (ASortDef.DescFields <> FSortDef.DescFields)) then
   begin
-    if ((ASortDef.Fields <> '') and not LimitedDataReceived and (InternRecordBuffers.Count < 1000) and not StringFieldsEnclosed) then
+    if ((ASortDef.Fields <> '') and (RecordsReceived.WaitFor(IGNORE) = wrSignaled) and not LimitedDataReceived and (InternRecordBuffers.Count < 1000) and not StringFieldsEnclosed) then
       inherited
     else
     begin
