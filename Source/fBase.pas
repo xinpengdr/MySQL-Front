@@ -859,6 +859,28 @@ begin
     Result := SysUtils.TryStrToInt(Str, Value);
 end;
 
+var
+  Hook: HHOOK;
+
+function CBTProc(Code: Integer; wParam: WPARAM; lParam: LPARAM): LRESULT stdcall;
+var
+  ClassName: array[0..256] of Char;
+  MessageBoxRect: TRect;
+  ActiveWindowRect: TRect;
+begin
+  if ((Code = HCBT_ACTIVATE)
+    and (GetClassName(HWND(wParam), @ClassName, Length(ClassName)) > 0)
+    and (lstrcmp(@ClassName, '#32770') = 0) // #32770 is the class name of the MessageBox dialog
+    and GetWindowRect(HWND(wParam), MessageBoxRect)
+    and GetWindowRect(PCBTActivateStruct(lParam).hWndActive, ActiveWindowRect)) then
+    SetWindowPos(HWND(wParam), 0,
+      (ActiveWindowRect.Left + ActiveWindowRect.Right) div 2 - (MessageBoxRect.Right - MessageBoxRect.Left) div 2,
+      (ActiveWindowRect.Top + ActiveWindowRect.Bottom) div 2 - (MessageBoxRect.Bottom - MessageBoxRect.Top) div 2,
+      0, 0, SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE);
+
+  Result := CallNextHookEx(Hook, Code, wParam, lParam);
+end;
+
 initialization
   LocaleFormatSettings := MySQLDB.LocaleFormatSettings;
 
@@ -869,5 +891,9 @@ initialization
   DurationFormatSettings.LongTimeFormat := 'hh:mm:ss';
 
   Screen.Cursors[crClone] := LoadCursor(HInstance, 'Clone');
+
+  Hook := SetWindowsHookEx(WH_CBT, CBTProc, 0, GetCurrentThreadId());
+finalization
+  UnhookWindowsHookEx(Hook);
 end.
 

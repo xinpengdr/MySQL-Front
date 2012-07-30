@@ -172,9 +172,6 @@ begin
   FreeMem(URLComponents.lpszExtraInfo);
 end;
 
-var
-  Nils: Boolean = False;
-
 function MYSQL.ExecuteHTTPRequest(const Connect: Boolean): Boolean;
 var
   Buffer: array [0..2048] of Char;
@@ -352,6 +349,7 @@ begin
     begin
       InternetSetStatusCallback(Handle, @InternetStatusCallback);
 
+      // Timeout seems not to work (Windows 7)
       L := ftimeout * 1000;
       InternetSetOption(Handle, INTERNET_OPTION_CONNECT_TIMEOUT, @L, SizeOf(L));
 

@@ -942,6 +942,7 @@ begin
     end;
 
     FClient := TFClient.Create(Self, PWorkSpace, DAccounts.Client, Message.Param);
+    FClient.Visible := True;
 
     Inc(UniqueTabNameCounter);
     FClient.Name := FClient.ClassName + '_' + IntToStr(UniqueTabNameCounter);
@@ -1259,6 +1260,7 @@ begin
 
     Client := Message.Tab.Client;
 
+    Message.Tab.Visible := False;
     Message.Tab.Free();
 
     Client.Free();
@@ -1786,7 +1788,8 @@ begin
     CheckUpdateThread.Execute();
     CheckUpdateThread.Stream.Free();
 
-    Handled := not CheckUpdateThread.UpdateAvailable;
+    UpdateAvailable := CheckUpdateThread.UpdateAvailable;
+    Handled := not UpdateAvailable;
 
     CheckUpdateThread.Free();
   end;
@@ -1851,9 +1854,6 @@ begin
   QuitAfterShow := False;
   UniqueTabNameCounter := 0;
   UpdateAvailable := False;
-
-//  if (IsWine()) then
-//    TStyleManager.TrySetStyle('Slate Classico');
 
   MySQLDB.MySQLConnectionOnSynchronize := MySQLConnectionSynchronize;
 

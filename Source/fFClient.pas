@@ -5185,8 +5185,6 @@ begin
 
   FormResize(nil);
 
-  Visible := True;
-
   Perform(CM_ACTIVATEFRAME, 0, 0);
 
 
@@ -13803,7 +13801,7 @@ begin
     else if ((Window.ActiveControl = ActiveDBGrid) and Assigned(ActiveDBGrid) and (ActiveDBGrid.SelectedRows.Count > 0)) then
       SelCount := ActiveDBGrid.SelectedRows.Count;
 
-    if ((Window.ActiveControl = ActiveDBGrid) and Assigned(ActiveDBGrid)) then
+    if (((View = vBrowser) or (Window.ActiveControl = ActiveDBGrid)) and Assigned(ActiveDBGrid)) then
       if (SelCount > 0) then
         StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(888, IntToStr(SelCount))
       else if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView]) and not Client.InUse() and TCBaseTable(FNavigator.Selected.Data).DataSet.LimitedDataReceived and (TCBaseTable(FNavigator.Selected.Data).Rows >= 0)) then
