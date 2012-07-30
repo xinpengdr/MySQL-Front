@@ -3459,10 +3459,7 @@ begin
     if ((SynchroThread.Terminated) or not Assigned(SynchroThread.DataSet)) then
       LibRow := nil
     else
-    begin
       LibRow := Lib.mysql_fetch_row(SynchroThread.ResultHandle);
-      Sleep(100);
-    end;
 
     TerminateCS.Enter();
     TMySQLDataSet(SynchroThread.DataSet).InternAddRecord(LibRow, Lib.mysql_fetch_lengths(SynchroThread.ResultHandle));
