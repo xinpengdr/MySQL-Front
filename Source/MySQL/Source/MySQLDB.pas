@@ -1865,18 +1865,24 @@ begin
 end;
 
 procedure TMySQLConnection.TSynchroThread.ReleaseDataSet();
+var
+  RecordsReceived: TEvent;
 begin
   Assert(Assigned(DataSet));
 
-  if ((DataSet is TMySQLDataSet) and (State = ssReceivingResult)) then
+  if (not (DataSet is TMySQLDataSet)) then
+    DataSet := nil
+  else
   begin
-    Terminate();
-    TMySQLDataSet(DataSet).RecordsReceived.SetEvent();
+    RecordsReceived := TMySQLDataSet(DataSet).RecordsReceived;
+    DataSet := nil;
+    RecordsReceived.WaitFor(INFINITE);
   end;
 
-  DataSet := nil;
-
-  Connection.SyncHandledResult(Self);
+  Connection.TerminateCS.Enter();
+  if (State = ssReceivingResult) then
+    Connection.SyncHandledResult(Self);
+  Connection.TerminateCS.Leave();
 end;
 
 procedure TMySQLConnection.TSynchroThread.RunAction(const AState: TState; const Synchron: Boolean);
@@ -1961,13 +1967,11 @@ begin
         end;
 	    ssReceivingResult:
         begin
-          Connection.TerminateCS.Enter();
           if (Assigned(DataSet.SynchroThread)) then
           begin
             DataSet.SynchroThread := nil;
             ReleaseDataSet();
           end;
-          Connection.TerminateCS.Leave();
           if (Mode in [smSQL, smDataSet]) then
             if (State in [ssNextResult, ssExecutingSQL]) then
               RunExecute.SetEvent()
@@ -1993,11 +1997,9 @@ begin
 
   inherited Terminate();
 
+  SynchronizeStarted.SetEvent();
   if (RunExecute.WaitFor(IGNORE) = wrSignaled) then
-  begin
-    SynchronizeStarted.SetEvent();
-    Connection.TerminatedThreads.Add(Self);
-  end
+    Connection.TerminatedThreads.Add(Self)
   else
     RunExecute.SetEvent();
 end;
@@ -3450,10 +3452,14 @@ end;
 
 procedure TMySQLConnection.SyncReceivingResult(SynchroThread: TSynchroThread);
 var
+  DataSet: TMySQLDataSet;
   LibRow: MYSQL_ROW;
 begin
+  TerminateCS.Enter();
   Assert(SynchroThread.State = ssReceivingResult);
   Assert(SynchroThread.DataSet is TMySQLDataSet);
+  DataSet := TMySQLDataSet(SynchroThread.DataSet);
+  TerminateCS.Leave();
 
   repeat
     if ((SynchroThread.Terminated) or not Assigned(SynchroThread.DataSet)) then
@@ -3462,7 +3468,7 @@ begin
       LibRow := Lib.mysql_fetch_row(SynchroThread.ResultHandle);
 
     TerminateCS.Enter();
-    TMySQLDataSet(SynchroThread.DataSet).InternAddRecord(LibRow, Lib.mysql_fetch_lengths(SynchroThread.ResultHandle));
+    DataSet.InternAddRecord(LibRow, Lib.mysql_fetch_lengths(SynchroThread.ResultHandle));
     TerminateCS.Leave();
   until (not Assigned(LibRow));
 
@@ -3475,14 +3481,8 @@ end;
 procedure TMySQLConnection.Terminate();
 var
   S: string;
-  RecordsReceived: TEvent;
 begin
   TerminateCS.Enter();
-
-  if (not Assigned(SynchroThread) or not (SynchroThread.DataSet is TMySQLDataSet) or (SynchroThread.State <> ssReceivingResult)) then
-    RecordsReceived := nil
-  else
-    RecordsReceived := TMySQLDataSet(SynchroThread.DataSet).RecordsReceived;
 
   if (Assigned(SynchroThread)) then
   begin
@@ -3491,15 +3491,11 @@ begin
       S := '----> Connection Terminated <----';
       WriteMonitor(PChar(S), Length(S), ttInfo);
     end;
-
     SynchroThread.Terminate();
     FSynchroThread := nil;
   end;
 
   TerminateCS.Leave();
-
-  if (Assigned(RecordsReceived)) then
-    RecordsReceived.WaitFor(INFINITE);
 end;
 
 procedure TMySQLConnection.UnRegisterSQLMonitor(const AMySQLMonitor: TMySQLMonitor);
@@ -4212,10 +4208,8 @@ begin
     begin
       Result := grEOF;
 
-      Connection.TerminateCS.Enter();
       SynchroThread.ReleaseDataSet();
       SynchroThread := nil;
-      Connection.TerminateCS.Leave();
     end;
   end;
 end;
@@ -4232,13 +4226,11 @@ end;
 
 procedure TMySQLQuery.InternalClose();
 begin
-  Connection.TerminateCS.Enter();
   if (Assigned(SynchroThread)) then
   begin
     SynchroThread.ReleaseDataSet();
     SynchroThread := nil;
   end;
-  Connection.TerminateCS.Leave();
 
   FIndexDefs.Clear();
 
@@ -5501,7 +5493,12 @@ procedure TMySQLDataSet.InternalRefresh();
 var
   SQL: string;
 begin
-  Connection.Terminate();
+  if (Assigned(SynchroThread)) then
+  begin
+    Connection.Terminate();
+    SynchroThread.ReleaseDataSet();
+    SynchroThread := nil;
+  end;
 
   InternRecordBuffers.Clear();
 
