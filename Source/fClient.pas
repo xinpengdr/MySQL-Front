@@ -3292,12 +3292,12 @@ end;
 
 destructor TCTable.Destroy();
 begin
+  inherited;
+
   if (Assigned(FDataSet)) then
     FDataSet.Free();
   if (Assigned(FFields)) then
     FFields.Free();
-
-  inherited;
 end;
 
 function TCTable.FieldByName(const FieldName: string): TCTableField;
