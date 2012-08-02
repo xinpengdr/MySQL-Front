@@ -348,7 +348,7 @@ type
     PSideBar: TPanel_Ext;
     PSynMemo: TPanel_Ext;
     PSQLHistory: TPanel_Ext;
-    CBlob: TCoolBar;
+    PToolBarBlob: TPanel_Ext;
     PWorkbench: TPanel_Ext;
     SaveDialog: TSaveDialog_Ext;
     SBlob: TSplitter_Ext;
@@ -376,7 +376,11 @@ type
     tbNavigator: TToolButton;
     tbObjects: TToolButton;
     tbIDE: TToolButton;
+    TBBlob: TToolBar;
     tbBuilder: TToolButton;
+    TBFilterEnabled: TToolBar;
+    TBLimitEnabled: TToolBar;
+    TBQuickSearchEnabled: TToolBar;
     TBSideBar: TToolBar;
     tbEditor: TToolButton;
     tbSQLHistory: TToolButton;
@@ -386,10 +390,7 @@ type
     tmEPaste: TMenuItem;
     tmESelectAll: TMenuItem;
     ToolBar: TToolBar;
-    TBBlob: TToolBar;
-    TBFilterEnabled: TToolBar;
-    TBLimitEnabled: TToolBar;
-    TBQuickSearchEnabled: TToolBar;
+    tbBlobSpacer: TPanel_Ext;
     procedure aBAddExecute(Sender: TObject);
     procedure aBDeleteExecute(Sender: TObject);
     procedure aBEditExecute(Sender: TObject);
@@ -639,6 +640,7 @@ type
     procedure PGridResize(Sender: TObject);
     procedure PLogResize(Sender: TObject);
     procedure PObjectIDEResize(Sender: TObject);
+    procedure PViewPaint(Sender: TObject);
     procedure SearchNotFound(Sender: TObject; FindText: string);
     procedure SLogCanResize(Sender: TObject; var NewSize: Integer;
       var Accept: Boolean);
@@ -657,6 +659,7 @@ type
     procedure SynMemoEnter(Sender: TObject);
     procedure SynMemoExit(Sender: TObject);
     procedure SynMemoStatusChange(Sender: TObject; Changes: TSynStatusChanges);
+    procedure PToolBarBlobResize(Sender: TObject);
     procedure ToolBarTabsClick(Sender: TObject);
     procedure ToolButtonStyleClick(Sender: TObject);
     procedure TreeViewCollapsed(Sender: TObject; Node: TTreeNode);
@@ -670,8 +673,6 @@ type
     procedure TreeViewMouseUp(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure ToolBarResize(Sender: TObject);
-    procedure PViewPaint(Sender: TObject);
-    procedure CBlobResize(Sender: TObject);
   type
     TNewLineFormat = (nlWindows, nlUnix, nlMacintosh);
     TTabState = set of (tsLoading, tsActive);
@@ -2665,9 +2666,7 @@ begin
       AllowChange := False;
   end;
 
-  if (not AllowChange) then
-    raise ERangeError.Create(SRangeError + #13#10 + 'NewAddress: ' + NewAddress)
-  else
+  if (AllowChange) then
   begin
     if (not Client.Update() and ((URI.Database <> '') or (URI.Param['system'] <> Null))) then
       AllowChange := False
@@ -4250,7 +4249,7 @@ begin
   FImage.Visible := (Sender = aVBlobImage) or not Assigned(Sender) and aVBlobImage.Checked;
   FHexEditor.Visible := (Sender = aVBlobHexEditor) or not Assigned(Sender) and aVBlobHexEditor.Checked;
   FBlobSearch.Visible := aVBlobText.Checked;
-  CBlobResize(Sender);
+  PToolBarBlobResize(Sender);
 
   if (FText.Visible) then
     FTextShow(Sender)
@@ -5568,9 +5567,6 @@ begin
     PDBGrid.BevelInner := bvRaised; PDBGrid.BevelOuter := bvLowered;
     PBlob.BevelInner := bvRaised; PBlob.BevelOuter := bvLowered;
     PLog.BevelInner := bvRaised; PLog.BevelOuter := bvLowered;
-
-    TBSideBar.BorderWidth := 1;
-    ToolBar.BorderWidth := 1;
   end
   else
   begin
@@ -6024,15 +6020,6 @@ begin
   Result.Perform(CM_PARENTTABLETOPTIONSCHANGED, 0, 0);
 end;
 
-procedure TFClient.CBlobResize(Sender: TObject);
-begin
-  FBlobSearch.Left := CBlob.Bands[0].Width - GetSystemMetrics(SM_CXVSCROLL) - FBlobSearch.Width;
-  TBBlob.ClientHeight := TBBlob.ButtonHeight;
-  CBlob.Bands[0].MinHeight := Max(TBBlob.Height, FBlobSearch.Height);
-  CBlob.ClientHeight := CBlob.Bands[0].MinHeight;
-  PBlobSpacer.Top := CBlob.ClientHeight;
-end;
-
 function TFClient.Desktop(const Database: TCDatabase): TDatabaseDesktop;
 begin
   Result := TDatabaseDesktop(Database.Desktop);
@@ -6179,7 +6166,7 @@ begin
         aVBlobRTF.Visible := aVBlobText.Visible and (EditorField.DataType = ftWideMemo) and not EditorField.IsNull and IsRTF(EditorField.AsString);
         aVBlobHTML.Visible := aVBlobText.Visible and (EditorField.DataType = ftWideMemo) and not EditorField.IsNull and IsHTML(EditorField.AsString);
         aVBlobImage.Visible := (EditorField.DataType = ftBlob) and Assigned(FImage.Picture.Graphic);
-        CBlobResize(Sender);
+        PToolBarBlobResize(Sender);
 
         if (aVBlobText.Visible and aVBlobText.Checked) then
           aVBlobExecute(nil)
@@ -6245,7 +6232,6 @@ begin
   end;
 
   gmFilter.Clear();
-  PBlob.Parent := nil;
 end;
 
 procedure TFClient.DBGridColumnMoved(Sender: TObject; FromIndex: Integer;
@@ -8724,6 +8710,7 @@ end;
 
 procedure TFClient.FreeDBGrid(const DBGrid: TMySQLDBGrid);
 begin
+  PBlob.Parent := nil;
   if (ActiveDBGrid = DBGrid) then
     ActiveDBGrid := nil;
   DBGrid.Free();
@@ -13175,6 +13162,22 @@ begin
     end;
 
   if (Assigned(ActiveSynMemo) and Assigned(ActiveSynMemo.OnStatusChange)) then ActiveSynMemo.OnStatusChange(ActiveSynMemo, [scModified]);
+end;
+
+procedure TFClient.PToolBarBlobResize(Sender: TObject);
+var
+  I: Integer;
+  Widths: Integer;
+begin
+  Widths := 0;
+  for I := 0 to TBBlob.ControlCount - 1 do
+    if (TBBlob.Controls[I].Visible and (TBBlob.Controls[I] <> tbBlobSpacer)) then
+      Inc(Widths, TBBlob.Controls[I].Width);
+  Inc(Widths, PBlobSpacer.Height + GetSystemMetrics(SM_CXVSCROLL));
+  tbBlobSpacer.Width := TBBlob.Width - Widths;
+
+  TBBlob.Height := TBBlob.ButtonHeight;
+  PToolBarBlob.ClientHeight := TBBlob.Height;
 end;
 
 procedure TFClient.PViewPaint(Sender: TObject);

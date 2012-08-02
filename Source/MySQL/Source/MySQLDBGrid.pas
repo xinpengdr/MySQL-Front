@@ -834,7 +834,7 @@ begin
     begin
       FMouseMoveCell := Cell;
       SetCapture(Handle);
-      SetTimer(Handle, tiShowHint, Application.HintShortPause, nil);
+      SetTimer(Handle, tiShowHint, Application.HintPause, nil);
     end;
 end;
 
