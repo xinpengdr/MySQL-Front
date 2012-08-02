@@ -2631,6 +2631,7 @@ begin
       Exclude(FrameState, tsLoading);
     end;
 
+    FNavigatorMenuNode := FNavigator.Selected;
     Wanted.Update := UpdateAfterAddressChanged;
   end;
 end;
@@ -7654,10 +7655,10 @@ end;
 
 procedure TFClient.FNavigatorChange(Sender: TObject; Node: TTreeNode);
 begin
+  FNavigatorMenuNode := Node;
+
   if (not (tsLoading in FrameState)) then
   begin
-    FNavigatorMenuNode := Node;
-
     KillTimer(Handle, tiNavigator);
     if (NavigatorElapse = 0) then
       FNavigatorChange2(Sender, Node)
@@ -8710,7 +8711,7 @@ end;
 
 procedure TFClient.FreeDBGrid(const DBGrid: TMySQLDBGrid);
 begin
-  PBlob.Parent := nil;
+  PBlob.Parent := PContent;
   if (ActiveDBGrid = DBGrid) then
     ActiveDBGrid := nil;
   DBGrid.Free();
@@ -12880,7 +12881,7 @@ begin
     else
     begin
       PBlob.Visible := False;
-      PBlob.Parent := nil;
+      PBlob.Parent := PContent;
     end;
     FText.OnChange := FTextChange;
 

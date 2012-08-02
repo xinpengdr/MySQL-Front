@@ -2,17 +2,16 @@ object FClient: TFClient
   Left = 0
   Top = 0
   Width = 591
-  Height = 588
+  Height = 304
   Align = alClient
   Constraints.MinHeight = 300
   Constraints.MinWidth = 200
   TabOrder = 0
   Visible = False
   OnResize = FormResize
-  ExplicitHeight = 304
   object SLog: TSplitter_Ext
     Left = 0
-    Top = 540
+    Top = 256
     Width = 591
     Height = 4
     Cursor = crVSplit
@@ -32,7 +31,7 @@ object FClient: TFClient
     Left = 120
     Top = 22
     Width = 4
-    Height = 518
+    Height = 234
     AutoSnap = False
     ResizeStyle = rsUpdate
     OnCanResize = SSideBarCanResize
@@ -46,19 +45,18 @@ object FClient: TFClient
     Left = 0
     Top = 22
     Width = 120
-    Height = 518
+    Height = 234
     Align = alLeft
     BevelOuter = bvNone
     Color = clWindow
     Constraints.MinWidth = 120
     ParentBackground = False
     TabOrder = 0
-    ExplicitHeight = 234
     object PExplorer: TPanel_Ext
       Left = 0
       Top = 0
       Width = 120
-      Height = 518
+      Height = 234
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
@@ -67,7 +65,6 @@ object FClient: TFClient
       TabOrder = 3
       Visible = False
       OnResize = PanelResize
-      ExplicitHeight = 234
       object SExplorer: TSplitter_Ext
         Left = 2
         Top = 102
@@ -112,19 +109,18 @@ object FClient: TFClient
       Left = 0
       Top = 0
       Width = 120
-      Height = 518
+      Height = 234
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
       ParentBackground = False
       TabOrder = 2
       Visible = False
-      ExplicitHeight = 234
       object FSQLHistory: TTreeView_Ext
         Left = 2
         Top = 2
         Width = 116
-        Height = 514
+        Height = 230
         HelpContext = 1112
         Align = alClient
         BorderStyle = bsNone
@@ -152,21 +148,19 @@ object FClient: TFClient
         OnKeyPress = FSQLHistoryKeyPress
         OnMouseDown = TreeViewMouseDown
         OnMouseUp = TreeViewMouseUp
-        ExplicitHeight = 230
       end
     end
     object PBookmarks: TPanel_Ext
       Left = 0
       Top = 0
       Width = 120
-      Height = 518
+      Height = 234
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
       ParentBackground = False
       TabOrder = 1
       Visible = False
-      ExplicitHeight = 234
       object FBookmarks: TListView
         Left = 2
         Top = 2
@@ -200,19 +194,18 @@ object FClient: TFClient
       Left = 0
       Top = 0
       Width = 120
-      Height = 518
+      Height = 234
       Align = alClient
       BevelInner = bvRaised
       BevelOuter = bvLowered
       ParentBackground = False
       TabOrder = 0
       Visible = False
-      ExplicitHeight = 234
       object FNavigator: TTreeView_Ext
         Left = 2
         Top = 2
         Width = 116
-        Height = 514
+        Height = 230
         HelpContext = 1038
         Align = alClient
         BorderStyle = bsNone
@@ -244,13 +237,12 @@ object FClient: TFClient
         OnKeyPress = FNavigatorKeyPress
         OnMouseDown = TreeViewMouseDown
         OnMouseUp = TreeViewMouseUp
-        ExplicitHeight = 230
       end
     end
   end
   object PLog: TPanel_Ext
     Left = 0
-    Top = 544
+    Top = 260
     Width = 591
     Height = 44
     Align = alBottom
@@ -259,7 +251,6 @@ object FClient: TFClient
     ParentBackground = False
     TabOrder = 2
     OnResize = PLogResize
-    ExplicitTop = 260
     object FLog: TRichEdit
       Left = 19
       Top = 2
@@ -307,7 +298,7 @@ object FClient: TFClient
     Left = 124
     Top = 22
     Width = 467
-    Height = 518
+    Height = 234
     Align = alClient
     BevelOuter = bvNone
     Color = clWindow
@@ -316,10 +307,9 @@ object FClient: TFClient
     ParentBackground = False
     TabOrder = 1
     OnResize = PContentResize
-    ExplicitHeight = 234
     object SResult: TSplitter_Ext
       Left = 0
-      Top = 302
+      Top = 18
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -339,7 +329,7 @@ object FClient: TFClient
     end
     object SBlob: TSplitter_Ext
       Left = 0
-      Top = 455
+      Top = 171
       Width = 467
       Height = 4
       Cursor = crVSplit
@@ -462,7 +452,7 @@ object FClient: TFClient
     end
     object PResult: TPanel_Ext
       Left = 0
-      Top = 325
+      Top = 41
       Width = 467
       Height = 130
       Align = alBottom
@@ -471,7 +461,6 @@ object FClient: TFClient
       ParentBackground = False
       TabOrder = 5
       Visible = False
-      ExplicitTop = 41
       object PResultHeader: TPanel_Ext
         Left = 0
         Top = 0
@@ -892,7 +881,7 @@ object FClient: TFClient
     end
     object PBlob: TPanel_Ext
       Left = 0
-      Top = 459
+      Top = 175
       Width = 467
       Height = 59
       Align = alBottom
@@ -902,7 +891,6 @@ object FClient: TFClient
       ParentBackground = False
       TabOrder = 6
       Visible = False
-      ExplicitTop = 175
       object FImage: TImage
         Left = 2
         Top = 27
@@ -1124,7 +1112,7 @@ object FClient: TFClient
     end
     object SBResult: TStatusBar
       Left = 0
-      Top = 306
+      Top = 22
       Width = 467
       Height = 19
       Panels = <
@@ -1149,7 +1137,6 @@ object FClient: TFClient
       ParentFont = True
       UseSystemFont = False
       Visible = False
-      ExplicitTop = 22
     end
   end
   object PView: TPanel_Ext
