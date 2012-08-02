@@ -859,6 +859,7 @@ begin
     Result := SysUtils.TryStrToInt(Str, Value);
 end;
 
+{$IFNDEF Debug}
 var
   Hook: HHOOK;
 
@@ -870,7 +871,7 @@ var
 begin
   if ((Code = HCBT_ACTIVATE)
     and (GetClassName(HWND(wParam), @ClassName, Length(ClassName)) > 0)
-    and (lstrcmp(@ClassName, '#32770') = 0) // #32770 is the class name of the MessageBox dialog
+    and (lstrcmp(@ClassName, '#32770') = 0) // '#32770' is the class name of the MessageBox dialog
     and GetWindowRect(HWND(wParam), MessageBoxRect)
     and GetWindowRect(PCBTActivateStruct(lParam).hWndActive, ActiveWindowRect)) then
     SetWindowPos(HWND(wParam), 0,
@@ -880,6 +881,7 @@ begin
 
   Result := CallNextHookEx(Hook, Code, wParam, lParam);
 end;
+{$ENDIF}
 
 initialization
   LocaleFormatSettings := MySQLDB.LocaleFormatSettings;
@@ -892,8 +894,10 @@ initialization
 
   Screen.Cursors[crClone] := LoadCursor(HInstance, 'Clone');
 
+{$IFNDEF Debug}
   Hook := SetWindowsHookEx(WH_CBT, CBTProc, 0, GetCurrentThreadId());
 finalization
   UnhookWindowsHookEx(Hook);
+{$ENDIF}
 end.
 

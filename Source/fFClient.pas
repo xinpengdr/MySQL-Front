@@ -6245,6 +6245,7 @@ begin
   end;
 
   gmFilter.Clear();
+  PBlob.Parent := nil;
 end;
 
 procedure TFClient.DBGridColumnMoved(Sender: TObject; FromIndex: Integer;
@@ -9209,20 +9210,21 @@ end;
 procedure TFClient.FTextChange(Sender: TObject);
 begin
   if (Assigned(EditorField) and FText.Modified) then
+  begin
+    if (EditorField.DataSet.State = dsBrowse) then
+      EditorField.DataSet.Edit();
     case (NewLineFormat) of
       nlUnix: EditorField.AsString := ReplaceStr(FText.Text, #13#10, #10);
       nlMacintosh: EditorField.AsString := ReplaceStr(FText.Text, #13#10, #13);
       else EditorField.AsString := FText.Text;
     end;
+  end;
 
   aVBlobRTF.Visible := Assigned(EditorField) and (EditorField.DataType = ftWideMemo) and not EditorField.IsNull and IsRTF(EditorField.AsString);
 end;
 
 procedure TFClient.FTextEnter(Sender: TObject);
 begin
-  if (Assigned(EditorField) and (EditorField.DataSet.State <> dsEdit)) then
-    EditorField.DataSet.Edit();
-
   StatusBarRefresh();
 end;
 
@@ -12891,7 +12893,7 @@ begin
     else
     begin
       PBlob.Visible := False;
-      PBlob.Parent := PContent;
+      PBlob.Parent := nil;
     end;
     FText.OnChange := FTextChange;
 

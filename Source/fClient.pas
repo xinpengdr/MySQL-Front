@@ -11564,12 +11564,8 @@ var
   I: Integer;
 begin
   if (Assigned(FCreateDesktop) and not Assigned(ACreateDesktop)) then
-  begin
     for I := 0 to Databases.Count - 1 do
-    begin
       Databases[I].FreeDesktop();
-    end;
-  end;
 
   FCreateDesktop := ACreateDesktop;
 end;

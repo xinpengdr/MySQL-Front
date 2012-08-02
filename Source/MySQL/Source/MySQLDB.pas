@@ -1780,7 +1780,7 @@ end;
 
 destructor TMySQLConnection.TSynchroThread.Destroy();
 begin
-  RunExecute.Free();
+  RunExecute.Free(); RunExecute := Pointer(1);
   SynchronizeStarted.Free();
   SQLStmtLengths.Free();
   SQLStmtsInPackets.Free();
@@ -1855,13 +1855,18 @@ end;
 
 function TMySQLConnection.TSynchroThread.GetIsRunning(): Boolean;
 begin
-  if (not Assigned(Self)) then
-    raise ERangeError.CreateFmt(SPropertyOutOfRange, ['Self']);
-  if (not Assigned(RunExecute)) then
-    raise ERangeError.CreateFmt(SPropertyOutOfRange, ['RunExecute']);
-  // in InUse() there are TerminateCS call. Are they needed?
+  if (not Terminated) then
+  begin
+    if (not Assigned(Self)) then
+      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['Self']);
+    if (not Assigned(RunExecute)) then
+      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['RunExecute']);
+    if (Integer(RunExecute) = 1) then
+      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['RunExecute']);
+    // in InUse() there is a TerminateCS call. Is this needed?
+  end;
 
-  Result := (RunExecute.WaitFor(IGNORE) = wrSignaled) or not (State in [ssClose, ssReady]);
+  Result := not Terminated and ((RunExecute.WaitFor(IGNORE) = wrSignaled) or not (State in [ssClose, ssReady]));
 end;
 
 procedure TMySQLConnection.TSynchroThread.ReleaseDataSet();
@@ -2162,7 +2167,14 @@ begin
   Close();
 
   while (DataSetCount > 0) do
+  begin
+    if (not Assigned(DataSets[0])) then
+      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['DataSets[0]']);
+    if (not (DataSets[0] is TMySQLQuery)) then
+      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['DataSets[0]']);
+
     DataSets[0].Free();
+  end;
 
   if (Assigned(SynchroThread)) then
   begin
@@ -4053,7 +4065,7 @@ end;
 destructor TMySQLQuery.Destroy();
 begin
   Close();
-  Connection := nil;
+  Connection := nil; // UnRegister Connection
 
   FIndexDefs.Free();
 
@@ -4974,16 +4986,13 @@ end;
 
 destructor TMySQLDataSet.Destroy();
 begin
-  Close();
+  inherited;
 
   FSortDef.Free();
   FRecordsReceived.Free();
   if (Assigned(FilterParser)) then
     FreeAndNil(FilterParser);
   FInternRecordBuffers.Free();
-  Connection := nil; // UnRegister Connection
-
-  inherited;
 end;
 
 function TMySQLDataSet.FindRecord(Restart, GoForward: Boolean): Boolean;
