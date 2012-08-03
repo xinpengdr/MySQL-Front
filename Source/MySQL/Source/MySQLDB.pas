@@ -1893,9 +1893,6 @@ end;
 
 procedure TMySQLConnection.TSynchroThread.RunAction(const AState: TState; const Synchron: Boolean);
 begin
-  if (RunExecute.WaitFor(IGNORE) = wrSignaled) then
-    Write;
-
   Assert(RunExecute.WaitFor(IGNORE) <> wrSignaled);
 
   State := AState;

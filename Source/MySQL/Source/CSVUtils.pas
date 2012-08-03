@@ -314,10 +314,13 @@ begin
 
       // -------------------
 
+        CMP ECX,0                        // End of Text?
+        JE Finish                        // Yes!
+
       StartL:
         MOV AX,[ESI]                     // Get character from Text
         CMP Value,0                      // First value?
-        JNE StartL2                       // No!
+        JNE StartL2                      // No!
         CMP AX,10                        // Character in Text = NewLine?
         JE StartLE                       // Yes!
         CMP AX,13                        // Character in Text = Carrige Return?

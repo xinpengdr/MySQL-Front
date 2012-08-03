@@ -1580,6 +1580,8 @@ var
 begin
   BeforeExecuteData(Item);
 
+  EscapedTableName := Client.EscapeIdentifier(Table.Name);
+
   if (Success = daSuccess) then
   begin
     SQLExecuted := TEvent.Create(nil, False, False, '');
@@ -1590,8 +1592,8 @@ begin
     if (Structure) then
     begin
       SQL := SQL + 'LOCK TABLES ' + EscapedTableName + ' WRITE;' + #13#10;
-      if (Client.ServerVersion >= 40000) then
-        SQL := SQL + 'ALTER TABLE ' + Client.EscapeIdentifier(Table.Name) + ' DISABLE KEYS;' + #13#10;
+      if ((Client.ServerVersion >= 40000) and (Table is TCBaseTable) and TCBaseTable(Table).Engine.IsMyISAM) then
+        SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' DISABLE KEYS;' + #13#10;
     end;
     if (Client.Lib.LibraryType <> ltHTTP) then
       if (Client.ServerVersion < 40011) then
@@ -1612,7 +1614,7 @@ begin
         SQL := SQL + SQLLoadDataInfile(Database, ImportType = itReplace, Pipename, Client.Charset, Database.Name, Table.Name, EscapedFieldNames);
         if (Structure) then
         begin
-          if (Client.ServerVersion >= 40000) then
+          if ((Client.ServerVersion >= 40000) and (Table is TCBaseTable) and TCBaseTable(Table).Engine.IsMyISAM) then
             SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
           SQL := SQL + 'UNLOCK TABLES;' + #13#10;
         end;
@@ -1689,7 +1691,6 @@ begin
     begin
       SQLExecuteLength := 0; InsertStmtInSQL := False;
 
-      EscapedTableName := Client.EscapeIdentifier(Table.Name);
       SetLength(EscapedFieldName, Length(Fields));
       for I := 0 to Length(Fields) - 1 do
         EscapedFieldName[I] := Client.EscapeIdentifier(Fields[I].Name);
@@ -1784,7 +1785,7 @@ begin
         SQL := SQL + ';' + #13#10;
       if (Structure) then
       begin
-        if (Client.ServerVersion >= 40000) then
+        if ((Client.ServerVersion >= 40000) and (Table is TCBaseTable) and TCBaseTable(Table).Engine.IsMyISAM) then
           SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
         SQL := SQL + 'UNLOCK TABLES;' + #13#10;
       end;
@@ -1800,7 +1801,7 @@ begin
     if (Success <> daSuccess) then
     begin
       SQL := '';
-      if (Client.ServerVersion >= 40000) then
+      if ((Client.ServerVersion >= 40000) and (Table is TCBaseTable) and TCBaseTable(Table).Engine.IsMyISAM) then
         SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
       SQL := SQL + 'UNLOCK TABLES;' + #13#10;
       if (Client.Lib.LibraryType <> ltHTTP) then
@@ -2453,7 +2454,7 @@ begin
         else if (Fields[I].FieldType in BinaryFieldTypes) then
           Values[I] := SQLEscapeBin(CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter), Client.ServerVersion <= 40000)
         else
-          Values[I] := SQLEscape(CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter));
+          Values[I] := SQLEscape(Trim(CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter)));
 end;
 
 procedure TTImportText.Open();
@@ -3761,7 +3762,7 @@ var
   SQL: string;
   Table: TCTable;
 begin
-  if (not Data) then
+  if (not Data or (Length(ExportObjects) = 0)) then
     DataTables := nil
   else
     DataTables := TList.Create();
@@ -3896,7 +3897,7 @@ begin
 
   AfterExecute();
 
-  if (Data) then
+  if (Data and (Length(ExportObjects) > 0)) then
   begin
     Client.CloseResult(DataHandle);
     DataTables.Free();
@@ -4379,7 +4380,7 @@ begin
   begin
     Content := '';
 
-    if (DisableKeys and (Table is TCBaseTable)) then
+    if (DisableKeys and (Table is TCBaseTable) and TCBaseTable(Table).Engine.IsMyISAM) then
       Content := Content + '/*!40000 ALTER TABLE ' + Client.EscapeIdentifier(Table.Name) + ' ENABLE KEYS */;' + #13#10;
 
     if (Content <> '') then
@@ -4443,7 +4444,7 @@ begin
 
     Content := Content + #13#10;
 
-    if (DisableKeys and (Table is TCBaseTable)) then
+    if (DisableKeys and (Table is TCBaseTable) and TCBaseTable(Table).Engine.IsMyISAM) then
       Content := Content + '/*!40000 ALTER TABLE ' + Client.EscapeIdentifier(Table.Name) + ' DISABLE KEYS */;' + #13#10;
   end;
 
@@ -7092,12 +7093,12 @@ begin
                 SQL := SQL + 'BEGIN;' + #13#10
               else
                 SQL := SQL + 'START TRANSACTION;' + #13#10;
-            if (Destination.Client.ServerVersion >= 40000) then
+            if ((Destination.Client.ServerVersion >= 40000) and DestinationTable.Engine.IsMyISAM) then
               SQL := SQL + 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' DISABLE KEYS;' + #13#10;
             if (DestinationDatabase.Name <> Destination.Client.DatabaseName) then
               SQL := SQL + DestinationDatabase.SQLUse();
             SQL := SQL + SQLLoadDataInfile(DestinationDatabase, False, Pipename, Destination.Client.Charset, DestinationDatabase.Name, DestinationTable.Name, '');
-            if (Destination.Client.ServerVersion >= 40000) then
+            if ((Destination.Client.ServerVersion >= 40000) and DestinationTable.Engine.IsMyISAM) then
               SQL := SQL + 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' ENABLE KEYS;' + #13#10;
             if (Destination.Client.Lib.LibraryType <> ltHTTP) then
               SQL := SQL + 'COMMIT;' + #13#10;
@@ -7186,7 +7187,7 @@ begin
             else
               SQL := SQL + 'START TRANSACTION;' + #13#10;
           SQL := SQL + 'LOCK TABLES ' + EscapedTableName + ' WRITE;' + #13#10;
-          if (Destination.Client.ServerVersion >= 40000) then
+          if ((Destination.Client.ServerVersion >= 40000) and DestinationTable.Engine.IsMyISAM) then
             SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' DISABLE KEYS;' + #13#10;
 
           if (DestinationDatabase.Name <> Destination.Client.DatabaseName) then
@@ -7254,7 +7255,7 @@ begin
 
           if (InsertStmtInSQL) then
             SQL := SQL + ';' + #13#10;
-          if (Destination.Client.ServerVersion >= 40000) then
+          if ((Destination.Client.ServerVersion >= 40000) and DestinationTable.Engine.IsMyISAM) then
             SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
           SQL := SQL + 'UNLOCK TABLES;' + #13#10;
           if (Destination.Client.Lib.LibraryType <> ltHTTP) then
@@ -7267,7 +7268,7 @@ begin
         if (Success <> daSuccess) then
         begin
           SQL := '';
-          if (Destination.Client.ServerVersion >= 40000) then
+          if ((Destination.Client.ServerVersion >= 40000) and DestinationTable.Engine.IsMyISAM) then
             SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
           SQL := SQL + 'UNLOCK TABLES;' + #13#10;
           if (Destination.Client.Lib.LibraryType <> ltHTTP) then

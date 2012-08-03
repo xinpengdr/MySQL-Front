@@ -1032,6 +1032,7 @@ type
     function GetEngines(): TCEngines; inline;
     function GetForeignKeyAllowed(): Boolean;
     function GetIsMerge(): Boolean;
+    function GetIsMyISAM(): Boolean;
   protected
     property Engines: TCEngines read GetEngines;
   public
@@ -1041,6 +1042,7 @@ type
     property Default: Boolean read FDefault;
     property ForeignKeyAllowed: Boolean read GetForeignKeyAllowed;
     property IsMerge: Boolean read GetIsMerge;
+    property IsMyISAM: Boolean read GetIsMyISAM;
   end;
 
   TCSystemEngine = class(TCEngine);
@@ -8129,7 +8131,14 @@ end;
 
 function TCEngine.GetIsMerge(): Boolean;
 begin
-  Result := (UpperCase(Name) = 'MERGE') or (UpperCase(Name) = 'MRG_ISAM') or (UpperCase(Name) = 'MRG_MYISAM');
+  Result := (Engines.NameCmp(Name, 'MERGE') = 0)
+    or (Engines.NameCmp(Name, 'MRG_ISAM') = 0)
+    or (Engines.NameCmp(Name, 'MRG_MYISAM') = 0);
+end;
+
+function TCEngine.GetIsMyISAM(): Boolean;
+begin
+  Result := (Engines.NameCmp(Name, 'MyISAM') = 0);
 end;
 
 function TCEngine.ApplyMySQLFieldType(const MySQLFieldType: TMySQLFieldType; const MySQLFieldSize: Integer): TMySQLFieldType;

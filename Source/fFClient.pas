@@ -3704,7 +3704,7 @@ begin
           end;
         etTextFile:
           begin
-            if (DExport.DBObjects.Count = 1) then
+            if (DExport.DBObjects.Count <= 1) then
             begin
               SaveDialog.Filter := FilterDescription('txt') + ' (*.txt;*.csv;*.tab;*.asc)|*.txt;*.csv;*.tab;*.asc';
               SaveDialog.DefaultExt := 'csv';
