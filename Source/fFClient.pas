@@ -2094,7 +2094,7 @@ begin
 
   Client.Terminate();
 
-  MainAction('aDCancel').Enabled := Client.InUse();
+  MainAction('aDCancel').Enabled := False;
 
   StatusBar.Panels[sbMessage].Text := '';
   StatusBarRefresh();
@@ -4011,7 +4011,7 @@ end;
 
 procedure TFClient.AfterConnect(Sender: TObject);
 begin
-  MainAction('aDCancel').Enabled := False;
+  MainAction('aDCancel').Enabled := Client.InUse();
 
   StatusBar.Panels[sbMessage].Text := Preferences.LoadStr(382);
   SetTimer(Handle, tiStatusBar, 5000, nil);
@@ -6895,24 +6895,12 @@ begin
       // There is a bug inside ShellBrowser.pas ver. 7.3 - but it's not interested to get informed
   end;
 
-  FServerListView.OnChanging := nil;
-  FServerListView.Items.BeginUpdate();
-  FServerListView.Items.Clear();
-  FServerListView.Items.EndUpdate();
-  if (Assigned(HostsListView)) then FreeListView(HostsListView);
-  if (Assigned(ProcessesListView)) then FreeListView(ProcessesListView);
-  if (Assigned(StatiListView)) then FreeListView(StatiListView);
-  if (Assigned(UsersListView)) then FreeListView(UsersListView);
-  if (Assigned(VariablesListView)) then FreeListView(VariablesListView);
-
-  if (Assigned(SQLEditor)) then SQLEditor.Free();
-
-
   if ((SQLEditor.Filename <> '') and not FSQLEditorSynMemo.Modified) then
     Client.Account.Desktop.EditorContent := ''
   else
     Client.Account.Desktop.EditorContent := FSQLEditorSynMemo.Text;
   Client.Account.Desktop.FoldersHeight := PFolders.Height;
+
   if (Assigned(FFiles)) then
     try
       Client.Account.Desktop.FilesFilter := FFiles.Filter;
@@ -6940,6 +6928,17 @@ begin
 
   Client.Account.Desktop.AddressMRU.Assign(ToolBarData.AddressMRU);
   Client.Account.UnRegisterDesktop(Self);
+
+  FServerListView.OnChanging := nil;
+  FServerListView.Items.BeginUpdate();
+  FServerListView.Items.Clear();
+  FServerListView.Items.EndUpdate();
+  if (Assigned(HostsListView)) then FreeListView(HostsListView);
+  if (Assigned(ProcessesListView)) then FreeListView(ProcessesListView);
+  if (Assigned(StatiListView)) then FreeListView(StatiListView);
+  if (Assigned(UsersListView)) then FreeListView(UsersListView);
+  if (Assigned(VariablesListView)) then FreeListView(VariablesListView);
+  if (Assigned(SQLEditor)) then SQLEditor.Free();
 
   FreeAndNil(JPEGImage);
   FreeAndNil(PNGImage);

@@ -487,6 +487,10 @@ begin
   FIndexedFieldsExit(Sender);
   FAvailableFieldsExit(Sender);
 
+  GBasics.Visible := True;
+  GAttributes.Visible := GBasics.Visible;
+  PSQLWait.Visible := not GBasics.Visible;
+
   FBOk.Enabled := False;
 
   ActiveControl := FBCancel;

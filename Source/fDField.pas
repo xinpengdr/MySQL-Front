@@ -912,7 +912,7 @@ begin
     FDefaultExit(Sender);
   FFlagNullAllowedClick(Sender);
 
-  if (FDefault.Visible and FDefault.Enabled and (Sender = FRDefault)) then
+  if ((Sender = FRDefault) and FDefault.Visible and FDefault.Enabled and (Sender = FRDefault)) then
     ActiveControl := FDefault;
 
   FBOkCheckEnabled(Sender);

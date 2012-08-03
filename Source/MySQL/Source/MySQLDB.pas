@@ -106,7 +106,7 @@ type
       MemSize: Integer;
       UsedSize: Integer;
     end;
-    TTraceType = (ttTime, ttRequest, ttResult, ttData, ttInfo);
+    TTraceType = (ttTime, ttRequest, ttResult, ttInfo);
     TTraceTypes = set of TTraceType;
     TMySQLOnMonitor = procedure (const Sender: TObject; const Text: PChar; const Length: Integer; const ATraceType: TTraceType) of object;
   private
@@ -175,6 +175,7 @@ type
       ErrorCode: Integer;
       ErrorMessage: string;
       LibHandle: MySQLConsts.MYSQL;
+      LibThreadId: my_uint;
       Mode: TMode;
       OnResult: TResultEvent;
       ResultHandle: MySQLConsts.MYSQL_RES;
@@ -1892,6 +1893,9 @@ end;
 
 procedure TMySQLConnection.TSynchroThread.RunAction(const AState: TState; const Synchron: Boolean);
 begin
+  if (RunExecute.WaitFor(IGNORE) = wrSignaled) then
+    Write;
+
   Assert(RunExecute.WaitFor(IGNORE) <> wrSignaled);
 
   State := AState;
@@ -3013,6 +3017,7 @@ end;
 procedure TMySQLConnection.SyncConnecting(const SynchroThread: TSynchroThread);
 var
   ClientFlag: my_uint;
+  SQL: string;
 begin
   if (not Assigned(SynchroThread.LibHandle)) then
   begin
@@ -3057,20 +3062,35 @@ begin
       my_char(LibEncode(Username)), my_char(LibEncode(Password)),
       my_char(LibEncode(DatabaseName)), Port, '', ClientFlag));
   end;
+  if ((Lib.mysql_errno(SynchroThread.LibHandle) <> 0) or (Lib.LibraryType = ltHTTP)) then
+    SynchroThread.LibThreadId := 0
+  else
+    SynchroThread.LibThreadId := Lib.mysql_thread_id(SynchroThread.LibHandle);
 
   SynchroThread.ErrorCode := Lib.mysql_errno(SynchroThread.LibHandle);
   SynchroThread.ErrorMessage := ErrorMsg(SynchroThread.LibHandle);
+
+  if (ThreadId > 0) then
+  begin
+    if (ServerVersion < 50000) then
+      SQL := 'KILL ' + IntToStr(ThreadId)
+    else
+      SQL := 'KILL CONNECTION ' + IntToStr(ThreadId);
+
+    if (Lib.mysql_real_query(SynchroThread.LibHandle, my_char(AnsiString(SQL)), Length(SQL)) = 0) then
+      Lib.mysql_use_result(SynchroThread.LibHandle);
+  end;
 end;
 
 procedure TMySQLConnection.SyncConnected(const SynchroThread: TSynchroThread);
 var
   I: Integer;
   S: string;
-  SQL: string;
 begin
   FConnected := SynchroThread.Success;
   FErrorCode := SynchroThread.ErrorCode;
   FErrorMessage := SynchroThread.ErrorMessage;
+  FThreadId := SynchroThread.LibThreadId;
 
   if (Assigned(SynchroThread.LibHandle)) then
   begin
@@ -3120,27 +3140,11 @@ begin
         FHostInfo := LibDecode(Lib.mysql_get_host_info(SynchroThread.LibHandle));
         FMultiStatements := FMultiStatements and Assigned(Lib.mysql_more_results) and Assigned(Lib.mysql_next_result) and ((ServerVersion > 40100) or (Lib.FLibraryType = ltHTTP)) and not ((50000 <= ServerVersion) and (ServerVersion < 50007));
 
-        if (FThreadId = 0) then
-          SQL := ''
-        else if (ServerVersion < 50000) then
-          SQL := SQL + 'KILL ' + IntToStr(FThreadId) + ';' + #13#10
+        if (ThreadId = 0) then
+          S := '# ' + SysUtils.DateTimeToStr(FLatestConnect + TimeDiff, FormatSettings) + ': Connected'
         else
-          SQL := SQL + 'KILL CONNECTION ' + IntToStr(FThreadId) + ';' + #13#10;
-
-        if (not Assigned(Lib.mysql_thread_id)) then
-        begin
-          FThreadId := 0;
-          S := '# ' + SysUtils.DateTimeToStr(FLatestConnect + TimeDiff, FormatSettings) + ': Connected';
-        end
-        else
-        begin
-          FThreadId := Lib.mysql_thread_id(SynchroThread.LibHandle);
-          S := '# ' + SysUtils.DateTimeToStr(FLatestConnect + TimeDiff, FormatSettings) + ': Connected (Id: ' + IntToStr(FThreadId) + ')';
-        end;
+          S := '# ' + SysUtils.DateTimeToStr(FLatestConnect + TimeDiff, FormatSettings) + ': Connected (Id: ' + IntToStr(ThreadId) + ')';
         WriteMonitor(PChar(S), Length(S), ttInfo);
-
-        if ((SQL <> '') and Assigned(SynchroThread.LibHandle)) then
-          SendSQL(SQL);
       end;
     end;
   end;
@@ -3269,6 +3273,7 @@ var
 begin
   FErrorCode := SynchroThread.ErrorCode;
   FErrorMessage := SynchroThread.ErrorMessage;
+  FThreadId := SynchroThread.LibThreadId;
 
   if (FErrorCode > 0) then
   begin
@@ -3279,16 +3284,10 @@ begin
   begin
     Inc(FResultCount);
 
-    if (Assigned(SynchroThread.ResultHandle)) then
-    begin
-      StmtLength := Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]);
-      WriteMonitor(@SynchroThread.SQL[SynchroThread.SQLStmtIndex], StmtLength, ttData);
-    end
-    else
-    begin
-      StmtLength := Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]);
+    StmtLength := Integer(SynchroThread.SQLStmtLengths[SynchroThread.SQLStmt]);
+
+    if (not Assigned(SynchroThread.ResultHandle)) then
       WriteMonitor(@SynchroThread.SQL[SynchroThread.SQLStmtIndex], StmtLength, ttResult);
-    end;
 
     if (SynchroThread.SQLUseStmts.IndexOf(Pointer(SynchroThread.SQLStmt)) >= 0) then
     begin
