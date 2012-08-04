@@ -3,7 +3,7 @@ object DIndex: TDIndex
   Top = 298
   BorderStyle = bsDialog
   Caption = 'DIndex'
-  ClientHeight = 377
+  ClientHeight = 441
   ClientWidth = 337
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -20,7 +20,7 @@ object DIndex: TDIndex
   OnShow = FormShow
   DesignSize = (
     337
-    377)
+    441)
   PixelsPerInch = 106
   TextHeight = 13
   object PSQLWait: TPanel
@@ -37,7 +37,7 @@ object DIndex: TDIndex
   end
   object FBOk: TButton
     Left = 165
-    Top = 344
+    Top = 408
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
@@ -48,7 +48,7 @@ object DIndex: TDIndex
   end
   object FBCancel: TButton
     Left = 253
-    Top = 344
+    Top = 408
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
@@ -61,13 +61,13 @@ object DIndex: TDIndex
     Left = 8
     Top = 8
     Width = 321
-    Height = 265
+    Height = 338
     Anchors = [akLeft, akTop, akRight, akBottom]
     Caption = 'GBasics'
     TabOrder = 1
     DesignSize = (
       321
-      265)
+      338)
     object FLName: TLabel
       Left = 8
       Top = 16
@@ -93,18 +93,33 @@ object DIndex: TDIndex
     end
     object FLLength: TLabel
       Left = 8
-      Top = 216
+      Top = 217
       Width = 45
       Height = 13
       Anchors = [akLeft, akBottom]
       Caption = 'FLLength'
       Enabled = False
+      ExplicitTop = 216
+    end
+    object FLBlockSize: TLabel
+      Left = 8
+      Top = 271
+      Width = 59
+      Height = 13
+      Caption = 'FLBlockSize'
+    end
+    object FLComment: TLabel
+      Left = 8
+      Top = 308
+      Width = 56
+      Height = 13
+      Caption = 'FLComment'
     end
     object FAvailableFields: TListView
       Left = 184
       Top = 80
       Width = 125
-      Height = 173
+      Height = 174
       Anchors = [akLeft, akTop, akBottom]
       Columns = <
         item
@@ -122,6 +137,7 @@ object DIndex: TDIndex
       OnDeletion = FAvailableFieldsDeletion
       OnEnter = FAvailableFieldsEnter
       OnExit = FAvailableFieldsExit
+      ExplicitHeight = 173
     end
     object Panel: TPanel
       Left = 148
@@ -270,7 +286,7 @@ object DIndex: TDIndex
       Left = 8
       Top = 80
       Width = 127
-      Height = 129
+      Height = 130
       Anchors = [akLeft, akTop, akBottom]
       Columns = <
         item
@@ -288,10 +304,11 @@ object DIndex: TDIndex
       OnDeletion = FIndexedFieldsDeletion
       OnEnter = FIndexedFieldsEnter
       OnExit = FIndexedFieldsExit
+      ExplicitHeight = 129
     end
     object FLength: TEdit
       Left = 8
-      Top = 232
+      Top = 233
       Width = 41
       Height = 21
       Anchors = [akLeft, akBottom]
@@ -299,10 +316,11 @@ object DIndex: TDIndex
       TabOrder = 6
       Text = '1'
       OnExit = FLengthExit
+      ExplicitTop = 232
     end
     object FLengthUD: TUpDown
       Left = 49
-      Top = 232
+      Top = 233
       Width = 15
       Height = 21
       Anchors = [akLeft, akBottom]
@@ -312,11 +330,38 @@ object DIndex: TDIndex
       Position = 1
       TabOrder = 7
       OnExit = FLengthExit
+      ExplicitTop = 232
+    end
+    object FComment: TEdit
+      Left = 136
+      Top = 305
+      Width = 173
+      Height = 21
+      TabOrder = 10
+      Text = 'FComment'
+      OnChange = FBOkCheckEnabled
+    end
+    object FBlockSize: TEdit
+      Left = 136
+      Top = 268
+      Width = 49
+      Height = 21
+      TabOrder = 8
+      Text = '0'
+      OnChange = FBOkCheckEnabled
+    end
+    object FBlockSizeUD: TUpDown
+      Left = 185
+      Top = 268
+      Width = 16
+      Height = 21
+      Associate = FBlockSize
+      TabOrder = 9
     end
   end
   object GAttributes: TGroupBox_Ext
     Left = 8
-    Top = 280
+    Top = 350
     Width = 321
     Height = 41
     Anchors = [akLeft, akRight, akBottom]
@@ -343,7 +388,7 @@ object DIndex: TDIndex
   end
   object FBHelp: TButton
     Left = 8
-    Top = 344
+    Top = 408
     Width = 75
     Height = 25
     Anchors = [akLeft, akBottom]

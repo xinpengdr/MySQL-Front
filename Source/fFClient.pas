@@ -444,7 +444,6 @@ type
     procedure aTBOffsetExecute(Sender: TObject);
     procedure aTBQuickSearchExecute(Sender: TObject);
     procedure aVBlobExecute(Sender: TObject);
-    procedure aVDetailsExecute(Sender: TObject);
     procedure aVSortAscExecute(Sender: TObject);
     procedure aVSortDescExecute(Sender: TObject);
     procedure BObjectIDEClick(Sender: TObject);
@@ -997,7 +996,6 @@ type
     procedure ListViewInitialize(const ListView: TListView);
     procedure ListViewUpdate(const ClientEvent: TCClient.TEvent; const ListView: TListView; const Data: TCustomData = nil);
     procedure MGridHeaderMenuOrderClick(Sender: TObject);
-    procedure MGridTitleMenuVisibleClick(Sender: TObject);
     function NavigatorNodeToAddress(const Node: TTreeNode): string;
     procedure OnConvertError(Sender: TObject; Text: string);
     procedure OpenInNewTabExecute(const DatabaseName, TableName: string; const OpenNewWindow: Boolean = False; const Filename: TFileName = '');
@@ -1087,11 +1085,10 @@ uses
   acQBLocalizer, acQBStrings,
   CommCtrl_Ext, StdActns_Ext,
   MySQLConsts, SQLUtils,
-  fDField, fDKey, fDTable, fDVariable, fDDatabase, fDForeignKey,
-  fDHost, fDUser, fDQuickFilter, fDGoto, fDSQLHelp, fDTransfer,
-  fDSearch, fDServer, fDBookmark, fURI, fDView, fDRoutine,
-  fDTrigger, fDStatement, fDEvent, fDColumns,
-  fDPaste, fDSegment, fDConnecting;
+  fDField, fDKey, fDTable, fDVariable, fDDatabase, fDForeignKey, fDHost, fDUser,
+  fDQuickFilter, fDGoto, fDSQLHelp, fDTransfer, fDSearch, fDServer, fDBookmark,
+  fURI, fDView, fDRoutine, fDTrigger, fDStatement, fDEvent, fDPaste, fDSegment,
+  fDConnecting;
 
 const
   nlHost = 0;
@@ -4267,18 +4264,6 @@ begin
     SendMessage(FBlobSearch.Handle, EM_SETCUEBANNER, 0, LParam(PChar(ReplaceStr(Preferences.LoadStr(424), '&', ''))));
 end;
 
-procedure TFClient.aVDetailsExecute(Sender: TObject);
-begin
-  Wanted.Clear();
-
-  DColumns.DBGrid := ActiveDBGrid;
-  if (DColumns.Execute()) then
-  begin
-    Window.ActiveControl := nil;
-    Window.ActiveControl := ActiveDBGrid;
-  end;
-end;
-
 procedure TFClient.aViewExecute(Sender: TObject);
 var
   NewView: TView;
@@ -4994,7 +4979,6 @@ begin
     MainAction('aVExplorer').OnExecute := aVSideBarExecute;
     MainAction('aVSQLHistory').OnExecute := aVSideBarExecute;
     MainAction('aVSQLLog').OnExecute := aVSQLLogExecute;
-    MainAction('aVDetails').OnExecute := aVDetailsExecute;
     MainAction('aVRefresh').OnExecute := aVRefreshExecute;
     MainAction('aVRefreshAll').OnExecute := aVRefreshAllExecute;
     MainAction('aBAdd').OnExecute := aBAddExecute;
@@ -6540,8 +6524,6 @@ begin
     MainAction('aDEditRecord').OnExecute := DBGridEditExecute;
     MainAction('aDEmpty').OnExecute := DBGridEmptyExecute;
 
-    MainAction('aVDetails').Enabled := True;
-
     MainAction('aERename').ShortCut := 0;
 
     MainAction('aDEditRecord').ShortCut := VK_F2;
@@ -6595,7 +6577,6 @@ begin
       MainAction('aECopyToFile').Enabled := False;
       MainAction('aEPasteFromFile').Enabled := False;
       MainAction('aSGoto').Enabled := False;
-      MainAction('aVDetails').Enabled := False;
       MainAction('aDInsertRecord').Enabled := False;
       MainAction('aDDeleteRecord').Enabled := False;
       MainAction('aDEditRecord').Enabled := False;
@@ -6790,8 +6771,7 @@ procedure TFClient.DBGridInitialize(const DBGrid: TMySQLDBGrid);
 var
   I: Integer;
   MenuItem: TMenuItem;
-  SortMenuItem: TMenuItem;
-  Table: TCTable;
+  Table: TCBaseTable;
 begin
   DBGrid.DataSource.DataSet.AfterClose := DataSetAfterClose;
   DBGrid.DataSource.DataSet.AfterScroll := DataSetAfterScroll;
@@ -6805,51 +6785,19 @@ begin
 
   MGridHeader.Items.Clear();
 
-  for I := 0 to DBGrid.Columns.Count - 1 do
-    if (Assigned(DBGrid.Columns[I].Field)) then
-    begin
-      MenuItem := TMenuItem.Create(Self);
-      MenuItem.Caption := DBGrid.Columns[I].Field.DisplayLabel;
-      MenuItem.OnClick := MGridTitleMenuVisibleClick;
-      MGridHeader.Items.Add(MenuItem);
-    end;
-
-  MenuItem := TMenuItem.Create(Self);
-  MenuItem.Caption := '-';
-  MenuItem.Tag := -1;
-  MGridHeader.Items.Add(MenuItem);
-
-  MenuItem := TMenuItem.Create(Self);
-  MenuItem.Action := MainAction('aVDetails');
-  MenuItem.Tag := -1;
-  MGridHeader.Items.Add(MenuItem);
-
   if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView])) then
   begin
     Table := TCBaseTable(FNavigator.Selected.Data);
 
-    if (TCBaseTable(Table).Keys.Count > 0) then
+    for I := 0 to Table.Keys.Count - 1 do
     begin
       MenuItem := TMenuItem.Create(Self);
-      MenuItem.Caption := '-';
-      MenuItem.Tag := -1;
+      MenuItem.Caption := TCBaseTable(Table).Keys[I].Caption;
+      MenuItem.Default := TCBaseTable(Table).Keys[I].Primary;
+      MenuItem.Tag := I;
+      MenuItem.RadioItem := True;
+      MenuItem.OnClick := MGridHeaderMenuOrderClick;
       MGridHeader.Items.Add(MenuItem);
-
-      SortMenuItem := TMenuItem.Create(Self);
-      SortMenuItem.Caption := Preferences.LoadStr(672);
-      MenuItem.Tag := -1;
-      MGridHeader.Items.Add(SortMenuItem);
-
-      for I := 0 to TCBaseTable(Table).Keys.Count - 1 do
-      begin
-        MenuItem := TMenuItem.Create(Self);
-        MenuItem.Caption := TCBaseTable(Table).Keys[I].Caption;
-        MenuItem.Default := TCBaseTable(Table).Keys[I].Primary;
-        MenuItem.Tag := I;
-        MenuItem.RadioItem := True;
-        MenuItem.OnClick := MGridHeaderMenuOrderClick;
-        SortMenuItem.Add(MenuItem);
-      end;
     end;
   end;
 
@@ -10465,42 +10413,42 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const List
       else
         Item.ImageIndex := iiView;
       Item.Caption := TCTable(Data).Caption;
-      if ((TCTable(Data) is TCBaseTable) and TCBaseTable(TCTable(Data)).ValidStatus and Assigned(TCBaseTable(Data).Engine)) then
+      if ((TCTable(Data) is TCBaseTable) and TCBaseTable(Data).ValidStatus and Assigned(TCBaseTable(Data).Engine)) then
         Item.SubItems.Add(TCBaseTable(Data).Engine.Name)
       else if ((TCTable(Data) is TCView)) then
         Item.SubItems.Add(ReplaceStr(Preferences.LoadStr(738), '&', ''))
       else
         Item.SubItems.Add('');
-      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ValidStatus) then
+      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(Data).ValidStatus) then
         Item.SubItems.Add('')
-      else if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(TCTable(Data)).Rows < 0)) then
+      else if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(Data).Rows < 0)) then
         Item.SubItems.Add('')
-      else if ((TCTable(Data) is TCBaseTable) and Assigned(TCBaseTable(TCTable(Data)).Engine) and (UpperCase(TCBaseTable(TCTable(Data)).Engine.Name) = 'INNODB')) then
-        Item.SubItems.Add('~' + FormatFloat('#,##0', TCBaseTable(TCTable(Data)).Rows, LocaleFormatSettings))
+      else if ((TCTable(Data) is TCBaseTable) and Assigned(TCBaseTable(Data).Engine) and TCBaseTable(Data).Engine.IsInnoDB) then
+        Item.SubItems.Add('~' + FormatFloat('#,##0', TCBaseTable(Data).Rows, LocaleFormatSettings))
       else if ((TCTable(Data) is TCBaseTable)) then
-        Item.SubItems.Add(FormatFloat('#,##0', TCBaseTable(TCTable(Data)).Rows, LocaleFormatSettings))
+        Item.SubItems.Add(FormatFloat('#,##0', TCBaseTable(Data).Rows, LocaleFormatSettings))
       else
         Item.SubItems.Add('');
-      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(TCTable(Data)).ValidStatus) then
+      if ((TCTable(Data) is TCBaseTable) and not TCBaseTable(Data).ValidStatus) then
         Item.SubItems.Add('')
       else if (TCTable(Data) is TCBaseTable) then
-        if ((TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize < 0)) then
+        if ((TCBaseTable(Data).DataSize + TCBaseTable(Data).IndexSize < 0)) then
           Item.SubItems.Add('')
         else
-          Item.SubItems.Add(SizeToStr(TCBaseTable(TCTable(Data)).DataSize + TCBaseTable(TCTable(Data)).IndexSize + 1))
+          Item.SubItems.Add(SizeToStr(TCBaseTable(Data).DataSize + TCBaseTable(Data).IndexSize + 1))
       else
         Item.SubItems.Add(SizeToStr(Length(TCView(TCTable(Data)).Source)));
-      if (not (TCTable(Data) is TCBaseTable) or not TCBaseTable(TCTable(Data)).ValidStatus or (TCBaseTable(TCTable(Data)).Updated <= 0)) then
+      if (not (TCTable(Data) is TCBaseTable) or not TCBaseTable(Data).ValidStatus or (TCBaseTable(Data).Updated <= 0)) then
         Item.SubItems.Add('')
       else
-        Item.SubItems.Add(SysUtils.DateTimeToStr(TCBaseTable(TCTable(Data)).Updated, LocaleFormatSettings));
+        Item.SubItems.Add(SysUtils.DateTimeToStr(TCBaseTable(Data).Updated, LocaleFormatSettings));
       S := '';
-      if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(TCTable(Data)).DefaultCharset <> '') and (TCBaseTable(TCTable(Data)).DefaultCharset <> TCBaseTable(TCTable(Data)).Database.DefaultCharset)) then
-        S := S + TCBaseTable(TCTable(Data)).DefaultCharset;
-      if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(TCTable(Data)).Collation <> '') and (TCBaseTable(TCTable(Data)).Collation <> TCBaseTable(TCTable(Data)).Database.Collation)) then
+      if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(Data).DefaultCharset <> '') and (TCBaseTable(Data).DefaultCharset <> TCBaseTable(Data).Database.DefaultCharset)) then
+        S := S + TCBaseTable(Data).DefaultCharset;
+      if ((TCTable(Data) is TCBaseTable) and (TCBaseTable(Data).Collation <> '') and (TCBaseTable(Data).Collation <> TCBaseTable(Data).Database.Collation)) then
       begin
         if (S <> '') then S := S + ', ';
-        S := S + TCBaseTable(TCTable(Data)).Collation;
+        S := S + TCBaseTable(Data).Collation;
       end;
       Item.SubItems.Add(S);
       if (Data is TCBaseTable) then
@@ -11577,8 +11525,6 @@ var
   SortMenuItem: TMenuItem;
   Table: TCBaseTable;
 begin
-  MainAction('aVDetails').Enabled := True;
-
   if (SelectedImageIndex in [iiBaseTable, iiSystemView]) then
   begin
     Table := TCBaseTable(FNavigator.Selected.Data);
@@ -11698,21 +11644,6 @@ begin
     gmFilter.Visible := gmFilter.Visible and not ActiveDBGrid.EditorMode;
     gmDEditRecord.Visible := gmDEditRecord.Visible and not ActiveDBGrid.EditorMode;
   end;
-end;
-
-procedure TFClient.MGridTitleMenuVisibleClick(Sender: TObject);
-var
-  I: Integer;
-  Index: Integer;
-begin
-  Wanted.Clear();
-
-  Index := -1;
-  for I := 0 to ActiveDBGrid.Columns.Count - 1 do
-    if (ActiveDBGrid.Columns[I].Field.FieldNo - 1 = MGridHeader.Items.IndexOf(TMenuItem(Sender))) then
-      Index := I;
-  if (Index >= 0) then
-    ActiveDBGrid.Columns[Index].Visible := not ActiveDBGrid.Columns[Index].Visible;
 end;
 
 procedure TFClient.miHOpenClick(Sender: TObject);
@@ -13315,7 +13246,10 @@ begin
       SaveDialog.FileName := ReplaceStr(Preferences.LoadStr(6), '&', '') + '.sql'
     else
     begin
-      SaveDialog.FileName := ExtractFileName(SQLEditor.Filename);
+      if (Sender = MainAction('aFSave')) then
+        SaveDialog.FileName := SQLEditor.Filename
+      else
+        SaveDialog.FileName := ExtractFileName(SQLEditor.Filename);
       SaveDialog.EncodingIndex := SaveDialog.Encodings.IndexOf(CodePageToEncoding(SQLEditor.FileCodePage));
     end;
     Text := ActiveSynMemo.Text;
@@ -13777,8 +13711,10 @@ begin
 
     Count := -1;
     case (View) of
-      vObjects: if (Assigned(ActiveListView)) then Count := ActiveListView.Items.Count;
-      vBrowser: if (Assigned(ActiveDBGrid) and Assigned(ActiveDBGrid.DataSource.DataSet) and ActiveDBGrid.DataSource.DataSet.Active) then Count := ActiveDBGrid.DataSource.DataSet.RecordCount;
+      vObjects:
+        if (Assigned(ActiveListView)) then Count := ActiveListView.Items.Count;
+      vBrowser:
+        if (Assigned(ActiveDBGrid) and Assigned(ActiveDBGrid.DataSource.DataSet) and ActiveDBGrid.DataSource.DataSet.Active) then Count := ActiveDBGrid.DataSource.DataSet.RecordCount;
       vIDE,
       vEditor:
         if (Assigned(Window.ActiveControl) and (Window.ActiveControl = ActiveSynMemo)) then
@@ -13786,15 +13722,13 @@ begin
         else if ((Window.ActiveControl = ActiveDBGrid) and Assigned(ActiveDBGrid) and Assigned(ActiveDBGrid.DataSource.DataSet)) then
           Count := ActiveDBGrid.DataSource.DataSet.RecordCount;
       vBuilder:
+        if (Assigned(FBuilderEditorPageControl())) then
         begin
-          if (Assigned(FBuilderEditorPageControl())) then
-          begin
-            QueryBuilderWorkArea := FBuilderActiveWorkArea();
-            if (Assigned(Window.ActiveControl) and Assigned(QueryBuilderWorkArea) and IsChild(QueryBuilderWorkArea.Handle, Window.ActiveControl.Handle)) then
-              Count := FBuilderActiveWorkArea().ControlCount
-            else if (Window.ActiveControl = FBuilderSynMemo) then
-              Count := FBuilderSynMemo.Lines.Count;
-          end;
+          QueryBuilderWorkArea := FBuilderActiveWorkArea();
+          if (Assigned(Window.ActiveControl) and Assigned(QueryBuilderWorkArea) and IsChild(QueryBuilderWorkArea.Handle, Window.ActiveControl.Handle)) then
+            Count := FBuilderActiveWorkArea().ControlCount
+          else if (Window.ActiveControl = FBuilderSynMemo) then
+            Count := FBuilderSynMemo.Lines.Count;
         end;
     end;
 
@@ -13810,7 +13744,7 @@ begin
       if (SelCount > 0) then
         StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(888, IntToStr(SelCount))
       else if ((View = vBrowser) and (SelectedImageIndex in [iiBaseTable, iiSystemView]) and not Client.InUse() and TCBaseTable(FNavigator.Selected.Data).DataSet.LimitedDataReceived and (TCBaseTable(FNavigator.Selected.Data).Rows >= 0)) then
-        if (Assigned(TCBaseTable(FNavigator.Selected.Data).Engine) and (UpperCase(TCBaseTable(FNavigator.Selected.Data).Engine.Name) <> 'INNODB')) then
+        if (Assigned(TCBaseTable(FNavigator.Selected.Data).Engine) and TCBaseTable(FNavigator.Selected.Data).Engine.IsInnoDB) then
           StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(889, IntToStr(Count), IntToStr(TCBaseTable(FNavigator.Selected.Data).Rows))
         else
           StatusBar.Panels[sbSummarize].Text := Preferences.LoadStr(889, IntToStr(Count), '~' + IntToStr(TCBaseTable(FNavigator.Selected.Data).Rows))

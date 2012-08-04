@@ -10,6 +10,9 @@ uses
   fClient,
   fBase;
 
+const
+  CM_SEND_SQL = WM_USER + 301;
+
 type
   TDSQLHelp = class(TForm_Ext)
     FBDescription: TButton;
@@ -36,8 +39,6 @@ type
     procedure FQuickSearchKeyPress(Sender: TObject; var Key: Char);
     procedure FQuickSearchEnabledClick(Sender: TObject);
     procedure FBContentClick(Sender: TObject);
-  const
-    CM_SEND_SQL = WM_USER + 300;
   private
     ManualURL: string;
     function ClientResult(const DataHandle: TMySQLConnection.TDataResult; const Data: Boolean): Boolean;
@@ -94,10 +95,12 @@ begin
 
       Caption := ReplaceStr(Preferences.LoadStr(883), '&', '') + ': ' + DataSet.FieldByName('name').AsString;
 
-      FDescription.Lines.Text := Trim(DataSet.FieldByName('description').AsString);
+      FDescription.Text := Trim(DataSet.FieldByName('description').AsString);
+      PostMessage(FDescription.Handle, WM_VSCROLL, SB_TOP, 0);
       FBDescription.Enabled := True;
 
-      FExample.Lines.Text := Trim(DataSet.FieldByName('example').AsString);
+      FExample.Text := Trim(DataSet.FieldByName('example').AsString);
+      PostMessage(FExample.Handle, WM_VSCROLL, SB_TOP, 0);
       FBExample.Enabled := Trim(DataSet.FieldByName('example').AsString) <> '';
 
       if (Pos('URL: ', FDescription.Lines[FDescription.Lines.Count - 1]) <> 1) then

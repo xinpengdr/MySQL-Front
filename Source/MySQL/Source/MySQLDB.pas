@@ -1995,6 +1995,9 @@ procedure TMySQLConnection.TSynchroThread.Terminate();
 var
   Index: Integer;
 begin
+  if (Terminated) then
+    raise ERangeError.CreateFmt(SPropertyOutOfRange, ['Terminated']);
+
   SynchronizingThreadsCS.Enter();
   Index := SynchronizingThreads.IndexOf(Self);
   if (Index >= 0) then

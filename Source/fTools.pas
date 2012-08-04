@@ -2454,7 +2454,7 @@ begin
         else if (Fields[I].FieldType in BinaryFieldTypes) then
           Values[I] := SQLEscapeBin(CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter), Client.ServerVersion <= 40000)
         else
-          Values[I] := SQLEscape(Trim(CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter)));
+          Values[I] := SQLEscape(CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter));
 end;
 
 procedure TTImportText.Open();

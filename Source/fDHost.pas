@@ -322,7 +322,7 @@ begin
 
   if (not Assigned(Host)) then
   begin
-    NewHostDatabase := TCHostDatabase.Create(Host.Databases);
+    NewHostDatabase := TCHostDatabase.Create(nil);
     NewHost.Databases.AddDatabase(NewHostDatabase);
     FreeAndNil(NewHostDatabase);
 

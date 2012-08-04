@@ -257,6 +257,8 @@ type
     function GetCaption(): string; override;
     procedure SetName(const AName: string); override;
   public
+    BlockSize: Integer;
+    Comment: string;
     Fulltext: Boolean;
     IndexType: string;
     Primary: Boolean;
@@ -329,6 +331,7 @@ type
     Comment: string;
     Default: string;
     FieldBefore: TCTableField;
+    Format: TMySQLRowType;
     NullAllowed: Boolean;
     Unicode: Boolean;
     Zerofill: Boolean;
@@ -543,6 +546,7 @@ type
   private
     FAutoIncrement: LargeInt; // 0 -> unknown
     FAvgRowLength: LargeInt;
+    FBlockSize: Integer;
     FChecked: TDateTime;
     FCollation: string;
     FComment: string;
@@ -609,6 +613,7 @@ type
     property AutoIncrement: LargeInt read FAutoIncrement write FAutoIncrement;
     property AutoIncrementField: TCBaseTableField read GetAutoIncrementField;
     property AvgRowLength: LargeInt read FAvgRowLength;
+    property BlockSize: Integer read FBlockSize write FBlockSize;
     property Checked: TDateTime read FChecked write FChecked;
     property Collation: string read GetCollation write FCollation;
     property Comment: string read GetComment write FComment;
@@ -1030,9 +1035,9 @@ type
     FComment: string;
     FDefault: Boolean;
     function GetEngines(): TCEngines; inline;
-    function GetForeignKeyAllowed(): Boolean;
-    function GetIsMerge(): Boolean;
-    function GetIsMyISAM(): Boolean;
+    function GetIsInnoDB(): Boolean; inline;
+    function GetIsMerge(): Boolean; inline;
+    function GetIsMyISAM(): Boolean; inline;
   protected
     property Engines: TCEngines read GetEngines;
   public
@@ -1040,7 +1045,8 @@ type
     function ApplyMySQLFieldType(const MySQLFieldType: TMySQLFieldType; const MySQLFieldSize: Integer): TMySQLFieldType; virtual;
     property Comment: string read FComment write FComment;
     property Default: Boolean read FDefault;
-    property ForeignKeyAllowed: Boolean read GetForeignKeyAllowed;
+    property ForeignKeyAllowed: Boolean read GetIsInnoDB;
+    property IsInnoDB: Boolean read GetIsInnoDB;
     property IsMerge: Boolean read GetIsMerge;
     property IsMyISAM: Boolean read GetIsMyISAM;
   end;
@@ -2233,14 +2239,17 @@ begin
   inherited Assign(Source);
 
   OriginalName := Source.OriginalName;
+
+  BlockSize := Source.BlockSize;
   Created := Source.Created;
-  if (Assigned(FColumns)) then
-    FColumns.Clear();
+  Columns.Clear();
   for I := 0 to Source.Columns.Count - 1 do
     Columns.AddColumn(Source.Columns[I]);
+  Comment := Source.Comment;
+  Fulltext := Source.Fulltext;
+  IndexType := Source.IndexType;
   Primary := Source.Primary;
   Unique := Source.Unique;
-  Fulltext := Source.Fulltext;
 end;
 
 function TCKey.ColumnByField(const AField: TCBaseTableField): TCKeyColumn;
@@ -3566,6 +3575,7 @@ begin
 
   FAutoIncrement := TCBaseTable(Source).AutoIncrement;
   FAvgRowLength := TCBaseTable(Source).AvgRowLength;
+  FBlockSize := TCBaseTable(Source).BlockSize;
   FChecked := TCBaseTable(Source).Checked;
   FCollation := TCBaseTable(Source).FCollation;
   FComment := TCBaseTable(Source).Comment;
@@ -3700,7 +3710,7 @@ end;
 
 function TCBaseTable.CountRecords(): Integer;
 begin
-  if (Assigned(Engine) and (UpperCase(Engine.Name) <> 'INNODB')) then
+  if (Assigned(Engine) and Engine.IsInnoDB) then
     Result := Rows
   else
     Result := inherited CountRecords();
@@ -4212,6 +4222,8 @@ begin
           NewField.AutoIncrement := True
         else if (SQLParseKeyword(Parse, 'COMMENT')) then
           NewField.Comment := SQLParseValue(Parse)
+        else if (SQLParseKeyword(Parse, 'COLUMN_FORMAT')) then
+          NewField.Format := StrToMySQLRowType(SQLParseValue(Parse))
         else
           SQLParseValue(Parse);
       end;
@@ -4287,8 +4299,17 @@ begin
           SQLParseChar(Parse, ',');
         end;
 
-      if (SQLParseKeyword(Parse, 'USING')) then // MySQL >= 5.01.xx
-        NewKey.IndexType := SQLParseValue(Parse);
+      while (not SQLParseChar(Parse, ',', False) and not SQLParseChar(Parse, ')', False)) do
+      begin
+        if (SQLParseKeyword(Parse, 'COMMENT')) then // MySQL >= 5.5.3
+          NewKey.Comment := SQLParseValue(Parse)
+        else if (SQLParseKeyword(Parse, 'KEY_BLOCK_SIZE')) then // MySQL >= 5.1.10
+          NewKey.BlockSize := StrToInt(SQLParseValue(Parse))
+        else if (SQLParseKeyword(Parse, 'USING')) then // MySQL >= 5.1.xx
+          NewKey.IndexType := SQLParseValue(Parse)
+        else
+          SQLParseValue(Parse);
+      end;
 
       NewKey.Unique := NewKey.Unique or NewKey.Primary;
 
@@ -4410,15 +4431,27 @@ begin
         if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 12, SQL]);
         FAutoIncrement := StrToInt64(SQLParseValue(Parse));
       end
+      else if (SQLParseKeyword(Parse, 'COLLATE')) then
+      begin
+        if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 14, SQL]);
+        FCollation := LowerCase(SQLParseValue(Parse));
+      end
+      else if (SQLParseKeyword(Parse, 'COMMENT')) then
+      begin
+        if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 16, SQL]);
+        FComment := SQLParseValue(Parse);
+      end
       else if (SQLParseKeyword(Parse, 'DEFAULT CHARSET') or SQLParseKeyword(Parse, 'CHARSET')) then
       begin
         if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 13, SQL]);
         DefaultCharset := SQLParseValue(Parse);
       end
-      else if (SQLParseKeyword(Parse, 'COLLATE')) then
+      else if (SQLParseKeyword(Parse, 'KEY_BLOCK_SIZE')) then
+        FBlockSize := StrToInt(SQLParseValue(Parse))
+      else if (SQLParseKeyword(Parse, 'ROW_FORMAT')) then
       begin
-        if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 14, SQL]);
-        Collation := LowerCase(SQLParseValue(Parse));
+        if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 17, SQL]);
+        FRowType := StrToMySQLRowType(SQLParseValue(Parse));
       end
       else if (SQLParseKeyword(Parse, 'PACK_KEYS')) then
       begin
@@ -4430,16 +4463,6 @@ begin
           FPackIndices := piPacked
         else
           FPackIndices := piDefault;
-      end
-      else if (SQLParseKeyword(Parse, 'COMMENT')) then
-      begin
-        if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 16, SQL]);
-        FComment := SQLParseValue(Parse);
-      end
-      else if (SQLParseKeyword(Parse, 'ROW_FORMAT')) then
-      begin
-        if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 17, SQL]);
-        FRowType := StrToMySQLRowType(SQLParseValue(Parse));
       end
       else if (SQLParseKeyword(Parse, 'PARTITION')) then
       begin
@@ -7022,6 +7045,10 @@ begin
       else
         SQLPart := SQLPart + 'INDEX';
       if (NewKey.Name <> '') then SQLPart := SQLPart + ' ' + Client.EscapeIdentifier(NewKey.Name);
+
+      if ((((40100 <= Client.ServerVersion) and (Client.ServerVersion < 50060)) or ((50100 <= Client.ServerVersion) and (Client.ServerVersion < 50110))) and (NewKey.IndexType <> '')) then
+        SQLPart := SQLPart + ' USING=' + NewKey.IndexType;
+
       FieldNames := '';
       for J := 0 to NewKey.Columns.Count - 1 do
       begin
@@ -7031,6 +7058,13 @@ begin
           FieldNames := FieldNames + '(' + IntToStr(NewKey.Columns.Column[J].Length) + ')';
       end;
       SQLPart := SQLPart + ' (' + FieldNames + ')';
+
+      if ((Client.ServerVersion >= 50110) and (NewKey.BlockSize > 0)) then
+        SQLPart := SQLPart + ' KEY_BLOCK_SIZE=' + IntToStr(NewKey.BlockSize);
+      if ((((50060 <= Client.ServerVersion) and (Client.ServerVersion < 50100)) or (50110 <= Client.ServerVersion)) and (NewKey.IndexType <> '')) then
+        SQLPart := SQLPart + ' USING=' + NewKey.IndexType;
+      if ((Client.ServerVersion >= 50503) and (NewKey.Comment <> '')) then
+        SQLPart := SQLPart + ' COMMENT=' + SQLEscape(NewKey.Comment);
 
       if (SQL <> '') then SQL := SQL + ',' + #13#10;
       SQL := SQL + SQLPart;
@@ -7195,6 +7229,11 @@ begin
     else
       SQL := SQL + ' PACK_KEYS=DEFAULT';
   end;
+  if ((not Assigned(Table) and (NewTable.BlockSize > 0) or Assigned(Table) and (NewTable.BlockSize <> Table.BlockSize)) and (Client.ServerVersion >= 50110)) then
+  begin
+    if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
+    SQL := SQL + ' KEY_BLOCK_SIZE=' + IntToStr(NewTable.BlockSize);
+  end;
   if ((not Assigned(Table) and (NewTable.FRowType <> mrUnknown) or Assigned(Table) and (NewTable.FRowType <> Table.RowType)) and (NewTable.DBRowTypeStr() <> '')) then
   begin
     if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
@@ -7342,7 +7381,7 @@ begin
   else
     Result := 'TRUNCATE TABLE ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(Table.Name) + ';' + #13#10;
 
-  if ((Client.ServerVersion < 32328) or ((Client.ServerVersion < 50013) and Assigned(Table.Engine) and (UpperCase(Table.Engine.Name) = 'INNODB'))) then
+  if ((Client.ServerVersion < 32328) or ((Client.ServerVersion < 50013) and Assigned(Table.Engine) and Table.Engine.IsInnoDB)) then
     Result := Result + 'ALTER TABLE ' + Client.EscapeIdentifier(Name) + '.' + Client.EscapeIdentifier(Table.Name) + ' AUTO_INCREMENT=0;' + #13#10;
 
   if (Client.DatabaseName <> Name) then
@@ -8124,9 +8163,9 @@ begin
   Result := TCEngines(CItems);
 end;
 
-function TCEngine.GetForeignKeyAllowed(): Boolean;
+function TCEngine.GetIsInnoDB(): Boolean;
 begin
-  Result := (UpperCase(Name) = 'INNODB');
+  Result := (Engines.NameCmp(Name, 'InnoDB') = 0);
 end;
 
 function TCEngine.GetIsMerge(): Boolean;
@@ -8440,7 +8479,7 @@ function TCFieldTypes.FieldAvailable(const Engine: TCEngine; const MySQLFieldTyp
 begin
   case (MySQLFieldType) of
     mfUnknown: Result := False;
-    mfBit: Result := Assigned(Engine) and ((Client.ServerVersion >= 50003) and (Engine.Name = 'MyISAM') or (Client.ServerVersion >= 50005) and ((Engine.Name = 'MEMORY') or (Engine.Name = 'InnoDB') or (Engine.Name = 'BDB')));
+    mfBit: Result := Assigned(Engine) and ((Client.ServerVersion >= 50003) and (Engine.Name = 'MyISAM') or (Client.ServerVersion >= 50005) and ((Engine.Name = 'MEMORY') or Engine.IsInnoDB or (Engine.Name = 'BDB')));
     mfBinary,
     mfVarBinary: Result := Client.ServerVersion >= 40102;
     mfGeometry,
@@ -8450,7 +8489,7 @@ begin
     mfMultiPoint,
     mfMultiLineString,
     mfMultiPolygon,
-    mfGeometryCollection: Result := Assigned(Engine) and (Assigned(Client.VariableByName('have_geometry')) and Client.VariableByName('have_geometry').AsBoolean and ((Engine.Name = 'MyISAM') or (Client.ServerVersion >= 50016) and ((Engine.Name = 'InnoDB') or (Engine.Name = 'NDB') or (Engine.Name = 'BDB') or (Engine.Name = 'ARCHIVE'))));
+    mfGeometryCollection: Result := Assigned(Engine) and (Assigned(Client.VariableByName('have_geometry')) and Client.VariableByName('have_geometry').AsBoolean and ((Engine.Name = 'MyISAM') or (Client.ServerVersion >= 50016) and (Engine.IsInnoDB or (Engine.Name = 'NDB') or (Engine.Name = 'BDB') or (Engine.Name = 'ARCHIVE'))));
     else Result := True;
   end;
 end;

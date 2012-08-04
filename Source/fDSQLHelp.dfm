@@ -111,6 +111,7 @@ object DSQLHelp: TDSQLHelp
     Font.Height = -11
     Font.Name = 'MS Sans Serif'
     Font.Style = []
+    HideSelection = False
     Lines.Strings = (
       'FDescription')
     ParentFont = False

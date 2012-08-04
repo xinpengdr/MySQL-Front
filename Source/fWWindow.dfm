@@ -642,13 +642,6 @@ object WWindow: TWWindow
       HelpType = htContext
       ShortCut = 16506
     end
-    object aVDetails: TAction
-      Category = 'View'
-      Caption = 'aVDetails'
-      Enabled = False
-      HelpContext = 1086
-      HelpType = htContext
-    end
     object aVAddress: TAction
       Category = 'View'
       Caption = 'aVAddress'
@@ -1664,12 +1657,6 @@ object WWindow: TWWindow
         AutoCheck = True
       end
       object N22: TMenuItem
-        Caption = '-'
-      end
-      object aVDetails1: TMenuItem
-        Action = aVDetails
-      end
-      object N4: TMenuItem
         Caption = '-'
       end
       object miVRefresh: TMenuItem

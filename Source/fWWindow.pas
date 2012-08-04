@@ -157,8 +157,6 @@ type
     aVAddressBar: TAction;
     aVBookmarks: TAction;
     aVDataBrowser: TAction;
-    aVDetails: TAction;
-    aVDetails1: TMenuItem;
     aVDiagram: TAction;
     aVExplorer: TAction;
     aVNavigator: TAction;
@@ -334,7 +332,6 @@ type
     N30: TMenuItem;
     N31: TMenuItem;
     N32: TMenuItem;
-    N4: TMenuItem;
     N5: TMenuItem;
     N7: TMenuItem;
     N8: TMenuItem;
@@ -1070,7 +1067,6 @@ begin
   aVExplorer.Caption := Preferences.LoadStr(435);
   aVSQLHistory.Caption := Preferences.LoadStr(807);
   aVSQLLog.Caption := Preferences.LoadStr(11);
-  aVDetails.Caption := Preferences.LoadStr(684) + '...';
   aVRefresh.Caption := Preferences.LoadStr(41);
   aVRefreshAll.Caption := Preferences.LoadStr(623);
 

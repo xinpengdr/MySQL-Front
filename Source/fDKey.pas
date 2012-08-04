@@ -42,6 +42,11 @@ type
     ToolBar4: TToolBar;
     ToolBar5: TToolBar;
     ToolBar6: TToolBar;
+    FLComment: TLabel;
+    FComment: TEdit;
+    FLBlockSize: TLabel;
+    FBlockSize: TEdit;
+    FBlockSizeUD: TUpDown;
     procedure FAvailableFieldsChange(Sender: TObject; Item: TListItem;
       Change: TItemChange);
     procedure FAvailableFieldsDeletion(Sender: TObject; Item: TListItem);
@@ -87,6 +92,7 @@ implementation {***************************************************************}
 {$R *.dfm}
 
 uses
+  StrUtils,
   MySQLDB;
 
 var
@@ -117,6 +123,8 @@ begin
   FLIndexedFields.Caption := Preferences.LoadStr(155) + ':';
   FLLength.Caption := Preferences.LoadStr(630) + ':';
   FLAvailableFields.Caption := Preferences.LoadStr(156) + ':';
+  FLBlockSize.Caption := Preferences.LoadStr(890) + ':';
+  FLComment.Caption := ReplaceStr(Preferences.LoadStr(111), '&', '') + ':';
 
   GAttributes.Caption := Preferences.LoadStr(157);
   FUnique.Caption := Preferences.LoadStr(158);
@@ -176,7 +184,7 @@ begin
       FBOk.Enabled := FBOk.Enabled and ((Table.Keys.Count = 0) or Table.Keys[0].Primary)
     else
       for I := 0 to Table.Keys.Count - 1 do
-        if (not Table.Keys[I].Primary and (lstrcmpi(PChar(Table.Keys[I].Name), PChar(FName.Text)) = 0)) then
+        if (not Table.Keys[I].Primary and (Table.Keys.NameCmp(Table.Keys[I].Name, FName.Text) = 0)) then
           FBOk.Enabled := False;
 end;
 
@@ -313,6 +321,9 @@ begin
       FreeAndNil(NewKeyColumn);
     end;
 
+    NewKey.BlockSize := FBlockSizeUD.Position;
+    NewKey.Comment := Trim(FComment.Text);
+
     NewKey.Unique := FUnique.Checked;
     NewKey.Fulltext := FFulltext.Checked;
 
@@ -425,6 +436,8 @@ begin
   end;
 
   FIndexedFields.Items.Clear();
+  FBlockSize.Visible := Database.Client.ServerVersion >= 50110; FLBlockSize.Visible := FBlockSize.Visible;
+  FComment.Visible := Database.Client.ServerVersion >= 50503; FLComment.Visible := FComment.Visible;
 
   SetLength(Lengths, Table.Fields.Count);
   for I := 0 to Length(Lengths) - 1 do
@@ -443,6 +456,8 @@ begin
 
     FName.Text := '';
     FLength.Text := '';
+    FBlockSizeUD.Position := 0;
+    FComment.Text := '';
 
     FUnique.Checked := False;
     FFulltext.Checked := False;
@@ -463,6 +478,9 @@ begin
     for I := 0 to Key.Columns.Count - 1 do
       FIndexedFields.Items.Add().Caption := Key.Columns.Column[I].Field.Name;
     FIndexedFields.Selected := FIndexedFields.Items[0];
+
+    FBlockSizeUD.Position := Key.BlockSize;
+    FComment.Text := Key.Comment;
 
     FUnique.Checked := Key.Unique;
     FFulltext.Checked := Key.Fulltext;

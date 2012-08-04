@@ -316,7 +316,6 @@ begin
 
         CMP ECX,0                        // End of Text?
         JE Finish                        // Yes!
-
       StartL:
         MOV AX,[ESI]                     // Get character from Text
         CMP Value,0                      // First value?
