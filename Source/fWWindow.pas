@@ -1746,8 +1746,9 @@ begin
       DataFields.Add('MySQL Version=' + Clients[I].ServerVersionStr);
 
   EurekaExceptionRecord.CurrentModuleOptions.EMailSubject
-    := AnsiString(SysUtils.LoadStr(1000) + ' ' + IntToStr(Preferences.VerMajor) + '.' + IntToStr(Preferences.VerMinor) + ' Bug Report'
-    + '  (' + Preferences.LoadStr(737) + ': ' + IntToStr(Preferences.VerPatch) + '.' + IntToStr(Preferences.VerBuild) + ')');
+    := AnsiString(SysUtils.LoadStr(1000) + ' ' + IntToStr(Preferences.VerMajor) + '.' + IntToStr(Preferences.VerMinor)
+    + ' (' + Preferences.LoadStr(737) + ': ' + IntToStr(Preferences.VerPatch) + '.' + IntToStr(Preferences.VerBuild) + ')')
+    + ' - Bug Report';
 end;
 
 procedure TWWindow.EurekaLogExceptionNotify(

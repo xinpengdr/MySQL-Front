@@ -450,7 +450,7 @@ begin
 
   if (not Assigned(Key)) then
   begin
-    FPrimary.Enabled := (Table.Keys.Count = 0) or not Table.Keys.Key[0].Primary;
+    FPrimary.Enabled := (Table.Keys.Count = 0) or not Table.Keys[0].Primary;
     FPrimary.Checked := FPrimary.Enabled;
     FOther.Checked := not FPrimary.Checked;
 
@@ -464,7 +464,7 @@ begin
   end
   else
   begin
-    FPrimary.Enabled := Key.Primary or (Table.Keys.Count = 0) or not Table.Keys.Key[0].Primary;
+    FPrimary.Enabled := Key.Primary or (Table.Keys.Count = 0) or not Table.Keys[0].Primary;
     FPrimary.Checked := Key.Primary;
     FOther.Checked := not FPrimary.Checked;
     if (FOther.Checked) then FName.Text := Key.Name else FName.Text := '';

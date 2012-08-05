@@ -10521,8 +10521,8 @@ procedure TFClient.ListViewUpdate(const ClientEvent: TCClient.TEvent; const List
         Item.SubItems.Add('fulltext')
       else
         Item.SubItems.Add('');
-      if (Client.ServerVersion >= 40100) then
-        Item.SubItems.Add('');
+      if (Client.ServerVersion >= 50503) then
+        Item.SubItems.Add(TCKey(Data).Comment);
     end
     else if (Data is TCBaseTableField) then
     begin

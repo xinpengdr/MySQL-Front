@@ -2288,11 +2288,13 @@ procedure TCKey.Clear();
 begin
   Created := False;
 
+  BlockSize := 0;
   if (Assigned(FColumns)) then
     FColumns.Clear();
+  Comment := '';
+  Fulltext := False;
   Primary := False;
   Unique := False;
-  Fulltext := False;
 end;
 
 function TCKey.GetCaption(): string;
@@ -2350,9 +2352,11 @@ begin
     Result := Result and (Columns[I].Length = Second.Columns[I].Length);
   end;
 
+  Result := Result and (BlockSize = Second.BlockSize);
+  Result := Result and (Comment = Second.Comment);
+  Result := Result and (Fulltext = Second.Fulltext);
   Result := Result and (Primary = Second.Primary);
   Result := Result and (Unique = Second.Unique);
-  Result := Result and (Fulltext = Second.Fulltext);
 end;
 
 destructor TCKey.Destroy();
@@ -7026,7 +7030,7 @@ begin
     Modified := False;
     if (Assigned(Table)) then
       for J := 0 to Table.Keys.Count - 1 do
-        if (not NewTable.Keys[I].Created and (lstrcmpi(PChar(NewTable.Keys[I].OriginalName), PChar(Table.Keys[J].OriginalName)) = 0)) then
+        if (not NewTable.Keys[I].Created and (NewTable.Keys.NameCmp(NewTable.Keys[I].OriginalName, Table.Keys[J].OriginalName) = 0)) then
           Modified := not NewTable.Keys[I].Equal(Table.Keys[J]);
 
     if (not Assigned(Table) or Modified or NewTable.Keys[I].Created) then
@@ -7035,7 +7039,7 @@ begin
 
       SQLPart := '';
       SQLPart := SQLPart + '  ';
-      if (Table <> nil) then SQLPart := SQLPart + 'ADD ';
+      if (Assigned(Table)) then SQLPart := SQLPart + 'ADD ';
       if (NewKey.Primary) then
         SQLPart := SQLPart + 'PRIMARY KEY'
       else if (NewKey.Unique) then
@@ -7060,11 +7064,11 @@ begin
       SQLPart := SQLPart + ' (' + FieldNames + ')';
 
       if ((Client.ServerVersion >= 50110) and (NewKey.BlockSize > 0)) then
-        SQLPart := SQLPart + ' KEY_BLOCK_SIZE=' + IntToStr(NewKey.BlockSize);
+        SQLPart := SQLPart + ' KEY_BLOCK_SIZE ' + IntToStr(NewKey.BlockSize);
       if ((((50060 <= Client.ServerVersion) and (Client.ServerVersion < 50100)) or (50110 <= Client.ServerVersion)) and (NewKey.IndexType <> '')) then
-        SQLPart := SQLPart + ' USING=' + NewKey.IndexType;
+        SQLPart := SQLPart + ' USING ' + NewKey.IndexType;
       if ((Client.ServerVersion >= 50503) and (NewKey.Comment <> '')) then
-        SQLPart := SQLPart + ' COMMENT=' + SQLEscape(NewKey.Comment);
+        SQLPart := SQLPart + ' COMMENT ' + SQLEscape(NewKey.Comment);
 
       if (SQL <> '') then SQL := SQL + ',' + #13#10;
       SQL := SQL + SQLPart;

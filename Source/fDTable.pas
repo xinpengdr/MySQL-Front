@@ -363,7 +363,7 @@ begin
   begin
     for I := FKeys.Items.Count - 1 downto 0 do
       if (FKeys.Items.Item[I].Selected) then
-        NewTable.Keys.DeleteKey(NewTable.Keys.Key[I]);
+        NewTable.Keys.DeleteKey(NewTable.Keys[I]);
 
     FIndicesRefresh(Sender);
 
@@ -486,7 +486,7 @@ procedure TDTable.aPEditKeyExecute(Sender: TObject);
 begin
   DIndex.Database := nil;
   DIndex.Table := NewTable;
-  DIndex.Key := NewTable.Keys.Key[FKeys.ItemIndex];
+  DIndex.Key := NewTable.Keys[FKeys.ItemIndex];
   if (DIndex.Execute()) then
   begin
     FIndicesRefresh(Sender);
@@ -721,6 +721,7 @@ begin
   FKeys.Column[0].Caption := ReplaceStr(Preferences.LoadStr(35), '&', '');
   FKeys.Column[1].Caption := Preferences.LoadStr(69);
   FKeys.Column[2].Caption := ReplaceStr(Preferences.LoadStr(73), '&', '');
+  FKeys.Column[3].Caption := ReplaceStr(Preferences.LoadStr(111), '&', '');
 
   TSForeignKeys.Caption := Preferences.LoadStr(459);
   tbCreateForeignKey.Hint := Preferences.LoadStr(249) + '...';
@@ -1748,17 +1749,19 @@ begin
     for I := 0 to NewTable.Keys.Count - 1 do
     begin
       ListItem := FKeys.Items.Add();
-      ListItem.Caption := NewTable.Keys.Key[I].Caption;
+      ListItem.Caption := NewTable.Keys[I].Caption;
       FieldNames := '';
-      for J := 0 to NewTable.Keys.Key[I].Columns.Count - 1 do
-        begin if (FieldNames <> '') then FieldNames := FieldNames + ','; FieldNames := FieldNames + NewTable.Keys.Key[I].Columns.Column[J].Field.Name; end;
+      for J := 0 to NewTable.Keys[I].Columns.Count - 1 do
+        begin if (FieldNames <> '') then FieldNames := FieldNames + ','; FieldNames := FieldNames + NewTable.Keys[I].Columns.Column[J].Field.Name; end;
       ListItem.SubItems.Add(FieldNames);
-      if (NewTable.Keys.Key[I].Unique) then
+      if (NewTable.Keys[I].Unique) then
         ListItem.SubItems.Add('unique')
-      else if (NewTable.Keys.Key[I].Fulltext) then
+      else if (NewTable.Keys[I].Fulltext) then
         ListItem.SubItems.Add('fulltext')
       else
         ListItem.SubItems.Add('');
+      if (Database.Client.ServerVersion >= 50503) then
+        ListItem.SubItems.Add(NewTable.Keys[I].Comment);
       ListItem.ImageIndex := iiKey;
     end;
 

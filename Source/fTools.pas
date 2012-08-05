@@ -181,6 +181,7 @@ type
     end;
     FFileSize: DWord;
   protected
+    BOMLength: TLargeInteger;
     FCodePage: Cardinal;
     FileContent: record
       Str: string;
@@ -1004,10 +1005,10 @@ var
   Len: Integer;
   Size: Integer;
 begin
-  Size := 2 * Length * SizeOf(Char);
+  Size := (1 + 2 * Length + 1) * SizeOf(Char);
   if (Size > Temp2.Size) then
   begin
-    Temp2.Size := Size;
+    Temp2.Size := Temp2.Size + 2 * (Size - Temp2.Size);
     ReallocMem(Temp2.Mem, Temp2.Size);
   end;
   Len := SQLEscape(Text, Length, PChar(Temp2.Mem), Size);
@@ -1612,14 +1613,6 @@ begin
       else
       begin
         SQL := SQL + SQLLoadDataInfile(Database, ImportType = itReplace, Pipename, Client.Charset, Database.Name, Table.Name, EscapedFieldNames);
-        if (Structure) then
-        begin
-          if ((Client.ServerVersion >= 40000) and (Table is TCBaseTable) and TCBaseTable(Table).Engine.IsMyISAM) then
-            SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
-          SQL := SQL + 'UNLOCK TABLES;' + #13#10;
-        end;
-        if (Client.Lib.LibraryType <> ltHTTP) then
-          SQL := SQL + 'COMMIT;' + #13#10;
 
         Client.SendSQL(SQL, SQLExecuted);
 
@@ -1655,36 +1648,46 @@ begin
             SQLExecuted.WaitFor(INFINITE);
           DisconnectNamedPipe(Pipe);
 
-          if (not Client.ErrorCode = 0) then
+          if ((Success = daSuccess) and (ImportType = itInsert) and (Client.WarningCount > 0)) then
           begin
-            DoError(DatabaseError(Client), ToolsItem(Item), SQL);
-            if ((0 < Client.ExecutedStmts) and (Client.ExecutedStmts < 3)) then
-              Client.ExecuteSQL('ROLLBACK;');
+            DataSet := TMySQLQuery.Create(nil);
+            DataSet.Connection := Client;
+            DataSet.CommandText := 'SHOW WARNINGS';
+
+            DataSet.Open();
+            if (DataSet.Active and not DataSet.IsEmpty()) then
+            begin
+              Error.ErrorType := TE_Warning;
+              Error.ErrorCode := 1;
+              repeat
+                Error.ErrorMessage := Error.ErrorMessage + Trim(DataSet.FieldByName('Message').AsString) + #13#10;
+              until (not DataSet.FindNext());
+              DoError(Error, ToolsItem(Item));
+            end;
+            DataSet.Free();
           end;
+
+          if (Client.ErrorCode <> 0) then
+            DoError(DatabaseError(Client), ToolsItem(Item), SQL);
+
+          SQL := '';
+          if (Structure) then
+          begin
+            if ((Client.ServerVersion >= 40000) and (Table is TCBaseTable) and TCBaseTable(Table).Engine.IsMyISAM) then
+              SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
+            SQL := SQL + 'UNLOCK TABLES;' + #13#10;
+          end;
+          if (Client.Lib.LibraryType <> ltHTTP) then
+            if (Client.ErrorCode <> 0) then
+              SQL := SQL + 'ROLLBACK;' + #13#10
+            else
+              SQL := SQL + 'COMMIT;' + #13#10;
+          Client.ExecuteSQL(SQL);
 
           DataFileBuffer.Free();
         end;
 
         CloseHandle(Pipe);
-      end;
-
-      if ((Success = daSuccess) and (ImportType = itInsert) and (Client.WarningCount > 0)) then
-      begin
-        DataSet := TMySQLQuery.Create(nil);
-        DataSet.Connection := Client;
-        DataSet.CommandText := 'SHOW WARNINGS';
-
-        DataSet.Open();
-        if (DataSet.Active and not DataSet.IsEmpty()) then
-        begin
-          Error.ErrorType := TE_Warning;
-          Error.ErrorCode := 1;
-          repeat
-            Error.ErrorMessage := Error.ErrorMessage + Trim(DataSet.FieldByName('Message').AsString) + #13#10;
-          until (not DataSet.FindNext());
-          DoError(Error, ToolsItem(Item));
-        end;
-        DataSet.Free();
       end;
     end
     else
@@ -1794,8 +1797,6 @@ begin
 
       while ((Success = daSuccess) and not DoExecuteSQL(Item, SQL)) do
         DoError(DatabaseError(Client), ToolsItem(Item), SQL);
-
-      SQLExecuted.Free();
     end;
 
     if (Success <> daSuccess) then
@@ -1808,6 +1809,8 @@ begin
         SQL := SQL + 'ROLLBACK;' + #13#10;
       DoExecuteSQL(Item, SQL);
     end;
+
+    SQLExecuted.Free();
   end;
 
   AfterExecuteData(Item);
@@ -1990,19 +1993,21 @@ begin
     begin
       if (CompareMem(@FileBuffer.Mem[FileBuffer.Index + 0], BOM_UTF8, Length(BOM_UTF8))) then
       begin
+        BOMLength := Length(BOM_UTF8);
         FCodePage := CP_UTF8;
-        FilePos := Length(BOM_UTF8);
       end
       else if (CompareMem(@FileBuffer.Mem[FileBuffer.Index + 0], BOM_UNICODE, Length(BOM_UNICODE))) then
       begin
+        BOMLength := Length(BOM_UNICODE);
         FCodePage := CP_UNICODE;
-        FilePos := Length(BOM_UNICODE);
       end
       else
-        FilePos := 0;
+        BOMLength := 0;
 
+      FilePos := BOMLength;
       Inc(FileBuffer.Index, FilePos);
     end;
+    Inc(FilePos, ReadSize);
 
     case (CodePage) of
       CP_UNICODE:
@@ -2079,6 +2084,7 @@ var
   Len: Integer;
   SetCharacterSet: Boolean;
   SQL: string;
+  SQLFilePos: TLargeInteger;
 begin
   if (not Assigned(Text)) then
     BeforeExecute();
@@ -2094,7 +2100,7 @@ begin
       DoError(DatabaseError(Client), ToolsItem(Items[0]), SQL);
   end;
 
-  Index := 1; Eof := False;
+  Index := 1; Eof := False; SQLFilePos := BOMLength;
   while ((Success = daSuccess) and (not Eof or (Index <= Length(FileContent.Str)))) do
   begin
     repeat
@@ -2111,8 +2117,8 @@ begin
 
     if (Len > 0) then
       case (CodePage) of
-        CP_UNICODE: Inc(FilePos, Len * SizeOf(Char));
-        else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[Index]), Len, nil, 0));
+        CP_UNICODE: Inc(SQLFilePos, Len * SizeOf(Char));
+        else Inc(SQLFilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[Index]), Len, nil, 0));
       end;
 
     SetCharacterSet := not EOF
@@ -2136,16 +2142,16 @@ begin
 
     if (Success = daSuccess) then
     begin
-      if (not SetCharacterSet) then
-        Inc(Index, Len)
-      else
+      if (SetCharacterSet) then
       begin
         FSetCharacterSetApplied := True;
 
         FCodePage := Client.CharsetToCodePage(CLStmt.ObjectName);
 
-        ReadContent(FilePos); // Clear FileContent
-      end;
+        ReadContent(SQLFilePos); // Clear FileContent
+      end
+      else
+        Inc(Index, Len);
     end;
 
     if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
@@ -2325,7 +2331,6 @@ end;
 function TTImportText.GetValues(const Item: TTImport.TItem; const DataFileBuffer: TTools.TDataFileBuffer): Boolean;
 var
   EOF: Boolean;
-  Error: TTools.TError;
   I: Integer;
   Len: Integer;
   OldFileContentIndex: Integer;
@@ -2342,58 +2347,34 @@ begin
     end;
   end;
 
-  Len := FileContent.Index - OldFileContentIndex;
-  if (Len > 0) then
-    case (CodePage) of
-      CP_UNICODE: Inc(FilePos, Len * SizeOf(FileContent.Str[1]));
-      else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[OldFileContentIndex]), Len, nil, 0));
-    end;
-
   Result := RecordComplete;
   if (Result) then
-    if (Length(CSVValues) < HeadlineNameCount) then
+    for I := 0 to Length(Fields) - 1 do
     begin
-      Error.ErrorType := TE_Warning;
-      Error.ErrorCode := ER_WARN_TOO_FEW_RECORDS;
-      Error.ErrorMessage := Format(ER_WARN_TOO_FEW_RECORDS_MSG, [Item.RecordsDone]);
-      DoError(Error, ToolsItem(Item))
-    end
-    else if (Length(CSVValues) > HeadlineNameCount) then
-    begin
-      Error.ErrorType := TE_Warning;
-      Error.ErrorCode := ER_WARN_TOO_MANY_RECORDS;
-      Error.ErrorMessage := Format(ER_WARN_TOO_MANY_RECORDS_MSG, [Item.RecordsDone]);
-      DoError(Error, ToolsItem(Item))
-    end
-    else
-    begin
-      for I := 0 to Length(Fields) - 1 do
+      if (I > 0) then
+        DataFileBuffer.Write(PAnsiChar(',_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
+      if ((I >= Length(CSVValues)) or (CSVValues[CSVColumns[I]].Length = 0)) then
+        DataFileBuffer.Write(PAnsiChar('NULL'), 4)
+      else
       begin
-        if (I > 0) then
-          DataFileBuffer.Write(PAnsiChar(',_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
-        if (CSVValues[CSVColumns[I]].Length = 0) then
-          DataFileBuffer.Write(PAnsiChar('NULL'), 4)
+        if (not Assigned(CSVValues[CSVColumns[I]].Text) or (CSVValues[CSVColumns[I]].Length = 0)) then
+          Len := 0
         else
         begin
-          if (not Assigned(CSVValues[CSVColumns[I]].Text) or (CSVValues[CSVColumns[I]].Length = 0)) then
-            Len := 0
-          else
+          if (CSVValues[CSVColumns[I]].Length > CSVUnquoteMemSize) then
           begin
-            if (CSVValues[CSVColumns[I]].Length > CSVUnquoteMemSize) then
-            begin
-              CSVUnquoteMemSize := CSVUnquoteMemSize + 2 * (CSVValues[CSVColumns[I]].Length - CSVUnquoteMemSize);
-              ReallocMem(CSVUnquoteMem, CSVUnquoteMemSize);
-            end;
-            Len := CSVUnquote(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, CSVUnquoteMem, CSVUnquoteMemSize, Quoter);
+            CSVUnquoteMemSize := CSVUnquoteMemSize + 2 * (CSVValues[CSVColumns[I]].Length - CSVUnquoteMemSize);
+            ReallocMem(CSVUnquoteMem, CSVUnquoteMemSize);
           end;
-
-          if (Fields[I].FieldType in BinaryFieldTypes) then
-            DataFileBuffer.WriteBinary(CSVUnquoteMem, Len)
-          else if (Fields[I].FieldType in TextFieldTypes) then
-            DataFileBuffer.WriteText(CSVUnquoteMem, Len)
-          else
-            DataFileBuffer.WriteData(CSVUnquoteMem, Len, not (Fields[I].FieldType in NotQuotedFieldTypes));
+          Len := CSVUnquote(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, CSVUnquoteMem, CSVUnquoteMemSize, Quoter);
         end;
+
+        if (Fields[I].FieldType in BinaryFieldTypes) then
+          DataFileBuffer.WriteBinary(CSVUnquoteMem, Len)
+        else if (Fields[I].FieldType in TextFieldTypes) then
+          DataFileBuffer.WriteText(CSVUnquoteMem, Len)
+        else
+          DataFileBuffer.WriteData(CSVUnquoteMem, Len, not (Fields[I].FieldType in NotQuotedFieldTypes));
       end;
     end;
 end;
@@ -2401,60 +2382,34 @@ end;
 function TTImportText.GetValues(const Item: TTImport.TItem; var Values: TSQLStrings): Boolean;
 var
   Eof: Boolean;
-  Error: TTools.TError;
   I: Integer;
-  Len: Integer;
-  OldFileContentIndex: Integer;
   RecordComplete: Boolean;
   S: string;
 begin
-  RecordComplete := False; Eof := False; OldFileContentIndex := FileContent.Index;
+  RecordComplete := False; Eof := False;
   while ((Success = daSuccess) and not RecordComplete and not Eof) do
   begin
-    OldFileContentIndex := FileContent.Index;
     RecordComplete := CSVSplitValues(FileContent.Str, FileContent.Index, Delimiter, Quoter, CSVValues);
     if (not RecordComplete) then
       Eof := not ReadContent();
   end;
 
-  Len := FileContent.Index - OldFileContentIndex;
-  if (Len > 0) then
-    case (CodePage) of
-      CP_UNICODE: Inc(FilePos, Len * SizeOf(FileContent.Str[1]));
-      else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[OldFileContentIndex]), Len, nil, 0));
-    end;
-
   Result := RecordComplete;
   if (Result) then
-    if (Length(CSVValues) < HeadlineNameCount) then
-    begin
-      Error.ErrorType := TE_Warning;
-      Error.ErrorCode := ER_WARN_TOO_FEW_RECORDS;
-      Error.ErrorMessage := Format(ER_WARN_TOO_FEW_RECORDS_MSG, [Item.RecordsDone]);
-      DoError(Error, ToolsItem(Item))
-    end
-    else if (Length(CSVValues) > HeadlineNameCount) then
-    begin
-      Error.ErrorType := TE_Warning;
-      Error.ErrorCode := ER_WARN_TOO_MANY_RECORDS;
-      Error.ErrorMessage := Format(ER_WARN_TOO_MANY_RECORDS_MSG, [Item.RecordsDone]);
-      DoError(Error, ToolsItem(Item))
-    end
-    else
-      for I := 0 to Length(Fields) - 1 do
-        if (CSVValues[CSVColumns[I]].Length = 0) then
-          Values[I] := 'NULL'
-        else if (Fields[I].FieldType = mfBit) then
-        begin
-          S := CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter);
-          Values[I] := IntToStr(BitStringToInt(PChar(S), Length(S)));
-        end
-        else if (Fields[I].FieldType in NotQuotedFieldTypes) then
-          Values[I] := CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter)
-        else if (Fields[I].FieldType in BinaryFieldTypes) then
-          Values[I] := SQLEscapeBin(CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter), Client.ServerVersion <= 40000)
-        else
-          Values[I] := SQLEscape(CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter));
+    for I := 0 to Length(Fields) - 1 do
+      if ((I >= Length(CSVValues)) or (CSVValues[CSVColumns[I]].Length = 0)) then
+        Values[I] := 'NULL'
+      else if (Fields[I].FieldType = mfBit) then
+      begin
+        S := CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter);
+        Values[I] := IntToStr(BitStringToInt(PChar(S), Length(S)));
+      end
+      else if (Fields[I].FieldType in NotQuotedFieldTypes) then
+        Values[I] := CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter)
+      else if (Fields[I].FieldType in BinaryFieldTypes) then
+        Values[I] := SQLEscapeBin(CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter), Client.ServerVersion <= 40000)
+      else
+        Values[I] := SQLEscape(CSVUnescape(CSVValues[CSVColumns[I]].Text, CSVValues[CSVColumns[I]].Length, Quoter));
 end;
 
 procedure TTImportText.Open();
@@ -2465,8 +2420,6 @@ var
   FirstRecordFilePos: Integer;
   I: Integer;
   Int: Integer;
-  Len: Integer;
-  OldFileContentIndex: Integer;
   OldSuccess: TDataAction;
   RecNo: Integer;
   RecordComplete: Boolean;
@@ -2474,25 +2427,15 @@ var
 begin
   inherited;
 
-  OldSuccess := Success; OldFileContentIndex := FileContent.Index; FirstRecordFilePos := FilePos;
+  OldSuccess := Success; FirstRecordFilePos := FilePos;
 
   RecordComplete := False; Eof := False;
   while (not RecordComplete and not Eof) do
   begin
     RecordComplete := CSVSplitValues(FileContent.Str, FileContent.Index, Delimiter, Quoter, CSVValues);
     if (not RecordComplete) then
-    begin
       Eof := not ReadContent();
-      OldFileContentIndex := FileContent.Index;
-    end;
   end;
-
-  Len := FileContent.Index - OldFileContentIndex;
-  if (Len > 0) then
-    case (CodePage) of
-      CP_UNICODE: Inc(FilePos, Len * SizeOf(FileContent.Str[1]));
-      else Inc(FilePos, WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[OldFileContentIndex]), Len, nil, 0));
-    end;
 
   if (UseHeadline) then
   begin

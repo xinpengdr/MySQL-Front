@@ -3,7 +3,7 @@ object DIndex: TDIndex
   Top = 298
   BorderStyle = bsDialog
   Caption = 'DIndex'
-  ClientHeight = 441
+  ClientHeight = 481
   ClientWidth = 337
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -20,14 +20,14 @@ object DIndex: TDIndex
   OnShow = FormShow
   DesignSize = (
     337
-    441)
+    481)
   PixelsPerInch = 106
   TextHeight = 13
   object PSQLWait: TPanel
     Left = 8
     Top = 8
     Width = 321
-    Height = 313
+    Height = 421
     Cursor = crHourGlass
     Anchors = [akLeft, akTop, akRight, akBottom]
     BevelOuter = bvNone
@@ -37,7 +37,7 @@ object DIndex: TDIndex
   end
   object FBOk: TButton
     Left = 165
-    Top = 408
+    Top = 448
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
@@ -48,7 +48,7 @@ object DIndex: TDIndex
   end
   object FBCancel: TButton
     Left = 253
-    Top = 408
+    Top = 448
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
@@ -61,13 +61,13 @@ object DIndex: TDIndex
     Left = 8
     Top = 8
     Width = 321
-    Height = 338
+    Height = 297
     Anchors = [akLeft, akTop, akRight, akBottom]
     Caption = 'GBasics'
     TabOrder = 1
     DesignSize = (
       321
-      338)
+      297)
     object FLName: TLabel
       Left = 8
       Top = 16
@@ -99,20 +99,13 @@ object DIndex: TDIndex
       Anchors = [akLeft, akBottom]
       Caption = 'FLLength'
       Enabled = False
-      ExplicitTop = 216
-    end
-    object FLBlockSize: TLabel
-      Left = 8
-      Top = 271
-      Width = 59
-      Height = 13
-      Caption = 'FLBlockSize'
     end
     object FLComment: TLabel
-      Left = 8
-      Top = 308
+      Left = 3
+      Top = 268
       Width = 56
       Height = 13
+      Anchors = [akLeft, akBottom]
       Caption = 'FLComment'
     end
     object FAvailableFields: TListView
@@ -137,7 +130,6 @@ object DIndex: TDIndex
       OnDeletion = FAvailableFieldsDeletion
       OnEnter = FAvailableFieldsEnter
       OnExit = FAvailableFieldsExit
-      ExplicitHeight = 173
     end
     object Panel: TPanel
       Left = 148
@@ -304,7 +296,6 @@ object DIndex: TDIndex
       OnDeletion = FIndexedFieldsDeletion
       OnEnter = FIndexedFieldsEnter
       OnExit = FIndexedFieldsExit
-      ExplicitHeight = 129
     end
     object FLength: TEdit
       Left = 8
@@ -316,7 +307,6 @@ object DIndex: TDIndex
       TabOrder = 6
       Text = '1'
       OnExit = FLengthExit
-      ExplicitTop = 232
     end
     object FLengthUD: TUpDown
       Left = 49
@@ -330,46 +320,36 @@ object DIndex: TDIndex
       Position = 1
       TabOrder = 7
       OnExit = FLengthExit
-      ExplicitTop = 232
     end
     object FComment: TEdit
       Left = 136
-      Top = 305
+      Top = 265
       Width = 173
       Height = 21
-      TabOrder = 10
+      Anchors = [akLeft, akBottom]
+      TabOrder = 8
       Text = 'FComment'
       OnChange = FBOkCheckEnabled
-    end
-    object FBlockSize: TEdit
-      Left = 136
-      Top = 268
-      Width = 49
-      Height = 21
-      TabOrder = 8
-      Text = '0'
-      OnChange = FBOkCheckEnabled
-    end
-    object FBlockSizeUD: TUpDown
-      Left = 185
-      Top = 268
-      Width = 16
-      Height = 21
-      Associate = FBlockSize
-      TabOrder = 9
     end
   end
   object GAttributes: TGroupBox_Ext
     Left = 8
-    Top = 350
+    Top = 315
     Width = 321
-    Height = 41
+    Height = 114
     Anchors = [akLeft, akRight, akBottom]
     Caption = 'GAttributes'
     TabOrder = 2
+    object FLBlockSize: TLabel
+      Left = 8
+      Top = 82
+      Width = 59
+      Height = 13
+      Caption = 'FLBlockSize'
+    end
     object FFulltext: TCheckBox
-      Left = 160
-      Top = 16
+      Left = 136
+      Top = 47
       Width = 145
       Height = 17
       Caption = 'FFulltext'
@@ -377,7 +357,7 @@ object DIndex: TDIndex
       OnClick = FFulltextClick
     end
     object FUnique: TCheckBox
-      Left = 8
+      Left = 136
       Top = 16
       Width = 145
       Height = 17
@@ -385,10 +365,27 @@ object DIndex: TDIndex
       TabOrder = 0
       OnClick = FUniqueClick
     end
+    object FBlockSize: TEdit
+      Left = 136
+      Top = 79
+      Width = 49
+      Height = 21
+      TabOrder = 2
+      Text = '0'
+      OnChange = FBOkCheckEnabled
+    end
+    object FBlockSizeUD: TUpDown
+      Left = 185
+      Top = 79
+      Width = 16
+      Height = 21
+      Associate = FBlockSize
+      TabOrder = 3
+    end
   end
   object FBHelp: TButton
     Left = 8
-    Top = 408
+    Top = 448
     Width = 75
     Height = 25
     Anchors = [akLeft, akBottom]
