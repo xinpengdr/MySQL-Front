@@ -219,6 +219,7 @@ type
     FAsynchron: Boolean;
     FAutoCommit: Boolean;
     FBeforeExecuteSQL: TNotifyEvent;
+    FBugMonitor: TMySQLMonitor;
     FCharset: string;
     FCodePage: Cardinal;
     FConnected: Boolean;
@@ -353,6 +354,7 @@ type
     procedure StartTransaction(); virtual;
     procedure Terminate(); virtual;
     property AutoCommit: Boolean read GetAutoCommit write SetAutoCommit;
+    property BugMonitor: TMySQLMonitor read FBugMonitor;
     property CodePage: Cardinal read FCodePage;
     property CommandText: string read GetCommandText;
     property DateTime: TDateTime read GetDateTime;
@@ -2163,6 +2165,12 @@ begin
   InOnResult := False;
   local_infile := nil;
   TimeDiff := 0;
+
+  FBugMonitor := TMySQLMonitor.Create(nil);
+  FBugMonitor.Connection := Self;
+  FBugMonitor.CacheSize := 1000;
+  FBugMonitor.Enabled := True;
+  FBugMonitor.TraceTypes := [ttTime, ttRequest, ttResult, ttInfo];
 end;
 
 destructor TMySQLConnection.Destroy();
@@ -2171,14 +2179,7 @@ begin
   Close();
 
   while (DataSetCount > 0) do
-  begin
-    if (not Assigned(DataSets[0])) then
-      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['DataSets[0]']);
-    if (not (DataSets[0] is TMySQLQuery)) then
-      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['DataSets[0]']);
-
     DataSets[0].Free();
-  end;
 
   if (Assigned(SynchroThread)) then
   begin
@@ -2191,6 +2192,7 @@ begin
 
   ExecuteSQLDone.Free();
   TerminateCS.Free();
+  FBugMonitor.Free();
 
   inherited;
 end;
@@ -4618,6 +4620,12 @@ var
 begin
   if (not Value) then
     inherited
+  else if ((Self is TMySQLDataSet) and TMySQLDataSet(Self).CachedUpdates) then
+  begin
+    DoBeforeOpen();
+    SetState(dsOpening);
+    OpenCursorComplete();
+  end
   else if (not Active) then
   begin
     Synchron := not Asynchron or not Connection.UseSynchroThread();
@@ -5114,87 +5122,92 @@ function TMySQLDataSet.GetRecord(Buffer: TRecordBuffer; GetMode: TGetMode; DoChe
 var
   NewIndex: Integer;
 begin
-  NewIndex := InternRecordBuffers.Index;
-  case (GetMode) of
-    gmPrior:
-      begin
-        Result := grError;
-        while (Result = grError) do
-          if (NewIndex < 0) then
-            Result := grBOF
-          else
-          begin
-            Dec(NewIndex);
-            if ((NewIndex >= 0) and (not Filtered or InternRecordBuffers[NewIndex]^.VisibleInFilter)) then
-              Result := grOk;
-          end;
-      end;
-    gmNext:
-      begin
-        Result := grError;
-        while (Result = grError) do
+  if (CachedUpdates) then
+    Result := grBOF
+  else
+  begin
+    NewIndex := InternRecordBuffers.Index;
+    case (GetMode) of
+      gmPrior:
         begin
-          if ((NewIndex + 1 = InternRecordBuffers.Count) and not Filtered
-            and ((RecordsReceived.WaitFor(IGNORE) <> wrSignaled) or (Self is TMySQLTable) and TMySQLTable(Self).LimitedDataReceived and TMySQLTable(Self).AutomaticLoadNextRecords and TMySQLTable(Self).LoadNextRecords())) then
-            InternRecordBuffers.RecordReceived.WaitFor(NET_WAIT_TIMEOUT * 1000);
-
-          if (NewIndex >= InternRecordBuffers.Count - 1) then
-            Result := grEOF
-          else
-          begin
-            Inc(NewIndex);
-            if (not Filtered or InternRecordBuffers[NewIndex]^.VisibleInFilter) then
-              Result := grOk;
-          end;
+          Result := grError;
+          while (Result = grError) do
+            if (NewIndex < 0) then
+              Result := grBOF
+            else
+            begin
+              Dec(NewIndex);
+              if ((NewIndex >= 0) and (not Filtered or InternRecordBuffers[NewIndex]^.VisibleInFilter)) then
+                Result := grOk;
+            end;
         end;
+      gmNext:
+        begin
+          Result := grError;
+          while (Result = grError) do
+          begin
+            if ((NewIndex + 1 = InternRecordBuffers.Count) and not Filtered
+              and ((RecordsReceived.WaitFor(IGNORE) <> wrSignaled) or (Self is TMySQLTable) and TMySQLTable(Self).LimitedDataReceived and TMySQLTable(Self).AutomaticLoadNextRecords and TMySQLTable(Self).LoadNextRecords())) then
+              InternRecordBuffers.RecordReceived.WaitFor(NET_WAIT_TIMEOUT * 1000);
 
-        if (Result <> grEOF) then
-          InternRecordBuffers.RecordReceived.ResetEvent();
-      end;
-    else // gmCurrent
-      if (Filtered) then
-      begin
-        if (NewIndex < 0) then
-          Result := grBOF
-        else if (NewIndex < InternRecordBuffers.Count) then
-          repeat
-            if (not Filtered or InternRecordBuffers[NewIndex]^.VisibleInFilter) then
-              Result := grOk
-            else if (NewIndex + 1 = InternRecordBuffers.Count) then
+            if (NewIndex >= InternRecordBuffers.Count - 1) then
               Result := grEOF
             else
             begin
-              Result := grError;
               Inc(NewIndex);
+              if (not Filtered or InternRecordBuffers[NewIndex]^.VisibleInFilter) then
+                Result := grOk;
             end;
-          until (Result <> grError)
-        else
-        begin
-          Result := grEOF;
-          NewIndex := InternRecordBuffers.Count - 1;
+          end;
+
+          if (Result <> grEOF) then
+            InternRecordBuffers.RecordReceived.ResetEvent();
         end;
-        while ((Result = grEOF) and (NewIndex > 0)) do
-          if (not Filtered or InternRecordBuffers[NewIndex]^.VisibleInFilter) then
-            Result := grOk
+      else // gmCurrent
+        if (Filtered) then
+        begin
+          if (NewIndex < 0) then
+            Result := grBOF
+          else if (NewIndex < InternRecordBuffers.Count) then
+            repeat
+              if (not Filtered or InternRecordBuffers[NewIndex]^.VisibleInFilter) then
+                Result := grOk
+              else if (NewIndex + 1 = InternRecordBuffers.Count) then
+                Result := grEOF
+              else
+              begin
+                Result := grError;
+                Inc(NewIndex);
+              end;
+            until (Result <> grError)
           else
-            Dec(NewIndex);
-      end
-      else if ((0 <= InternRecordBuffers.Index) and (InternRecordBuffers.Index < InternRecordBuffers.Count)) then
-        Result := grOk
-      else
-        Result := grEOF;
-  end;
+          begin
+            Result := grEOF;
+            NewIndex := InternRecordBuffers.Count - 1;
+          end;
+          while ((Result = grEOF) and (NewIndex > 0)) do
+            if (not Filtered or InternRecordBuffers[NewIndex]^.VisibleInFilter) then
+              Result := grOk
+            else
+              Dec(NewIndex);
+        end
+        else if ((0 <= InternRecordBuffers.Index) and (InternRecordBuffers.Index < InternRecordBuffers.Count)) then
+          Result := grOk
+        else
+          Result := grEOF;
+    end;
 
-  if (Result = grOk) then
-  begin
-    InternRecordBuffers.CriticalSection.Enter();
-    InternRecordBuffers.Index := NewIndex;
+    if (Result = grOk) then
+    begin
+      InternRecordBuffers.CriticalSection.Enter();
+      InternRecordBuffers.Index := NewIndex;
 
-    PExternRecordBuffer(Buffer)^.InternRecordBuffer := InternRecordBuffers[InternRecordBuffers.Index];
-    PExternRecordBuffer(Buffer)^.RecNo := InternRecordBuffers.Index;
-    PExternRecordBuffer(Buffer)^.BookmarkFlag := bfCurrent;
+      PExternRecordBuffer(Buffer)^.InternRecordBuffer := InternRecordBuffers[InternRecordBuffers.Index];
+      PExternRecordBuffer(Buffer)^.RecNo := InternRecordBuffers.Index;
+      PExternRecordBuffer(Buffer)^.BookmarkFlag := bfCurrent;
 
-    InternRecordBuffers.CriticalSection.Leave();
+      InternRecordBuffers.CriticalSection.Leave();
+    end;
   end;
 end;
 

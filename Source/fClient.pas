@@ -540,26 +540,32 @@ type
     property Partition[Index: Integer]: TCPartition read GetPartition; default;
   end;
 
-  TCPackIndices = (piUnpacked, piPacked, piDefault);
-
   TCBaseTable = class(TCTable)
+  type
+    TPackKeys = (piUnpacked, piPacked, piDefault);
+    TInsertMethod = (imNo, imFirst, imLast);
   private
     FAutoIncrement: LargeInt; // 0 -> unknown
     FAvgRowLength: LargeInt;
     FBlockSize: Integer;
     FChecked: TDateTime;
+    FChecksum: Boolean;
     FCollation: string;
     FComment: string;
     FCreated: TDateTime;
     FDataSize: Int64;
     FDefaultCharset: string;
     FDefaultCodePage: Cardinal;
+    FDelayKeyWrite: Boolean;
     FEngine: TCEngine;
     FForeignKeys: TCForeignKeys;
     FIndexSize: Int64;
+    FInsertMethod: TInsertMethod;
     FKeys: TCKeys;
     FMaxDataSize: Int64;
-    FPackIndices: TCPackIndices;
+    FMaxRows: Int64;
+    FMinRows: Int64;
+    FPackKeys: TPackKeys;
     FPartitions: TCPartitions;
     FRows: Int64;
     FRowType: TMySQLRowType;
@@ -615,19 +621,24 @@ type
     property AvgRowLength: LargeInt read FAvgRowLength;
     property BlockSize: Integer read FBlockSize write FBlockSize;
     property Checked: TDateTime read FChecked write FChecked;
+    property Checksum: Boolean read FChecksum write FChecksum;
     property Collation: string read GetCollation write FCollation;
     property Comment: string read GetComment write FComment;
     property Created: TDateTime read FCreated;
     property DataSize: Int64 read FDataSize;
     property DefaultCharset: string read GetDefaultCharset write SetDefaultCharset;
     property DefaultCodePage: Cardinal read GetDefaultCodePage;
+    property DelayKeyWrite: Boolean read FDelayKeyWrite write FDelayKeyWrite;
     property Engine: TCEngine read GetEngine write FEngine;
     property Fields: TCBaseTableFields read GetBaseTableFields;
     property IndexSize: Int64 read GetIndexSize;
+    property InsertMethod: TInsertMethod read FInsertMethod write FInsertMethod;
     property ForeignKeys: TCForeignKeys read GetForeignKeys;
     property Keys: TCKeys read GetKeys;
     property MaxDataSize: Int64 read FMaxDataSize;
-    property PackIndices: TCPackIndices read FPackIndices write FPackIndices;
+    property MaxRows: Int64 read FMaxRows;
+    property MinRows: Int64 read FMinRows;
+    property PackKeys: TPackKeys read FPackKeys write FPackKeys;
     property Partitions: TCPartitions read GetPartitions;
     property PrimaryKey: TCKey read GetPrimaryKey;
     property Rows: Int64 read FRows;
@@ -3581,15 +3592,21 @@ begin
   FAvgRowLength := TCBaseTable(Source).AvgRowLength;
   FBlockSize := TCBaseTable(Source).BlockSize;
   FChecked := TCBaseTable(Source).Checked;
+  FChecksum := TCBaseTable(Source).Checksum;
   FCollation := TCBaseTable(Source).FCollation;
   FComment := TCBaseTable(Source).Comment;
   FCreated := TCBaseTable(Source).Created;
   FDataSize := TCBaseTable(Source).DataSize;
   FDefaultCharset := TCBaseTable(Source).FDefaultCharset;
-  FDefaultCodePage := TCBaseTable(Source).FDefaultCodePage;
+  FDefaultCodePage := TCBaseTable(Source).DefaultCodePage;
+  FDelayKeyWrite := TCBaseTable(Source).DelayKeyWrite;
   FEngine := TCBaseTable(Source).Engine;
   FIndexSize := TCBaseTable(Source).IndexSize;
+  FInsertMethod := TCBaseTable(Source).InsertMethod;
   FMaxDataSize := TCBaseTable(Source).MaxDataSize;
+  FMaxRows := TCBaseTable(Source).MaxRows;
+  FMinRows := TCBaseTable(Source).MinRows;
+  FPackKeys := TCBaseTable(Source).PackKeys;
   FRows := TCBaseTable(Source).Rows;
   FRowType := TCBaseTable(Source).RowType;
   FUnusedSize := TCBaseTable(Source).UnusedSize;
@@ -3639,8 +3656,6 @@ begin
           if (TCBaseTable(Source).DefaultCharset = CharsetTranslations[I].NewCharset) then
             DefaultCharset := CharsetTranslations[I].NewCharset;
     end;
-
-  FPackIndices := TCBaseTable(Source).PackIndices;
 end;
 
 procedure TCBaseTable.BuildStatus(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean);
@@ -3734,6 +3749,7 @@ begin
   FAutoIncrement := -1;
   FAvgRowLength := -1;
   FChecked := -1;
+  FChecksum := False;
   FCollation := '';
   FComment := '';
   FCreated := -1;
@@ -3743,10 +3759,14 @@ begin
   else
     FDefaultCharset := '';
   FDefaultCodePage := CP_ACP;
+  FDelayKeyWrite := False;
   FEngine := nil;
   FIndexSize := -1;
+  FInsertMethod := imNo;
   FMaxDataSize := -1;
-  FPackIndices := piDefault;
+  FMaxRows := -1;
+  FMinRows := -1;
+  FPackKeys := piDefault;
   FRows := -1;
   FRowType := mrUnknown;
   FUnusedSize := -1;
@@ -4307,7 +4327,7 @@ begin
       begin
         if (SQLParseKeyword(Parse, 'COMMENT')) then // MySQL >= 5.5.3
           NewKey.Comment := SQLParseValue(Parse)
-        else if (SQLParseKeyword(Parse, 'KEY_BLOCK_SIZE')) then // MySQL >= 5.1.10
+        else if (SQLParseKeyword(Parse, 'KEY_BLOCK_SIZE') and SQLParseChar(Parse, '=')) then // MySQL >= 5.1.10
           NewKey.BlockSize := StrToInt(SQLParseValue(Parse))
         else if (SQLParseKeyword(Parse, 'USING')) then // MySQL >= 5.1.xx
           NewKey.IndexType := SQLParseValue(Parse)
@@ -4427,46 +4447,80 @@ begin
     begin
       if (SQLParseKeyword(Parse, 'TYPE') or SQLParseKeyword(Parse, 'ENGINE')) then
       begin
-        if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 11, SQL]);
+        SQLParseChar(Parse, '=');
         FEngine := Database.Client.EngineByName(SQLParseValue(Parse));
       end
       else if (SQLParseKeyword(Parse, 'AUTO_INCREMENT')) then
       begin
-        if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 12, SQL]);
+        SQLParseChar(Parse, '=');
         FAutoIncrement := StrToInt64(SQLParseValue(Parse));
+      end
+      else if (SQLParseKeyword(Parse, 'CHECKSUM')) then
+      begin
+        SQLParseChar(Parse, '=');
+        FChecksum := SQLParseValue(Parse) = '1';
       end
       else if (SQLParseKeyword(Parse, 'COLLATE')) then
       begin
-        if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 14, SQL]);
+        SQLParseChar(Parse, '=');
         FCollation := LowerCase(SQLParseValue(Parse));
       end
       else if (SQLParseKeyword(Parse, 'COMMENT')) then
       begin
-        if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 16, SQL]);
+        SQLParseChar(Parse, '=');
         FComment := SQLParseValue(Parse);
       end
       else if (SQLParseKeyword(Parse, 'DEFAULT CHARSET') or SQLParseKeyword(Parse, 'CHARSET')) then
       begin
-        if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 13, SQL]);
+        SQLParseChar(Parse, '=');
         DefaultCharset := SQLParseValue(Parse);
       end
-      else if (SQLParseKeyword(Parse, 'KEY_BLOCK_SIZE')) then
-        FBlockSize := StrToInt(SQLParseValue(Parse))
-      else if (SQLParseKeyword(Parse, 'ROW_FORMAT')) then
+      else if (SQLParseKeyword(Parse, 'DELAY_KEY_WRITE')) then
       begin
-        if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 17, SQL]);
-        FRowType := StrToMySQLRowType(SQLParseValue(Parse));
+        SQLParseChar(Parse, '=');
+        FDelayKeyWrite := SQLParseValue(Parse) = '1';
+      end
+      else if (SQLParseKeyword(Parse, 'INSERT_METHOD')) then
+      begin
+        SQLParseChar(Parse, '=');
+        S := SQLParseValue(Parse);
+        if (S = 'FIRST') then
+          FInsertMethod := imFirst
+        else if (S = 'LAST') then
+          FInsertMethod := imLast
+        else
+          FInsertMethod := imNo;
+      end
+      else if (SQLParseKeyword(Parse, 'KEY_BLOCK_SIZE')) then
+      begin
+        SQLParseChar(Parse, '=');
+        FBlockSize := StrToInt(SQLParseValue(Parse));
+      end
+      else if (SQLParseKeyword(Parse, 'MAX_ROWS')) then
+      begin
+        SQLParseChar(Parse, '=');
+        FMaxRows := StrToInt(SQLParseValue(Parse));
+      end
+      else if (SQLParseKeyword(Parse, 'MIN_ROWS')) then
+      begin
+        SQLParseChar(Parse, '=');
+        FMinRows := StrToInt(SQLParseValue(Parse));
       end
       else if (SQLParseKeyword(Parse, 'PACK_KEYS')) then
       begin
-        if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 15, SQL]);
+        SQLParseChar(Parse, '=');
         S := SQLParseValue(Parse);
         if (S = '0') then
-          FPackIndices := piUnpacked
+          FPackKeys := piUnpacked
         else if (S = '1') then
-          FPackIndices := piPacked
+          FPackKeys := piPacked
         else
-          FPackIndices := piDefault;
+          FPackKeys := piDefault;
+      end
+      else if (SQLParseKeyword(Parse, 'ROW_FORMAT')) then
+      begin
+        SQLParseChar(Parse, '=');
+        FRowType := StrToMySQLRowType(SQLParseValue(Parse));
       end
       else if (SQLParseKeyword(Parse, 'PARTITION')) then
       begin
@@ -4508,29 +4562,29 @@ begin
                 end
                 else if (SQLParseKeyword(Parse, 'ENGINE')) then
                 begin
-                  if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 18, SQL]);
+                  SQLParseChar(Parse, '=');
                   NewPartition.Engine := Database.Client.EngineByName(SQLParseValue(Parse));
                 end
                 else if (SQLParseKeyword(Parse, 'COMMENT')) then
                 begin
-                  if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 19, SQL]);
+                  SQLParseChar(Parse, '=');
                   NewPartition.Comment := SQLParseValue(Parse);
                 end
                 else if (SQLParseKeyword(Parse, 'MAX_ROWS')) then
                 begin
-                  if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 20, SQL]);
+                  SQLParseChar(Parse, '=');
                   NewPartition.MaxRows := StrToInt(SQLParseValue(Parse));
                 end
                 else if (SQLParseKeyword(Parse, 'MIN_ROWS')) then
                 begin
-                  if (not SQLParseChar(Parse, '=')) then raise EConvertError.CreateFmt(SSourceParseError, [Database.Name + '.' + Name, 21, SQL]);
+                  SQLParseChar(Parse, '=');
                   NewPartition.MinRows := StrToInt(SQLParseValue(Parse));
                 end
                 else
                 begin
                   SQLParseValue(Parse);
-                  if (SQLParseChar(Parse, '=')) then;
-                    SQLParseValue(Parse);
+                  SQLParseChar(Parse, '=');
+                  SQLParseValue(Parse);
                 end;
               end;
 
@@ -7205,6 +7259,24 @@ begin
     else
       SQL := SQL + ' ENGINE=' + NewTable.FEngine.Name;
   end;
+  if ((not Assigned(Table) or Assigned(Table) and (NewTable.FAutoIncrement <> Table.AutoIncrement)) and (NewTable.FAutoIncrement > 0)) then
+  begin
+    if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
+    SQL := SQL + ' AUTO_INCREMENT=' + IntToStr(NewTable.FAutoIncrement);
+  end;
+  if ((not Assigned(Table) and NewTable.Checksum or Assigned(Table) and (NewTable.Checksum <> Table.Checksum))) then
+  begin
+    if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
+    if (not NewTable.Checksum) then
+      SQL := SQL + ' CHECKSUM=0'
+    else
+      SQL := SQL + ' CHECKSUM=1';
+  end;
+  if (not Assigned(Table) and (NewTable.FComment <> '') or Assigned(Table) and (NewTable.FComment <> Table.Comment) and (Client.ServerVersion >= 40100)) then
+  begin
+    if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
+    SQL := SQL + ' COMMENT=' + SQLEscape(NewTable.FComment);
+  end;
   if (Client.ServerVersion >= 40100) then
   begin
     if ((NewTable.FDefaultCharset <> '') and (not Assigned(Table) and (NewTable.FDefaultCharset <> DefaultCharset) or Assigned(Table) and (NewTable.FDefaultCharset <> Table.DefaultCharset))) then
@@ -7218,35 +7290,51 @@ begin
       SQL := SQL + ' COLLATE ' + NewTable.FCollation;
     end;
   end;
-  if ((Client.ServerVersion >= 40100) and not Assigned(Table) and (NewTable.FComment <> '') or Assigned(Table) and (NewTable.FComment <> Table.Comment)) then
+  if ((not Assigned(Table) and NewTable.DelayKeyWrite or Assigned(Table) and (NewTable.DelayKeyWrite <> Table.DelayKeyWrite))) then
   begin
     if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
-    SQL := SQL + ' COMMENT=' + SQLEscape(NewTable.FComment);
-  end;
-  if (not Assigned(Table) and (NewTable.FPackIndices <> piDefault) or Assigned(Table) and (NewTable.FPackIndices <> Table.PackIndices)) then
-  begin
-    if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
-    if (NewTable.FPackIndices = piUnpacked) then
-      SQL := SQL + ' PACK_KEYS=0'
-    else if (NewTable.FPackIndices = piPacked) then
-      SQL := SQL + ' PACK_KEYS=1'
+    if (not NewTable.DelayKeyWrite) then
+      SQL := SQL + ' DELAY_KEY_WRITE=0'
     else
-      SQL := SQL + ' PACK_KEYS=DEFAULT';
+      SQL := SQL + ' DELAY_KEY_WRITE=1';
   end;
-  if ((not Assigned(Table) and (NewTable.BlockSize > 0) or Assigned(Table) and (NewTable.BlockSize <> Table.BlockSize)) and (Client.ServerVersion >= 50110)) then
+  if (((not Assigned(Table) and (NewTable.InsertMethod <> imNo) or Assigned(Table) and (NewTable.Checksum <> Table.Checksum))) and (Client.ServerVersion >= 40000)) then
+  begin
+    if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
+    case (NewTable.InsertMethod) of
+      imFirst: SQL := SQL + ' INSERT_METHOD=FIRST';
+      imLast: SQL := SQL + ' INSERT_METHOD=LAST';
+      else {imNo} SQL := SQL + ' INSERT_METHOD=NO';
+    end;
+  end;
+  if (not Assigned(Table) and (NewTable.BlockSize > 0) or Assigned(Table) and (NewTable.BlockSize <> Table.BlockSize)) then
   begin
     if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
     SQL := SQL + ' KEY_BLOCK_SIZE=' + IntToStr(NewTable.BlockSize);
+  end;
+  if (not Assigned(Table) and (NewTable.MaxRows > 0) or Assigned(Table) and (NewTable.MaxRows <> Table.MaxRows)) then
+  begin
+    if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
+    SQL := SQL + ' MAX_ROWS=' + SQLEscape(IntToStr(NewTable.MaxRows));
+  end;
+  if (not Assigned(Table) and (NewTable.MinRows > 0) or Assigned(Table) and (NewTable.MinRows <> Table.MinRows)) then
+  begin
+    if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
+    SQL := SQL + ' MIN_ROWS=' + SQLEscape(IntToStr(NewTable.MinRows));
+  end;
+  if (not Assigned(Table) and (NewTable.FPackKeys <> piDefault) or Assigned(Table) and (NewTable.FPackKeys <> Table.PackKeys)) then
+  begin
+    if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
+    case (NewTable.FPackKeys) of
+      piUnpacked: SQL := SQL + ' PACK_KEYS=0';
+      piPacked: SQL := SQL + ' PACK_KEYS=1';
+      else {piDefault} SQL := SQL + ' PACK_KEYS=DEFAULT';
+    end;
   end;
   if ((not Assigned(Table) and (NewTable.FRowType <> mrUnknown) or Assigned(Table) and (NewTable.FRowType <> Table.RowType)) and (NewTable.DBRowTypeStr() <> '')) then
   begin
     if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
     SQL := SQL + ' ROW_FORMAT=' + NewTable.DBRowTypeStr();
-  end;
-  if ((not Assigned(Table) or Assigned(Table) and (NewTable.FAutoIncrement <> Table.AutoIncrement)) and (NewTable.FAutoIncrement > 0)) then
-  begin
-    if (Assigned(Table) and (SQL <> '')) then SQL := SQL + ',' + #13#10;
-    SQL := SQL + ' AUTO_INCREMENT=' + IntToStr(NewTable.FAutoIncrement);
   end;
 
   if (Assigned(Table) and Assigned(Table.Partitions) and (Table.Partitions.Count > 0) and Assigned(NewTable.Partitions) and (NewTable.Partitions.Count = 0)) then

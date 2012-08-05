@@ -846,7 +846,11 @@ begin
       if (FUDFormatSize.Position = Length(FFormatYear.Items.Strings[I])) then
         FFormatYear.ItemIndex := I;
 
-    FCharset.ItemIndex := FCharset.Items.IndexOf(Field.Charset); FCharsetChange(Sender);
+    if (Field.Charset <> '') then
+      FCharset.ItemIndex := FCharset.Items.IndexOf(Field.Charset)
+    else
+      FCharset.ItemIndex := FCharset.Items.IndexOf(Table.DefaultCharset);
+    FCharsetChange(Sender);
     FCollation.ItemIndex := FCollation.Items.IndexOf(Field.Collation);
 
     FFlagUnsigned.Checked := Field.Unsigned;

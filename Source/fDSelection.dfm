@@ -4,7 +4,7 @@ object DSelection: TDSelection
   BorderIcons = []
   BorderStyle = bsDialog
   Caption = 'DSelection'
-  ClientHeight = 273
+  ClientHeight = 313
   ClientWidth = 249
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -17,13 +17,17 @@ object DSelection: TDSelection
   OnCreate = FormCreate
   OnHide = FormHide
   OnShow = FormShow
+  DesignSize = (
+    249
+    313)
   PixelsPerInch = 106
   TextHeight = 13
   object FBOk: TButton
     Left = 80
-    Top = 240
+    Top = 280
     Width = 75
     Height = 25
+    Anchors = [akLeft, akBottom]
     Caption = 'FBOk'
     Default = True
     ModalResult = 1
@@ -31,15 +35,16 @@ object DSelection: TDSelection
   end
   object FBCancel: TButton
     Left = 168
-    Top = 240
+    Top = 280
     Width = 75
     Height = 25
+    Anchors = [akLeft, akBottom]
     Cancel = True
     Caption = 'FBCancel'
     ModalResult = 2
     TabOrder = 2
   end
-  object ListView: TListView
+  object FSelection: TListView
     Left = 8
     Top = 8
     Width = 233
@@ -55,8 +60,16 @@ object DSelection: TDSelection
     SortType = stText
     TabOrder = 0
     ViewStyle = vsReport
-    OnChange = ListViewChange
-    OnCompare = ListViewCompare
-    OnDblClick = ListViewDblClick
+    OnChange = FSelectionChange
+    OnCompare = FSelectionCompare
+    OnDblClick = FSelectionDblClick
+  end
+  object FManual: TEdit
+    Left = 8
+    Top = 240
+    Width = 233
+    Height = 21
+    TabOrder = 3
+    Text = 'FManual'
   end
 end

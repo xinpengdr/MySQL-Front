@@ -12,15 +12,16 @@ type
   TDSelection = class(TForm_Ext)
     FBCancel: TButton;
     FBOk: TButton;
-    ListView: TListView;
+    FSelection: TListView;
+    FManual: TEdit;
     procedure FormCreate(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure FormShow(Sender: TObject);
-    procedure ListViewChange(Sender: TObject; Item: TListItem;
+    procedure FSelectionChange(Sender: TObject; Item: TListItem;
       Change: TItemChange);
-    procedure ListViewCompare(Sender: TObject; Item1, Item2: TListItem;
+    procedure FSelectionCompare(Sender: TObject; Item1, Item2: TListItem;
       Data: Integer; var Compare: Integer);
-    procedure ListViewDblClick(Sender: TObject);
+    procedure FSelectionDblClick(Sender: TObject);
   protected
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
@@ -36,6 +37,7 @@ implementation {***************************************************************}
 {$R *.dfm}
 
 uses
+  CommCtrl,
   StrUtils, Math,
   fPreferences;
 
@@ -59,6 +61,9 @@ procedure TDSelection.CMChangePreferences(var Message: TMessage);
 begin
   Caption := ReplaceStr(Preferences.LoadStr(721), '&', '');
 
+  if (CheckWin32Version(6)) then
+    SendMessage(FManual.Handle, EM_SETCUEBANNER, 0, LParam(PChar(ReplaceStr(Preferences.LoadStr(424), '&', ''))));
+
   FBOk.Caption := Preferences.LoadStr(29);
   FBCancel.Caption := Preferences.LoadStr(30);
 end;
@@ -77,7 +82,10 @@ end;
 procedure TDSelection.FormHide(Sender: TObject);
 begin
   if (ModalResult = mrOk) then
-    Selected := ListView.Selected.Caption;
+    if (FManual.Text <> '') then
+      Selected := FManual.Text
+    else
+      Selected := FSelection.Selected.Caption;
 
   SetLength(Values, 0);
 end;
@@ -86,32 +94,34 @@ procedure TDSelection.FormShow(Sender: TObject);
 var
   I: Integer;
 begin
-  ListView.Items.Clear();
+  FSelection.Items.Clear();
 
   for I := 0 to Length(Values) - 1 do
-    ListView.Items.Add().Caption := Values[I];
-  if (ListView.Items.Count > 0) then
+    FSelection.Items.Add().Caption := Values[I];
+  if (FSelection.Items.Count > 0) then
   begin
-    ListView.ItemFocused := ListView.Items[0];
-    ListView.Selected := ListView.ItemFocused;
+    FSelection.ItemFocused := FSelection.Items[0];
+    FSelection.Selected := FSelection.ItemFocused;
   end;
 
-  ActiveControl := ListView;
+  FManual.Text := '';
+
+  ActiveControl := FSelection;
 end;
 
-procedure TDSelection.ListViewChange(Sender: TObject; Item: TListItem;
+procedure TDSelection.FSelectionChange(Sender: TObject; Item: TListItem;
   Change: TItemChange);
 begin
-  FBOk.Enabled := Assigned(ListView.Selected);
+  FBOk.Enabled := Assigned(FSelection.Selected);
 end;
 
-procedure TDSelection.ListViewCompare(Sender: TObject; Item1,
+procedure TDSelection.FSelectionCompare(Sender: TObject; Item1,
   Item2: TListItem; Data: Integer; var Compare: Integer);
 begin
   Compare := Sign(lstrcmpi(PChar(Item1.Caption), PChar(Item2.Caption)));
 end;
 
-procedure TDSelection.ListViewDblClick(Sender: TObject);
+procedure TDSelection.FSelectionDblClick(Sender: TObject);
 begin
   if (FBOk.Enabled) then
     FBOk.Click();

@@ -1489,7 +1489,7 @@ begin
 
   Open();
 
-  if (Client.ServerVersion >= 40014) then
+  if (Data and (Client.ServerVersion >= 40014)) then
   begin
     if (Assigned(Client.VariableByName('UNIQUE_CHECKS'))
       and Assigned(Client.VariableByName('FOREIGN_KEY_CHECKS'))) then
@@ -1549,7 +1549,7 @@ begin
       Items[I].Done := True;
     end;
 
-  if (Client.ServerVersion >= 40014) then
+  if (Data and (Client.ServerVersion >= 40014)) then
   begin
     SQL := 'SET UNIQUE_CHECKS=' + OLD_UNIQUE_CHECKS + ', FOREIGN_KEY_CHECKS=' + OLD_FOREIGN_KEY_CHECKS + ';' + #13#10;
     while ((Success = daSuccess) and not Client.ExecuteSQL(SQL)) do
@@ -6851,7 +6851,7 @@ begin
     DoUpdateGUI();
   end;
 
-  if (DestinationClient.ServerVersion >= 40014) then
+  if (Data and (DestinationClient.ServerVersion >= 40014)) then
   begin
     if (Assigned(DestinationClient.VariableByName('UNIQUE_CHECKS'))
       and Assigned(DestinationClient.VariableByName('FOREIGN_KEY_CHECKS'))) then
@@ -6951,7 +6951,7 @@ begin
       end;
   end;
 
-  if (DestinationClient.ServerVersion >= 40014) then
+  if (Data and (DestinationClient.ServerVersion >= 40014)) then
   begin
     SQL := 'SET UNIQUE_CHECKS=' + OLD_UNIQUE_CHECKS + ', FOREIGN_KEY_CHECKS=' + OLD_FOREIGN_KEY_CHECKS + ';' + #13#10;
     while ((Success = daSuccess) and not DestinationClient.ExecuteSQL(SQL)) do

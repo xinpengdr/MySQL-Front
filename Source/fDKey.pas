@@ -413,6 +413,8 @@ begin
   FAvailableFields.Left := FLAvailableFields.Left;
   FAvailableFields.Width := (GBasics.ClientWidth - Panel.Width) div 2 - 2 * FIndexedFields.Left;
 
+  FComment.Width := FAvailableFields.Left + FAvailableFields.Width - FComment.Left;
+
   EnableAlign();
 end;
 

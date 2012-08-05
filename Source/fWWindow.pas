@@ -1738,12 +1738,24 @@ procedure TWWindow.EurekaLogCustomDataRequest(
   EurekaExceptionRecord: TEurekaExceptionRecord; DataFields: TStrings);
 var
   I: Integer;
+  Log: TStringList;
+  Start: Integer;
 begin
   DataFields.Add('System CodePage=' + IntToStr(GetACP()));
 
   for I := 0 to Clients.Count - 1 do
     if (Clients[I].Connected) then
       DataFields.Add('MySQL Version=' + Clients[I].ServerVersionStr);
+
+  if (Assigned(ActiveTab)) then
+  begin
+    Log := TStringList.Create();
+    Log.Text := ActiveTab.Client.BugMonitor.CacheText;
+    if (Log.Count < 10) then Start := 0 else Start := Log.Count - 10;
+    for I := Start to Log.Count - 1 do
+      DataFields.Add('Log_' + IntToStr(I - Start + 1) + '=' + Log[I]);
+    Log.Free();
+  end;
 
   EurekaExceptionRecord.CurrentModuleOptions.EMailSubject
     := AnsiString(SysUtils.LoadStr(1000) + ' ' + IntToStr(Preferences.VerMajor) + '.' + IntToStr(Preferences.VerMinor)
