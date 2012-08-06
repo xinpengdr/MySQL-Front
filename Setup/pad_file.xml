@@ -34,6 +34,9 @@
 		<Download_URLs>
 			<Primary_Download_URL>{BuildInternetDownload}</Primary_Download_URL>
 		</Download_URLs>
+    <News_URLs>
+      <RSS_URL>http://www.mysqlfront.de/rss.xml</RSS_URL>
+    </News_URLs>
 	</Web_Info>
 </XML_DIZ_INFO>
 

@@ -1501,7 +1501,7 @@ begin
     begin
       DataSet := TMySQLQuery.Create(nil);
       DataSet.Connection := Client;
-      DataSet.CommandText := 'SELECT @@UNIQUE_CHECKS, @@FOREIGN_KEY_CHECKS';
+      DataSet.CommandText := 'SELECT @@UNIQUE_CHECKS,@@FOREIGN_KEY_CHECKS';
 
       while ((Success = daSuccess) and not DataSet.Active) do
       begin
@@ -1520,7 +1520,7 @@ begin
       DataSet.Free();
     end;
 
-    SQL := 'SET UNIQUE_CHECKS=0, FOREIGN_KEY_CHECKS=0;';
+    SQL := 'SET UNIQUE_CHECKS=0,FOREIGN_KEY_CHECKS=0;';
     while ((Success = daSuccess) and not Client.ExecuteSQL(SQL)) do
       DoError(DatabaseError(Client), ToolsItem(Items[0]), SQL);
   end;
@@ -1551,8 +1551,8 @@ begin
 
   if (Data and (Client.ServerVersion >= 40014)) then
   begin
-    SQL := 'SET UNIQUE_CHECKS=' + OLD_UNIQUE_CHECKS + ', FOREIGN_KEY_CHECKS=' + OLD_FOREIGN_KEY_CHECKS + ';' + #13#10;
-    while ((Success = daSuccess) and not Client.ExecuteSQL(SQL)) do
+    SQL := 'SET UNIQUE_CHECKS=' + OLD_UNIQUE_CHECKS + ',FOREIGN_KEY_CHECKS=' + OLD_FOREIGN_KEY_CHECKS + ';' + #13#10;
+    while (not Client.ExecuteSQL(SQL) and (Success = daSuccess)) do
       DoError(DatabaseError(Client), ToolsItem(Items[0]), SQL);
   end;
 

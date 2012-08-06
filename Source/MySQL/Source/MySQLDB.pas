@@ -4306,7 +4306,10 @@ begin
               Len := Connection.Lib.Field(LibField).length;
               for I := 0 to Length(MySQL_Character_Sets) - 1 do
                 if (lstrcmpiA(MySQL_Character_Sets[I].CharsetName, PAnsiChar(AnsiString(Connection.Charset))) = 0) then
-                  Len := Connection.Lib.Field(LibField).length div MySQL_Character_Sets[I].MaxLen;
+                  if (MySQL_Character_Sets[I].MaxLen = 0) then
+                    raise ERangeError.CreateFmt(SPropertyOutOfRange + ' - Charset: %s', ['MaxLen', MySQL_Character_Sets[I].CharsetName])
+                  else
+                    Len := Connection.Lib.Field(LibField).length div MySQL_Character_Sets[I].MaxLen;
             end;
           end
           else
@@ -4321,7 +4324,10 @@ begin
               Len := Connection.Lib.Field(LibField).length;
               for I := 0 to Length(MySQL_Collations) - 1 do
                 if (MySQL_Collations[I].CharsetNr = Connection.Lib.Field(LibField).charsetnr) then
-                  Len := Connection.Lib.Field(LibField).length div MySQL_Collations[I].MaxLen;
+                  if (MySQL_Collations[I].MaxLen = 0) then
+                    raise ERangeError.CreateFmt(SPropertyOutOfRange + ' - CharsetNr: %d', ['MaxLen', MySQL_Collations[I].CharsetNr])
+                  else
+                    Len := Connection.Lib.Field(LibField).length div MySQL_Collations[I].MaxLen;
             end;
           end;
           Len := Len and $7FFFFFFF;

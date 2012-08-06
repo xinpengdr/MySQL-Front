@@ -81,7 +81,6 @@ type
     procedure FRightsRefresh(Sender: TObject);
     procedure ListViewShowSortDirection(const ListView: TListView);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
-    procedure CMPostShow(var Message: TMessage); message CM_POSTSHOW;
   public
     Client: TCClient;
     User: TCUser;
@@ -215,18 +214,11 @@ begin
   msCopy.Action := MainAction('aECopy'); msCopy.ShortCut := 0;
   msSelectAll.Action := MainAction('aESelectAll'); msSelectAll.ShortCut := 0;
 
+  FBOk.Enabled := False;
+
   FBHelp.Caption := Preferences.LoadStr(167);
   FBOk.Caption := Preferences.LoadStr(29);
   FBCancel.Caption := Preferences.LoadStr(30);
-end;
-
-procedure TDUser.CMPostShow(var Message: TMessage);
-begin
-  FBRightsNew.Enabled := False;
-  FBRightsEdit.Enabled := False;
-  FBRightsDelete.Enabled := False;
-
-  FBOk.Enabled := False;
 end;
 
 function TDUser.Execute(): Boolean;
@@ -250,8 +242,6 @@ begin
 
   FBOk.Enabled := (not Assigned(Client.UserByName(Username)) or (Client.Users.NameCmp(Username, NewUser.Name) = 0))
     and (FRights.Items.Count > 0);
-
-  FSource.Text := '';
 end;
 
 procedure TDUser.FBRightsDeleteClick(Sender: TObject);

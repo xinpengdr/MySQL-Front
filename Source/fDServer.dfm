@@ -39,20 +39,16 @@ object DServer: TDServer
     Top = 8
     Width = 321
     Height = 321
-    ActivePage = TSBasics
+    ActivePage = TSExtras
     Anchors = [akLeft, akTop, akRight, akBottom]
     HotTrack = True
     MultiLine = True
     TabOrder = 0
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
-        257)
+        275)
       object GServer: TGroupBox_Ext
         Left = 8
         Top = 8
@@ -174,74 +170,17 @@ object DServer: TDServer
         end
       end
     end
-    object TSProcesses: TTabSheet
-      Caption = 'TSProcesses'
-      OnShow = TSProcessesShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        313
-        257)
-      object FProcesses: TListView
-        Left = 8
-        Top = 8
-        Width = 296
-        Height = 231
-        Anchors = [akLeft, akTop, akRight, akBottom]
-        Columns = <
-          item
-            AutoSize = True
-          end
-          item
-            AutoSize = True
-          end
-          item
-            AutoSize = True
-          end
-          item
-            AutoSize = True
-          end
-          item
-            AutoSize = True
-          end
-          item
-            AutoSize = True
-          end
-          item
-            AutoSize = True
-          end
-          item
-            AutoSize = True
-          end>
-        ReadOnly = True
-        RowSelect = True
-        PopupMenu = MListView
-        TabOrder = 0
-        ViewStyle = vsReport
-        OnColumnClick = ListViewColumnClick
-        OnCompare = ListViewCompare
-        OnDblClick = ListViewDblClick
-        OnResize = ListViewResize
-        OnSelectItem = FProcessesSelectItem
-      end
-    end
     object TSSQLLog: TTabSheet
       Caption = 'TSSQLLog'
       OnShow = TSSQLLogShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
-        257)
+        275)
       object FSQLLog: TSynMemo
         Left = 8
         Top = 8
         Width = 297
-        Height = 233
+        Height = 257
         Anchors = [akLeft, akTop, akRight, akBottom]
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clWindowText
@@ -267,18 +206,14 @@ object DServer: TDServer
     object TSSlowSQLLog: TTabSheet
       Caption = 'TSSlowSQLLog'
       OnShow = TSSlowSQLLogShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
-        257)
+        275)
       object FSlowSQLLog: TSynMemo
         Left = 8
         Top = 8
         Width = 297
-        Height = 233
+        Height = 257
         Anchors = [akLeft, akTop, akRight, akBottom]
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clWindowText
@@ -301,156 +236,17 @@ object DServer: TDServer
         WantReturns = False
       end
     end
-    object TSStati: TTabSheet
-      Caption = 'TSStati'
-      OnShow = TSStatiShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        313
-        257)
-      object FStati: TListView
-        Left = 8
-        Top = 8
-        Width = 296
-        Height = 231
-        Anchors = [akLeft, akTop, akRight, akBottom]
-        Columns = <
-          item
-            AutoSize = True
-          end
-          item
-            AutoSize = True
-          end>
-        HideSelection = False
-        ReadOnly = True
-        RowSelect = True
-        TabOrder = 0
-        ViewStyle = vsReport
-        OnColumnClick = ListViewColumnClick
-        OnCompare = ListViewCompare
-        OnResize = ListViewResize
-        OnSelectItem = FStatiSelectItem
-      end
-    end
-    object TSVariables: TTabSheet
-      Caption = 'TSVariables'
-      OnShow = TSVariablesShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        313
-        257)
-      object FVariables: TListView
-        Left = 8
-        Top = 8
-        Width = 296
-        Height = 231
-        Anchors = [akLeft, akTop, akRight, akBottom]
-        Columns = <
-          item
-            AutoSize = True
-          end
-          item
-            AutoSize = True
-          end>
-        HideSelection = False
-        ReadOnly = True
-        RowSelect = True
-        PopupMenu = MListView
-        TabOrder = 0
-        ViewStyle = vsReport
-        OnColumnClick = ListViewColumnClick
-        OnCompare = ListViewCompare
-        OnDblClick = ListViewDblClick
-        OnKeyPress = ListViewKeyPress
-        OnResize = ListViewResize
-        OnSelectItem = FVariablesSelectItem
-      end
-    end
-    object TSUsers: TTabSheet
-      Caption = 'TSUsers'
-      OnShow = TSUsersShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        313
-        257)
-      object FUsers: TListView
-        Left = 8
-        Top = 8
-        Width = 296
-        Height = 231
-        Anchors = [akLeft, akTop, akRight, akBottom]
-        Columns = <
-          item
-            AutoSize = True
-          end>
-        ReadOnly = True
-        RowSelect = True
-        PopupMenu = MListView
-        TabOrder = 0
-        ViewStyle = vsReport
-        OnColumnClick = ListViewColumnClick
-        OnCompare = ListViewCompare
-        OnDblClick = ListViewDblClick
-        OnKeyPress = ListViewKeyPress
-        OnResize = FUsersResize
-        OnSelectItem = FUsersSelectItem
-      end
-    end
-    object TSHosts: TTabSheet
-      Caption = 'TSHosts'
-      OnShow = TSHostsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
-      DesignSize = (
-        313
-        257)
-      object FHosts: TListView
-        Left = 8
-        Top = 8
-        Width = 296
-        Height = 231
-        Anchors = [akLeft, akTop, akRight, akBottom]
-        Columns = <
-          item
-          end>
-        ReadOnly = True
-        RowSelect = True
-        PopupMenu = MListView
-        TabOrder = 0
-        ViewStyle = vsReport
-        OnColumnClick = ListViewColumnClick
-        OnDblClick = ListViewDblClick
-        OnKeyPress = ListViewKeyPress
-        OnResize = FHostsResize
-        OnSelectItem = FHostsSelectItem
-      end
-    end
     object TSStartup: TTabSheet
       Caption = 'TSStartup'
       OnShow = TSStartupShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
-        257)
+        275)
       object FStartup: TSynMemo
         Left = 8
         Top = 8
         Width = 297
-        Height = 231
+        Height = 257
         Anchors = [akLeft, akTop, akRight, akBottom]
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clWindowText
@@ -480,18 +276,14 @@ object DServer: TDServer
     object TSPlugins: TTabSheet
       Caption = 'TSPlugins'
       OnShow = TSPluginsShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
-        257)
+        275)
       object FPlugins: TListView
         Left = 8
         Top = 8
         Width = 296
-        Height = 231
+        Height = 257
         Anchors = [akLeft, akTop, akRight, akBottom]
         Columns = <
           item
@@ -504,19 +296,14 @@ object DServer: TDServer
         RowSelect = True
         TabOrder = 0
         ViewStyle = vsReport
-        OnSelectItem = FPluginsSelectItem
       end
     end
     object TSExtras: TTabSheet
       Caption = 'TSExtras'
       OnShow = TSExtrasShow
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         313
-        257)
+        275)
       object GServiceServer: TGroupBox_Ext
         Left = 8
         Top = 8
@@ -588,26 +375,6 @@ object DServer: TDServer
     Caption = 'FBHelp'
     TabOrder = 1
     OnClick = FBHelpClick
-  end
-  object MListView: TPopupMenu
-    Left = 96
-    Top = 336
-    object miAdd: TMenuItem
-      Caption = 'miAdd'
-      ShortCut = 45
-      OnClick = miAddClick
-    end
-    object miDelete: TMenuItem
-      Caption = 'miDelete'
-      ShortCut = 46
-      OnClick = miDeleteClick
-    end
-    object miProperties: TMenuItem
-      Caption = 'miProperties'
-      Default = True
-      ShortCut = 32781
-      OnClick = miPropertiesClick
-    end
   end
   object MSource: TPopupMenu
     Left = 128

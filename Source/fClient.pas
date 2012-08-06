@@ -1244,18 +1244,12 @@ type
     FRights: TList;
     FUserConnections: Integer;
     FUpdatesPerHour: Integer;
-    FValid: Boolean;
-    function GetConnectionsPerHour(): Integer;
     function GetHost(): string;
     function GetLogin(): string;
-    function GetQueriesPerHour(): Integer;
-    function GetRawPassword(): string;
-    function GetRight(Index: Integer): TCUserRight;
-    function GetRightCount(): Integer;
-    function GetSlowSQLLog(): string;
-    function GetSQLLog(): string;
-    function GetUpdatesPerHour(): Integer;
-    function GetUserConnections(): Integer;
+    function GetRight(Index: Integer): TCUserRight; inline;
+    function GetRightCount(): Integer; inline;
+    function GetSlowSQLLog(): string; inline;
+    function GetSQLLog(): string; inline;
     function GetUsers(): TCUsers; inline;
     procedure ParseGrant(const SQL: string);
   protected
@@ -1263,7 +1257,8 @@ type
     function GetValid(): Boolean; override;
     procedure SetName(const AName: string); override;
     procedure SetSource(const ADataSet: TMySQLQuery); override;
-    function SQLGetSource(): string;
+    procedure SetSource(const ASource: string); override;
+    function SQLGetSource(): string; virtual;
   public
     function AddRight(const NewUserRight: TCUserRight): Boolean; virtual;
     procedure Assign(const Source: TCUser); reintroduce; virtual;
@@ -1274,24 +1269,24 @@ type
     function RightByCaption(const Caption: string): TCUserRight; virtual;
     function Update(): Boolean; override;
     function UpdateRight(const UserRight,  NewUserRight: TCUserRight): Boolean; virtual;
-    property ConnectionsPerHour: Integer read GetConnectionsPerHour write FConnectionsPerHour;
+    property ConnectionsPerHour: Integer read FConnectionsPerHour write FConnectionsPerHour;
     property Host: string read GetHost;
     property Login: string read GetLogin;
     property NewPassword: string read FNewPassword write FNewPassword;
-    property QueriesPerHour: Integer read GetQueriesPerHour write FQueriesPerHour;
-    property RawPassword: string read GetRawPassword write FRawPassword;
+    property QueriesPerHour: Integer read FQueriesPerHour write FQueriesPerHour;
+    property RawPassword: string read FRawPassword write FRawPassword;
     property Right[Index: Integer]: TCUserRight read GetRight;
     property RightCount: Integer read GetRightCount;
     property SlowSQLLog: string read GetSlowSQLLog;
     property SQLLog: string read GetSQLLog;
-    property UpdatesPerHour: Integer read GetUpdatesPerHour write FUpdatesPerHour;
-    property UserConnections: Integer read GetUserConnections write FUserConnections;
+    property UpdatesPerHour: Integer read FUpdatesPerHour write FUpdatesPerHour;
+    property UserConnections: Integer read FUserConnections write FUserConnections;
     property Users: TCUsers read GetUsers;
   end;
 
   TCUsers = class(TCObjects)
   private
-    function GetUser(Index: Integer): TCUser;
+    function GetUser(Index: Integer): TCUser; inline;
   protected
     function Build(const DataSet: TMySQLQuery; const UseInformationSchema: Boolean; Filtered: Boolean = False): Boolean; override;
     function GetValid(): Boolean; override;
@@ -1540,7 +1535,7 @@ var
 implementation {***************************************************************}
 
 uses
-  Variants, SysConst, WinInet, WinSock, DBConsts, RTLConsts, Math,
+  Variants, SysConst, WinInet, DBConsts, RTLConsts, Math,
   Consts, DBCommon, StrUtils,
   Forms, DBGrids,
   MySQLConsts, CSVUtils, HTTPTunnel, MySQLDBGrid,
@@ -9055,7 +9050,6 @@ begin
   end;
   FUpdatesPerHour := Source.UpdatesPerHour;
   FUserConnections := Source.UserConnections;
-  FValid := Source.Valid;
 end;
 
 constructor TCUser.Create(const ACItems: TCItems; const AName: string = '');
@@ -9069,7 +9063,6 @@ begin
   FRights := TList.Create();
   UpdatesPerHour := 0;
   UserConnections := 0;
-  FValid := False;
 end;
 
 procedure TCUser.DeleteRight(const UserRight: TCUserRight);
@@ -9105,14 +9098,6 @@ begin
     Result := '<' + Preferences.LoadStr(287) + '>';
 end;
 
-function TCUser.GetConnectionsPerHour(): Integer;
-begin
-  if (not Valid) then
-    ParseGrant(Source);
-
-  Result := FConnectionsPerHour;
-end;
-
 function TCUser.GetHost(): string;
 begin
   if (Pos('@', Name) = 0) then
@@ -9132,68 +9117,24 @@ begin
     Result := Copy(Name, 1, Pos('@', Name) - 1);
 end;
 
-function TCUser.GetQueriesPerHour(): Integer;
-begin
-  if (not Valid) then
-    ParseGrant(Source);
-
-  Result := FQueriesPerHour;
-end;
-
-function TCUser.GetRawPassword(): string;
-begin
-  if (not Valid) then
-    ParseGrant(Source);
-
-  Result := FRawPassword;
-end;
-
 function TCUser.GetRight(Index: Integer): TCUserRight;
 begin
-  if (not Valid) then
-    ParseGrant(Source);
-
   Result := FRights[Index];
 end;
 
 function TCUser.GetRightCount(): Integer;
 begin
-  if (not Valid and ValidSource) then
-    ParseGrant(Source);
-
   Result := FRights.Count;
 end;
 
 function TCUser.GetSlowSQLLog(): string;
 begin
-  if (not Assigned(Users) or not Assigned(Users.Client)) then
-    Result := ''
-  else
-    Result := Users.Client.GetSlowSQLLog(Self);
+  Result := Client.GetSlowSQLLog(Self);
 end;
 
 function TCUser.GetSQLLog(): string;
 begin
-  if (not Assigned(Users) or not Assigned(Users.Client)) then
-    Result := ''
-  else
-    Result := Users.Client.GetSQLLog(Self);
-end;
-
-function TCUser.GetUpdatesPerHour(): Integer;
-begin
-  if (not Valid) then
-    ParseGrant(Source);
-
-  Result := FUpdatesPerHour;
-end;
-
-function TCUser.GetUserConnections(): Integer;
-begin
-  if (not Valid) then
-    ParseGrant(Source);
-
-  Result := FUserConnections;
+  Result := Client.GetSQLLog(Self);
 end;
 
 function TCUser.GetUsers(): TCUsers;
@@ -9205,7 +9146,7 @@ end;
 
 function TCUser.GetValid(): Boolean;
 begin
-  Result := FValid and ValidSource;
+  Result := ValidSource and (RightCount > 0);
 end;
 
 function TCUser.IndexOf(const UserRight: TCUserRight): Integer;
@@ -9408,11 +9349,9 @@ begin
         end;
 
       for I := 0 to Length(NewRights) - 1 do
-        FreeAndNil(NewRights[I]);
+        NewRights[I].Free();
       SetLength(NewRights, 0);
     end;
-
-    FValid := True;
   end;
 end;
 
@@ -9448,7 +9387,6 @@ begin
   if (Source <> '') then
   begin
     SetSource(Source);
-    ParseGrant(Source);
 
     if (Valid) then
     begin
@@ -9456,6 +9394,14 @@ begin
       Client.ExecuteEvent(ceItemValid, Client, Users, Self);
     end;
   end;
+end;
+
+procedure TCUser.SetSource(const ASource: string);
+begin
+  inherited;
+
+  if (Source <> '') then
+    ParseGrant(Source);
 end;
 
 function TCUser.SQLGetSource(): string;
@@ -9935,7 +9881,6 @@ begin
 
     FUser := TCUser.Create(Users);
     FUser.SetSource(Source);
-    FUser.ParseGrant(FUser.Source);
 
     if (FUser.Name <> '') then
       Name := FUser.Name

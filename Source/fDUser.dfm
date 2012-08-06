@@ -62,7 +62,7 @@ object DUser: TDUser
     Top = 8
     Width = 321
     Height = 241
-    ActivePage = TSRights
+    ActivePage = TSBasics
     Anchors = [akLeft, akTop, akRight, akBottom]
     HotTrack = True
     MultiLine = True

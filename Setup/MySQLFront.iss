@@ -13,6 +13,7 @@ AllowNoIcons=yes
 ShowLanguageDialog=auto
 VersionInfoVersion={BuildVerStrFull}
 SolidCompression=yes
+SetupIconFile={BuildSetupPath}\MySQLFront.ico
 UninstallDisplayName={BuildName}
 UninstallDisplayIcon={app}\{BuildName}.exe
 
