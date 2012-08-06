@@ -72,11 +72,11 @@ type
     procedure ListViewResize(Sender: TObject);
     procedure TSRightsShow(Sender: TObject);
     procedure TSSlowSQLLogShow(Sender: TObject);
-    procedure TSSourceShow(Sender: TObject);
     procedure TSSQLLogShow(Sender: TObject);
   private
     NewUser: TCUser;
     RightsModified: Boolean;
+    procedure Built();
     procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure FRightsRefresh(Sender: TObject);
     procedure ListViewShowSortDirection(const ListView: TListView);
@@ -115,6 +115,32 @@ begin
 end;
 
 { TDUser **********************************************************************}
+
+procedure TDUser.Built();
+begin
+  NewUser.Assign(User);
+
+  FName.Text := NewUser.Login;
+  FHost.Text := NewUser.Host;
+  if (NewUser.RawPassword = '') then
+    FPassword.Text := ''
+  else
+    FPassword.Text := StringOfChar('*', FPassword.MaxLength);
+
+  FRightsRefresh(nil);
+
+  FUDConnectionsPerHour.Position := NewUser.ConnectionsPerHour;
+  FUDQueriesPerHour.Position := NewUser.QueriesPerHour;
+  FUDUpdatesPerHour.Position := NewUser.UpdatesPerHour;
+  FUDUserConnections.Position := NewUser.UserConnections;
+
+  FSource.Text := User.Source;
+
+  PageControl.Visible := True;
+  PSQLWait.Visible := not PageControl.Visible;
+
+  ActiveControl := FName;
+end;
 
 procedure TDUser.CMChangePreferences(var Message: TMessage);
 begin
@@ -222,10 +248,10 @@ begin
   if (Trim(FHost.Text) <> '') then
     Username := Username + '@' + Trim(FHost.Text);
 
-  FBOk.Enabled := (not Assigned(Client.UserByName(Username)) or (lstrcmpi(PChar(Username), PChar(NewUser.Name)) = 0))
+  FBOk.Enabled := (not Assigned(Client.UserByName(Username)) or (Client.Users.NameCmp(Username, NewUser.Name) = 0))
     and (FRights.Items.Count > 0);
 
-  TSSource.TabVisible := False;
+  FSource.Text := '';
 end;
 
 procedure TDUser.FBRightsDeleteClick(Sender: TObject);
@@ -273,7 +299,9 @@ end;
 
 procedure TDUser.FormClientEvent(const Event: TCClient.TEvent);
 begin
-  if ((Event.EventType in [ceItemCreated, ceItemAltered]) and (Event.CItem is TCUser)) then
+  if ((Event.EventType = ceItemValid) and (Event.CItem = User)) then
+    Built()
+  else if ((Event.EventType in [ceItemCreated, ceItemAltered]) and (Event.CItem is TCUser)) then
     ModalResult := mrOk
   else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
   begin
@@ -369,8 +397,6 @@ begin
   Client.RegisterEventProc(FormClientEvent);
 
   NewUser := TCUser.Create(Client.Users);
-  if (Assigned(User)) then
-    NewUser.Assign(User);
 
   RightsModified := False;
   if (not Assigned(User)) then
@@ -407,20 +433,17 @@ begin
     FUDQueriesPerHour.Position := 0;
     FUDUpdatesPerHour.Position := 0;
     FUDUserConnections.Position := 0;
+
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
   end
   else
   begin
-    FName.Text := NewUser.Login;
-    FHost.Text := NewUser.Host;
-    if (NewUser.RawPassword = '') then
-      FPassword.Text := ''
-    else
-      FPassword.Text := StringOfChar('*', FPassword.MaxLength);
+    PageControl.Visible := User.Update();
+    PSQLWait.Visible := not PageControl.Visible;
 
-    FUDConnectionsPerHour.Position := NewUser.ConnectionsPerHour;
-    FUDQueriesPerHour.Position := NewUser.QueriesPerHour;
-    FUDUpdatesPerHour.Position := NewUser.UpdatesPerHour;
-    FUDUserConnections.Position := NewUser.UserConnections;
+    if (PageControl.Visible) then
+      Built();
   end;
 
   FUserConnections.Visible := Client.ServerVersion >= 50003;
@@ -432,10 +455,10 @@ begin
   TSSource.TabVisible := Assigned(User);
 
   PageControl.ActivePage := TSBasics;
-  FRightsRefresh(Sender);
 
   ActiveControl := FBCancel;
-  ActiveControl := FName;
+  if (PageControl.Visible) then
+    ActiveControl := FName;
 
   PostMessage(Self.Handle, CM_POSTSHOW, 0, 0);
 end;
@@ -568,8 +591,6 @@ end;
 
 procedure TDUser.TSRightsShow(Sender: TObject);
 begin
-  FRightsRefresh(Sender);
-
   ActiveControl := FRights;
 end;
 
@@ -580,12 +601,6 @@ begin
     FSlowSQLLog.Text := User.SlowSQLLog;
     SendMessage(FSlowSQLLog.Handle, WM_VSCROLL, SB_BOTTOM, 0);
   end
-end;
-
-procedure TDUser.TSSourceShow(Sender: TObject);
-begin
-  if (FSource.Lines.Text = '') then
-    FSource.Text := User.Source;
 end;
 
 procedure TDUser.TSSQLLogShow(Sender: TObject);

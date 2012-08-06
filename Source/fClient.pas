@@ -738,7 +738,6 @@ type
     procedure ParseCreateRoutine(const SQL: string);
   protected
     function SQLGetSource(): string; override;
-    procedure SetSource(const ADataSet: TMySQLQuery); overload; override;
     procedure SetSource(const ASource: string); override;
     property SourceParsed: Boolean read FSourceParsed;
   public
@@ -1245,6 +1244,7 @@ type
     FRights: TList;
     FUserConnections: Integer;
     FUpdatesPerHour: Integer;
+    FValid: Boolean;
     function GetConnectionsPerHour(): Integer;
     function GetHost(): string;
     function GetLogin(): string;
@@ -1259,9 +1259,11 @@ type
     function GetUsers(): TCUsers; inline;
     procedure ParseGrant(const SQL: string);
   protected
-    Valid: Boolean;
     function GetCaption(): string; override;
+    function GetValid(): Boolean; override;
     procedure SetName(const AName: string); override;
+    procedure SetSource(const ADataSet: TMySQLQuery); override;
+    function SQLGetSource(): string;
   public
     function AddRight(const NewUserRight: TCUserRight): Boolean; virtual;
     procedure Assign(const Source: TCUser); reintroduce; virtual;
@@ -4325,11 +4327,11 @@ begin
 
       while (not SQLParseChar(Parse, ',', False) and not SQLParseChar(Parse, ')', False)) do
       begin
-        if (SQLParseKeyword(Parse, 'COMMENT')) then // MySQL >= 5.5.3
+        if (SQLParseKeyword(Parse, 'COMMENT')) then
           NewKey.Comment := SQLParseValue(Parse)
-        else if (SQLParseKeyword(Parse, 'KEY_BLOCK_SIZE') and SQLParseChar(Parse, '=')) then // MySQL >= 5.1.10
+        else if (SQLParseKeyword(Parse, 'KEY_BLOCK_SIZE') and SQLParseChar(Parse, '=')) then
           NewKey.BlockSize := StrToInt(SQLParseValue(Parse))
-        else if (SQLParseKeyword(Parse, 'USING')) then // MySQL >= 5.1.xx
+        else if (SQLParseKeyword(Parse, 'USING')) then
           NewKey.IndexType := SQLParseValue(Parse)
         else
           SQLParseValue(Parse);
@@ -5554,17 +5556,6 @@ begin
     end;
 
     FSourceParsed := True;
-  end;
-end;
-
-procedure TCRoutine.SetSource(const ADataSet: TMySQLQuery);
-begin
-  SetSource(ADataSet.FieldByName('Create Table'));
-
-  if (Valid) then
-  begin
-    Client.ExecuteEvent(ceItemsValid, Client, Client.Databases);
-    Client.ExecuteEvent(ceItemValid, Database, Routines, Self);
   end;
 end;
 
@@ -9040,7 +9031,7 @@ begin
           Index := I;
 
   FRights.Insert(Index, TCUserRight.Create());
-  Right[Index].Assign(NewUserRight);
+  TCUserRight(FRights[Index]).Assign(NewUserRight);
 
   Result := True;
 end;
@@ -9064,13 +9055,12 @@ begin
   end;
   FUpdatesPerHour := Source.UpdatesPerHour;
   FUserConnections := Source.UserConnections;
-
-  Valid := Source.Valid;
+  FValid := Source.Valid;
 end;
 
 constructor TCUser.Create(const ACItems: TCItems; const AName: string = '');
 begin
-  inherited Create(ACItems, AName);
+  inherited;
 
   ConnectionsPerHour := 0;
   NewPassword := '';
@@ -9079,6 +9069,7 @@ begin
   FRights := TList.Create();
   UpdatesPerHour := 0;
   UserConnections := 0;
+  FValid := False;
 end;
 
 procedure TCUser.DeleteRight(const UserRight: TCUserRight);
@@ -9212,6 +9203,11 @@ begin
   Result := TCUsers(CItems);
 end;
 
+function TCUser.GetValid(): Boolean;
+begin
+  Result := FValid and ValidSource;
+end;
+
 function TCUser.IndexOf(const UserRight: TCUserRight): Integer;
 var
   I: Integer;
@@ -9275,9 +9271,8 @@ var
   RawPassword: string;
   TableName: string;
 begin
-  Valid := True;
-
   if (SQLCreateParse(Parse, PChar(SQL), Length(SQL), Users.Client.ServerVersion)) then
+  begin
     while (not SQLParseEnd(Parse)) do
     begin
       if (not SQLParseKeyword(Parse, 'GRANT')) then raise EConvertError.CreateFmt(SSourceParseError, [Name, 46, SQL]);
@@ -9416,6 +9411,9 @@ begin
         FreeAndNil(NewRights[I]);
       SetLength(NewRights, 0);
     end;
+
+    FValid := True;
+  end;
 end;
 
 function TCUser.RightByCaption(const Caption: string): TCUserRight;
@@ -9435,6 +9433,34 @@ begin
 
   if ((Pos('@', FName) = 0) and (FName <> '')) then
     Name := FName + '@%';
+end;
+
+procedure TCUser.SetSource(const ADataSet: TMySQLQuery);
+var
+  Source: string;
+begin
+  Source := '';
+  if (not ADataSet.IsEmpty) then
+    repeat
+      Source := Source + ADataSet.Fields[0].AsString + ';' + #13#10;
+    until (not ADataSet.FindNext());
+
+  if (Source <> '') then
+  begin
+    SetSource(Source);
+    ParseGrant(Source);
+
+    if (Valid) then
+    begin
+      Client.ExecuteEvent(ceItemsValid, Client, Client.Users);
+      Client.ExecuteEvent(ceItemValid, Client, Users, Self);
+    end;
+  end;
+end;
+
+function TCUser.SQLGetSource(): string;
+begin
+  Result := 'SHOW GRANTS FOR ' + Client.EscapeUser(Name) + ';' + #13#10
 end;
 
 function TCUser.Update(): Boolean;
@@ -9896,29 +9922,42 @@ end;
 
 procedure TCClient.BuildUser(const DataSet: TMySQLQuery);
 var
-  S: string;
+  Index: Integer;
+  Name: string;
+  Source: string;
 begin
-  if (Assigned(FUser)) then
-    FUser.Free();
-
-  FUser := TCUser.Create(Users);
-  S :='';
+  Source :='';
   if (not DataSet.IsEmpty()) then
+  begin
     repeat
-      S := S + DataSet.Fields[0].AsString + ';' + #13#10;
+      Source := Source + DataSet.Fields[0].AsString + ';' + #13#10;
     until (not DataSet.FindNext());
-  FUser.SetSource(S);
-  if (FUser.Name = '') then
-    if (FCurrentUser <> '') then
-      FUser.FName := FCurrentUser
+
+    FUser := TCUser.Create(Users);
+    FUser.SetSource(Source);
+    FUser.ParseGrant(FUser.Source);
+
+    if (FUser.Name <> '') then
+      Name := FUser.Name
+    else if (FCurrentUser <> '') then
+      Name := FCurrentUser
     else
-      FUser.FName := Username;
+      Name := Username;
 
-  if (not Assigned(Processes) and ((ServerVersion < 50000) or not Assigned(UserRights) or UserRights.RProcess)) then
-    FProcesses := TCProcesses.Create(Self);
+    if (not Users.InsertIndex(Name, Index)) then
+    begin
+      Users[Index].Free();
+      Users.Items[Index] := FUser;
+    end
+    else
+      Users.Add(FUser);
 
-  if (Valid) then
-    ExecuteEvent(ceItemValid, Self, Users, User);
+    if (not Assigned(Processes) and ((ServerVersion < 50000) or not Assigned(UserRights) or UserRights.RProcess)) then
+      FProcesses := TCProcesses.Create(Self);
+
+    if (Valid) then
+      ExecuteEvent(ceItemValid, Self, Users, User);
+  end;
 end;
 
 procedure TCClient.ConnectChange(Sender: TObject; Connecting: Boolean);
@@ -10263,11 +10302,17 @@ begin
           DatabaseName := SQLParseValue(Parse);
         Result := DatabaseByName(DatabaseName).Events.Build(DataSet, False, not SQLParseEnd(Parse));
       end
-      else if (SQLParseKeyword(Parse, 'GRANTS')) then
-      begin
-        if ((SQLParseKeyword(Parse, 'FOR') and (SQLParseKeyword(Parse, 'CURRENT_USER') or (lstrcmpi(PChar(SQLParseValue(Parse)), PChar(CurrentUser)) = 0)))) then
-          BuildUser(DataSet);
-      end
+      else if (SQLParseKeyword(Parse, 'GRANTS FOR')) then
+        if (SQLParseKeyword(Parse, 'CURRENT_USER')) then
+          BuildUser(DataSet)
+        else
+        begin
+          ObjectName := SQLParseValue(Parse);
+          if (Users.NameCmp(ObjectName, FCurrentUser) = 0) then
+            BuildUser(DataSet)
+          else
+            UserByName(ObjectName).SetSource(DataSet);
+        end
       else if (SQLParseKeyword(Parse, 'PLUGINS')) then
         Result := Plugins.Build(DataSet, False, not SQLParseEnd(Parse))
       else if (SQLParseKeyword(Parse, 'PROCEDURE STATUS')
@@ -10680,7 +10725,6 @@ begin
 
   if (Assigned(EventProcs)) then EventProcs.Free();
 
-  if (Assigned(FUser)) then FUser.Free();
   if (Assigned(FCharsets)) then FCharsets.Free();
   if (Assigned(FCollations)) then FCollations.Free();
   if (Assigned(FDatabases)) then FDatabases.Free();
@@ -10988,7 +11032,7 @@ end;
 
 function TCClient.GetSlowLogActive(): Boolean;
 begin
-  Result := (ServerVersion >= 50111) and Assigned(VariableByName('log_slow_queries')) and VariableByName('log_slow_queries').AsBoolean;
+  Result := (ServerVersion >= 50111) and VariableByName('log_slow_queries').AsBoolean;
 end;
 
 function TCClient.GetSlowLog(): string;
@@ -11931,7 +11975,9 @@ begin
       else if ((TCObject(List[I]) is TCView) and not TCView(List[I]).ValidFields and TCBaseTable(List[I]).InServerCache) then
         Tables.Add(List[I]);
       ViewInTables := ViewInTables or (TCObject(List[I]) is TCView);
-    end;
+    end
+    else if ((TObject(List[I]) is TCUser) and not TCUser(List[I]).Valid) then
+      SQL := SQL + TCUser(List[I]).SQLGetSource();
   if (Tables.Count > 0) then
   begin
     SQL := SQL + Database.Tables.SQLGetStatus(Tables);
@@ -11941,7 +11987,8 @@ begin
   end;
 
   for I := 0 to List.Count - 1 do
-    if ((TCDBObject(List[I]) is TCBaseTable) and Assigned(TCBaseTable(List[I]).FDataSet) and not TCBaseTable(List[I]).FDataSet.Active) then
+    if ((TObject(List[I]) is TCBaseTable) and Assigned(TCBaseTable(List[I]).FDataSet) and not TCBaseTable(List[I]).FDataSet.Active
+      and (TCBaseTable(List[I]).Database <> InformationSchema) and (Databases.NameCmp(TCBaseTable(List[I]).Database.Name, 'mysql') <> 0)) then
       SQL := SQL + TCBaseTable(List[I]).FDataSet.SQLSelect();
 
   for I := 0 to List.Count - 1 do

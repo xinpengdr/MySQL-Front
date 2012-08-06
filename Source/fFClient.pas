@@ -4127,7 +4127,7 @@ begin
     else if (ActiveSynMemo.WordAtCursor <> '') then
       DSQLHelp.Keyword := ActiveSynMemo.WordAtCursor
     else
-      DSQLHelp.Keyword := ActiveSynMemo.Text
+      DSQLHelp.Keyword := ''
   else
     DSQLHelp.Keyword := '';
 

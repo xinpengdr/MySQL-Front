@@ -25,7 +25,7 @@ object DSQLHelp: TDSQLHelp
     Width = 500
     Height = 25
     Align = alTop
-    BevelOuter = bvLowered
+    BevelOuter = bvNone
     ParentBackground = False
     TabOrder = 0
     DesignSize = (
@@ -106,6 +106,9 @@ object DSQLHelp: TDSQLHelp
     Height = 542
     TabStop = False
     Align = alClient
+    BevelInner = bvNone
+    BevelOuter = bvNone
+    Ctl3D = False
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -11
@@ -114,6 +117,7 @@ object DSQLHelp: TDSQLHelp
     HideSelection = False
     Lines.Strings = (
       'FDescription')
+    ParentCtl3D = False
     ParentFont = False
     PopupMenu = MSource
     ReadOnly = True
@@ -129,7 +133,10 @@ object DSQLHelp: TDSQLHelp
     Height = 542
     TabStop = False
     Align = alClient
+    BevelInner = bvNone
+    BevelOuter = bvNone
     BorderStyle = bsNone
+    Ctl3D = False
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -11
@@ -140,6 +147,7 @@ object DSQLHelp: TDSQLHelp
     Constraints.MinWidth = 100
     Lines.Strings = (
       'FExample')
+    ParentCtl3D = False
     ParentFont = False
     PopupMenu = MSource
     ReadOnly = True

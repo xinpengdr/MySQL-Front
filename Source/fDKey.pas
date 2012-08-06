@@ -438,8 +438,8 @@ begin
   end;
 
   FIndexedFields.Items.Clear();
-  FBlockSize.Visible := Database.Client.ServerVersion >= 50110; FLBlockSize.Visible := FBlockSize.Visible;
-  FComment.Visible := Database.Client.ServerVersion >= 50503; FLComment.Visible := FComment.Visible;
+  FBlockSize.Visible := Table.Client.ServerVersion >= 50110; FLBlockSize.Visible := FBlockSize.Visible; FBlockSizeUD.Visible := FBlockSize.Visible;
+  FComment.Visible := Table.Client.ServerVersion >= 50503; FLComment.Visible := FComment.Visible;
 
   SetLength(Lengths, Table.Fields.Count);
   for I := 0 to Length(Lengths) - 1 do

@@ -4636,8 +4636,6 @@ begin
     if (not Synchron) then
       SetState(dsOpening);
 
-    Assert((SQL <> '') and SQLSingleStmt(SQL));
-
     if (not Synchron) then
       Connection.ExecuteSQL(smDataSet, Synchron, SQL, SetActiveEvent)
     else if (Connection.ExecuteSQL(smDataSet, Synchron, SQL)) then

@@ -193,7 +193,7 @@ begin
   FBManual.Left := FBExample.Left + FBExample.Width;
   FBManual.Width := Canvas.TextWidth(FBManual.Caption) + 2 * (FBManual.Height - Canvas.TextHeight(FBManual.Caption));
 
-  Constraints.MinWidth := 2 * GetSystemMetrics(SM_CXFRAME) + 2 * Panel.BevelWidth + FBDescription.Width + FBExample.Width + FBManual.Width + FQuickSearch.Width + TBQuickSearchEnabled.Width + 50;
+  Constraints.MinWidth := 2 * GetSystemMetrics(SM_CXFRAME) + FBDescription.Width + FBExample.Width + FBManual.Width + FQuickSearch.Width + TBQuickSearchEnabled.Width + 50;
 end;
 
 function TDSQLHelp.Execute(): Boolean;

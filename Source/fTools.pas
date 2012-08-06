@@ -1799,18 +1799,9 @@ begin
         DoError(DatabaseError(Client), ToolsItem(Item), SQL);
     end;
 
-    if (Success <> daSuccess) then
-    begin
-      SQL := '';
-      if ((Client.ServerVersion >= 40000) and (Table is TCBaseTable) and TCBaseTable(Table).Engine.IsMyISAM) then
-        SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
-      SQL := SQL + 'UNLOCK TABLES;' + #13#10;
-      if (Client.Lib.LibraryType <> ltHTTP) then
-        SQL := SQL + 'ROLLBACK;' + #13#10;
-      DoExecuteSQL(Item, SQL);
-    end;
-
     SQLExecuted.Free();
+
+    Table.InvalidateData();
   end;
 
   AfterExecuteData(Item);
@@ -2007,7 +1998,7 @@ begin
       FilePos := BOMLength;
       Inc(FileBuffer.Index, FilePos);
     end;
-    Inc(FilePos, ReadSize);
+    Inc(FilePos, ReadSize - (FileBuffer.Index - BytesPerSector));
 
     case (CodePage) of
       CP_UNICODE:
@@ -2029,11 +2020,11 @@ begin
 
           if (BytesPerSector + ReadSize - FileBuffer.Index > 0) then
           begin
-            Len := MultiByteToWideChar(CodePage, MB_ERR_INVALID_CHARS, @FileBuffer.Mem[FileBuffer.Index], BytesPerSector + ReadSize - FileBuffer.Index, nil, 0);
+            Len := AnsiCharToWideChar(CodePage, @FileBuffer.Mem[FileBuffer.Index], BytesPerSector + ReadSize - FileBuffer.Index, nil, 0);
             if (Len > 0) then
             begin
               SetLength(FileContent.Str, Length(FileContent.Str) + Len);
-              MultiByteToWideChar(CodePage, MB_ERR_INVALID_CHARS, @FileBuffer.Mem[FileBuffer.Index], BytesPerSector + ReadSize - FileBuffer.Index, @FileContent.Str[Length(FileContent.Str) - Len + 1], Len)
+              AnsiCharToWideChar(CodePage, @FileBuffer.Mem[FileBuffer.Index], BytesPerSector + ReadSize - FileBuffer.Index, @FileContent.Str[Length(FileContent.Str) - Len + 1], Len)
             end
             else if (GetLastError() <> 0) then
               DoError(SysError(), EmptyToolsItem());
@@ -2421,13 +2412,15 @@ var
   I: Integer;
   Int: Integer;
   OldSuccess: TDataAction;
+  OldFileContentIndex: Integer;
   RecNo: Integer;
   RecordComplete: Boolean;
   Value: string;
 begin
   inherited;
 
-  OldSuccess := Success; FirstRecordFilePos := FilePos;
+  OldSuccess := Success; OldFileContentIndex := FileContent.Index;
+  FirstRecordFilePos := BOMLength;
 
   RecordComplete := False; Eof := False;
   while (not RecordComplete and not Eof) do
@@ -2439,7 +2432,10 @@ begin
 
   if (UseHeadline) then
   begin
-    FirstRecordFilePos := FilePos;
+    case (CodePage) of
+      CP_Unicode: FirstRecordFilePos := BOMLength + (FileContent.Index - 1) * SizeOf(Char);
+      else FirstRecordFilePos := BOMLength + WideCharToAnsiChar(CodePage, PChar(@FileContent.Str[OldFileContentIndex]), FileContent.Index - OldFileContentIndex, nil, 0);
+    end;
     SetLength(FileFields, Length(CSVValues));
     for I := 0 to Length(FileFields) - 1 do
       FileFields[I].Name := CSVUnescape(CSVValues[I].Text, CSVValues[I].Length, Quoter);
@@ -7003,228 +6999,227 @@ begin
       if (lstrcmpi(PChar(SourceTable.Fields[I].Name), PChar(DestinationTable.Fields[J].Name)) = 0) then
         Inc(FieldCount);
 
-  if (FieldCount > 0) then
+  if ((Success = daSuccess) and (FieldCount > 0)) then
   begin
-    if (Success = daSuccess) then
+    SourceDataSet := TMySQLQuery.Create(nil);
+    SourceDataSet.Open(DataHandle);
+    while ((Success = daSuccess) and not SourceDataSet.Active) do
     begin
-      SourceDataSet := TMySQLQuery.Create(nil);
-      SourceDataSet.Open(DataHandle);
-      while ((Success = daSuccess) and not SourceDataSet.Active) do
+      SourceDataSet.Open();
+      if (Source.Client.ErrorCode > 0) then
+        DoError(DatabaseError(Source.Client), ToolsItem(TElement(Elements[0]^).Source), SQL);
+    end;
+
+    if ((Success = daSuccess) and not SourceDataSet.IsEmpty()) then
+    begin
+      SQLExecuted := TEvent.Create(nil, False, False, '');
+
+      if (Destination.Client.DataFileAllowed) then
       begin
-        SourceDataSet.Open();
-        if (Source.Client.ErrorCode > 0) then
-          DoError(DatabaseError(Source.Client), ToolsItem(TElement(Elements[0]^).Source), SQL);
-      end;
-
-      if ((Success = daSuccess) and not SourceDataSet.IsEmpty()) then
-      begin
-        SQLExecuted := TEvent.Create(nil, False, False, '');
-
-        if (Destination.Client.DataFileAllowed) then
-        begin
-          Pipename := '\\.\pipe\' + LoadStr(1000);
-          Pipe := CreateNamedPipe(PChar(Pipename),
-                                  PIPE_ACCESS_OUTBOUND, PIPE_TYPE_MESSAGE or PIPE_READMODE_BYTE or PIPE_WAIT,
-                                  1, 2 * NET_BUFFER_LENGTH, 0, 0, nil);
-          if (Pipe = INVALID_HANDLE_VALUE) then
-            DoError(SysError(), ToolsItem(Destination))
-          else
-          begin
-            SQL := '';
-            if (Destination.Client.Lib.LibraryType <> ltHTTP) then
-              if (Destination.Client.ServerVersion < 40011) then
-                SQL := SQL + 'BEGIN;' + #13#10
-              else
-                SQL := SQL + 'START TRANSACTION;' + #13#10;
-            if ((Destination.Client.ServerVersion >= 40000) and DestinationTable.Engine.IsMyISAM) then
-              SQL := SQL + 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' DISABLE KEYS;' + #13#10;
-            if (DestinationDatabase.Name <> Destination.Client.DatabaseName) then
-              SQL := SQL + DestinationDatabase.SQLUse();
-            SQL := SQL + SQLLoadDataInfile(DestinationDatabase, False, Pipename, Destination.Client.Charset, DestinationDatabase.Name, DestinationTable.Name, '');
-            if ((Destination.Client.ServerVersion >= 40000) and DestinationTable.Engine.IsMyISAM) then
-              SQL := SQL + 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' ENABLE KEYS;' + #13#10;
-            if (Destination.Client.Lib.LibraryType <> ltHTTP) then
-              SQL := SQL + 'COMMIT;' + #13#10;
-
-            Destination.Client.SendSQL(SQL, SQLExecuted);
-
-            if (ConnectNamedPipe(Pipe, nil)) then
-            begin
-              DataFileBuffer := TDataFileBuffer.Create(TElement(Elements[0]^).Destination.Client.CodePage);
-
-              repeat
-                LibLengths := SourceDataSet.LibLengths;
-                LibRow := SourceDataSet.LibRow;
-
-                for I := 0 to DestinationTable.Fields.Count - 1 do
-                begin
-                  DestinationField := DestinationTable.Fields[I];
-                  if (I > 0) then
-                    DataFileBuffer.Write(PAnsiChar(',_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
-                  if (not Assigned(LibRow^[I])) then
-                    DataFileBuffer.Write(PAnsiChar('NULL'), 4)
-                  else if (BitField(SourceDataSet.Fields[I])) then
-                    begin S := UInt64ToStr(UInt64(LibRow^[I]^)); DataFileBuffer.WriteData(PChar(S), Length(S)); end
-                  else if (DestinationTable.Fields[I].FieldType in BinaryFieldTypes) then
-                    DataFileBuffer.WriteBinary(LibRow^[I], LibLengths^[I])
-                  else if (DestinationField.FieldType in TextFieldTypes) then
-                    DataFileBuffer.WriteText(LibRow^[I], LibLengths^[I], Source.Client.CodePage)
-                  else
-                    DataFileBuffer.Write(LibRow^[I], LibLengths^[I], not (DestinationField.FieldType in NotQuotedFieldTypes));
-                end;
-                DataFileBuffer.Write(PAnsiChar(#10 + '_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
-
-                if (DataFileBuffer.Size > NET_BUFFER_LENGTH) then
-                  if (not WriteFile(Pipe, DataFileBuffer.Data^, DataFileBuffer.Size, WrittenSize, nil) or (Abs(WrittenSize) < DataFileBuffer.Size)) then
-                    DoError(SysError(), ToolsItem(Destination))
-                  else
-                   DataFileBuffer.Clear();
-
-                Inc(Destination.RecordsDone);
-                if (Destination.RecordsDone mod 100 = 0) then
-                  DoUpdateGUI();
-
-                if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
-                  Success := daAbort;
-              until ((Success <> daSuccess) or not SourceDataSet.FindNext());
-
-              if (DataFileBuffer.Size > 0) then
-                if (not WriteFile(Pipe, DataFileBuffer.Data^, DataFileBuffer.Size, WrittenSize, nil) or (Abs(WrittenSize) < DataFileBuffer.Size)) then
-                  DoError(SysError(), ToolsItem(Destination))
-                else
-                  DataFileBuffer.Clear();
-
-              if (not FlushFileBuffers(Pipe) or not WriteFile(Pipe, DataFileBuffer.Data^, 0, WrittenSize, nil) or not FlushFileBuffers(Pipe)) then
-                DoError(SysError(), ToolsItem(Destination))
-              else
-              begin
-                DoUpdateGUI();
-                SQLExecuted.WaitFor(INFINITE);
-              end;
-
-              DisconnectNamedPipe(Pipe);
-
-              if (Destination.Client.ErrorCode <> 0) then
-                DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
-
-              DataFileBuffer.Free();
-            end;
-
-            CloseHandle(Pipe);
-          end;
-        end
+        Pipename := '\\.\pipe\' + LoadStr(1000);
+        Pipe := CreateNamedPipe(PChar(Pipename),
+                                PIPE_ACCESS_OUTBOUND, PIPE_TYPE_MESSAGE or PIPE_READMODE_BYTE or PIPE_WAIT,
+                                1, 2 * NET_BUFFER_LENGTH, 0, 0, nil);
+        if (Pipe = INVALID_HANDLE_VALUE) then
+          DoError(SysError(), ToolsItem(Destination))
         else
         begin
-          SQL := ''; SQLExecuteLength := 0;
-
-          InsertStmtInSQL := False;
-
-          EscapedTableName := Destination.Client.EscapeIdentifier(DestinationTable.Name);
-          SetLength(EscapedFieldName, DestinationTable.Fields.Count);
-          for I := 0 to DestinationTable.Fields.Count - 1 do
-             EscapedFieldName[I] := Destination.Client.EscapeIdentifier(DestinationTable.Fields[I].Name);
-
+          SQL := '';
           if (Destination.Client.Lib.LibraryType <> ltHTTP) then
             if (Destination.Client.ServerVersion < 40011) then
               SQL := SQL + 'BEGIN;' + #13#10
             else
               SQL := SQL + 'START TRANSACTION;' + #13#10;
-          SQL := SQL + 'LOCK TABLES ' + EscapedTableName + ' WRITE;' + #13#10;
           if ((Destination.Client.ServerVersion >= 40000) and DestinationTable.Engine.IsMyISAM) then
-            SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' DISABLE KEYS;' + #13#10;
-
+            SQL := SQL + 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' DISABLE KEYS;' + #13#10;
           if (DestinationDatabase.Name <> Destination.Client.DatabaseName) then
             SQL := SQL + DestinationDatabase.SQLUse();
-
-          repeat
-            if (not InsertStmtInSQL) then
-            begin
-              InsertStmtInSQL := True;
-
-              SQL := SQL + 'INSERT INTO ' + EscapedTableName + ' VALUES (';
-            end
-            else
-              SQL := SQL + ',(';
-            Values := '';
-            for I := 0 to SourceDataSet.FieldCount - 1 do
-            begin
-              if (I > 0) then Values := Values + ',';
-              Values := Values + SourceDataSet.SQLFieldValue(SourceDataSet.Fields[I]);
-            end;
-            SQL := SQL + Values + ')';
-
-            if (Length(SQL) - SQLExecuteLength >= SQLPacketSize) then
-            begin
-              if (InsertStmtInSQL) then
-              begin
-                SQL := SQL + ';' + #13#10;
-                InsertStmtInSQL := False;
-              end;
-
-              if (SQLExecuteLength > 0) then
-              begin
-                SQLExecuted.WaitFor(INFINITE);
-                Delete(SQL, 1, Destination.Client.ExecutedSQLLength);
-                SQLExecuteLength := 0;
-                if (Destination.Client.ErrorCode <> 0) then
-                  DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
-              end;
-
-              if (SQL <> '') then
-              begin
-                Destination.Client.SendSQL(SQL, SQLExecuted);
-                SQLExecuteLength := Length(SQL);
-              end;
-            end;
-
-            Inc(Destination.RecordsDone);
-            if (Destination.RecordsDone mod 100 = 0) then DoUpdateGUI();
-
-            if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
-            begin
-              if (SQL <> '') then
-                Destination.Client.Terminate();
-              Success := daAbort;
-            end;
-          until ((Success <> daSuccess) or not SourceDataSet.FindNext());
-
-          if ((Success = daSuccess) and (SQLExecuteLength > 0)) then
-          begin
-            SQLExecuted.WaitFor(INFINITE);
-            Delete(SQL, 1, Destination.Client.ExecutedSQLLength);
-            if (Destination.Client.ErrorCode <> 0) then
-              DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
-          end;
-
-          if (InsertStmtInSQL) then
-            SQL := SQL + ';' + #13#10;
+          SQL := SQL + SQLLoadDataInfile(DestinationDatabase, False, Pipename, Destination.Client.Charset, DestinationDatabase.Name, DestinationTable.Name, '');
           if ((Destination.Client.ServerVersion >= 40000) and DestinationTable.Engine.IsMyISAM) then
-            SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
-          SQL := SQL + 'UNLOCK TABLES;' + #13#10;
+            SQL := SQL + 'ALTER TABLE ' + Destination.Client.EscapeIdentifier(DestinationTable.Name) + ' ENABLE KEYS;' + #13#10;
           if (Destination.Client.Lib.LibraryType <> ltHTTP) then
             SQL := SQL + 'COMMIT;' + #13#10;
 
-          while ((Success = daSuccess) and not DoExecuteSQL(TElement(Elements[0]^).Destination, Destination.Client, SQL)) do
+          Destination.Client.SendSQL(SQL, SQLExecuted);
+
+          if (ConnectNamedPipe(Pipe, nil)) then
+          begin
+            DataFileBuffer := TDataFileBuffer.Create(TElement(Elements[0]^).Destination.Client.CodePage);
+
+            repeat
+              LibLengths := SourceDataSet.LibLengths;
+              LibRow := SourceDataSet.LibRow;
+
+              for I := 0 to DestinationTable.Fields.Count - 1 do
+              begin
+                DestinationField := DestinationTable.Fields[I];
+                if (I > 0) then
+                  DataFileBuffer.Write(PAnsiChar(',_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
+                if (not Assigned(LibRow^[I])) then
+                  DataFileBuffer.Write(PAnsiChar('NULL'), 4)
+                else if (BitField(SourceDataSet.Fields[I])) then
+                  begin S := UInt64ToStr(UInt64(LibRow^[I]^)); DataFileBuffer.WriteData(PChar(S), Length(S)); end
+                else if (DestinationTable.Fields[I].FieldType in BinaryFieldTypes) then
+                  DataFileBuffer.WriteBinary(LibRow^[I], LibLengths^[I])
+                else if (DestinationField.FieldType in TextFieldTypes) then
+                  DataFileBuffer.WriteText(LibRow^[I], LibLengths^[I], Source.Client.CodePage)
+                else
+                  DataFileBuffer.Write(LibRow^[I], LibLengths^[I], not (DestinationField.FieldType in NotQuotedFieldTypes));
+              end;
+              DataFileBuffer.Write(PAnsiChar(#10 + '_'), 1); // Two characters are needed to instruct the compiler to give a pointer - but the first character should be placed in the file only
+
+              if (DataFileBuffer.Size > NET_BUFFER_LENGTH) then
+                if (not WriteFile(Pipe, DataFileBuffer.Data^, DataFileBuffer.Size, WrittenSize, nil) or (Abs(WrittenSize) < DataFileBuffer.Size)) then
+                  DoError(SysError(), ToolsItem(Destination))
+                else
+                 DataFileBuffer.Clear();
+
+              Inc(Destination.RecordsDone);
+              if (Destination.RecordsDone mod 100 = 0) then
+                DoUpdateGUI();
+
+              if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
+                Success := daAbort;
+            until ((Success <> daSuccess) or not SourceDataSet.FindNext());
+
+            if (DataFileBuffer.Size > 0) then
+              if (not WriteFile(Pipe, DataFileBuffer.Data^, DataFileBuffer.Size, WrittenSize, nil) or (Abs(WrittenSize) < DataFileBuffer.Size)) then
+                DoError(SysError(), ToolsItem(Destination))
+              else
+                DataFileBuffer.Clear();
+
+            if (not FlushFileBuffers(Pipe) or not WriteFile(Pipe, DataFileBuffer.Data^, 0, WrittenSize, nil) or not FlushFileBuffers(Pipe)) then
+              DoError(SysError(), ToolsItem(Destination))
+            else
+            begin
+              DoUpdateGUI();
+              SQLExecuted.WaitFor(INFINITE);
+            end;
+
+            DisconnectNamedPipe(Pipe);
+
+            if (Destination.Client.ErrorCode <> 0) then
+              DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
+
+            DataFileBuffer.Free();
+          end;
+
+          CloseHandle(Pipe);
+        end;
+      end
+      else
+      begin
+        SQL := ''; SQLExecuteLength := 0;
+
+        InsertStmtInSQL := False;
+
+        EscapedTableName := Destination.Client.EscapeIdentifier(DestinationTable.Name);
+        SetLength(EscapedFieldName, DestinationTable.Fields.Count);
+        for I := 0 to DestinationTable.Fields.Count - 1 do
+           EscapedFieldName[I] := Destination.Client.EscapeIdentifier(DestinationTable.Fields[I].Name);
+
+        if (Destination.Client.Lib.LibraryType <> ltHTTP) then
+          if (Destination.Client.ServerVersion < 40011) then
+            SQL := SQL + 'BEGIN;' + #13#10
+          else
+            SQL := SQL + 'START TRANSACTION;' + #13#10;
+        SQL := SQL + 'LOCK TABLES ' + EscapedTableName + ' WRITE;' + #13#10;
+        if ((Destination.Client.ServerVersion >= 40000) and DestinationTable.Engine.IsMyISAM) then
+          SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' DISABLE KEYS;' + #13#10;
+
+        if (DestinationDatabase.Name <> Destination.Client.DatabaseName) then
+          SQL := SQL + DestinationDatabase.SQLUse();
+
+        repeat
+          if (not InsertStmtInSQL) then
+          begin
+            InsertStmtInSQL := True;
+
+            SQL := SQL + 'INSERT INTO ' + EscapedTableName + ' VALUES (';
+          end
+          else
+            SQL := SQL + ',(';
+          Values := '';
+          for I := 0 to SourceDataSet.FieldCount - 1 do
+          begin
+            if (I > 0) then Values := Values + ',';
+            Values := Values + SourceDataSet.SQLFieldValue(SourceDataSet.Fields[I]);
+          end;
+          SQL := SQL + Values + ')';
+
+          if (Length(SQL) - SQLExecuteLength >= SQLPacketSize) then
+          begin
+            if (InsertStmtInSQL) then
+            begin
+              SQL := SQL + ';' + #13#10;
+              InsertStmtInSQL := False;
+            end;
+
+            if (SQLExecuteLength > 0) then
+            begin
+              SQLExecuted.WaitFor(INFINITE);
+              Delete(SQL, 1, Destination.Client.ExecutedSQLLength);
+              SQLExecuteLength := 0;
+              if (Destination.Client.ErrorCode <> 0) then
+                DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
+            end;
+
+            if (SQL <> '') then
+            begin
+              Destination.Client.SendSQL(SQL, SQLExecuted);
+              SQLExecuteLength := Length(SQL);
+            end;
+          end;
+
+          Inc(Destination.RecordsDone);
+          if (Destination.RecordsDone mod 100 = 0) then DoUpdateGUI();
+
+          if (UserAbort.WaitFor(IGNORE) = wrSignaled) then
+          begin
+            if (SQL <> '') then
+              Destination.Client.Terminate();
+            Success := daAbort;
+          end;
+        until ((Success <> daSuccess) or not SourceDataSet.FindNext());
+
+        if ((Success = daSuccess) and (SQLExecuteLength > 0)) then
+        begin
+          SQLExecuted.WaitFor(INFINITE);
+          Delete(SQL, 1, Destination.Client.ExecutedSQLLength);
+          if (Destination.Client.ErrorCode <> 0) then
             DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
         end;
 
-        if (Success <> daSuccess) then
-        begin
-          SQL := '';
-          if ((Destination.Client.ServerVersion >= 40000) and DestinationTable.Engine.IsMyISAM) then
-            SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
-          SQL := SQL + 'UNLOCK TABLES;' + #13#10;
-          if (Destination.Client.Lib.LibraryType <> ltHTTP) then
-            SQL := SQL + 'ROLLBACK;' + #13#10;
-          DoExecuteSQL(TElement(Elements[0]^).Destination, Destination.Client, SQL);
-        end;
+        if (InsertStmtInSQL) then
+          SQL := SQL + ';' + #13#10;
+        if ((Destination.Client.ServerVersion >= 40000) and DestinationTable.Engine.IsMyISAM) then
+          SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
+        SQL := SQL + 'UNLOCK TABLES;' + #13#10;
+        if (Destination.Client.Lib.LibraryType <> ltHTTP) then
+          SQL := SQL + 'COMMIT;' + #13#10;
 
-        SQLExecuted.Free();
+        while ((Success = daSuccess) and not DoExecuteSQL(TElement(Elements[0]^).Destination, Destination.Client, SQL)) do
+          DoError(DatabaseError(Destination.Client), ToolsItem(Destination), SQL);
       end;
 
-      if (Success <> daAbort) then
-        SourceDataSet.Free();
+      if (Success <> daSuccess) then
+      begin
+        SQL := '';
+        if ((Destination.Client.ServerVersion >= 40000) and DestinationTable.Engine.IsMyISAM) then
+          SQL := SQL + 'ALTER TABLE ' + EscapedTableName + ' ENABLE KEYS;' + #13#10;
+        SQL := SQL + 'UNLOCK TABLES;' + #13#10;
+        if (Destination.Client.Lib.LibraryType <> ltHTTP) then
+          SQL := SQL + 'ROLLBACK;' + #13#10;
+        DoExecuteSQL(TElement(Elements[0]^).Destination, Destination.Client, SQL);
+      end;
+
+      SQLExecuted.Free();
     end;
+
+    if (Success <> daAbort) then
+      SourceDataSet.Free();
+
+    DestinationTable.InvalidateData();
   end;
 end;
 

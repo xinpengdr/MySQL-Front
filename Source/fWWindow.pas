@@ -1267,6 +1267,8 @@ begin
 
     aFCloseAll.Enabled := FClients.Count > 0;
   end;
+
+  Perform(CM_UPDATETOOLBAR, 0, 0);
 end;
 
 procedure TWWindow.CMDeactivateTab(var Message: TMessage);
@@ -1543,7 +1545,12 @@ begin
   for I := ToolBar.ButtonCount - 1 downto ToolButton11.Index do
     ToolBar.Buttons[I].Visible := False;
 
-  if (Assigned(Tab) and (Tab = ActiveTab)) then
+  if (not Assigned(Tab)) then
+  begin
+    Caption := LoadStr(1000);
+    Application.Title := Caption;
+  end
+  else if (Tab = ActiveTab) then
   begin
     S := Tab.Client.Account.Connection.Host;
     if (Tab.Client.Account.Connection.Port <> MYSQL_PORT) then
