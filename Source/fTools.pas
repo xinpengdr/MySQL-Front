@@ -1800,8 +1800,6 @@ begin
     end;
 
     SQLExecuted.Free();
-
-    Table.InvalidateData();
   end;
 
   AfterExecuteData(Item);
@@ -7218,8 +7216,6 @@ begin
 
     if (Success <> daAbort) then
       SourceDataSet.Free();
-
-    DestinationTable.InvalidateData();
   end;
 end;
 

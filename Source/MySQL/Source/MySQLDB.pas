@@ -5077,7 +5077,11 @@ end;
 
 function TMySQLDataSet.GetIsIndexField(Field: TField): Boolean;
 begin
+try
   Result := pfInKey in Field.ProviderFlags;
+except
+  Result := pfInKey in Field.ProviderFlags;
+end;
 end;
 
 function TMySQLDataSet.GetLibLengths(): MYSQL_LENGTHS;
