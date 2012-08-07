@@ -1412,7 +1412,10 @@ begin
 
   TabControl.Canvas.Font.Style := [fsBold];
   TabControl.TabHeight := TabControl.Canvas.TextHeight('I') + 10;
-  TabControl.Height := TabControl.TabHeight + 2;
+  if (not StyleServices.Enabled) then
+    TabControl.Height := TabControl.TabHeight + 1
+  else
+    TabControl.Height := TabControl.TabHeight + 2;
 
   for I := 0 to TabControl.Tabs.Count - 1 do
     TabControl.Tabs[I] := TabCaption(Trim(TabControl.Tabs[I]));

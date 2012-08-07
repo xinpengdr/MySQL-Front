@@ -59,7 +59,7 @@ implementation {***************************************************************}
 {$R *.dfm}
 
 uses
-  ShellAPI, RichEdit, CommCtrl,
+  ShellAPI, RichEdit, CommCtrl, Math,
   StrUtils,
   SQLUtils,
   fPreferences, fDSelection;
@@ -249,13 +249,13 @@ begin
   if ((0 <= Preferences.SQLHelp.Left) and (Preferences.SQLHelp.Left + Width <= Screen.Width)
     and (0 <= Preferences.SQLHelp.Top) and (Preferences.SQLHelp.Top + Height <= Screen.Height)) then
   begin
-    Left := Preferences.SQLHelp.Left;
-    Top := Preferences.SQLHelp.Top;
+    Left := Max(0, Preferences.SQLHelp.Left);
+    Top := Max(0, Preferences.SQLHelp.Top);
   end
   else
   begin
-    Left := Application.MainForm.Left + Application.MainForm.Width div 2 - Width div 2;
-    Top := Application.MainForm.Top + Application.MainForm.Height div 2 - Height div 2;
+    Left := Max(0, Application.MainForm.Left + Application.MainForm.Width div 2 - Width div 2);
+    Top := Max(0, Application.MainForm.Top + Application.MainForm.Height div 2 - Height div 2);
   end;
 
   SendMessage(FDescription.Handle, EM_SETEVENTMASK, 0, SendMessage(FDescription.Handle, EM_GETEVENTMASK, 0, 0) or ENM_LINK);

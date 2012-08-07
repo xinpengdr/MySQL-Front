@@ -614,6 +614,7 @@ object WWindow: TWWindow
       HelpType = htContext
       ImageIndex = 73
       ShortCut = 32890
+      Visible = False
     end
     object aVExplorer: TAction
       Category = 'View'
@@ -1440,6 +1441,7 @@ object WWindow: TWWindow
         Caption = 'miFOpenRecent'
         Enabled = False
         GroupIndex = 1
+        HelpContext = 1136
         object TMenuItem
         end
       end
@@ -1671,6 +1673,7 @@ object WWindow: TWWindow
     object miBookmarks: TMenuItem
       Caption = 'miBookmarks'
       GroupIndex = 3
+      Visible = False
       object miBAdd: TMenuItem
         Action = aBAdd
       end

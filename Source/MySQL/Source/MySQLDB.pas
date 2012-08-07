@@ -5842,7 +5842,7 @@ begin
     begin
       Field := FindField(FieldName);
       if (Assigned(Field)) then
-        Field.Tag := (Field.Tag and not ftAscSortedField) or ftDescSortedField;
+        Field.Tag := (Field.Tag and (not ftAscSortedField) or ftDescSortedField);
     end;
   until (FieldName = '');
 end;
@@ -6027,7 +6027,6 @@ var
   end;
 
 var
-  Field: TField;
   FieldName: string;
   I: Integer;
   OldBookmark: TBookmark;
@@ -6068,10 +6067,7 @@ begin
 
     QuickSort(0, InternRecordBuffers.Count - 1);
 
-    for Field in Fields do
-      Field.Tag := Field.Tag and not ftSortedField;
-    for Field in SortFields do
-      Field.Tag := Field.Tag or ftSortedField;
+    SetFieldsSortTag();
 
     Bookmark := OldBookmark;
 

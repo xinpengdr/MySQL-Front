@@ -1308,7 +1308,7 @@ type
   TCHostDatabases = class(TCItems)
   private
     FHost: TCHost;
-    function GetDatabase(Index: Integer): TCHostDatabase;
+    function GetDatabase(Index: Integer): TCHostDatabase; inline;
   protected
     procedure Assign(const Source: TCHostDatabases); virtual;
   public
@@ -1324,19 +1324,19 @@ type
   TCHost = class(TCObject)
   private
     FDatabases: TCHostDatabases;
-    FHosts: TCHosts;
+    function GetHosts(): TCHosts; inline;
   protected
     OriginalHost: string;
     function GetCaption(): string; override;
     function GetSource(): string; override;
   public
     procedure Assign(const Source: TCHost); reintroduce; virtual;
-    constructor Create(const AHosts: TCHosts; const AHost: string = ''); reintroduce; virtual;
+    constructor Create(const ACItems: TCItems; const AHost: string = ''); reintroduce; virtual;
     function DatabaseByName(const DatabaseName: string): TCHostDatabase; virtual;
     destructor Destroy(); override;
     function Update(): Boolean; override;
     property Databases: TCHostDatabases read FDatabases;
-    property Hosts: TCHosts read FHosts;
+    property Hosts: TCHosts read GetHosts;
   end;
 
   TCHosts = class(TCObjects)
@@ -1821,6 +1821,9 @@ begin
         1: begin Right := Mid - 1; Index := Mid; end;
       end;
     end;
+
+    if (Index < 0) then
+      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['Index']);
   end;
 end;
 
@@ -5732,7 +5735,11 @@ begin
       if (RoutineType <> rtUnknown) then
       begin
         if (not InsertIndex(Name, Index)) then
-          DeleteList.Delete(DeleteList.IndexOf(Items[Index]))
+        begin
+          if (DeleteList.IndexOf(Items[Index]) < 0) then
+            raise ERangeError.CreateFmt(SPropertyOutOfRange + ' (%s)', ['IndexOf', TObject(Items[Index]).ClassName]);
+          DeleteList.Delete(DeleteList.IndexOf(Items[Index]));
+        end
         else
         begin
           if (RoutineType = rtProcedure) then
@@ -9566,7 +9573,8 @@ var
 begin
   if (not Assigned(FHost)) then FHost := Source.Host;
 
-  for I := 0 to Count - 1 do
+  Clear();
+  for I := 0 to Source.Count - 1 do
   begin
     inherited Add(TCHostDatabase.Create(Self));
     Database[I].Assign(Source.Database[I]);
@@ -9597,10 +9605,7 @@ end;
 
 function TCHostDatabases.NameCmp(const Name1, Name2: string): Integer;
 begin
-  if (Client.LowerCaseTableNames = 0) then
-    Result := lstrcmp(PChar(Name1), PChar(Name2))
-  else
-    Result := lstrcmpi(PChar(Name1), PChar(Name2));
+  Result := Client.Databases.NameCmp(Name1, Name2);
 end;
 
 function TCHostDatabases.UpdateDatabase(const Database, NewDatabase: TCHostDatabase): Boolean;
@@ -9617,20 +9622,16 @@ procedure TCHost.Assign(const Source: TCHost);
 begin
   inherited Assign(Source);
 
-  if (Assigned(Source.Hosts)) then FHosts := Source.Hosts;
-
   OriginalHost := Source.OriginalHost;
 
   Databases.Assign(Source.Databases);
 end;
 
-constructor TCHost.Create(const AHosts: TCHosts; const AHost: string = '');
+constructor TCHost.Create(const ACItems: TCItems; const AHost: string = '');
 begin
+  inherited;
+
   FDatabases := TCHostDatabases.Create(Self);
-
-  inherited Create(AHosts);
-
-  FHosts := AHosts;
 end;
 
 function TCHost.DatabaseByName(const DatabaseName: string): TCHostDatabase;
@@ -9657,6 +9658,13 @@ begin
     Result := '<' + Preferences.LoadStr(327) + '>'
   else
     Result := Name;
+end;
+
+function TCHost.GetHosts(): TCHosts;
+begin
+  Assert(CItems is TCHosts);
+
+  Result := TCHosts(CItems);
 end;
 
 function TCHost.GetSource(): string;
@@ -9747,7 +9755,7 @@ begin
 
       Host[Index].Databases.AddDatabase(NewHostDatabase);
 
-      FreeAndNil(NewHostDatabase);
+      NewHostDatabase.Free();
     until (not DataSet.FindNext());
 
   Result := inherited or (Client.ErrorCode = ER_DBACCESS_DENIED_ERROR) or (Client.ErrorCode = ER_TABLEACCESS_DENIED_ERROR);
@@ -11837,14 +11845,12 @@ begin
   List := TList.Create();
 
   if (Assigned(Variables) and not Variables.Valid) then List.Add(Variables);
-  if (Assigned(Stati) and not Stati.Valid) then List.Add(Stati);
   if (Assigned(Engines) and not Engines.Valid) then List.Add(Engines);
   if (Assigned(Charsets) and not Charsets.Valid) then List.Add(Charsets);
   if (Assigned(Collations) and not Collations.Valid) then List.Add(Collations);
   if (Assigned(Databases) and not Databases.Valid) then List.Add(Databases);
-  if (Assigned(Plugins) and not Plugins.Valid) then List.Add(Plugins);
   if (Assigned(Users) and not Users.Valid) then List.Add(Users);
-  if (Assigned(FHosts) and not FHosts.Valid) then List.Add(Hosts);
+  if (Assigned(Hosts) and not Hosts.Valid) then List.Add(Hosts);
 
   Result := Update(List);
 
@@ -12399,9 +12405,9 @@ begin
   else if (vuSession in UpdateModes) then
     SQL := SQL + 'SESSION ';
   if (TryStrToInt(NewVariable.Value, I)) then
-    SQL := SQL + Variable.Name + '=' + NewVariable.Value + ';'
+    SQL := SQL + Variable.Name + '=' + NewVariable.Value + ';' + #13#10
   else
-    SQL := SQL + Variable.Name + '=' + SQLEscape(NewVariable.Value) + ';';
+    SQL := SQL + Variable.Name + '=' + SQLEscape(NewVariable.Value) + ';' + #13#10;
 
   SQL := SQL + Variables.SQLGetItems(Variable.Name);
 

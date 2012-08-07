@@ -39,7 +39,7 @@ object DServer: TDServer
     Top = 8
     Width = 321
     Height = 321
-    ActivePage = TSExtras
+    ActivePage = TSBasics
     Anchors = [akLeft, akTop, akRight, akBottom]
     HotTrack = True
     MultiLine = True
@@ -77,19 +77,17 @@ object DServer: TDServer
         object FVersion: TLabel
           Left = 120
           Top = 20
-          Width = 169
+          Width = 41
           Height = 13
           Anchors = [akLeft, akTop, akRight]
-          AutoSize = False
           Caption = 'FVersion'
         end
         object FComment: TLabel
           Left = 120
           Top = 44
-          Width = 169
+          Width = 50
           Height = 13
           Anchors = [akLeft, akTop, akRight]
-          AutoSize = False
           Caption = 'FComment'
         end
       end
@@ -135,37 +133,33 @@ object DServer: TDServer
         object FUser: TLabel
           Left = 120
           Top = 68
-          Width = 169
+          Width = 28
           Height = 13
           Anchors = [akLeft, akTop, akRight]
-          AutoSize = False
           Caption = 'FUser'
         end
         object FLibVersion: TLabel
           Left = 120
           Top = 44
-          Width = 169
+          Width = 55
           Height = 13
           Anchors = [akLeft, akTop, akRight]
-          AutoSize = False
           Caption = 'FLibVersion'
         end
         object FHost: TLabel
           Left = 120
           Top = 20
-          Width = 169
+          Width = 28
           Height = 13
           Anchors = [akLeft, akTop, akRight]
-          AutoSize = False
           Caption = 'FHost'
         end
         object FCharacterSet: TLabel
           Left = 120
           Top = 92
-          Width = 169
+          Width = 68
           Height = 13
           Anchors = [akLeft, akTop, akRight]
-          AutoSize = False
           Caption = 'FCharacterSet'
         end
       end
@@ -173,6 +167,10 @@ object DServer: TDServer
     object TSSQLLog: TTabSheet
       Caption = 'TSSQLLog'
       OnShow = TSSQLLogShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         275)
@@ -206,6 +204,10 @@ object DServer: TDServer
     object TSSlowSQLLog: TTabSheet
       Caption = 'TSSlowSQLLog'
       OnShow = TSSlowSQLLogShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         275)
@@ -239,6 +241,10 @@ object DServer: TDServer
     object TSStartup: TTabSheet
       Caption = 'TSStartup'
       OnShow = TSStartupShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         275)
@@ -276,6 +282,10 @@ object DServer: TDServer
     object TSPlugins: TTabSheet
       Caption = 'TSPlugins'
       OnShow = TSPluginsShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         275)
@@ -301,6 +311,10 @@ object DServer: TDServer
     object TSExtras: TTabSheet
       Caption = 'TSExtras'
       OnShow = TSExtrasShow
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         313
         275)

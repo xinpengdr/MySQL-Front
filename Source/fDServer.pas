@@ -404,6 +404,9 @@ var
   I: Integer;
   Item: TListItem;
 begin
+  Client.BeginSynchron();
+  Client.Plugins.Update();
+  Client.EndSynchron();
   if (FPlugins.Items.Count = 0) then
   begin
     FPlugins.DisableAlign(); FPlugins.Items.BeginUpdate();

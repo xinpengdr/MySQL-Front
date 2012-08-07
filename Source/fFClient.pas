@@ -2683,7 +2683,7 @@ begin
       Database := Client.DatabaseByName(URI.Database);
       if (not Assigned(Database)) then
         NotFound := True
-      else if (not Database.Update((URI.Table = '') and (URI.Param['object'] = Null) and (URI.Param['view'] = NULL)) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
+      else if ((URI.Param['view'] <> 'editor') and not Database.Update((URI.Table = '') and (URI.Param['object'] = Null) and (URI.Param['view'] = NULL)) and ((URI.Table <> '') or (URI.Param['object'] <> Null))) then
         AllowChange := False
       else if ((URI.Table <> '') or (URI.Param['object'] <> Null)) then
       begin
@@ -13631,12 +13631,13 @@ begin
     MaxHeight := Splitter.Parent.ClientHeight;
     MinHeight := 0;
     for I := 0 to Splitter.Parent.ControlCount - 1 do
-      if ((Splitter.Parent.Controls[I].Top < Splitter.Top) and (Splitter.Parent.Controls[I].Constraints.MinHeight > 0)) then
-        Inc(MinHeight, Splitter.Parent.Controls[I].Constraints.MinHeight)
-      else if ((Splitter.Parent.Controls[I].Top > Splitter.Top) and (Splitter.Parent.Controls[I].Constraints.MinHeight > 0)) then
-        Dec(MaxHeight, Splitter.Parent.Controls[I].Constraints.MinHeight)
-      else if (Splitter.Parent.Controls[I] = Splitter) then
-        Dec(MaxHeight, Splitter.Height + 3);
+      if (Splitter.Parent.Controls[I].Visible) then
+        if ((Splitter.Parent.Controls[I].Top < Splitter.Top) and (Splitter.Parent.Controls[I].Constraints.MinHeight > 0)) then
+          Dec(MaxHeight, Splitter.Parent.Controls[I].Constraints.MinHeight)
+        else if ((Splitter.Parent.Controls[I].Top > Splitter.Top) and (Splitter.Parent.Controls[I].Constraints.MinHeight > 0)) then
+          Inc(MinHeight, Splitter.Parent.Controls[I].Constraints.MinHeight)
+        else if (Splitter.Parent.Controls[I] = Splitter) then
+          Dec(MaxHeight, Splitter.Height + 3);
 
     Accept := (MinHeight <= NewSize) and (NewSize <= MaxHeight);
   end;
@@ -14232,6 +14233,7 @@ begin
             begin
               List := TList.Create();
 
+              List.Add(Database);
               for I := 0 to Database.Tables.Count - 1 do
                 List.Add(Database.Tables[I]);
               if (Assigned(Database.Routines)) then
