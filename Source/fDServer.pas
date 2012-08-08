@@ -7,7 +7,7 @@ uses
   Dialogs, StdCtrls, ComCtrls, Menus,
   SynEdit, SynMemo,
   Forms_Ext, StdCtrls_Ext,
-  fBase, fClient;
+  fBase, fClient, Vcl.ExtCtrls, ExtCtrls_Ext;
 
 type
   TDServer = class (TForm_Ext)
@@ -53,6 +53,7 @@ type
     TSSlowSQLLog: TTabSheet;
     TSSQLLog: TTabSheet;
     TSStartup: TTabSheet;
+    PSQLWait: TPanel_Ext;
     procedure FBFlushHostsClick(Sender: TObject);
     procedure FBHelpClick(Sender: TObject);
     procedure FBShutdownClick(Sender: TObject);
@@ -71,6 +72,8 @@ type
     procedure TSSQLLogShow(Sender: TObject);
     procedure TSStartupShow(Sender: TObject);
   private
+    procedure Built();
+    procedure FormClientEvent(const Event: TCClient.TEvent);
     procedure ListViewShowSortDirection(const ListView: TListView);
     procedure CMChangePreferences(var Message: TMessage); message CM_CHANGEPREFERENCES;
   public
@@ -104,6 +107,14 @@ begin
   end;
 
   Result := FServer;
+end;
+
+{TDServer *********************************************************************}
+
+procedure TDServer.Built();
+begin
+  PageControl.Visible := True;
+  PSQLWait.Visible := not PageControl.Visible;
 end;
 
 procedure TDServer.CMChangePreferences(var Message: TMessage);
@@ -186,6 +197,7 @@ begin
   msSelectAll.Action := MainAction('aESelectAll'); msSelectAll.ShortCut := 0;
 
   FBHelp.Caption := Preferences.LoadStr(167);
+  FBCancel.Caption := Preferences.LoadStr(231);
 end;
 
 function TDServer.Execute(): Boolean;
@@ -222,7 +234,17 @@ begin
   ActiveControl := FBCancel;
 end;
 
-{ TDServer ********************************************************************}
+procedure TDServer.FormClientEvent(const Event: TCClient.TEvent);
+begin
+  if ((Event.EventType = ceItemsValid) and ((Event.CItems = Client.Stati) or Assigned(Client.Plugins) and (Event.CItems = Client.Plugins))
+    and Client.Stati.Valid and (not Assigned(Client.Plugins) or Client.Plugins.Valid)) then
+    Built()
+  else if ((Event.EventType = ceAfterExecuteSQL) and (Event.Client.ErrorCode <> 0)) then
+  begin
+    PageControl.Visible := True;
+    PSQLWait.Visible := not PageControl.Visible;
+  end;
+end;
 
 procedure TDServer.FormCreate(Sender: TObject);
 begin
@@ -250,6 +272,8 @@ end;
 
 procedure TDServer.FormHide(Sender: TObject);
 begin
+  Client.UnRegisterEventProc(FormClientEvent);
+
   Preferences.Server.Width := Width;
   Preferences.Server.Height := Height;
 
@@ -261,7 +285,11 @@ begin
 end;
 
 procedure TDServer.FormShow(Sender: TObject);
+var
+  List: TList;
 begin
+  Client.RegisterEventProc(FormClientEvent);
+
   Caption := Preferences.LoadStr(842, Client.Caption);
 
   FHost.Caption := Client.HostInfo;
@@ -288,9 +316,15 @@ begin
   TSStartup.TabVisible := Assigned(Client.VariableByName('init_connect')) and (Client.VariableByName('init_connect').Value <> '');
   TSPlugins.TabVisible := Assigned(Client.Plugins);
 
-  FBCancel.Caption := Preferences.LoadStr(231);
-
   PageControl.ActivePage := TSBasics;
+
+  List := TList.Create();
+  List.Add(Client.Stati);
+  if (Assigned(Client.Plugins)) then
+    List.Add(Client.Plugins);
+  PageControl.Visible := not Client.Update(List);
+  PSQLWait.Visible := not PageControl.Visible;
+  List.Free();
 
   ActiveControl := FBCancel;
 end;
@@ -404,9 +438,6 @@ var
   I: Integer;
   Item: TListItem;
 begin
-  Client.BeginSynchron();
-  Client.Plugins.Update();
-  Client.EndSynchron();
   if (FPlugins.Items.Count = 0) then
   begin
     FPlugins.DisableAlign(); FPlugins.Items.BeginUpdate();

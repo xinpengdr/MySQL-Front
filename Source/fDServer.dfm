@@ -32,7 +32,20 @@ object DServer: TDServer
     Cancel = True
     Caption = 'FBCancel'
     ModalResult = 2
-    TabOrder = 2
+    TabOrder = 3
+  end
+  object PSQLWait: TPanel_Ext
+    Left = 8
+    Top = 8
+    Width = 321
+    Height = 321
+    Cursor = crHourGlass
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    Caption = 'PSQLWait'
+    ParentBackground = False
+    TabOrder = 0
+    Visible = False
   end
   object PageControl: TPageControl
     Left = 8
@@ -43,7 +56,7 @@ object DServer: TDServer
     Anchors = [akLeft, akTop, akRight, akBottom]
     HotTrack = True
     MultiLine = True
-    TabOrder = 0
+    TabOrder = 1
     object TSBasics: TTabSheet
       Caption = 'TSBasics'
       DesignSize = (
@@ -387,7 +400,7 @@ object DServer: TDServer
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = 'FBHelp'
-    TabOrder = 1
+    TabOrder = 2
     OnClick = FBHelpClick
   end
   object MSource: TPopupMenu

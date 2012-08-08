@@ -1180,6 +1180,11 @@ begin
     FError := EncodeString(CLIENT_ERRORS[FErrNo - CR_MIN_ERROR])
   else
     FError := '';
+
+  {$IFDEF EurekaLog}
+    if (AErrNo = CR_UNKNOWN_ERROR) then
+      raise ERangeError.Create(FError);
+  {$ENDIF}
 end;
 
 procedure TMySQL_IO.SetDirection(ADirection: TMySQL_IO.TDirection);

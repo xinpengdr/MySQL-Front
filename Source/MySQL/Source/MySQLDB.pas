@@ -4241,6 +4241,8 @@ procedure TMySQLQuery.InternalClose();
 begin
   if (Assigned(SynchroThread)) then
   begin
+    if (SynchroThread.ClassType <> TMySQLConnection.TSynchroThread) then
+      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['ClassType']);
     SynchroThread.ReleaseDataSet();
     SynchroThread := nil;
   end;

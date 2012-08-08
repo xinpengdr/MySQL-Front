@@ -8074,7 +8074,11 @@ begin
         Name := DataSet.FieldByName('VARIABLE_NAME').AsString;
 
       if (not InsertIndex(Name, Index)) then
-        DeleteList.Delete(DeleteList.IndexOf(Items[Index]))
+      begin
+        if (DeleteList.IndexOf(Items[Index]) < 0) then
+          raise ERangeError.CreateFmt(SPropertyOutOfRange + ' (%s)', ['IndexOf', TObject(Items[Index]).ClassName]);
+        DeleteList.Delete(DeleteList.IndexOf(Items[Index]));
+      end
       else if (Index < Count) then
         Insert(Index, TCVariable.Create(Self, Name))
       else
@@ -10394,13 +10398,14 @@ begin
 
   FClients := AClients;
   Clients.Add(Self);
+  FAccount := AAccount;
 
   EventProcs := TList.Create();
   FCurrentUser := '';
   FInformationSchema := nil;
   FMaxAllowedPacket := 0;
   FPerformanceSchema := nil;
-  FAccount := AAccount;
+  FUser := nil;
 
   if (not Assigned(AAccount)) then
   begin
