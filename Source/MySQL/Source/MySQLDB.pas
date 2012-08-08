@@ -106,7 +106,7 @@ type
       MemSize: Integer;
       UsedSize: Integer;
     end;
-    TTraceType = (ttTime, ttRequest, ttResult, ttInfo);
+    TTraceType = (ttTime, ttRequest, ttResult, ttInfo, ttDebug);
     TTraceTypes = set of TTraceType;
     TMySQLOnMonitor = procedure (const Sender: TObject; const Text: PChar; const Length: Integer; const ATraceType: TTraceType) of object;
   private
@@ -121,12 +121,12 @@ type
     procedure SetCacheSize(const ACacheSize: Integer);
     procedure SetOnMonitor(const AOnMonitor: TMySQLOnMonitor);
   protected
-    procedure DoMonitor(const Sender: TObject; const Text: PChar; const Length: Integer; const ATraceType: TTraceType); virtual;
   public
     property CacheText: string read GetCacheText;
     procedure Clear(); virtual;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy(); override;
+    procedure DoMonitor(const Sender: TObject; const Text: PChar; const Length: Integer; const ATraceType: TTraceType); virtual;
   published
     property Connection: TMySQLConnection read FConnection write SetConnection;
     property Enabled: Boolean read FEnabled write FEnabled default False;
@@ -2170,7 +2170,7 @@ begin
   FBugMonitor.Connection := Self;
   FBugMonitor.CacheSize := 1000;
   FBugMonitor.Enabled := True;
-  FBugMonitor.TraceTypes := [ttTime, ttRequest, ttResult, ttInfo];
+  FBugMonitor.TraceTypes := [ttTime, ttRequest, ttResult, ttInfo, ttDebug];
 end;
 
 destructor TMySQLConnection.Destroy();
