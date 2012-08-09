@@ -580,6 +580,7 @@ object WWindow: TWWindow
       Caption = 'aVAddressBar'
       HelpContext = 1081
       HelpType = htContext
+      ShortCut = 16460
       OnExecute = aVAddressBarExecute
     end
     object aVNavigator: TAction

@@ -2514,7 +2514,11 @@ begin
       if (FNavigator.AutoExpand and Assigned(FNavigator.Selected)) then
       begin
         if ((FNavigator.Selected.ImageIndex in [iiBaseTable, iiSystemView, iiView]) and not Dragging(FNavigator)) then
+        begin
+if (Client.InOnResult) then
+  raise Exception.Create('Debug');
           FNavigator.Selected.Expand(False);
+        end;
 
         if (Assigned(FNavigator.Selected.Parent)) then
         begin
@@ -4145,6 +4149,8 @@ end;
 
 procedure TFClient.aPExpandExecute(Sender: TObject);
 begin
+if (Client.InOnResult) then
+  raise Exception.Create('Debug');
   if (Window.ActiveControl = FNavigator) then
     FNavigatorMenuNode.Expand(False)
   else if (Window.ActiveControl = FSQLHistory) then
@@ -8402,6 +8408,8 @@ begin
   begin
     ExpandingEvent := FNavigator.OnExpanding;
     FNavigator.OnExpanding := nil;
+if (Client.InOnResult and (FNavigatorNodeToExpand.Count = 0)) then
+  raise Exception.Create('Debug');
     FNavigatorNodeToExpand.Expand(False);
     FNavigator.OnExpanding := ExpandingEvent;
   end;
@@ -11762,6 +11770,8 @@ begin
     else
       begin
         NewNode := nil;
+if (Client.InOnResult and (FNavigator.Selected.Count = 0)) then
+  raise Exception.Create('Debug');
         FNavigator.Selected.Expand(False);
         Child := FNavigator.Selected.getFirstChild();
         while (Assigned(Child)) do

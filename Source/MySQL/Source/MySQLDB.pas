@@ -253,7 +253,6 @@ type
     FThreadId: my_uint;
     FUsername: string;
     InMonitor: Boolean;
-    InOnResult: Boolean;
     local_infile: Plocal_infile;
     function GetCommandText(): string;
     function UseCompression(): Boolean;
@@ -323,6 +322,7 @@ type
     property TerminateCS: TCriticalSection read FTerminateCS;
     property TerminatedThreads: TTerminatedThreads read FTerminatedThreads;
   public
+InOnResult: Boolean; // Should be private, but for debugging...
     procedure BeginSilent(); virtual;
     procedure BeginSynchron(); virtual;
     function CanShutdown(): Boolean; virtual;
