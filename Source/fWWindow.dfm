@@ -476,19 +476,6 @@ object WWindow: TWWindow
         Top = 30
         Enabled = False
       end
-      object ToolButton1: TToolButton
-        Left = 431
-        Top = 30
-        Width = 8
-        Caption = 'ToolButton1'
-        Enabled = False
-        Style = tbsSeparator
-      end
-      object tbDEmpty: TToolButton
-        Left = 439
-        Top = 30
-        Action = aDEmpty
-      end
     end
   end
   object TBTabControl: TToolBar
@@ -872,13 +859,6 @@ object WWindow: TWWindow
       Caption = 'aSGoto'
       Enabled = False
       ShortCut = 16455
-    end
-    object aSAddress: TAction
-      Category = 'Search'
-      Caption = 'aSAddress'
-      Enabled = False
-      ShortCut = 16460
-      OnExecute = aSAddressExecute
     end
     object aBAdd: TAction
       Category = 'Bookmark'
@@ -1594,12 +1574,6 @@ object WWindow: TWWindow
       end
       object miSGoto: TMenuItem
         Action = aSGoto
-      end
-      object N26: TMenuItem
-        Caption = '-'
-      end
-      object miSAddress: TMenuItem
-        Action = aSAddress
       end
     end
     object miView: TMenuItem

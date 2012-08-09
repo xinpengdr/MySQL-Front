@@ -148,7 +148,6 @@ type
     aHUpdate: TAction;
     aOGlobals: TAction;
     aOAccounts: TAction;
-    aSAddress: TAction;
     aSGoto: TAction;
     aSSearchFind: TSearchFind_Ext;
     aSSearchNext: TSearchFindNext;
@@ -282,7 +281,6 @@ type
     miOGlobals: TMenuItem;
     miOptions: TMenuItem;
     miOAccounts: TMenuItem;
-    miSAddress: TMenuItem;
     miSearch: TMenuItem;
     miSGoto: TMenuItem;
     miSSearchFind: TMenuItem;
@@ -327,7 +325,6 @@ type
     N22: TMenuItem;
     N24: TMenuItem;
     N25: TMenuItem;
-    N26: TMenuItem;
     N27: TMenuItem;
     N30: TMenuItem;
     N31: TMenuItem;
@@ -359,7 +356,6 @@ type
     tbDeleteForeignKey: TToolButton;
     tbDeleteIndex: TToolButton;
     tbDeleteTable: TToolButton;
-    tbDEmpty: TToolButton;
     tbDInsertRecord: TToolButton;
     tbECopy: TToolButton;
     tbECut: TToolButton;
@@ -382,7 +378,6 @@ type
     tbVRefresh: TToolButton;
     tcOpenAccount: TToolButton;
     ToolBar: TToolBar;
-    ToolButton1: TToolButton;
     ToolButton10: TToolButton;
     ToolButton11: TToolButton;
     ToolButton12: TToolButton;
@@ -1051,7 +1046,6 @@ begin
   aSSearchReplace.Caption := Preferences.LoadStr(416) + '...';
   aSSearchNext.Caption := Preferences.LoadStr(188);
   aSGoto.Caption := Preferences.LoadStr(676) + '...';
-  aSAddress.Caption := Preferences.LoadStr(730) + '...';
 
   miView.Caption := Preferences.LoadStr(9);
   aVObjectBrowser.Caption := Preferences.LoadStr(4);
@@ -1312,7 +1306,6 @@ begin
     aFSaveAs.Enabled := False;
     aECopy.Enabled := False;
     aEPaste.Enabled := False;
-    aSAddress.Enabled := False;
     aVObjectBrowser.Enabled := False;
     aVDataBrowser.Enabled := False;
     aVObjectIDE.Enabled := False;
@@ -1607,8 +1600,6 @@ begin
   tbDDeleteRecord.Visible    := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [vBrowser, vBuilder, vEditor]);
   tbPostRecord.Visible       := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [vBrowser]);
   tbCancelRecord.Visible     := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [vBrowser]);
-
-  tbDEmpty.Visible           := Assigned(Tab) and Tab.Visible and (Tab.ToolBarData.View in [vObjects]);
 
   // Auto hide unneeded separator buttons
   Found := False;

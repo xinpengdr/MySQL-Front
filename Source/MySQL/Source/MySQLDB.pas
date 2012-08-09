@@ -1783,6 +1783,9 @@ end;
 
 destructor TMySQLConnection.TSynchroThread.Destroy();
 begin
+  if (not Terminated) then
+    raise Exception.Create('Debug');
+
   RunExecute.Free(); RunExecute := Pointer(1);
   SynchronizeStarted.Free();
   SQLStmtLengths.Free();
@@ -1861,11 +1864,11 @@ begin
   if (not Terminated) then
   begin
     if (not Assigned(Self)) then
-      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['Self']);
+      raise ERangeError.Create('Debug');
     if (not Assigned(RunExecute)) then
-      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['RunExecute']);
+      raise ERangeError.Create('Debug');
     if (Integer(RunExecute) = 1) then
-      raise ERangeError.CreateFmt(SPropertyOutOfRange, ['RunExecute']);
+      raise ERangeError.Create('Debug');
     // in InUse() there is a TerminateCS call. Is this needed?
   end;
 
@@ -3026,6 +3029,8 @@ begin
     if (Assigned(Lib.my_init)) then
       Lib.my_init();
     SynchroThread.LibHandle := Lib.mysql_init(nil);
+    if (Assigned(Lib.mysql_set_local_infile_handler)) then
+      Lib.mysql_set_local_infile_handler(SynchroThread.LibHandle, @MySQLDB.local_infile_init, @MySQLDB.local_infile_read, @MySQLDB.local_infile_end, @MySQLDB.local_infile_error, Self);
   end;
 
   Lib.mysql_options(SynchroThread.LibHandle, MYSQL_OPT_READ_TIMEOUT, my_char(RawByteString(IntToStr(NET_WAIT_TIMEOUT))));
@@ -3039,9 +3044,6 @@ begin
     if (HTTPAgent <> '') then
       Lib.mysql_options(SynchroThread.LibHandle, enum_mysql_option(MYSQL_OPT_HTTPTUNNEL_AGENT), my_char(LibEncode(HTTPAgent)));
   end;
-
-  if (Assigned(Lib.mysql_set_local_infile_handler)) then
-    Lib.mysql_set_local_infile_handler(SynchroThread.LibHandle, @MySQLDB.local_infile_init, @MySQLDB.local_infile_read, @MySQLDB.local_infile_end, @MySQLDB.local_infile_error, Self);
 
   ClientFlag := CLIENT_INTERACTIVE or CLIENT_LOCAL_FILES;
   if (DatabaseName <> '') then

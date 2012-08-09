@@ -5036,7 +5036,6 @@ begin
     MainAction('aHManual').OnExecute := aHManualExecute;
 
 
-    MainAction('aSAddress').Enabled := True;
     MainAction('aVObjectBrowser').Enabled := True;
     MainAction('aVDataBrowser').Enabled := (SelectedImageIndex in [iiBaseTable, iiSystemView, iiView, iiTrigger]) or ((LastSelectedDatabase <> '') and (LastSelectedDatabase = SelectedDatabase) and (LastSelectedTable <> ''));
     MainAction('aVObjectIDE').Enabled := (SelectedImageIndex in [iiView, iiProcedure, iiFunction, iiEvent, iiTrigger]) or (LastObjectIDEAddress <> '');
@@ -5082,7 +5081,6 @@ begin
 
   ActiveControlOnDeactivate := Window.ActiveControl;
 
-  MainAction('aSAddress').Enabled := False;
   MainAction('aVObjectBrowser').Enabled := False;
   MainAction('aVDataBrowser').Enabled := False;
   MainAction('aVObjectIDE').Enabled := False;
