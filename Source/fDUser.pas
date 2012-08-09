@@ -419,6 +419,8 @@ begin
     FHost.Text := '%';
     FPassword.Text := '';
 
+    FRightsRefresh(nil);
+
     FUDConnectionsPerHour.Position := 0;
     FUDQueriesPerHour.Position := 0;
     FUDUpdatesPerHour.Position := 0;
@@ -486,6 +488,8 @@ begin
 
   if (FRights.Items.Count > 0) then
     FRights.Selected := FRights.Items[0];
+
+  FRightsSelectItem(FRights, FRights.Selected, FRights.Selected.Selected);
 end;
 
 procedure TDUser.FRightsSelectItem(Sender: TObject; Item: TListItem;

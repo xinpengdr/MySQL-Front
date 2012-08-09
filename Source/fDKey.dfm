@@ -3,7 +3,7 @@ object DIndex: TDIndex
   Top = 298
   BorderStyle = bsDialog
   Caption = 'DIndex'
-  ClientHeight = 481
+  ClientHeight = 441
   ClientWidth = 337
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -20,14 +20,14 @@ object DIndex: TDIndex
   OnShow = FormShow
   DesignSize = (
     337
-    481)
+    441)
   PixelsPerInch = 106
   TextHeight = 13
   object PSQLWait: TPanel
     Left = 8
     Top = 8
     Width = 321
-    Height = 421
+    Height = 381
     Cursor = crHourGlass
     Anchors = [akLeft, akTop, akRight, akBottom]
     BevelOuter = bvNone
@@ -37,7 +37,7 @@ object DIndex: TDIndex
   end
   object FBOk: TButton
     Left = 165
-    Top = 448
+    Top = 408
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
@@ -48,7 +48,7 @@ object DIndex: TDIndex
   end
   object FBCancel: TButton
     Left = 253
-    Top = 448
+    Top = 408
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
@@ -336,17 +336,10 @@ object DIndex: TDIndex
     Left = 8
     Top = 315
     Width = 321
-    Height = 114
+    Height = 74
     Anchors = [akLeft, akRight, akBottom]
     Caption = 'GAttributes'
     TabOrder = 2
-    object FLBlockSize: TLabel
-      Left = 8
-      Top = 82
-      Width = 59
-      Height = 13
-      Caption = 'FLBlockSize'
-    end
     object FFulltext: TCheckBox
       Left = 136
       Top = 47
@@ -365,27 +358,10 @@ object DIndex: TDIndex
       TabOrder = 0
       OnClick = FUniqueClick
     end
-    object FBlockSize: TEdit
-      Left = 136
-      Top = 79
-      Width = 49
-      Height = 21
-      TabOrder = 2
-      Text = '0'
-      OnChange = FBOkCheckEnabled
-    end
-    object FBlockSizeUD: TUpDown
-      Left = 185
-      Top = 79
-      Width = 16
-      Height = 21
-      Associate = FBlockSize
-      TabOrder = 3
-    end
   end
   object FBHelp: TButton
     Left = 8
-    Top = 448
+    Top = 408
     Width = 75
     Height = 25
     Anchors = [akLeft, akBottom]

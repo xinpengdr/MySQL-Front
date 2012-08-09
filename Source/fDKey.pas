@@ -44,9 +44,6 @@ type
     ToolBar6: TToolBar;
     FLComment: TLabel;
     FComment: TEdit;
-    FLBlockSize: TLabel;
-    FBlockSize: TEdit;
-    FBlockSizeUD: TUpDown;
     procedure FAvailableFieldsChange(Sender: TObject; Item: TListItem;
       Change: TItemChange);
     procedure FAvailableFieldsDeletion(Sender: TObject; Item: TListItem);
@@ -123,7 +120,6 @@ begin
   FLIndexedFields.Caption := Preferences.LoadStr(155) + ':';
   FLLength.Caption := Preferences.LoadStr(630) + ':';
   FLAvailableFields.Caption := Preferences.LoadStr(156) + ':';
-  FLBlockSize.Caption := Preferences.LoadStr(890) + ':';
   FLComment.Caption := ReplaceStr(Preferences.LoadStr(111), '&', '') + ':';
 
   GAttributes.Caption := Preferences.LoadStr(157);
@@ -321,7 +317,6 @@ begin
       FreeAndNil(NewKeyColumn);
     end;
 
-    NewKey.BlockSize := FBlockSizeUD.Position;
     NewKey.Comment := Trim(FComment.Text);
 
     NewKey.Unique := FUnique.Checked;
@@ -438,7 +433,6 @@ begin
   end;
 
   FIndexedFields.Items.Clear();
-  FBlockSize.Visible := Table.Client.ServerVersion >= 50110; FLBlockSize.Visible := FBlockSize.Visible; FBlockSizeUD.Visible := FBlockSize.Visible;
   FComment.Visible := Table.Client.ServerVersion >= 50503; FLComment.Visible := FComment.Visible;
 
   SetLength(Lengths, Table.Fields.Count);
@@ -458,7 +452,6 @@ begin
 
     FName.Text := '';
     FLength.Text := '';
-    FBlockSizeUD.Position := 0;
     FComment.Text := '';
 
     FUnique.Checked := False;
@@ -481,7 +474,6 @@ begin
       FIndexedFields.Items.Add().Caption := Key.Columns.Column[I].Field.Name;
     FIndexedFields.Selected := FIndexedFields.Items[0];
 
-    FBlockSizeUD.Position := Key.BlockSize;
     FComment.Text := Key.Comment;
 
     FUnique.Checked := Key.Unique;

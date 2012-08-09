@@ -10190,7 +10190,7 @@ begin
           else if (TableNameCmp(ObjectName, 'user') = 0) then
             Result := Users.Build(DataSet, False, not SQLParseEnd(Parse));
         end
-        else
+        else if (DataHandle.Connection.ErrorCode = 0) then
         begin
           Database := DatabaseByName(DatabaseName);
           if (Assigned(Database)) then
